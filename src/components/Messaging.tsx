@@ -2102,7 +2102,7 @@ export default function Messaging() {
                                   <span className="text-[10px] font-bold">XATO</span>
                                 </div>
                                 {/* Sababi ko'rinib tursin (telefonda hover yo'q). */}
-                                <span className="text-[10px] font-bold text-rose-500 leading-snug max-w-[150px]">{xatoSababi(log.errorMsg)}</span>
+                                <span className="text-[10px] font-bold text-rose-500 leading-snug max-w-[150px]">{xatoSababi(log.errorMsg, log.channel)}</span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-955/20 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-900/30">

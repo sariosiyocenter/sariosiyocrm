@@ -107,9 +107,18 @@ export function xabarHolatiMatni(xabar?: XabarQisqa | null): string {
  * SMS xatosi odam tushunadigan so'z bilan (Tarix jadvalida). Eskiz javobi
  * ruscha JSON bo'lib keladi: {"message":"Этот смс текст еще не прошёл модерацию…"}.
  */
-export function xatoSababi(errorMsg?: string | null): string {
+export function xatoSababi(errorMsg?: string | null, kanal?: string | null): string {
     let m = String(errorMsg || '');
     try { const j = JSON.parse(m); m = String(j?.message || j?.data?.message || j?.error || m); } catch { /* matn */ }
+    // Telegram xatosi Eskizga aloqasi yo'q — "Eskiz javob bermadi" deb chalg'itmasin.
+    if (kanal === 'TELEGRAM') {
+        if (/blocked|bloklagan/i.test(m)) return 'Telegram: botni bloklagan';
+        if (/chat not found|deactivated|kicked/i.test(m)) return 'Telegram: chat topilmadi';
+        if (/timeout|abort|fetch failed|ECONN|socket|network/i.test(m)) return "Telegram bilan aloqa uzildi — qayta yuborsa bo'ladi";
+        if (/bot topilmadi|ulanmagan/i.test(m)) return 'Telegram bot ulanmagan';
+        return m.slice(0, 90) || 'Telegram xatosi';
+    }
+    if (/token olish|fetch failed|ECONN|ENOTFOUND|socket/i.test(m)) return "Eskiz bilan aloqa uzildi — qayta yuborsa bo'ladi";
     if (/модерац|moderat|tasdiqlanmagan/i.test(m)) return "Matn Eskizda tasdiqlangan shablonga mos emas";
     if (/баланс|balance|недостаточно|limit/i.test(m)) return "Eskiz balansida pul yetmadi";
     if (/sozlamalari|email|password|token|unauthor/i.test(m)) return "Eskiz sozlamasi (email/parol) xato";

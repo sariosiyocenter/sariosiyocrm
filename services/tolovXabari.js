@@ -120,6 +120,26 @@ export async function tolovSozlamasiniSaqla(schoolId, raw) {
 // Yuborish
 // ---------------------------------------------------------------------------
 
+// Eskiz dagi holat ba'zan eskirgan bo'ladi: matn Eskiz kabinetida boshqa id
+// bilan tasdiqlangan bo'lishi mumkin (2026-09-27: tug'ilgan kun shabloni API
+// da "inproccess" edi, lekin shu matnli SMS ketdi). Shuning uchun navbat
+// tekshiruvdagi shablon bilan soatiga bir marta haqiqiy yuborib ko'radi: Eskiz
+// qabul qilsa — shablon tasdiqlangan deb belgilanadi va navbat davom etadi.
+const SINOV_ORALIGI_MS = 60 * 60e3;
+const oxirgiSinov = new Map(); // shablonId → vaqt (instansiya bo'yicha)
+
+/** Shu shablonni hozir sinab ko'rish mumkinmi (soatiga bir marta). */
+export function sinovVaqtimi(shablonId) {
+  if (Date.now() - (oxirgiSinov.get(shablonId) || 0) < SINOV_ORALIGI_MS) return false;
+  oxirgiSinov.set(shablonId, Date.now());
+  return true;
+}
+
+/** Eskiz shu matnli SMS ni qabul qildi — shablon amalda tasdiqlangan. */
+export async function shablonTasdiqlandi(shablonId) {
+  await prisma.messageTemplate.update({ where: { id: shablonId }, data: { eskizStatus: 'service' } }).catch(() => {});
+}
+
 /** Eskiz/xato matnidan sabab turi — qayta urinish kerakmi. */
 export function xatoTuri(m) {
   const s = String(m || '');
@@ -230,7 +250,7 @@ async function yuborish(rowId, opts = {}) {
       }
     } else if (eskizRadEtdi(shablon.eskizStatus)) {
       if (!tgOk) return saqla({ holat: 'xato', matn, sabab: "Eskiz shablonni rad etgan — matnni o'zgartiring (Xabarlar → Shablonlar)" });
-    } else if (!eskizYuboradi(shablon.eskizStatus)) {
+    } else if (!eskizYuboradi(shablon.eskizStatus) && (tgOk || !sinovVaqtimi(shablon.id))) {
       // Shablon tekshiruvda: SMS navbatda turadi, tasdiqlangach o'zi ketadi.
       if (!tgOk) {
         return saqla({
@@ -240,8 +260,22 @@ async function yuborish(rowId, opts = {}) {
         });
       }
     } else {
+      // Tasdiqlangan — yoki tekshiruvda, lekin soatlik sinov navbati kelgan.
+      let sinov = !eskizYuboradi(shablon.eskizStatus);
       for (const q of tellar) {
-        const r = tr?.sms ? await tr.sms(q.tel, matn, { schoolId: row.schoolId, studentId: student.id }) : { success: false, xato: 'SMS ulanmagan' };
+        const r = tr?.sms ? await tr.sms(q.tel, matn, { schoolId: row.schoolId, studentId: student.id, sinov }) : { success: false, xato: 'SMS ulanmagan' };
+        if (sinov && !r.success && xatoTuri(r.xato) === 'shablon') {
+          // Hali tasdiqlanmagan — navbatda kutadi.
+          return saqla({
+            holat: 'kutmoqda', matn, raqamlar,
+            sabab: "Eskiz shablonni hali tasdiqlamagan — tasdiqlangach o'zi yuboriladi",
+            keyingiUrinish: new Date(Date.now() + SHABLON_KUT_MS),
+          });
+        }
+        if (sinov && r.success) {
+          await shablonTasdiqlandi(shablon.id);
+          sinov = false;
+        }
         raqamlar.push({ kimga: q.kimga, kanal: 'SMS', manzil: q.tel, holat: r.success ? 'yuborildi' : 'xato', eskizId: r.eskizId || null, xato: r.success ? null : String(r.xato || '').slice(0, 200) });
       }
     }

@@ -145,6 +145,29 @@ const publicRemoveBgLimiter = rateLimit({
   message: { success: false, error: 'Juda ko\'p urinish. Birozdan keyin qayta urinib ko\'ring.' },
 });
 
+/**
+ * Vercel javob qaytgach funksiyani muzlatadi: fondagi ish (Telegram, Eskiz)
+ * yarmida uzilib "Telegram timeout" / "fetch failed" bo'lardi — 2026-09-27
+ * dagi 12:00 tug'ilgan kun tabrigi shunday ketmadi. waitUntil funksiyani ish
+ * tugaguncha tirik tutadi (@vercel/functions shu kontekstdan foydalanadi).
+ * Lokal serverda yo'q — oddiy fon ishi bo'lib qoladi.
+ */
+function vercelKonteksti() {
+  try {
+    return globalThis[Symbol.for('@vercel/request-context')]?.get?.() || null;
+  } catch {
+    return null;
+  }
+}
+function fondaTugat(promise) {
+  const ctx = vercelKonteksti();
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(promise);
+    return true;
+  }
+  return false;
+}
+
 // Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
 let lastLazyCronRun = 0;
 app.use((req, res, next) => {
@@ -155,7 +178,7 @@ app.use((req, res, next) => {
   // Eskiz callback'i ham istisno — u tez-tez va javobni tez kutadi.
   if (process.env.AUTO_JOBS !== 'off' && req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && !req.path.startsWith('/api/sms/eskiz-callback/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
     lastLazyCronRun = Date.now();
-    (async () => {
+    const ish = (async () => {
       try {
         console.log('[Lazy Cron] Triggering background auto-process check...');
         await runAutoProcessJobs();
@@ -163,6 +186,7 @@ app.use((req, res, next) => {
         console.error('[Lazy Cron Error]:', err);
       }
     })();
+    fondaTugat(ish);
   }
   next();
 });
@@ -171,7 +195,8 @@ app.use((req, res, next) => {
 app.get('/api/status', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: 'ok', database: 'connected' });
+    // fonIshi — avtomatik xabarlar javobdan keyin ham oxirigacha ishlaydimi (waitUntil).
+    res.json({ status: 'ok', database: 'connected', fonIshi: typeof vercelKonteksti()?.waitUntil === 'function' });
   } catch (error) {
     res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
   }
@@ -6734,7 +6759,7 @@ function eskizCallbackUrl() {
   return `${base}/api/sms/eskiz-callback/${ESKIZ_CALLBACK_KALIT}`;
 }
 
-async function sendSms(phone, message, type, studentId, schoolId, campaignId = null) {
+async function sendSms(phone, message, type, studentId, schoolId, campaignId = null, opts = {}) {
   // Tutuq belgilari va bo'shliqlar Eskizdagi shablon bilan bir xil ko'rinishda
   // (lib/tolovXabari.js smsMatni) — shablon ham shu ko'rinishda yuboriladi.
   message = smsMatni(message);
@@ -6744,6 +6769,11 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
   // SMS_FAKE=1 — Eskizga bormay "yuborildi" deb qaytarish (sinov uchun).
   if (!process.env.VERCEL && process.env.SMS_REAL !== '1') {
     if (process.env.SMS_FAKE === '1') {
+      // Navbatning "tekshiruvdagi shablonni sinab ko'rish"i: sinovda Eskiz
+      // hali tasdiqlamagandek javob (SMS_FAKE_SINOV=ok — tasdiqlangandek).
+      if (opts.sinov && process.env.SMS_FAKE_SINOV !== 'ok') {
+        return { success: false, data: { status: 'error', message: "SMS_FAKE: Этот смс текст еще не прошёл модерацию (sinov)" } };
+      }
       const id = 'fake-' + crypto.randomUUID();
       await prisma.smsLog.create({
         data: { toPhone: phone, message, status: 'SENT', type, studentId: studentId || null, eskizId: id, errorMsg: 'SMS_FAKE: haqiqatda yuborilmadi', channel: 'SMS', campaignId: campaignId || null, schoolId },
@@ -6782,6 +6812,9 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
     // 200 bo'lsa ham ichida xato kelishi mumkin — faqat qabul qilinganini "yuborildi" deymiz.
     const success = ['wait', 'waiting', 'success'].includes(data.status) || (res.ok && !['error', 'fail'].includes(data.status));
 
+    // opts.sinov: navbat "tekshiruvda" shablonni sinab ko'ryapti — rad etilsa
+    // Tarixda har soat XATO qatori paydo bo'lmasin.
+    if (!success && opts.sinov) return { success, data };
     await prisma.smsLog.create({
       data: {
         toPhone: phone,
@@ -6799,6 +6832,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
     return { success, data };
   } catch (err) {
     console.error('[Eskiz] SMS yuborishda xato:', err.message);
+    if (opts.sinov) return { success: false, error: err.message };
     try {
       await prisma.smsLog.create({
         data: {
@@ -7100,8 +7134,8 @@ async function eskizShablonHolatlari(schoolId) {
  * serverda sendSms haqiqiy SMS yubormaydi (SMS_REAL/SMS_FAKE).
  */
 tolovXabariniUlash({
-  sms: async (phone, text, { schoolId, studentId }) => {
-    const r = await sendSms(phone, text, 'PAYMENT', studentId, schoolId);
+  sms: async (phone, text, { schoolId, studentId, sinov = false }) => {
+    const r = await sendSms(phone, text, 'PAYMENT', studentId, schoolId, null, { sinov });
     return {
       success: r.success,
       eskizId: r.data?.id ? String(r.data.id) : null,
@@ -7140,8 +7174,8 @@ tolovXabariniUlash({
  * haqiqiy SMS yubormaydi (SMS_REAL/SMS_FAKE).
  */
 qarzXabariniUlash({
-  sms: async (phone, text, { schoolId, studentId }) => {
-    const r = await sendSms(phone, text, 'BILLING_DEBT', studentId, schoolId);
+  sms: async (phone, text, { schoolId, studentId, sinov = false }) => {
+    const r = await sendSms(phone, text, 'BILLING_DEBT', studentId, schoolId, null, { sinov });
     return {
       success: r.success,
       eskizId: r.data?.id ? String(r.data.id) : null,
@@ -7621,10 +7655,10 @@ app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next)
 
 async function runAutoProcessJobs() {
   // To'lov SMS lari navbati: Eskiz tasdig'ini kutayotganlar va qayta urinishlar.
-  await tolovNavbati({ cheklov: 30 }).catch(e => console.error("[To'lov xabari navbati]", e.message));
+  await tolovNavbati({ cheklov: 30, byudjetMs: 8000 }).catch(e => console.error("[To'lov xabari navbati]", e.message));
   // Qarz eslatmasi: jadval (markazga kuniga bir marta) va navbat (services/qarzXabari.js).
   await avtoQarzEslatma().catch(e => console.error('[Qarz eslatmasi jadvali]', e.message));
-  await qarzNavbati({ cheklov: 40 }).catch(e => console.error('[Qarz eslatmasi navbati]', e.message));
+  await qarzNavbati({ cheklov: 40, byudjetMs: 8000 }).catch(e => console.error('[Qarz eslatmasi navbati]', e.message));
   const nowUtc = new Date();
   // Uzbekistan offset is UTC+5
   const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));

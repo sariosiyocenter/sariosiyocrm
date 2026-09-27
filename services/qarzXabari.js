@@ -25,7 +25,9 @@ import { eskizYuboradi, eskizRadEtdi, smsMatni, smsIsm, uzRaqam, KIMGA_NOMI } fr
 import {
   sozlamaniTozala, STANDART_SOZLAMA, shablonTaxmini, qarzTafsiloti, telegramMatni, som,
 } from '../lib/qarzXabari.js';
-import { qabulQiluvchilar, xatoTuri, XATO_SABABI, lokalTegmaydi, eskizHolatlariniYangila } from './tolovXabari.js';
+import {
+  qabulQiluvchilar, xatoTuri, XATO_SABABI, lokalTegmaydi, eskizHolatlariniYangila, sinovVaqtimi, shablonTasdiqlandi,
+} from './tolovXabari.js';
 
 /**
  * Server ulaydigan funksiyalar:
@@ -353,7 +355,7 @@ async function yuborish(rowId, opts = {}) {
       if (!tgOk) return saqla({ holat: 'xato', raqamlar, ...suratga, sabab: "SMS matni tanlanmagan — Xabarlar → Avtomatik → Qarzdorlik eslatmasi" });
     } else if (eskizRadEtdi(shablon.eskizStatus)) {
       if (!tgOk) return saqla({ holat: 'xato', raqamlar, ...suratga, sabab: "Eskiz SMS matnini rad etgan — shablonni o'zgartiring (Xabarlar → Shablonlar)" });
-    } else if (!eskizYuboradi(shablon.eskizStatus)) {
+    } else if (!eskizYuboradi(shablon.eskizStatus) && (tgOk || !sinovVaqtimi(shablon.id))) {
       // Shablon tekshiruvda: SMS navbatda turadi, tasdiqlangach o'zi ketadi.
       if (!tgOk) {
         return saqla({
@@ -363,11 +365,25 @@ async function yuborish(rowId, opts = {}) {
         });
       }
     } else {
+      // Tasdiqlangan — yoki tekshiruvda, lekin soatlik sinov navbati kelgan
+      // (matn Eskiz kabinetida boshqa id bilan tasdiqlangan bo'lishi mumkin).
+      let sinov = !eskizYuboradi(shablon.eskizStatus);
       const kurslar = await shablonKurslari(shablon.body, student.id);
       const target = { ...student, name: smsIsm(student.name) || student.name, balance: -tafsil.jami, lastPaymentAmount: q.oxirgiTolov?.summa ?? 0 };
       matn = smsMatni(fillTemplate(shablon.body, target, kurslar, { orgName: markaz }));
       for (const o of tellar) {
-        const r = tr?.sms ? await tr.sms(o.tel, matn, { schoolId: row.schoolId, studentId: student.id }) : { success: false, xato: 'SMS ulanmagan' };
+        const r = tr?.sms ? await tr.sms(o.tel, matn, { schoolId: row.schoolId, studentId: student.id, sinov }) : { success: false, xato: 'SMS ulanmagan' };
+        if (sinov && !r.success && xatoTuri(r.xato) === 'shablon') {
+          return saqla({
+            holat: 'kutmoqda', raqamlar, ...suratga,
+            sabab: "Eskiz SMS matnini hali tasdiqlamagan — tasdiqlangach o'zi yuboriladi",
+            keyingiUrinish: new Date(Date.now() + SHABLON_KUT_MS),
+          });
+        }
+        if (sinov && r.success) {
+          await shablonTasdiqlandi(shablon.id);
+          sinov = false;
+        }
         raqamlar.push({ kimga: o.kimga, kanal: 'SMS', manzil: o.tel, holat: r.success ? 'yuborildi' : 'xato', eskizId: r.eskizId || null, xato: r.success ? null : String(r.xato || '').slice(0, 200) });
       }
     }
