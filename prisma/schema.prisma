@@ -423,6 +423,13 @@ model Organization {
   // takror, maks, minQarz, aloqa }. null — hali saqlanmagan: eski
   // DEBT_REMINDER qoidasidan va shablon nomidan taxmin qilinadi.
   qarzXabari Json?
+
+  // Logistika avtomatikasi (egasi, 2026-09-27): dars tugashidan oldin
+  // haydovchilardan "kela olasizmi?" deb so'rash va rejani o'zi tuzib
+  // yuborish. services/logistikaAvto.js shakli:
+  // { sorash: bool, sorashOldin: daqiqa, rejalash: bool, rejalashOldin: daqiqa }.
+  // null — standart qiymatlar.
+  logistikaAvto Json?
 }
 
 model School {
@@ -893,6 +900,23 @@ model DriverAvailability {
 
   @@unique([driverId, date, endTime])
   @@index([schoolId, date])
+}
+
+/// Transport to'lqini (dars tugash vaqti) avtomatikasining holati (2026-09-27):
+/// haydovchilarga so'rov qachon ketgani, reja qachon tuzilgani, avtomatika
+/// nima sababdan to'xtagani. Har (filial, sana, to'lqin) uchun bitta yozuv —
+/// fon tekshiruvi ham, sahifa ham bir ishni ikki marta qilmasin.
+model TransportTolqin {
+  id         Int       @id @default(autoincrement())
+  schoolId   Int
+  date       String    // "YYYY-MM-DD"
+  endTime    String    // to'lqin vaqti, "18:00"
+  soralganAt DateTime? // haydovchilarga "kela olasizmi?" ketgan payt
+  rejaAt     DateTime? // reja tuzilib haydovchilarga yuborilgan payt
+  izoh       String?   // avtomatika to'xtagan sabab ("Ha degan haydovchi yo'q" …)
+  createdAt  DateTime  @default(now())
+
+  @@unique([schoolId, date, endTime])
 }
 
 /// Haydovchining oxirgi joylashuvi — Logistika xaritasida ko'rinadi.
