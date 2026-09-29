@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal, BookOpen, DollarSign } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import RoomSchedule from './RoomSchedule';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { groupHasTeacher, teacherProblem, ustozKursimi, kursUstozlari } from '../lib/teacherState';
@@ -165,7 +166,8 @@ export default function Courses() {
     };
 
     const [stateFilter, setStateFilter] = useState<'all' | 'faol' | 'toplanmoqda' | 'ustozsiz'>('all');
-    const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+    // Xonalar — xonalar bandligi jadvali (ilgari Bosh sahifaning pastida edi).
+    const [viewMode, setViewMode] = useState<'cards' | 'table' | 'rooms'>('cards');
 
     const stateCounts = {
         all: groups.length,
@@ -235,18 +237,18 @@ export default function Courses() {
                         <div>
                             <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('groups_title')}</h1>
                             <p className="text-[13px] text-matn-sokin mt-1">
-                                <span className="num">{stateCounts.faol}</span> faol guruh · <span className="num">{groups.reduce((n, g) => n + ((g.studentIds || []).length), 0)}</span> o'quvchi
+                                <span className="num">{stateCounts.faol}</span> ta kurs · <span className="num">{new Set(groups.flatMap(g => g.studentIds || [])).size}</span> o'quvchi
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 bg-sirt p-1 rounded-xl border border-chiziq">
-                            {(['cards', 'table'] as const).map(mode => (
+                            {(['cards', 'table', 'rooms'] as const).map(mode => (
                                 <button key={mode} onClick={() => setViewMode(mode)}
                                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${viewMode === mode
                                         ? 'bg-brand text-brand-ust'
                                         : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                                    {mode === 'cards' ? 'Kartalar' : 'Jadval'}
+                                    {mode === 'cards' ? 'Kartalar' : mode === 'table' ? 'Jadval' : 'Xonalar'}
                                 </button>
                             ))}
                         </div>
@@ -339,7 +341,9 @@ export default function Courses() {
                 ))}
             </div>
 
-            {filteredGroups.length === 0 ? (
+            {viewMode === 'rooms' ? (
+                <RoomSchedule />
+            ) : filteredGroups.length === 0 ? (
                 <div className="py-24 text-center bg-sirt rounded-2xl border border-chiziq border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-sm font-bold text-matn-xira">{t('no_groups_found')}</p>

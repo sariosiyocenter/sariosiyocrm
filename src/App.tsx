@@ -66,6 +66,7 @@ const StaffDetails    = lazyRetry(() => import('./components/StaffDetails'));
 const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
 const DailySheet      = lazyRetry(() => import('./components/DailySheet'));
 const AuditLog        = lazyRetry(() => import('./components/AuditLog'));
+const Hisobotlar      = lazyRetry(() => import('./components/Hisobotlar'));
 const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
 const NatijaSahifasi  = lazyRetry(() => import('./components/NatijaSahifasi'));
 const ReytingEkrani   = lazyRetry(() => import('./components/imtihon/ReytingEkrani'));
@@ -195,7 +196,7 @@ export default function App() {
             <Route path="/finance"              element={sahifa(m('moliya'), <Finance />)} />
             <Route path="/logistics"            element={sahifa(m('logistika'), <Logistics />)} />
             <Route path="/messaging"            element={sahifa(m('xabarlar'), <Messaging />)} />
-            <Route path="/reports"              element={<Navigate to="/" replace />} />
+            <Route path="/reports"              element={sahifa(kora('bosh.hisobot'), <Hisobotlar />)} />
             <Route path="/exams"                element={sahifa(m('imtihonlar'), <ExamsList />)} />
             <Route path="/exams/new"            element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
             <Route path="/exams/:id/edit"       element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />

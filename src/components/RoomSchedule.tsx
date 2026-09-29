@@ -188,8 +188,8 @@ export default function RoomSchedule() {
                             <Calendar size={20} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-extrabold text-matn tracking-tight">Jadval Xaritasi (Timetable)</h3>
-                            <p className="text-[11px] font-bold text-matn-xira">Xonalar bandligi jadvali</p>
+                            <h3 className="text-sm font-extrabold text-matn tracking-tight">Xonalar bandligi</h3>
+                            <p className="text-[11px] font-bold text-matn-xira">Qaysi xonada qachon dars bor</p>
                         </div>
                     </div>
 
@@ -422,7 +422,7 @@ export default function RoomSchedule() {
             <div className="bg-ichki border border-chiziq rounded-2xl p-4 flex gap-3 text-slate-500 dark:text-slate-400">
                 <Info size={16} className="text-brand flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] leading-relaxed">
-                    <strong>Jadval Xaritasi Ko'rsatmasi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali darslar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
+                    <strong>Qanday ishlatiladi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali darslar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
                 </p>
             </div>
 
