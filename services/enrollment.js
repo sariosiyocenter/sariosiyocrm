@@ -561,6 +561,16 @@ export async function setKursHisob({ studentId, groupId, startDate, price, first
   const oylar = new Set([startMonth]);
   if (oldStart) oylar.add(oldStart.slice(0, 7));
   if (narx !== eskiNarx && bugunOy > startMonth) oylar.add(bugunOy);
+  // Kelgan sanadan OLDINGI oylarda shu kurs uchun hisob yozilgan bo'lsa — u
+  // bekor bo'ladi (o'quvchi hali kelmagan edi; pastda due = 0). Ilgari faqat
+  // saqlangan eski sana oyi qayta sanalardi: kelgan sanasi saqlanmagan
+  // o'quvchida sana 01.10 ga surilsa sentabr hisobi qolib ketardi (2026-09-29,
+  // Matematika-4 dagi uch o'quvchi). Oyna oldindan har oy qatorini ko'rsatadi.
+  const oldingiOylar = await prisma.payment.findMany({
+    where: { studentId: student.id, groupId: group.id, type: { in: ['Oylik', 'Chegirma'] }, date: { lt: `${startMonth}-01` } },
+    select: { date: true },
+  });
+  for (const r of oldingiOylar) oylar.add(String(r.date).slice(0, 7));
 
   const result = {
     studentId: student.id, groupId: group.id, groupName: group.name,
