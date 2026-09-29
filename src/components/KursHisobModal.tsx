@@ -189,9 +189,12 @@ export default function KursHisobModal({ studentId, schoolId, groupId, groupName
                                         <div key={l.month} className="flex items-center justify-between gap-3">
                                             <span className="text-[11px] font-bold text-matn-xira">{oyNomi(l.month)}</span>
                                             <span className="num text-[11px] font-black text-matn">
-                                                {l.alreadyCharged === l.due
-                                                    ? `${pul(l.due)} — o'zgarmaydi`
-                                                    : `${pul(l.alreadyCharged)} → ${pul(l.due)}`}
+                                                {/* Hali boshlanmagan oy — hozir yozilmaydi, oy boshida yoziladi (services/billing.js). */}
+                                                {l.keyinroq
+                                                    ? `${pul(l.due)} — oy boshida yoziladi`
+                                                    : l.alreadyCharged === l.due
+                                                        ? `${pul(l.due)} — o'zgarmaydi`
+                                                        : `${pul(l.alreadyCharged)} → ${pul(l.due)}`}
                                             </span>
                                         </div>
                                     ))}

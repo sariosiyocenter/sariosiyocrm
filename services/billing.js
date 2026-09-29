@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import { courseStartOf, birinchiOyHisobi, birinchiOyKaliti, todayTashkent } from './enrollment.js';
 
 // Monthly billing: charge every active student for each group they are in.
 // Split out of server.js so the money-handling logic sits on its own and can be read
@@ -52,11 +53,53 @@ export async function billingDayReached(schoolId, todayStr) {
   return parseInt(String(todayStr).slice(8, 10)) >= day;
 }
 
+/**
+ * Bitta o'quvchining bitta kursdagi shu oy hisobi: { price, izoh } yoki null
+ * (bu oy yozilmaydi). Oy faqat kelganda hisoblanadi, kelgan sanadan
+ * (services/enrollment.js):
+ *   - kelgan sana bu oydan keyin — hali kelmagan, hisob yo'q;
+ *   - "Kurs hisobi"da birinchi oy summasi qo'lda yozilgan — o'sha;
+ *   - kelgan sana oy o'rtasida — kelgan kundan oy oxirigacha darslar;
+ *   - qolgan hollarda — to'liq oylik (shaxsiy narx bo'lsa — o'sha).
+ */
+export function oylikSumma(student, group, month) {
+  const [year, monthNum] = String(month).split('-').map(Number);
+  const oy = `${year}-${String(monthNum).padStart(2, '0')}`;
+  const firstStr = `${oy}-01`;
+  const lastStr = `${oy}-${String(new Date(year, monthNum, 0).getDate()).padStart(2, '0')}`;
+
+  const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
+  const customPrice = customPrices[group.id];
+  let price = Number(customPrice !== undefined ? customPrice : group.course.price);
+  let izoh = '';
+
+  const kelgan = courseStartOf(student, group.id);
+  if (kelgan && kelgan > lastStr) return null;
+  const birinchi = customPrices[birinchiOyKaliti(group.id)];
+  if (birinchi && birinchi.oy === oy && Number.isFinite(Number(birinchi.summa))) {
+    // Kalit o'chirilmaydi: oyi o'tgach boshqa oyga ta'sir qilmaydi, "Qayta
+    // hisoblash" esa shu summani yana oladi.
+    price = Math.round(Number(birinchi.summa));
+    izoh = ` (birinchi oy, qo'lda)`;
+  } else if (kelgan && kelgan > firstStr) {
+    const pd = birinchiOyHisobi(student, group, oy, kelgan);
+    if (pd) {
+      price = pd.due;
+      izoh = ` (${kelgan.slice(8, 10)}.${kelgan.slice(5, 7)} dan, ${pd.lessons} dars)`;
+    }
+  }
+  if (!price || price <= 0) return null;
+  return { price, izoh };
+}
+
 export async function processMonthlyBilling(schoolId, month) {
   const [year, monthNum] = month.split('-').map(Number);
   if (!Number.isInteger(year) || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
     throw new Error(`Noto'g'ri oy formati: ${month} (kutilgan "YYYY-MM")`);
   }
+  // Oy faqat kelganda yoziladi (egasi, 2026-09-29) — hali boshlanmagan oy
+  // hisoblanmaydi, kim chaqirsa ham.
+  if (month > todayTashkent().slice(0, 7)) return { processed: 0, total: 0, month, keyinroq: true };
   const lastDay = new Date(year, monthNum, 0).getDate();
   // Hisob yozuvining sanasi — markazning oylik hisob kuni ("Oylik hisoblandi
   // 01.10.2026"). Ilgari bu doim oyning oxirgi kuni edi: hisob 1-sanada
@@ -100,17 +143,16 @@ export async function processMonthlyBilling(schoolId, month) {
     for (const student of group.students) {
       if (alreadyBilled.has(student.id + ':' + group.id)) continue;
 
-      const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
-      const customPrice = customPrices[group.id];
-      const price = customPrice !== undefined ? customPrice : group.course.price;
-      if (!price || price <= 0) continue;
+      const hisob = oylikSumma(student, group, month);
+      if (!hisob) continue;
+      const { price, izoh } = hisob;
 
       charges.push({
         studentId: student.id,
         amount: -price,
         type: 'Oylik',
         date: dateStr,
-        description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
+        description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}${izoh}`,
         groupId: group.id,
         courseId: group.courseId,
         schoolId

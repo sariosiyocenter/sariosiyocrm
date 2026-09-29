@@ -18,6 +18,28 @@ import { hasSchedule, countLessons, lessonPrice, monthBounds, dayBefore } from '
 /** Oylik hisob yozuvlarining izohi shu bilan boshlanadi. */
 const CHARGE_PREFIX = '[OYLIK HISOB]';
 
+/**
+ * Oy faqat kelganda hisoblanadi (egasi, 2026-09-29: "sentabr hali tugamadi" —
+ * "Kurs hisobi" oktabrni 29-sentabrdayoq yozib qo'yardi). Hali boshlanmagan oy
+ * (keyingi oy va undan keyingisi) uchun hisob yozilmaydi — uni o'sha oyning
+ * oylik hisobi (services/billing.js) yozadi: kelgan sanadan, qo'lda berilgan
+ * birinchi oy summasi bo'lsa — o'sha bilan. Summa shu kungacha
+ * `customPrices["birinchi_<kurs id>"] = { oy, summa }` da turadi.
+ */
+export const birinchiOyKaliti = (groupId) => 'birinchi_' + groupId;
+
+/** "2026-09" + 1 → "2026-10". */
+function oyQosh(month, n) {
+  const [y, m] = String(month).split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Oy hali boshlanmaganmi (Toshkent vaqti bo'yicha keyingi oy yoki undan keyin). */
+function kelajakOymi(month) {
+  return String(month) > todayTashkent().slice(0, 7);
+}
+
 /** O'quvchining shu guruhdagi oylik narxi (shaxsiy narx bo'lsa — o'sha). */
 function monthlyPriceFor(student, group) {
   const custom = (student.customPrices && typeof student.customPrices === 'object')
@@ -133,6 +155,17 @@ function periodDue(student, group, month, from, to) {
     lessons,
     due: Math.round(lp.perLesson * lessons),
   };
+}
+
+/**
+ * Oylik hisob uchun: kursga oy o'rtasida kelgan o'quvchining birinchi oy
+ * summasi — kelgan sanadan oy oxirigacha bo'lgan darslar. Jadval
+ * belgilanmagan bo'lsa null (unda to'liq oylik olinadi).
+ */
+export function birinchiOyHisobi(student, group, month, from) {
+  const b = monthBounds(month);
+  if (!b || !hasSchedule(group.days)) return null;
+  return periodDue(student, group, month, from > b.first ? from : b.first, b.last);
 }
 
 /** Guruhni ma'lumotlari bilan olish. */
@@ -349,6 +382,11 @@ async function remainingMonthCharge(student, group, day, reason, override) {
   const bounds = monthBounds(month);
   const out = { write: null, warning: null, info: { charge: 0, lessons: 0 } };
   if (!bounds) return out;
+  // Hali boshlanmagan oy — hisob o'sha oy kelganda yoziladi (oylik hisob).
+  if (kelajakOymi(month)) {
+    out.info = { charge: 0, lessons: 0, keyinroq: month };
+    return out;
+  }
   // Summa qo'lda berilgan bo'lsa (egasi: "250 000 chiqdi, lekin men 300 000
   // yozaman") — jadvalga qaramay o'sha yoziladi.
   const qolda = Number.isFinite(Number(override)) && override !== null && override !== '' ? Math.max(0, Math.round(Number(override))) : null;
@@ -428,6 +466,20 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
     }
   }
 
+  // Kelgan sana keyingi oyda: hisob o'sha oy boshida yoziladi. Qo'lda berilgan
+  // birinchi oy summasi shu kungacha saqlanadi (oylik hisob o'shani oladi).
+  let narxlar = null;
+  if (!already && result.keyinroq) {
+    const qolda = Number(chargeOverride);
+    const cp = (student.customPrices && typeof student.customPrices === 'object' && !Array.isArray(student.customPrices)) ? { ...student.customPrices } : {};
+    if (chargeOverride !== undefined && chargeOverride !== null && chargeOverride !== '' && Number.isFinite(qolda) && qolda >= 0) {
+      cp[birinchiOyKaliti(group.id)] = { oy: result.keyinroq, summa: Math.round(qolda) };
+    } else {
+      delete cp[birinchiOyKaliti(group.id)];
+    }
+    narxlar = cp;
+  }
+
   if (!apply) return result;
 
   // Interaktiv tranzaksiya uzoq (Singapur) bazada 5 soniyada yopilib
@@ -445,6 +497,7 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
         ...(already ? {} : { groups: { connect: { id: group.id } }, courseStart: starts }),
         ...(write ? { balance: { decrement: -write.amount } } : {}),
         ...(faollashadi ? { status: 'Faol', statusChangedAt: new Date() } : {}),
+        ...(narxlar ? { customPrices: narxlar } : {}),
       },
     }));
   }
@@ -571,6 +624,23 @@ export async function setKursHisob({ studentId, groupId, startDate, price, first
     select: { date: true },
   });
   for (const r of oldingiOylar) oylar.add(String(r.date).slice(0, 7));
+  // Hali boshlanmagan oylarga ilgari yozilgan hisob (bu tuzatishgacha "Kurs
+  // hisobi" oktabrni sentabrdayoq yozardi) — o'chadi; oy kelganda oylik hisob yozadi.
+  const keyingiOyBoshi = `${oyQosh(bugunOy, 1)}-01`;
+  const kelajakQatorlar = await prisma.payment.findMany({
+    where: { studentId: student.id, groupId: group.id, type: { in: ['Oylik', 'Chegirma'] }, date: { gte: keyingiOyBoshi } },
+    select: { date: true, amount: true },
+  });
+  const kelajakSumma = new Map();
+  for (const r of kelajakQatorlar) {
+    const m = String(r.date).slice(0, 7);
+    oylar.add(m);
+    kelajakSumma.set(m, (kelajakSumma.get(m) || 0) + r.amount);
+  }
+  // Kelgan sana keyingi oyda va birinchi oy summasi qo'lda yozilgan — o'sha oy
+  // kelguncha saqlanadi, oylik hisob aynan shu summani yozadi.
+  if (kelajakOymi(startMonth) && qolda !== null) cp[birinchiOyKaliti(group.id)] = { oy: startMonth, summa: qolda };
+  else delete cp[birinchiOyKaliti(group.id)];
 
   const result = {
     studentId: student.id, groupId: group.id, groupName: group.name,
@@ -616,6 +686,14 @@ export async function setKursHisob({ studentId, groupId, startDate, price, first
         due = day <= b.first ? narx : ch.total;
       }
       due = Math.round(due);
+      if (kelajakOymi(month)) {
+        // Hali boshlanmagan oy: hozir hech narsa yozilmaydi (summa o'sha oy
+        // boshida yoziladi), ilgari oldindan yozilgani esa o'chadi.
+        const oldindan = Math.round(-(kelajakSumma.get(month) || 0));
+        result.lines.push({ month, first: month === startMonth, alreadyCharged: oldindan, due, adjust: oldindan, lessons, keyinroq: true });
+        result.balanceDelta += oldindan;
+        continue;
+      }
       const adjust = Math.round(ch.total - due);
       result.lines.push({ month, first: month === startMonth, alreadyCharged: Math.round(ch.total), due, adjust, lessons });
       if (adjust !== 0) {
@@ -645,6 +723,12 @@ export async function setKursHisob({ studentId, groupId, startDate, price, first
       ...(result.balanceDelta ? { balance: { increment: result.balanceDelta } } : {}),
     },
   })];
+  // Sinov o'quvchisida oylar qayta sanalmaydi (balanceDelta 0) — qatorlar ham qoladi.
+  if (kelajakQatorlar.length && !result.trial) {
+    ops.push(prisma.payment.deleteMany({
+      where: { studentId: student.id, groupId: group.id, type: { in: ['Oylik', 'Chegirma'] }, date: { gte: keyingiOyBoshi } },
+    }));
+  }
   if (writes.length) ops.push(prisma.payment.createMany({ data: writes }));
   await prisma.$transaction(ops);
   result.applied = true;

@@ -2363,6 +2363,8 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
       trial: enrol.trial || undefined,
       // Passiv o'quvchi kursga qaytdi — endi Faol.
       activated: enrol.activated || undefined,
+      // Kelgan sana keyingi oyda — hisob o'sha oy boshida yoziladi.
+      keyinroq: enrol.keyinroq || undefined,
     });
   } catch (error) {
     console.error('Error connecting student to group:', error);
@@ -8289,10 +8291,14 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
 
 // Oylik hisob-kitob mantiqi services/billing.js ga ko'chirildi.
 
+// Oy faqat kelganda yoziladi (egasi, 2026-09-29).
+const OY_KELMAGAN = "Bu oy hali kelmagan — hisob o'sha oy boshida yoziladi";
+
 app.post('/api/billing/process-month', authenticate, requireRole('ADMIN'), async (req, res, next) => {
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
+    if (String(month) > todayTashkent().slice(0, 7)) return res.status(400).json({ error: OY_KELMAGAN });
     const result = await processMonthlyBilling(parseInt(schoolId), month);
     res.json(result);
   } catch (err) { next(err); }
@@ -8302,6 +8308,8 @@ app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), a
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
+    // Kelajak oy uchun qulf olinsa, o'sha oy kelganda hisob umuman yozilmay qolardi.
+    if (String(month) > todayTashkent().slice(0, 7)) return res.status(400).json({ error: OY_KELMAGAN });
     const sid = parseInt(schoolId);
 
     const allOylik = await prisma.payment.findMany({
@@ -8310,7 +8318,9 @@ app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), a
     const monthPayments = allOylik.filter(p => p.date.startsWith(month) && p.description?.startsWith('[OYLIK HISOB]'));
 
     for (const p of monthPayments) {
-      await prisma.student.update({ where: { id: p.studentId }, data: { balance: { increment: Math.abs(p.amount) } } });
+      // Yozuv o'chsa balans uning teskarisiga o'zgaradi: hisob (−) qaytadi,
+      // tuzatish (+) ayriladi. Ilgari Math.abs musbat tuzatishni ham qo'shardi.
+      await prisma.student.update({ where: { id: p.studentId }, data: { balance: { increment: -p.amount } } });
     }
     if (monthPayments.length > 0) {
       await prisma.payment.deleteMany({ where: { id: { in: monthPayments.map(p => p.id) } } });

@@ -863,7 +863,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (groupRes.activated) showNotification(`${student.name} yana Faol qilindi`, 'info');
 
             // Qo'shilgan kundan oy oxirigacha hisob yozildi (yoki sinov — yozilmadi).
-            if (groupRes.trial) {
+            if (groupRes.keyinroq) {
+                const oylar = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+                showNotification(`Kursga biriktirildi. Hisob ${oylar[Number(String(groupRes.keyinroq).slice(5, 7)) - 1] || ''} boshida yoziladi`, "success");
+            } else if (groupRes.trial) {
                 showNotification("Kursga biriktirildi. Sinov o'quvchi — hisob yozilmadi, Faol qilinganda yoziladi", "info");
             } else if (groupRes.charge > 0) {
                 showNotification(`Kursga biriktirildi — ${groupRes.lessons} dars uchun ${Number(groupRes.charge).toLocaleString('ru-RU')} so'm hisoblandi`, "success");
