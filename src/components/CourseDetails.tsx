@@ -21,7 +21,9 @@ import { PaymentAddModal } from './StudentDetails';
 import { kelganSana } from '../lib/taqsimot';
 import BirinchiOyInput from './BirinchiOyInput';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
-import { useKursQarzlari, somQisqa } from '../lib/kursQarzi';
+import { somQisqa } from '../lib/kursQarzi';
+import { useHisobKitob } from '../lib/hisobKitob';
+import { toDateStr } from '../../lib/lessons.js';
 
 const BOSH: never[] = [];
 
@@ -92,7 +94,9 @@ export default function CourseDetails() {
         const g = groups.find(x => x.id === Number(id));
         return g ? students.filter(s => (g.studentIds || []).includes(s.id)) : BOSH;
     }, [groups, students, id]);
-    const kursQarzlari = useKursQarzlari(balansKorinadi ? kursOquvchilari : BOSH, payments);
+    // Moliya bilan bir xil hisob: kurs bo'yicha qarz va oy chelaklari (To'lovlar bo'limi).
+    const hisob = useHisobKitob(balansKorinadi ? kursOquvchilari : BOSH, payments);
+    const kursQarzlari = React.useMemo(() => new Map([...hisob].map(([sid, h]) => [sid, h.kurslar])), [hisob]);
 
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-matn-sokin font-medium">Kurs topilmadi</div>;
@@ -105,10 +109,12 @@ export default function CourseDetails() {
     // qo'yilgan edi — ya'ni har qanday guruh uchun bir xil soxta qiymat
     // ko'rsatardi. Endi ikkalasi ham shu guruhning o'z yozuvlaridan olinadi.
     const groupAttendances = (attendances || []).filter(a => a.groupId === group.id);
-    const groupAttendanceRate = groupAttendances.length
-        ? Math.round((groupAttendances.filter(a => a.status === 'Keldi').length / groupAttendances.length) * 100)
+    const davomatYozuvlari = groupAttendances.filter(a => a.status !== "Dars bo'lmadi");
+    const groupAttendanceRate = davomatYozuvlari.length
+        ? Math.round((davomatYozuvlari.filter(a => a.status === 'Keldi' || a.status === 'Kechikdi' || a.status === 'ErtaKetdi').length / davomatYozuvlari.length) * 100)
         : null;
-    const monthPrefix = new Date().toISOString().slice(0, 7);
+    // Oy — Toshkent vaqti bo'yicha (toISOString UTC edi).
+    const monthPrefix = toDateStr().slice(0, 7);
     const lessonsThisMonth = new Set(
         groupAttendances.filter(a => (a.date || '').startsWith(monthPrefix)).map(a => a.date)
     ).size;
@@ -256,7 +262,7 @@ export default function CourseDetails() {
                         syllabusId: activeSyllabusId
                     });
                 } else {
-                    showNotification("Mavzu qo'shish uchun avval guruh kursiga o'quv programmasini biriktiring.", "error");
+                    showNotification("Mavzu qo'shish uchun avval kursga o'quv dasturini biriktiring.", "error");
                     return;
                 }
             }
@@ -273,18 +279,13 @@ export default function CourseDetails() {
         setIsPaymentModalOpen(true);
     };
 
-    // Monthly payment status based on actual payment records (not balance)
-    const getMonthlyPayStatus = (studentId: number, price: number) => {
-        if (!price) return null;
-        const sPayments = payments.filter(p => p.studentId === studentId && p.date.startsWith(paymentMonth));
-        const incoming = sPayments.filter(p => p.amount > 0).reduce((s, p) => s + p.amount, 0);
-        const deducted = Math.abs(sPayments.filter(p => p.amount < 0).reduce((s, p) => s + p.amount, 0));
-        const monthClosed = deducted > 0;
-        // prepaid = paid before month close; full = paid after close; partial = not enough; none = nothing paid
-        const status = monthClosed
-            ? (incoming >= deducted ? 'full' : incoming > 0 ? 'partial' : 'debt')
-            : (incoming >= price ? 'prepaid' : incoming > 0 ? 'partial' : 'none');
-        return { incoming, deducted, monthClosed, status };
+    // Shu kursning tanlangan oy hisobi (o'quvchi bo'yicha): hisoblangan, yopilgan
+    // (to'lov yoki avansdan), qoldi. Ilgari o'quvchining shu oydagi BARCHA
+    // yozuvlari sanalardi — boshqa kursning hisobi va tuzatishlar ham aralashardi.
+    const getMonthlyPayStatus = (studentId: number) => {
+        const b = hisob.get(studentId)?.chelaklar.find(c => c.groupId === group.id && c.month === paymentMonth);
+        if (!b || b.due <= 0) return { due: 0, covered: 0, remaining: 0, status: 'none' as const };
+        return { due: b.due, covered: b.covered, remaining: b.remaining, status: (b.remaining <= 0 ? 'full' : b.covered > 0 ? 'partial' : 'debt') as 'full' | 'partial' | 'debt' };
     };
 
     const getPayStatus = (balance: number, customPrice?: number) => {
@@ -854,8 +855,8 @@ export default function CourseDetails() {
                                                         className={inputCls}
                                                     >
                                                         <option value="">Xodim kartasidagi umumiy KPI foizi</option>
-                                                        <option value="Belgilangan">Shu guruh uchun belgilangan summa</option>
-                                                        <option value="Foiz">Shu guruh uchun alohida foiz</option>
+                                                        <option value="Belgilangan">Shu kurs uchun belgilangan summa</option>
+                                                        <option value="Foiz">Shu kurs uchun alohida foiz</option>
                                                     </select>
                                                     {editForm.payType && (
                                                         <input
@@ -867,7 +868,7 @@ export default function CourseDetails() {
                                                         />
                                                     )}
                                                     <p className="text-[10px] text-matn-xira mt-1">
-                                                        Foiz guruhga tushgan puldan olinadi. Belgilangan summa oyiga bir marta qo'shiladi.
+                                                        Foiz kursga tushgan puldan olinadi. Belgilangan summa oyiga bir marta qo'shiladi.
                                                     </p>
                                                 </div>
                                                 )}
@@ -1179,29 +1180,13 @@ export default function CourseDetails() {
                             return cp !== undefined ? cp : price;
                         };
 
-                        const totalExpected = groupStudents.reduce((sum, s) => sum + getStudentPrice(s), 0);
-
-                        // Monthly stats based on actual payment records
-                        const monthGroupPayments = payments.filter(p =>
-                            (group.studentIds || []).includes(p.studentId) &&
-                            p.date.startsWith(paymentMonth)
-                        );
-                        const totalIncoming = monthGroupPayments.filter(p => p.amount > 0).reduce((s, p) => s + p.amount, 0);
-                        const totalDeducted = Math.abs(monthGroupPayments.filter(p => p.amount < 0).reduce((s, p) => s + p.amount, 0));
-                        const monthIsClosed = totalDeducted > 0;
-
-                        const fullPaid = groupStudents.filter(s => {
-                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
-                            return ms?.status === 'full' || ms?.status === 'prepaid';
-                        }).length;
-                        const partial = groupStudents.filter(s => {
-                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
-                            return ms?.status === 'partial';
-                        }).length;
-                        const debtors = groupStudents.filter(s => {
-                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
-                            return ms?.status === 'debt' || ms?.status === 'none';
-                        }).length;
+                        const holatlar = groupStudents.map(s => getMonthlyPayStatus(s.id));
+                        const totalExpected = holatlar.reduce((sum, h) => sum + h.due, 0);
+                        const totalIncoming = holatlar.reduce((sum, h) => sum + h.covered, 0);
+                        const monthIsClosed = totalExpected > 0;
+                        const fullPaid = holatlar.filter(h => h.status === 'full').length;
+                        const partial = holatlar.filter(h => h.status === 'partial').length;
+                        const debtors = holatlar.filter(h => h.status === 'debt').length;
 
                         return (
                         <div className="space-y-6 animate-in fade-in duration-300">
@@ -1209,9 +1194,9 @@ export default function CourseDetails() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="flex items-center gap-3">
                                     <h3 className="text-sm font-bold text-matn-2">To'lovlar holati</h3>
-                                    {monthIsClosed && (
-                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-md">
-                                            Yopilgan
+                                    {!monthIsClosed && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-ichki text-matn-sokin border border-chiziq rounded-md">
+                                            Bu oy hisobi yozilmagan
                                         </span>
                                     )}
                                 </div>
@@ -1233,9 +1218,9 @@ export default function CourseDetails() {
                                     <p className="text-[11px] font-bold text-matn-xira">UZS / oy</p>
                                 </div>
                                 <div className="bg-sirt border border-chiziq rounded-2xl p-4 space-y-1">
-                                    <span className="text-[11px] font-bold text-matn-xira">Bu oy tushum</span>
-                                    <p className="text-sm font-black text-matn tabular-nums">{totalIncoming.toLocaleString()}</p>
-                                    <p className="text-[11px] font-bold text-matn-xira">/ {totalExpected.toLocaleString()} UZS</p>
+                                    <span className="text-[11px] font-bold text-matn-xira">Yopilgan / hisoblangan</span>
+                                    <p className="text-sm font-black text-matn tabular-nums">{totalIncoming.toLocaleString('ru-RU')}</p>
+                                    <p className="text-[11px] font-bold text-matn-xira">/ {totalExpected.toLocaleString('ru-RU')} so'm</p>
                                 </div>
                                 <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-4 space-y-1">
                                     <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">To'liq</span>
@@ -1263,8 +1248,8 @@ export default function CourseDetails() {
                                             <tr className="bg-ichki border-b border-chiziq">
                                                 <th className="p-4 text-[11px] font-bold text-matn-xira">O'quvchi</th>
                                                 {price > 0 && <th className="p-4 text-[11px] font-bold text-matn-xira text-right">Kurs narxi</th>}
-                                                <th className="p-4 text-[11px] font-bold text-matn-xira text-right">Bu oy to'lov</th>
-                                                {price > 0 && <th className="p-4 text-[11px] font-bold text-matn-xira text-right">Farq</th>}
+                                                <th className="p-4 text-[11px] font-bold text-matn-xira text-right">Hisoblangan</th>
+                                                <th className="p-4 text-[11px] font-bold text-matn-xira text-right">Qoldi</th>
                                                 <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Status</th>
                                                 <th className="p-4 w-12 text-center"></th>
                                             </tr>
@@ -1275,10 +1260,8 @@ export default function CourseDetails() {
                                                     ? (s.customPrices as Record<string, number>)[group.id]
                                                     : undefined;
                                                 const finalPrice = studentCustomPrice !== undefined ? studentCustomPrice : price;
-                                                const ms = getMonthlyPayStatus(s.id, finalPrice);
-                                                const payStatus = ms?.status || null;
-                                                const monthlyIncoming = ms?.incoming || 0;
-                                                const diff = finalPrice ? monthlyIncoming - finalPrice : 0;
+                                                const ms = getMonthlyPayStatus(s.id);
+                                                const payStatus = ms.status;
                                                 return (
                                                 <tr key={s.id} className="hover:bg-gray-50/30 transition-colors group cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                                                     <td className="p-4">
@@ -1301,20 +1284,18 @@ export default function CourseDetails() {
                                                         </td>
                                                     )}
                                                     <td className="p-4 text-right">
-                                                        <span className={`text-[11px] font-bold tabular-nums ${monthlyIncoming > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-matn-xira'}`}>
-                                                            {monthlyIncoming.toLocaleString()} UZS
+                                                        <span className="text-[11px] font-bold tabular-nums text-matn-2">
+                                                            {ms.due ? ms.due.toLocaleString('ru-RU') : '—'}
                                                         </span>
                                                     </td>
-                                                    {price > 0 && (
-                                                        <td className="p-4 text-right">
-                                                            <span className={`text-[11px] font-bold tabular-nums ${diff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                                {diff >= 0 ? '+' : ''}{diff.toLocaleString()} UZS
-                                                            </span>
-                                                        </td>
-                                                    )}
+                                                    <td className="p-4 text-right">
+                                                        <span className={`text-[11px] font-bold tabular-nums ${ms.remaining > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-matn-xira'}`}>
+                                                            {ms.remaining > 0 ? ms.remaining.toLocaleString('ru-RU') : '0'}
+                                                        </span>
+                                                    </td>
                                                     <td className="p-4 text-center">
                                                         <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border ${
-                                                            payStatus === 'full' || payStatus === 'prepaid'
+                                                            payStatus === 'full'
                                                                 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
                                                             payStatus === 'partial'
                                                                 ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
@@ -1322,10 +1303,10 @@ export default function CourseDetails() {
                                                                 ? 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
                                                                 'text-matn-xira bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-800'
                                                         }`}>
-                                                            {payStatus === 'full' || payStatus === 'prepaid' ? "To'liq" :
+                                                            {payStatus === 'full' ? "To'liq" :
                                                              payStatus === 'partial' ? 'Qisman' :
                                                              payStatus === 'debt' ? 'Qarzdor' :
-                                                             "To'lamagan"}
+                                                             "Hisob yo'q"}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-center" onClick={e => e.stopPropagation()}>

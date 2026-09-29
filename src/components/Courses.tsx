@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal, BookOpen, DollarSign } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import RoomSchedule from './RoomSchedule';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { groupHasTeacher, teacherProblem, ustozKursimi, kursUstozlari } from '../lib/teacherState';
+import { useHisobKitob } from '../lib/hisobKitob';
+import { useDavomatFoizi } from '../lib/davomatFoizi';
+import { davrOraligi } from '../lib/davr';
+import { somQisqa } from '../lib/kursQarzi';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -12,8 +16,14 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function Courses() {
     const {
         groups, teachers, rooms, addGroup, showNotification, courses, syllabuses,
-        addCourse, students, attendances, topics, ozgartira
+        addCourse, students, attendances, topics, ozgartira, kora, payments
     } = useCRM();
+    // Kurs qarzi (Moliya bilan bir xil hisob) — balansni ko'radiganga.
+    const balansKorinadi = kora('oquvchilar.balans');
+    const hisob = useHisobKitob(balansKorinadi ? students : [], payments);
+    // Davomat — shu oy, o'tilgan mavzular — butun tarix; ikkalasi serverdan.
+    const joriyOy = davrOraligi('this_month');
+    const davomat = useDavomatFoizi(joriyOy.start, joriyOy.end, (attendances || []).length);
     // Yangi kurs — "Kurslar → Kurslar va ularning ma'lumoti" ni o'zgartira oladiganga.
     const kursQoshish = ozgartira('kurslar.malumot');
     const { t } = useLang();
@@ -183,19 +193,27 @@ export default function Courses() {
         const members = (students || []).filter(st => ids.includes(st.id));
         const capacity = rooms.find(r => r.id === group.room)?.capacity || null;
 
-        const paidCount = members.filter(st => (st.balance || 0) >= 0).length;
-        const payRate = members.length ? Math.round((paidCount / members.length) * 100) : null;
+        // Kurs qarzi: shu kursdagi o'quvchilarning aynan shu kurs bo'yicha qarzi.
+        // Ilgari "To'lovlar %" — umumiy balansi manfiy bo'lmaganlar ulushi edi
+        // (boshqa kursdagi qarz ham kirardi, balans ko'rinmaydigan ustozga 100%).
+        let qarz = 0, qarzdor = 0;
+        for (const st of members) {
+            const q = hisob.get(st.id)?.kurslar.get(group.id) || 0;
+            if (q > 0) { qarz += q; qarzdor++; }
+        }
 
-        const att = (attendances || []).filter(a => a.groupId === group.id);
-        const attRate = att.length
-            ? Math.round((att.filter(a => a.status === 'Keldi').length / att.length) * 100)
+        // Davomat: Keldi, Kechikdi, Erta ketdi — kelgan; "Dars bo'lmadi" hisobga olinmaydi.
+        const att = (attendances || []).filter(a => a.groupId === group.id && a.status !== "Dars bo'lmadi");
+        const mahalliy = att.length
+            ? Math.round((att.filter(a => a.status === 'Keldi' || a.status === 'Kechikdi' || a.status === 'ErtaKetdi').length / att.length) * 100)
             : null;
+        const attRate = davomat ? (davomat.kurslar.get(group.id) ?? null) : mahalliy;
 
         const syllabusId = group.syllabusId || courses.find(c => c.id === group.courseId)?.syllabusId;
         const totalTopics = syllabusId ? (topics || []).filter(tp => tp.syllabusId === syllabusId).length : 0;
-        const doneTopics = new Set(att.map(a => a.topicId).filter(Boolean)).size;
+        const doneTopics = davomat ? (davomat.mavzular.get(group.id) || 0) : new Set(att.map(a => a.topicId).filter(Boolean)).size;
 
-        return { members: members.length, capacity, payRate, attRate, doneTopics, totalTopics };
+        return { members: members.length, sinovda: members.filter(st => st.status === 'Sinov').length, capacity, qarz, qarzdor, attRate, doneTopics, totalTopics };
     };
     const getCoursePrice = (courseId: number) => {
         const c = courses.find(c => c.id === courseId);
@@ -365,7 +383,7 @@ export default function Courses() {
                                     <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">{t('group_teacher')}</th>
                                     <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">{t('time')}</th>
                                     <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">O'quvchi</th>
-                                    <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">{t('payments_tab')}</th>
+                                    {balansKorinadi && <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Qarz</th>}
                                     <th className="px-5 py-3 text-[11px] font-medium text-matn-xira text-right">{t('attendance')}</th>
                                 </tr>
                             </thead>
@@ -378,18 +396,23 @@ export default function Courses() {
                                         <tr key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
                                             className="group hover:bg-ichki transition-colors cursor-pointer">
                                             <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">{group.name}</td>
-                                            <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-matn-sokin' : 'text-amber-500'}`}>
-                                                {teacher ? ustozlar : "Biriktirilmagan"}
+                                            <td className={`px-3 py-3 text-[12px] ${teacher || group.teacher2Id ? 'text-matn-sokin' : 'text-amber-500'}`}>
+                                                {ustozlar || "Biriktirilmagan"}
                                             </td>
-                                            <td className="px-3 py-3 text-[12px] text-matn-sokin">
-                                                {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
+                                            {/* Vaqt va kunlar (ilgari bu ustunda faqat kunlar edi). */}
+                                            <td className="px-3 py-3 text-[12px] text-matn-sokin whitespace-nowrap">
+                                                {group.schedule && !String(group.schedule).includes('Belgilanmagan') && <span className="num text-matn-2">{String(group.schedule).split(' - ')[0]} · </span>}
+                                                {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : group.days === 'HAR_KUNI' ? t('every_day') : "kun belgilanmagan"}
                                             </td>
                                             <td className="num px-3 py-3 text-[13px] text-right text-matn-2">
                                                 {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
                                             </td>
-                                            <td className={`num px-3 py-3 text-[13px] text-right ${st.payRate === null ? 'text-matn-xira' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
-                                                {st.payRate === null ? '—' : `${st.payRate}%`}
+                                            {balansKorinadi && (
+                                            <td className={`num px-3 py-3 text-[13px] text-right ${st.qarz > 0 ? 'text-xato' : 'text-matn-xira'}`}>
+                                                {st.qarz > 0 ? somQisqa(st.qarz) : '0'}
+                                                {st.qarzdor > 0 && <span className="block text-[10px] text-matn-xira">{st.qarzdor} ta qarzdor</span>}
                                             </td>
+                                            )}
                                             <td className={`num px-5 py-3 text-[13px] text-right ${st.attRate === null ? 'text-matn-xira' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                 {st.attRate === null ? '—' : `${st.attRate}%`}
                                             </td>
@@ -416,19 +439,26 @@ export default function Courses() {
                                     <div className="min-w-0 flex-1">
                                         <h3 className="text-[14px] font-semibold text-matn truncate group-hover:text-brand transition-colors">{group.name}</h3>
                                         {(() => {
+                                            // Asosiy ustoz bo'lmasa ham ikkinchi ustoz ko'rinsin.
                                             const problem = teacherProblem(group, teachers);
                                             const tName = kursUstozlari(group, teachers);
+                                            const ogoh = problem && !group.teacher2Id;
                                             return (
-                                                <p className={`text-[11px] truncate ${problem ? 'text-amber-500' : 'text-matn-xira'}`}
+                                                <p className={`text-[11px] truncate ${ogoh ? 'text-amber-500' : 'text-matn-xira'}`}
                                                     title={problem || tName || ''}>
-                                                    {problem || tName}
+                                                    {ogoh ? problem : (tName || problem)}
                                                 </p>
                                             );
                                         })()}
                                     </div>
-                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 shrink-0">
-                                        {t('status_active')}
-                                    </span>
+                                    {(() => {
+                                        // Holat ma'lumotdan: ustozsiz, hali o'quvchisiz (yangi), faol.
+                                        const h = groupState(group);
+                                        const [matn, rang] = h === 'ustozsiz' ? ["Ustoz yo'q", 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40']
+                                            : h === 'toplanmoqda' ? ['Yangi', 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40']
+                                            : [t('status_active'), 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'];
+                                        return <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border shrink-0 ${rang}`}>{matn}</span>;
+                                    })()}
                                 </div>
 
                                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-3 text-[11px] text-matn-xira">
@@ -451,9 +481,9 @@ export default function Courses() {
                                         <>
                                             <div className="mt-3 pt-3 border-t border-chiziq">
                                                 <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="text-matn-xira">To'ldirilish</span>
+                                                    <span className="text-matn-xira">O'quvchi{st.sinovda > 0 && <span className="text-ogoh"> · {st.sinovda} sinovda</span>}</span>
                                                     <span className="num text-matn-2">
-                                                        {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
+                                                        {st.members}{st.capacity ? ` / ${st.capacity} o'rin` : ''}
                                                     </span>
                                                 </div>
                                                 {/* Sig'im faqat xona biriktirilganda ma'lum. Aks holda
@@ -466,15 +496,17 @@ export default function Courses() {
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                            <div className={`grid ${balansKorinadi ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mt-3`}>
+                                                {balansKorinadi && (
                                                 <div>
-                                                    <span className="block text-[10px] text-matn-xira">{t('payments_tab')}</span>
-                                                    <span className={`num text-[13px] font-semibold ${st.payRate === null ? 'text-matn-xira' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
-                                                        {st.payRate === null ? '—' : `${st.payRate}%`}
+                                                    <span className="block text-[10px] text-matn-xira">Qarz{st.qarzdor > 0 ? ` · ${st.qarzdor} ta` : ''}</span>
+                                                    <span className={`num text-[13px] font-semibold ${st.qarz > 0 ? 'text-xato' : 'text-yaxshi'}`}>
+                                                        {st.qarz > 0 ? somQisqa(st.qarz) : "yo'q"}
                                                     </span>
                                                 </div>
+                                                )}
                                                 <div>
-                                                    <span className="block text-[10px] text-matn-xira">{t('attendance')}</span>
+                                                    <span className="block text-[10px] text-matn-xira" title="Shu oy davomati">{t('attendance')} (oy)</span>
                                                     <span className={`num text-[13px] font-semibold ${st.attRate === null ? 'text-matn-xira' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                         {st.attRate === null ? '—' : `${st.attRate}%`}
                                                     </span>

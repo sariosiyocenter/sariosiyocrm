@@ -437,7 +437,7 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
   });
   if (!student) return { error: "O'quvchi topilmadi" };
   const group = await loadGroup(groupId, student.schoolId);
-  if (!group) return { error: 'Guruh topilmadi' };
+  if (!group) return { error: 'Kurs topilmadi' };
 
   const already = student.groups.some(g => g.id === group.id);
   const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, charge: 0, lessons: 0, warning: null, applied: false };
@@ -888,7 +888,7 @@ export async function unenrollStudent({ studentId, groupId, date, schoolId, appl
   });
   if (!student) return { error: "O'quvchi topilmadi" };
   const group = await loadGroup(groupId, student.schoolId);
-  if (!group) return { error: 'Guruh topilmadi' };
+  if (!group) return { error: 'Kurs topilmadi' };
 
   const member = student.groups.some(g => g.id === group.id);
   const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, refund: 0, lessons: 0, warning: null, applied: false };
@@ -926,7 +926,7 @@ export async function syncGroupMembers({ groupId, studentIds, date, schoolId }) 
     where: { id: Number(groupId), ...(schoolId ? { schoolId } : {}) },
     include: { students: { select: { id: true } } },
   });
-  if (!group) return { error: 'Guruh topilmadi' };
+  if (!group) return { error: 'Kurs topilmadi' };
   const wanted = new Set((studentIds || []).map(Number).filter(Number.isInteger));
   const current = new Set(group.students.map(s => s.id));
   const warnings = [];

@@ -13,6 +13,8 @@ import { useCRM } from '../context/CRMContext';
 export interface DavomatFoizi {
     oquvchilar: Map<number, number>;
     kurslar: Map<number, number>;
+    /** Kurs → o'tilgan (davomatda belgilangan) turli mavzular soni, butun tarix. */
+    mavzular: Map<number, number>;
 }
 
 export function useDavomatFoizi(from: string, to: string, yangilash: unknown = 0): DavomatFoizi | null {
@@ -28,7 +30,10 @@ export function useDavomatFoizi(from: string, to: string, yangilash: unknown = 0
                 const foiz = (o: Record<string, { keldi: number; jami: number }>) => new Map(
                     Object.entries(o || {}).filter(([, v]) => v.jami > 0).map(([k, v]) => [Number(k), Math.round((v.keldi / v.jami) * 100)]),
                 );
-                setNatija({ oquvchilar: foiz(d.oquvchilar), kurslar: foiz(d.kurslar) });
+                setNatija({
+                    oquvchilar: foiz(d.oquvchilar), kurslar: foiz(d.kurslar),
+                    mavzular: new Map(Object.entries(d.mavzular || {}).map(([k, v]) => [Number(k), Number(v) || 0])),
+                });
             })
             .catch(() => {});
         return () => { tirik = false; };

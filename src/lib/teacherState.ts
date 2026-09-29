@@ -65,6 +65,6 @@ export function teacherProblem(group: { teacherId?: number }, teachers: Teacher[
     const t = teachers.find(x => x.id === group.teacherId);
     if (!t) return 'Ustoz biriktirilmagan';
     if (isPlaceholderTeacher(t)) return 'Ustoz biriktirilmagan';
-    if (t.status === 'Arxiv') return `${t.name} arxivda — guruh puli hech kimga hisoblanmaydi`;
+    if (t.status === 'Arxiv') return `${t.name} arxivda — kurs puli hech kimga hisoblanmaydi`;
     return null;
 }

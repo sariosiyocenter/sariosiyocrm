@@ -2306,7 +2306,7 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     }
 
     const prismaData = {
-      name: name || 'Nomsiz guruh',
+      name: name || 'Nomsiz kurs',
       teacherId: parseInt(teacherId),
       courseId: parseInt(courseId),
       schedule: schedule || '',
@@ -2477,10 +2477,10 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     // A group must have a teacher — say so plainly instead of letting the database
     // reject it with a constraint name the user cannot act on.
     if (prismaData.teacherId !== undefined && (!prismaData.teacherId || isNaN(prismaData.teacherId))) {
-      return res.status(400).json({ error: 'Guruh uchun o\'qituvchi tanlanishi shart' });
+      return res.status(400).json({ error: 'Kurs uchun o\'qituvchi tanlanishi shart' });
     }
     if (prismaData.courseId !== undefined && (!prismaData.courseId || isNaN(prismaData.courseId))) {
-      return res.status(400).json({ error: 'Guruh uchun kurs tanlanishi shart' });
+      return res.status(400).json({ error: 'Kurs uchun fan tanlanishi shart' });
     }
 
     const group = await prisma.group.update({
@@ -4872,10 +4872,16 @@ app.get('/api/attendances/foiz', authenticate, async (req, res, next) => {
     const where = { schoolId };
     if (from || to) where.date = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
     if (req.ruxsat?.faqatOz) where.groupId = { in: [...(await ozKurslari(req.user)).groupIds] };
-    const [bySt, byGr] = await Promise.all([
+    // O'tilgan mavzular — kurs bo'yicha, butun tarix (davr emas): davomatda
+    // belgilangan turli mavzular soni. Brauzerdagi 14 kunlik yozuvdan sanalsa kam chiqardi.
+    const mavzuWhere = { schoolId, topicId: { not: null }, ...(where.groupId ? { groupId: where.groupId } : {}) };
+    const [bySt, byGr, byMavzu] = await Promise.all([
       prisma.attendance.groupBy({ by: ['studentId', 'status'], where, _count: { _all: true } }),
       prisma.attendance.groupBy({ by: ['groupId', 'status'], where, _count: { _all: true } }),
+      prisma.attendance.groupBy({ by: ['groupId', 'topicId'], where: mavzuWhere }),
     ]);
+    const mavzular = {};
+    for (const r of byMavzu) mavzular[r.groupId] = (mavzular[r.groupId] || 0) + 1;
     const KELDI = ['Keldi', 'Kechikdi', 'ErtaKetdi'];
     const yig = (rows, kalit) => {
       const out = {};
@@ -4887,7 +4893,7 @@ app.get('/api/attendances/foiz', authenticate, async (req, res, next) => {
       }
       return out;
     };
-    res.json({ from, to, oquvchilar: yig(bySt, 'studentId'), kurslar: yig(byGr, 'groupId') });
+    res.json({ from, to, oquvchilar: yig(bySt, 'studentId'), kurslar: yig(byGr, 'groupId'), mavzular });
   } catch (error) { next(error); }
 });
 

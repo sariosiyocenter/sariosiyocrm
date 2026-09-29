@@ -353,7 +353,7 @@ export default function FaceAttendance({ students, groupId, schoolId, onMatch, o
                 <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
                     <Users size={13} className="text-amber-400 shrink-0" />
                     <p className="text-amber-300 text-[11px] font-bold">
-                        Bu guruhda hech kimning yuzi aniqlanmadi — o'quvchilarning <span className="text-white">profil rasmi</span> yo'q yoki rasmda yuz ko'rinmayapti. Aniqroq rasm qo'ysangiz Face ID o'zi ishlaydi.
+                        Bu kursda hech kimning yuzi aniqlanmadi — o'quvchilarning <span className="text-white">profil rasmi</span> yo'q yoki rasmda yuz ko'rinmayapti. Aniqroq rasm qo'ysangiz Face ID o'zi ishlaydi.
                     </p>
                 </div>
             )}
@@ -363,7 +363,7 @@ export default function FaceAttendance({ students, groupId, schoolId, onMatch, o
                 <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
                     <AlertTriangle size={13} className="text-amber-400 shrink-0" />
                     <p className="text-amber-300 text-[11px] font-bold">
-                        <span className="text-white">{uncertain}</span> ga o'xshaydi, lekin guruhda unga o'xshash boshqa o'quvchi ham bor —
+                        <span className="text-white">{uncertain}</span> ga o'xshaydi, lekin kursda unga o'xshash boshqa o'quvchi ham bor —
                         avtomatik belgilanmadi. Yaqinroq turing yoki ro'yxatdan qo'lda belgilang.
                     </p>
                 </div>
