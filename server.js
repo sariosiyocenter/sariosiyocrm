@@ -38,7 +38,7 @@ import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyChekl
 import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent, kurslardanChiqarish } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent, kurslardanChiqarish, kursdanChiqish, chiqishTanloviXatosi } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi, kunniSaqlash, holatniOchirish } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
@@ -1866,7 +1866,8 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Valid student ID talab qilinadi' });
     }
 
-    const { groups, schoolId, routeIds, ...rest } = req.body;
+    // chiqish — o'qimaydigan holatga o'tganda shu oy hisobi: { sana, summalar: { kursId: summa } }.
+    const { groups, schoolId, routeIds, chiqish, ...rest } = req.body;
     console.log(`Updating student ${studentId}`);
 
     // Whitelist only known Student schema fields
@@ -1904,14 +1905,25 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     // O'qimaydigan holatga (Passiv, Muzlatilgan, Arxiv, Bitiruvchi,
     // Sertifikatli) o'tdi — barcha kurslaridan chiqariladi (lib/oquvchiHolati.js).
     let kursdanChiqadi = false;
+    let eskiHolat = null;
     if (data.status) {
       const oldStudent = await prisma.student.findUnique({ where: { id: studentId } });
       if (oldStudent && oldStudent.status !== data.status) {
         data.statusChangedAt = new Date();
+        eskiHolat = oldStudent.status;
         // Sinov → Faol: sinov darslari bepul edi, endi hisob boshlanadi.
         activating = oldStudent.status === 'Sinov' && data.status === 'Faol';
         kursdanChiqadi = !kursdaOqiydi(data.status);
       }
+    }
+    // Kurslardan chiqqanda shu oy hisobi — xodim tanlagan bo'lsa (sinov
+    // o'quvchisida hisob yo'q). Avval tekshiriladi: xato bo'lsa hech narsa o'zgarmaydi.
+    const chiqishTanlovi = kursdanChiqadi && chiqish && typeof chiqish === 'object'
+      ? { sana: chiqish.sana, summalar: eskiHolat === 'Sinov' ? {} : chiqish.summalar }
+      : {};
+    if (kursdanChiqadi && chiqish) {
+      const xato = chiqishTanloviXatosi(chiqishTanlovi);
+      if (xato) return res.status(400).json({ error: xato });
     }
 
     if (data.transportId !== undefined) {
@@ -1958,9 +1970,16 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     const notes = [];
     let ledgerChanged = false;
     let chiqarilganKurslar;
+    let chiqishFarqi = 0;
     if (kursdanChiqadi) {
       // Formadan kelgan kurslar ro'yxati bu holatda e'tiborga olinmaydi.
-      chiqarilganKurslar = await kurslardanChiqarish(studentId);
+      const chiq = await kurslardanChiqarish(studentId, chiqishTanlovi);
+      if (chiq.error) notes.push(chiq.error);
+      else {
+        chiqarilganKurslar = chiq.nomlar;
+        chiqishFarqi = chiq.balanceDelta;
+        if (chiqishFarqi) ledgerChanged = true;
+      }
     } else if (groups) {
       const sync = await syncStudentGroups({ studentId, groupIds: groups.map(gId => parseInt(gId)) });
       if (sync.error) notes.push(sync.error);
@@ -1989,6 +2008,8 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       activation: activation || undefined,
       // Qaysi kurslardan chiqarilgani — xodim xabarda ko'radi.
       removedFrom: chiqarilganKurslar,
+      // Shu oy hisobi o'zgargan bo'lsa — balans qanchaga o'zgargani.
+      chiqishFarqi: chiqishFarqi || undefined,
       warning: notes.join(' ') || undefined,
       ledgerChanged: ledgerChanged || undefined,
     });
@@ -5415,6 +5436,22 @@ app.post('/api/students/:id/kurs-hisob', authenticate, async (req, res, next) =>
       studentId: req.params.id,
       groupId: parseInt(groupId),
       startDate, price, firstMonthDue,
+      schoolId: schoolId ? parseInt(schoolId) : undefined,
+      apply: preview !== true,
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+// Kursdan chiqarish: shu oy hisobini xodim tanlaydi — o'zgarmaydi, kelgan
+// darslari uchun, olinmaydi yoki boshqa summa (services/enrollment.js →
+// kursdanChiqish). preview: true — faqat hisob, hech narsa yozilmaydi.
+app.post('/api/students/:id/kursdan-chiqarish', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, date, kurslar, preview } = req.body;
+    const result = await kursdanChiqish({
+      studentId: req.params.id, kurslar, date,
       schoolId: schoolId ? parseInt(schoolId) : undefined,
       apply: preview !== true,
     });

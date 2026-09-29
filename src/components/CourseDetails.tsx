@@ -16,6 +16,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 import FaceAttendance from './FaceAttendance';
 import { DavomatXabarModal } from './DavomatXabari';
 import KursHisobModal from './KursHisobModal';
+import KursdanChiqarishModal from './KursdanChiqarishModal';
 import { kelganSana } from '../lib/taqsimot';
 import BirinchiOyInput from './BirinchiOyInput';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
@@ -26,7 +27,7 @@ const BOSH: never[] = [];
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor, kora, ozgartira } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor, kora, ozgartira } = useCRM();
     // Lavozim ruxsati (Sozlamalar → Ruxsatlar): har bir tugma o'z bo'limiga bog'langan.
     const kursTahrir = ozgartira('kurslar.malumot');
     const ulushKorinadi = kora('kurslar.narx');
@@ -65,6 +66,8 @@ export default function CourseDetails() {
     const [addStartDate, setAddStartDate] = useState(new Date().toISOString().split('T')[0]);
     // Ro'yxatdagi o'quvchining kelgan sanasini o'zgartirish (hisob shu kundan).
     const [sanaOquvchi, setSanaOquvchi] = useState<{ id: number; schoolId: number; current: string } | null>(null);
+    // Kursdan chiqarish oynasi — shu oy hisobi tanlanadi (KursdanChiqarishModal).
+    const [chiqariladigan, setChiqariladigan] = useState<number | null>(null);
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedTopicId, setSelectedTopicId] = useState<number | ''>('');
     const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
@@ -725,7 +728,7 @@ export default function CourseDetails() {
                                                                         )}
                                                                         {tarkibTahrir && (
                                                                         <button
-                                                                            onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
+                                                                            onClick={e => { e.stopPropagation(); setChiqariladigan(s.id); }}
                                                                             title="Kursdan chiqarish"
                                                                             className="w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:text-white hover:bg-rose-500 transition-colors cursor-pointer"
                                                                         >
@@ -1396,6 +1399,14 @@ export default function CourseDetails() {
                     groupName={group.name}
                     current={sanaOquvchi.current}
                     onClose={() => setSanaOquvchi(null)}
+                />
+            )}
+
+            {chiqariladigan !== null && (
+                <KursdanChiqarishModal
+                    studentId={chiqariladigan}
+                    groupIds={[group.id]}
+                    onClose={() => setChiqariladigan(null)}
                 />
             )}
 

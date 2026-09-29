@@ -186,6 +186,15 @@ export interface Payment {
     editedById?: number | null;
 }
 
+/**
+ * Kursdan chiqishda shu oy hisobi (egasi, 2026-09-29): summalar[kurs id] —
+ * shu oy uchun olinadigan summa, null — hisob o'zgarmaydi.
+ */
+export interface KursdanChiqishTanlovi {
+    sana?: string;
+    summalar?: Record<number, number | null>;
+}
+
 export interface Expense {
     id: number;
     amount: number;

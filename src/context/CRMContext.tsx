@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, RouteRun, Question, Exam, ExamResult, Topic, Syllabus, Direction } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, RouteRun, Question, Exam, ExamResult, Topic, Syllabus, Direction, KursdanChiqishTanlovi } from '../types';
 
 import { rolRuxsati, yetadimi, modulKorinadimi, toliqRuxsatli } from '../../lib/ruxsatlar.js';
 
@@ -56,6 +56,8 @@ interface CRMContextType extends CRMState {
     importStudents: (students: any[]) => Promise<void>;
     addStudentToGroup: (groupId: number, studentId: number, startDate?: string, charge?: number) => Promise<void>;
     removeStudentFromGroup: (groupId: number, studentId: number) => Promise<void>;
+    // Kursdan chiqarish; summalar — shu oy uchun olinadigan summa (null — hisob o'zgarmaydi).
+    kursdanChiqarish: (studentId: number, groupIds: number[], tanlov?: KursdanChiqishTanlovi) => Promise<any>;
     addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
     deleteTeacher: (id: number) => Promise<void>;
@@ -753,7 +755,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updateStudent = async (id: number, student: Partial<Student>) => {
         try {
-            const { activation, warning, ledgerChanged, removedFrom, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
+            const { activation, warning, ledgerChanged, removedFrom, chiqishFarqi, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
             // O'quvchi ID si (kod) tahrir javobida kelmaydi — o'zgarmaydi, eskisi qoladi.
             // Passiv qilinganda server kurslardan chiqardi — kurslar ro'yxati ham shunga mos.
             setState(prev => ({
@@ -765,7 +767,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     : prev.groups,
             }));
             if (removedFrom?.length) {
-                showNotification(`${updated.status} — ${removedFrom.join(', ')} kursidan chiqarildi. Qarzi saqlanadi.`, 'success');
+                showNotification(`${updated.status} — ${removedFrom.join(', ')} kursidan chiqarildi. `
+                    + (chiqishFarqi
+                        ? `Shu oy hisobi o'zgardi: balans ${chiqishFarqi > 0 ? '+' : '−'}${Math.abs(chiqishFarqi).toLocaleString('ru-RU')} so'm`
+                        : 'Qarzi saqlanadi.'), 'success');
             } else if (activation && activation.total > 0) {
                 const parts = (activation.charges || []).map((c: any) => `${c.groupName}: ${c.lessons} dars`).join(', ');
                 showNotification(`Faol qilindi — ${parts}; jami ${Number(activation.total).toLocaleString('ru-RU')} so'm hisoblandi`, 'success');
@@ -880,19 +885,36 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    /**
+     * Kursdan chiqarish — shu oy hisobi xodim tanlagancha (egasi, 2026-09-29):
+     * summalar[kurs] — shu oy uchun olinadigan summa, null — o'zgarmaydi.
+     * Xato bo'lsa tashlaydi: oyna o'zi ko'rsatadi.
+     */
+    const kursdanChiqarish = async (studentId: number, groupIds: number[], tanlov: KursdanChiqishTanlovi = {}) => {
+        const student = state.students.find(s => s.id === studentId);
+        const res = await apiCall(`students/${studentId}/kursdan-chiqarish`, 'POST', {
+            ...(student?.schoolId ? { schoolId: student.schoolId } : {}),
+            date: tanlov.sana,
+            kurslar: groupIds.map(groupId => ({ groupId, summa: tanlov.summalar?.[groupId] ?? null })),
+        });
+        setState(prev => ({
+            ...prev,
+            groups: prev.groups.map(g => groupIds.includes(g.id)
+                ? { ...g, studentIds: (g.studentIds || []).filter(x => x !== studentId) } : g),
+            students: prev.students.map(s => s.id === studentId
+                ? { ...s, groups: (s.groups || []).filter(gid => !groupIds.includes(gid)), balance: (s.balance || 0) + (res.balanceDelta || 0) }
+                : s),
+        }));
+        // Hisob to'g'rilangan bo'lsa — yangi yozuv to'lovlar ro'yxatiga ham tushsin.
+        if (res.balanceDelta) retryLoad();
+        return res;
+    };
+
+    // Ilgari DELETE edi: apiCall DELETE javobini qaytarmaydi, kurs holatda
+    // null bo'lib qolardi.
     const removeStudentFromGroup = async (groupId: number, studentId: number) => {
         try {
-            const groupRes = await apiCall(`groups/${groupId}/students/${studentId}`, 'DELETE');
-
-            setState(prev => ({
-                ...prev,
-                groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
-                students: prev.students.map(s => s.id === studentId
-                    ? { ...s, groups: (s.groups || []).filter(gid => gid !== groupId) }
-                    : s
-                )
-            }));
-
+            await kursdanChiqarish(studentId, [groupId]);
             showNotification("O'quvchi kursdan chiqarildi", "success");
         } catch (err: any) {
             showNotification("Xatolik: " + err.message, "error");
@@ -1477,7 +1499,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             loading, error, user, token,
             ruxsat, kora, ozgartira, modulKorinadi, faqatOzKurslari: !!ruxsat?.faqatOz,
             login, logout, checkAuth, setSelectedSchoolId,
-            addStudent, updateStudent, deleteStudent, setStudentStatus, importStudents, addStudentToGroup, removeStudentFromGroup,
+            addStudent, updateStudent, deleteStudent, setStudentStatus, importStudents, addStudentToGroup, removeStudentFromGroup, kursdanChiqarish,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
             updateLead, addLead, deleteLead,

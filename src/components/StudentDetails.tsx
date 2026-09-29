@@ -23,6 +23,9 @@ import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import { TolovXabarQatori } from './TolovXabari';
 import KursHisobModal from './KursHisobModal';
+import KursdanChiqarishModal from './KursdanChiqarishModal';
+import type { KursdanChiqishTanlovi } from '../types';
+import { isCashIncome } from '../lib/money';
 import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
 import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
@@ -89,6 +92,10 @@ export default function StudentDetails() {
     // egasining so'roviga ko'ra olib tashlandi (2026-09-22).
     const [moveMode, setMoveMode] = useState<'transfer' | null>(null);
     const [moveFrom, setMoveFrom] = useState<number | undefined>(undefined);
+    // Kursdan chiqarish (shu oy hisobi tanlanadi) — kurs kartochkasidagi tugmadan.
+    const [chiqishKurslar, setChiqishKurslar] = useState<number[] | null>(null);
+    // Holat Passiv (Arxiv …) qilinganda o'sha oyna: tanlov saqlashga qaytadi.
+    const [holatChiqish, setHolatChiqish] = useState<{ holat: string; resolve: (t: KursdanChiqishTanlovi | null) => void } | null>(null);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
@@ -444,13 +451,15 @@ export default function StudentDetails() {
     const handleSaveEdit = async () => {
         // O'qimaydigan holat (Passiv, Muzlatilgan, Arxiv …) — o'quvchi barcha
         // kurslaridan chiqariladi (lib/oquvchiHolati.js). Oldindan aytiladi.
+        // Shu oy hisobini xodim o'sha oynada tanlaydi (egasi, 2026-09-29): o'zgarmaydi,
+        // kelgan darslari uchun, olinmaydi yoki boshqa summa.
+        let chiqish: KursdanChiqishTanlovi | undefined;
         if (editForm.status !== student.status && !kursdaOqiydi(editForm.status) && studentGroups.length > 0) {
-            const ok = await confirm({
-                title: `${editForm.status} qilinsinmi?`,
-                message: `O'quvchi ${studentGroups.map(g => g.name).join(', ')} kursidan chiqariladi va kurs ro'yxatida ko'rinmaydi. Qarzi o'chmaydi. Qaytib kelsa — kursga qayta qo'shasiz, u yana Faol bo'ladi.`,
-                confirmLabel: `Ha, ${editForm.status} qilish`,
-            });
-            if (!ok) return;
+            const tanlov = await new Promise<KursdanChiqishTanlovi | null>(resolve => setHolatChiqish({ holat: editForm.status, resolve }));
+            setHolatChiqish(null);
+            if (!tanlov) return;
+            // Summa tanlanmagan bo'lsa yuborilmaydi — hisob o'zgarmaydi.
+            if (Object.values(tanlov.summalar || {}).some(v => v !== null && v !== undefined)) chiqish = tanlov;
         }
         try {
             setIsSaving(true);
@@ -464,7 +473,8 @@ export default function StudentDetails() {
                 routeIds: editForm.routeIds,
                 studyGoal: editForm.studyGoal || null,
                 grade: editForm.grade || null,
-                directionId: editForm.directionId ? Number(editForm.directionId) : null
+                directionId: editForm.directionId ? Number(editForm.directionId) : null,
+                ...(chiqish ? { chiqish } : {}),
             };
 
             await updateStudent(student.id, payload);
@@ -583,8 +593,9 @@ export default function StudentDetails() {
         return best;
     })();
 
-    // To'lovlar yig'indisi (faqat kirimlar; manfiy yozuvlar — oylik hisoblash).
-    const totalPaid = studentPayments.reduce((sum, p) => sum + (p.amount > 0 ? p.amount : 0), 0);
+    // Kelgan pul — faqat haqiqiy to'lovlar. Hisobni kamaytirgan tuzatish
+    // (Kurs hisobi, kursdan chiqish: musbat "Oylik") pul emas.
+    const totalPaid = studentPayments.reduce((sum, p) => sum + (isCashIncome(p) ? p.amount : 0), 0);
 
     // Qarz qachondan boshlangani. Balansni oxirgi to'lovlardan orqaga qarab
     // "yechib" borib, u manfiyga o'tgan operatsiya sanasini topamiz.
@@ -610,16 +621,22 @@ export default function StudentDetails() {
     const recentActivity = (() => {
         type Item = { key: string; date: string; title: string; sub: string; tone: string; icon: React.ReactNode };
         const items: Item[] = [];
-        studentPayments.slice(0, 6).forEach(p => items.push({
-            key: `p${p.id}`,
-            date: p.date,
-            title: p.amount < 0
-                ? `Oylik hisoblandi — ${Math.abs(p.amount).toLocaleString()} so'm`
-                : `To'lov qabul qilindi — ${p.amount.toLocaleString()} so'm`,
-            sub: (p.description || '').replace(/^\[[^\]]+\]\s*/, '') || (p.amount < 0 ? 'Avtomatik hisoblash' : p.type),
-            tone: p.amount < 0 ? 'rose' : 'emerald',
-            icon: p.amount < 0 ? <ReceiptText size={12} /> : <CreditCard size={12} />,
-        }));
+        studentPayments.slice(0, 6).forEach(p => {
+            // Kurs hisobi yozuvi (Oylik/Chegirma) pul emas: manfiy — hisoblandi,
+            // musbat — hisob kamaytirildi (Kurs hisobi, kursdan chiqish).
+            const hisob = p.type === 'Oylik' || p.type === 'Chegirma';
+            const summa = Math.abs(p.amount).toLocaleString();
+            items.push({
+                key: `p${p.id}`,
+                date: p.date,
+                title: hisob
+                    ? (p.amount < 0 ? `Oylik hisoblandi — ${summa} so'm` : `Hisob kamaytirildi — ${summa} so'm`)
+                    : (p.amount < 0 ? `Pul qaytarildi — ${summa} so'm` : `To'lov qabul qilindi — ${summa} so'm`),
+                sub: (p.description || '').replace(/^\[[^\]]+\]\s*/, '') || (p.amount < 0 ? 'Avtomatik hisoblash' : p.type),
+                tone: hisob ? (p.amount < 0 ? 'rose' : 'teal') : (p.amount < 0 ? 'amber' : 'emerald'),
+                icon: hisob ? <ReceiptText size={12} /> : <CreditCard size={12} />,
+            });
+        });
         studentAttendances.filter(a => a.status !== 'Keldi').slice(0, 5).forEach(a => {
             const g = groups.find(gr => gr.id === a.groupId);
             items.push({
@@ -1529,6 +1546,16 @@ export default function StudentDetails() {
                                                                             Almashtirish
                                                                         </button>
                                                                         )}
+                                                                        {/* Kursdan chiqarish — shu oy hisobini tanlaysiz (to'liq, darslari uchun, olinmaydi). */}
+                                                                        {tarkibTahrir && (
+                                                                        <button
+                                                                            onClick={() => setChiqishKurslar([group.id])}
+                                                                            className="inline-flex items-center px-3 py-2 bg-sirt border border-chiziq hover:border-rose-300 dark:hover:border-rose-800 rounded-xl text-[11px] font-bold text-matn-sokin hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                                                                            title="Kursdan chiqarish — shu oy uchun qancha olinishini tanlaysiz"
+                                                                        >
+                                                                            Chiqarish
+                                                                        </button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1582,7 +1609,8 @@ export default function StudentDetails() {
                                 const jamiYozuv = tartib.reduce((s, p) => s + p.amount, 0);
                                 let qoldiq = Math.round((student.balance || 0) - jamiYozuv);   // yozuvlardan oldingi boshlang'ich qoldiq
                                 const qatorlar = tartib.map(p => { qoldiq += p.amount; return { p, keyin: qoldiq }; }).reverse();
-                                const jamiHisob = tartib.reduce((s, p) => s + (p.amount < 0 ? -p.amount : 0), 0);
+                                // Kurslar hisobi — sof: tuzatishlar (musbat Oylik, Chegirma) ayiriladi.
+                                const jamiHisob = tartib.reduce((s, p) => s + (p.type === 'Oylik' || p.type === 'Chegirma' ? -p.amount : 0), 0);
                                 const kursNomi = (gid?: number | null) => gid ? (groups.find(g => g.id === gid)?.name || '') : '';
                                 const matn = (p: Payment) => (p.description || '').replace(/^\[[^\]]+\]\s*/, '');
                                 const usul = (p: Payment) => p.type === 'Naqd' ? t('type_cash')
@@ -2311,6 +2339,20 @@ export default function StudentDetails() {
             )}
             {moveMode && (
                 <StudentMoveModal studentId={student.id} mode={moveMode} fromGroup={moveFrom} onClose={() => { setMoveMode(null); setMoveFrom(undefined); }} />
+            )}
+            {chiqishKurslar && (
+                <KursdanChiqarishModal studentId={student.id} groupIds={chiqishKurslar} onClose={() => setChiqishKurslar(null)} />
+            )}
+            {holatChiqish && (
+                <KursdanChiqarishModal
+                    studentId={student.id}
+                    groupIds={studentGroups.map(g => g.id)}
+                    sarlavha={`${holatChiqish.holat} qilinsinmi?`}
+                    izoh={`O'quvchi ${studentGroups.map(g => g.name).join(', ')} kursidan chiqariladi va kurs ro'yxatida ko'rinmaydi. Qaytib kelsa — kursga qayta qo'shasiz, u yana Faol bo'ladi.`}
+                    tugma={`Ha, ${holatChiqish.holat} qilish`}
+                    onTanlov={t => holatChiqish.resolve(t)}
+                    onClose={() => holatChiqish.resolve(null)}
+                />
             )}
             {showScoreModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
