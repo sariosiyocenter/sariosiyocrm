@@ -44,8 +44,9 @@ const tayyormi = (res) => {
 /**
  * Markazning o'z kaliti (bo'lmasa ''). lib/prisma.js da global omit — shuning
  * uchun aniq so'raladi; bazada SETTINGS_KEY bilan shifrlangan (Eskiz, Payme kabi).
+ * Zukko (routes/zukko.js) ham shu kalitdan foydalanadi.
  */
-async function markazKaliti(user) {
+export async function markazKaliti(user) {
   if (!user?.organizationId) return '';
   const org = await prisma.organization.findUnique({ where: { id: user.organizationId }, select: { aiKaliti: true } });
   return decryptSecret(org?.aiKaliti || '') || '';

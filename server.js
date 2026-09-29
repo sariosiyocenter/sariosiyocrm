@@ -6,6 +6,7 @@ import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
+import { registerZukkoRoutes } from './routes/zukko.js';
 import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHisoboti } from './routes/imtihon.js';
 import { auditMiddleware } from './lib/audit.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
@@ -8493,6 +8494,8 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
 // Payme: webhook, havola yaratish, ochiq holat sahifasi (routes/payme.js).
 registerPaymeRoutes(app);
 registerAuditRoutes(app);
+// Zukko — o'ng paneldagi AI yordamchi (routes/zukko.js).
+registerZukkoRoutes(app);
 // Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
 registerImtihonRoutes(app, {
   sendToOne,

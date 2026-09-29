@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users, GraduationCap, Target, Settings,
   LayoutDashboard, Wallet, Search, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
@@ -9,6 +9,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useConfirm } from './ConfirmDialog';
+import ZukkoPanel from './zukko/ZukkoPanel';
+import ZukkoBelgi from './zukko/ZukkoBelgi';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -40,6 +42,28 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Zukko — o'ng paneldagi AI yordamchi (components/zukko). Katta ekranda
+  // ochiq-yopiqligi eslab qolinadi; telefonda u butun ekranni egallaydi, shuning
+  // uchun har kirishda yopiq boshlanadi. Ctrl + / — ochish/yopish.
+  const zukkoBor = user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER';
+  const [zukkoOchiq, setZukkoOchiq] = useState(() => {
+    try { return window.innerWidth >= 1280 && localStorage.getItem('zukko_ochiq') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { if (window.innerWidth >= 1280) localStorage.setItem('zukko_ochiq', zukkoOchiq ? '1' : '0'); } catch { /* */ }
+  }, [zukkoOchiq]);
+  useEffect(() => {
+    if (!zukkoBor) return;
+    const tugma = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.code === 'Slash')) {
+        e.preventDefault();
+        setZukkoOchiq(v => !v);
+      }
+    };
+    window.addEventListener('keydown', tugma);
+    return () => window.removeEventListener('keydown', tugma);
+  }, [zukkoBor]);
 
   // Menyuda faqat xodim ko'ra oladigan modullar (Sozlamalar → Ruxsatlar).
   // Ilgari o'qituvchi ham Moliya, Xodimlar kabi bandlarni ko'rardi va bosganda
@@ -312,6 +336,21 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
+            {zukkoBor && (
+              <button
+                onClick={() => setZukkoOchiq(v => !v)}
+                title="Zukko — AI yordamchi (Ctrl + /)"
+                aria-label="Zukko — AI yordamchi"
+                aria-pressed={zukkoOchiq}
+                className={`h-9 flex items-center gap-2 pl-1.5 pr-1.5 rounded-full border transition-colors cursor-pointer ${zukkoOchiq
+                  ? 'border-brand/40 bg-brand/10 text-brand'
+                  : 'sm:pr-3.5 border-chiziq bg-sirt text-matn-2 hover:border-brand/40 hover:text-brand'}`}
+              >
+                <ZukkoBelgi size={24} />
+                {/* Panel ochiq bo'lsa nom panelning o'zida — tepadagi joy qidiruvga qolsin. */}
+                <span className={`hidden ${zukkoOchiq ? '' : 'sm:inline'} text-[12.5px] font-semibold`}>Zukko</span>
+              </button>
+            )}
             {/* Qarzdorlar — direktor birinchi qaraydigan raqam, shuning uchun
                 menyudan izlamasdan yuqori panelda turadi. */}
             {user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER' && debtorCount > 0 && (
@@ -379,6 +418,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       </main>
 
       </div>
+
+      {/* ===== ZUKKO — O'NG PANEL ===== */}
+      {zukkoBor && <ZukkoPanel ochiq={zukkoOchiq} yop={() => setZukkoOchiq(false)} />}
 
       {/* Toast Notification */}
       {notification && (

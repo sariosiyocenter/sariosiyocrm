@@ -305,3 +305,31 @@ input[type="number"] {
 /* Logistika → Reja xaritasi: "bo'yash" va "uy joyini belgilash" rejimida nishon kursor. */
 .reja-xarita-tanlash .leaflet-container { cursor: crosshair; }
 .reja-xarita-tanlash .leaflet-marker-icon { cursor: pointer; }
+
+/* Zukko — o'ng paneldagi AI yordamchi (src/components/zukko).
+   Belgidagi uchqun: tinch holatda sekin "nafas oladi", AI o'ylayotganda
+   Z atrofida aylanadi. Panel tepasidagi yengil brend nuri — panelni sahifadan
+   ajratib turadi, lekin ranglar mavzu tokenlaridan (qorong'u mavzuda ham). */
+@keyframes zk-aylanish { to { transform: rotate(360deg); } }
+@keyframes zk-nafas { 0%, 100% { opacity: .6; transform: scale(.82); } 50% { opacity: 1; transform: scale(1.12); } }
+@keyframes zk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes zk-kirish { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes zk-ustun { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+.zk-aylanish { transform-origin: 14px 14px; animation: zk-aylanish 1.3s linear infinite; }
+.zk-nafas { transform-origin: 21.5px 6.5px; animation: zk-nafas 2.8s ease-in-out infinite; }
+.zk-kirish { animation: zk-kirish .28s ease-out both; }
+.zk-ustun { transform-origin: bottom; animation: zk-ustun .5s cubic-bezier(.2,.8,.2,1) both; }
+.zk-nur {
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--color-brand) 15%, transparent), transparent 60%),
+    radial-gradient(80% 70% at 0% 0%, color-mix(in srgb, var(--color-brand-accent) 9%, transparent), transparent 55%);
+}
+.zk-shimmer {
+  background: linear-gradient(90deg, var(--color-matn-sokin) 0%, var(--color-brand) 45%, var(--color-matn-sokin) 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: zk-shimmer 2.4s linear infinite;
+}
