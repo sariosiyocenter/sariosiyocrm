@@ -977,6 +977,9 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         return res.status(400).json({ error: "O'z hisobingizni o'zingiz arxivga ola olmaysiz" });
       }
       data.status = status;
+      // Arxivdagi xodim botda hech kim emas — Telegram bog'lanishlari uziladi
+      // (qaytsa, botga raqamini qayta yuboradi).
+      if (status === 'Arxiv' && target.status !== 'Arxiv') { data.telegramId = null; data.telegramId2 = null; }
     }
     if (password) data.password = await bcrypt.hash(password, 10);
 
@@ -1038,7 +1041,10 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         if (name !== undefined && name !== ustoz.name) ustozData.name = name;
         if (phone !== undefined && (phone || '') !== ustoz.phone) ustozData.phone = phone || '';
         if (photo !== undefined && photo !== ustoz.photo) ustozData.photo = photo || null;
-        if (data.status === 'Arxiv' && ustoz.status !== 'Arxiv') ustozData.status = 'Arxiv';
+        // Arxivdagi ustoz botda ustoz emas — Telegram bog'lanishi ham uziladi
+        // (egasi, 2026-09-29: "o'qituvchi o'chirib yuborilsa ham telegramda
+        // kirsa salom ustoz deyapdi"). Qaytsa — botga raqamini qayta yuboradi.
+        if (data.status === 'Arxiv' && ustoz.status !== 'Arxiv') { ustozData.status = 'Arxiv'; ustozData.telegramId = null; }
         if (data.status === 'Faol' && ustoz.status === 'Arxiv') ustozData.status = 'Faol';
         if (yangiFilial && ustoz.schoolId !== yangiFilial) ustozData.schoolId = yangiFilial;
         if (!ustoz.userId) ustozData.userId = user.id;
@@ -1142,8 +1148,9 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
             if (tDavomat > 0) await prisma.teacherAttendance.deleteMany({ where: { teacherId: teacher.id } });
             await prisma.teacher.delete({ where: { id: teacher.id } });
           } else {
-            // Guruhi bor ustozni o'chirib bo'lmaydi — arxivga olamiz.
-            await prisma.teacher.update({ where: { id: teacher.id }, data: { status: 'Arxiv' } });
+            // Guruhi bor ustozni o'chirib bo'lmaydi — arxivga olamiz. Telegram
+            // bog'lanishi uziladi: o'chirilgan ustozni bot "ustoz" deb kutib olmasin.
+            await prisma.teacher.update({ where: { id: teacher.id }, data: { status: 'Arxiv', telegramId: null } });
           }
         }
       } catch (e) {
@@ -2106,6 +2113,8 @@ app.put('/api/teachers/:id', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const ustozData = pickTeacherFields(req.body);
     await rasmMaydoniniTozala(ustozData, 'photo', 'teacher');
+    // Arxivga olingan ustoz botda ustoz emas — Telegram bog'lanishi uziladi.
+    if (ustozData.status === 'Arxiv') ustozData.telegramId = null;
     const teacher = await prisma.teacher.update({
       where: { id: parseInt(id) },
       data: ustozData,
@@ -2119,7 +2128,11 @@ app.put('/api/teachers/:id', authenticate, async (req, res, next) => {
         if (teacher.name !== xodim.name) xodimData.name = teacher.name;
         if ((teacher.phone || null) !== xodim.phone) xodimData.phone = teacher.phone || null;
         if ((teacher.photo || null) !== xodim.photo) xodimData.photo = teacher.photo || null;
-        if (teacher.status === 'Arxiv' && xodim.status !== 'Arxiv') xodimData.status = 'Arxiv';
+        if (teacher.status === 'Arxiv' && xodim.status !== 'Arxiv') {
+          xodimData.status = 'Arxiv';
+          xodimData.telegramId = null;
+          xodimData.telegramId2 = null;
+        }
         if (teacher.status !== 'Arxiv' && xodim.status === 'Arxiv') xodimData.status = 'Faol';
         if (Math.round(teacher.salary || 0) !== (xodim.salary || 0)) {
           xodimData.salary = Math.round(teacher.salary || 0);

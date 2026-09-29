@@ -423,7 +423,11 @@ const findUser = async (tid, schoolId) => {
     // Arxivdagi ustoz yozuvi botda ustoz emas: aks holda uning eski raqami
     // bilan kirgan odam (masalan keyin administrator bo'lgan) ustoz menyusiga
     // tushib qolardi (2026-09-29).
-    const teacher = await findAcross('teacher', { telegramId: tidStr, status: { not: 'Arxiv' } }, ids);
+    // Xodim hisobi arxivga olingan (yoki o'chirilgan) ustoz ham ustoz emas.
+    const teacher = await findAcross('teacher', {
+        telegramId: tidStr, status: { not: 'Arxiv' },
+        OR: [{ userId: null }, { user: { status: { not: 'Arxiv' } } }],
+    }, ids);
     if (teacher) return { type: 'teacher', data: teacher };
 
     // Xodimning ikkinchi raqami ham o'z Telegram hisobi bilan (telegramId2).
@@ -593,7 +597,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         // shuning uchun oxirgi 9 raqam JS da solishtiriladi (o'quvchilardagidek).
         const filialTartibi = (a, b) => ids.indexOf(a.schoolId) - ids.indexOf(b.schoolId);
         const [ustozlar, xodimlar] = await Promise.all([
-            prisma.teacher.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
+            prisma.teacher.findMany({
+                where: { schoolId: { in: ids }, status: { not: 'Arxiv' }, OR: [{ userId: null }, { user: { status: { not: 'Arxiv' } } }] },
+                orderBy: { id: 'asc' },
+            }),
             prisma.user.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
         ]);
         const teacher = ustozlar.filter(t => oxirgi9(t.phone) === phoneSuffix).sort(filialTartibi)[0];
@@ -1908,8 +1915,9 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             try {
                 const [students, teachers, users] = await Promise.all([
                     prisma.student.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } }),
-                    prisma.teacher.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } }),
-                    prisma.user.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } })
+                    // Arxivdagi (o'chirilgan) ustoz va xodimlarga ommaviy xabar bormaydi.
+                    prisma.teacher.findMany({ where: { telegramId: { not: null }, schoolId, status: { not: 'Arxiv' } }, select: { telegramId: true } }),
+                    prisma.user.findMany({ where: { telegramId: { not: null }, schoolId, status: { not: 'Arxiv' } }, select: { telegramId: true } })
                 ]);
 
                 const allTids = new Set([
