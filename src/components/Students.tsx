@@ -632,8 +632,12 @@ export default function Students() {
     const qidiruv = React.useDeferredValue(search);
     const filteredStudents = React.useMemo(() => students.filter(s => {
         const lowerSearch = qidiruv.trim().toLowerCase();
+        // Telefon bo'shliqsiz solishtiriladi ("90 747" ham topsin), ota-onaniki
+        // ham — bolaning o'z telefoni ko'pincha yo'q.
+        const raqam = lowerSearch.replace(/\D/g, '');
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
+               (raqam.length >= 4 && [s.phone, s.fatherPhone, s.motherPhone].some(p => (p || '').replace(/\D/g, '').includes(raqam))) ||
                (s.studentSchool || '').toLowerCase().includes(lowerSearch) ||
                // 5 xonali o'quvchi ID si (kamida 3 raqam yozilganda boshidan).
                (!!s.kod && /^\d{3,5}$/.test(lowerSearch) && String(s.kod).startsWith(lowerSearch));
@@ -1059,7 +1063,10 @@ export default function Students() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-matn truncate">{student.name}</p>
-                                    <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
+                                    <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">
+                                        {student.kod && <span className="text-matn-2">ID {student.kod} · </span>}
+                                        {student.phone || "telefon yo'q"}
+                                    </p>
                                     {/* Kurslar va har biridagi qarz — telefonda ham. */}
                                     {(student.groups || []).length > 0 && (
                                         <p className="text-[11px] text-matn-sokin mt-0.5 truncate">
@@ -1108,7 +1115,7 @@ export default function Students() {
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr className="border-b border-chiziq">
-                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[58px]">&#8470;</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[70px]" title="O'quvchi ID si — Payme orqali to'lovda shu raqam kiritiladi">ID</th>
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin">{t('student')}</th>
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[172px]">{t('student_phone')}</th>
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[180px]">{t('student_groups')}</th>
@@ -1123,7 +1130,9 @@ export default function Students() {
                             {visibleStudents.map((student) => (
                                 <tr key={student.id} className="hover:bg-ichki transition-colors cursor-pointer group"
                                     onClick={() => navigate(`/students/${student.id}`)}>
-                                    <td className="px-4 py-2.5 num text-[12px] text-matn-xira">{student.id}</td>
+                                    {/* 5 xonali ID (StudentKod) — ota-ona Payme'da shu raqamni kiritadi;
+                                        ichki № 04.10.2026 dan keyin Payme'da qabul qilinmaydi. */}
+                                    <td className="px-4 py-2.5 num text-[12px] text-matn-2">{student.kod ?? <span className="text-matn-xira">—</span>}</td>
                                     <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-2.5 min-w-0">
                                             <Avatar name={student.name} photo={student.photo} size={28} fontSize={10} />

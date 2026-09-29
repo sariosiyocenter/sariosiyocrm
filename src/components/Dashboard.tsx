@@ -5,7 +5,6 @@ import {
   Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown, CreditCard
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome } from '../lib/money';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -90,12 +89,17 @@ export default function Dashboard() {
     const [activeReportTab, setActiveReportTab] = useState<string>('stats');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    // Financial Calculations filtered by selected period
+    // Tushum — faqat haqiqatan kelgan pul (isCashIncome). Ilgari barcha yozuvlar
+    // qo'shilardi: oylik hisob (manfiy) ham kirib, "Tushum −69.6 mln" chiqardi.
     const periodIncome = useMemo(() => {
         return payments
-            .filter(p => p.date >= startDate && p.date <= endDate)
+            .filter(p => p.date >= startDate && p.date <= endDate && isCashIncome(p))
             .reduce((acc, p) => acc + p.amount, 0);
     }, [payments, startDate, endDate]);
+    // Shu davrda kurslarga hisoblangan (sof): oylik hisob − tuzatish va chegirma.
+    const periodCharged = useMemo(() => -payments
+        .filter(p => p.date >= startDate && p.date <= endDate && (p.type === 'Oylik' || p.type === 'Chegirma'))
+        .reduce((acc, p) => acc + p.amount, 0), [payments, startDate, endDate]);
 
     const lastPeriodIncome = useMemo(() => {
         const start = new Date(startDate);
@@ -106,22 +110,11 @@ export default function Dashboard() {
         const prevStartStr = prevStart.toISOString().split('T')[0];
         const prevEndStr = prevEnd.toISOString().split('T')[0];
         return payments
-            .filter(p => p.date >= prevStartStr && p.date <= prevEndStr)
+            .filter(p => p.date >= prevStartStr && p.date <= prevEndStr && isCashIncome(p))
             .reduce((acc, p) => acc + p.amount, 0);
     }, [payments, startDate, endDate]);
 
     const incomeTrend = lastPeriodIncome === 0 ? (periodIncome > 0 ? 100 : 0) : ((periodIncome - lastPeriodIncome) / lastPeriodIncome) * 100;
-
-    const monthlyExpected = (students || [])
-        .filter(s => s.status === 'Faol')
-        .reduce((acc, s) => {
-            const studentGroups = (groups || []).filter(g => (s.groups || []).includes(g.id));
-            const studentFees = studentGroups.reduce((gAcc, g) => {
-                const course = (courses || []).find(c => c.id === g.courseId);
-                return gAcc + (course?.price || 0);
-            }, 0);
-            return acc + studentFees;
-        }, 0);
 
     const totalDebt = students
         .filter(s => s.balance < 0)
@@ -155,26 +148,6 @@ export default function Dashboard() {
     const total6Months = chartDataValues.reduce((acc, v) => acc + v, 0);
     const maxVal = Math.max(...chartDataValues, 0.1);
 
-    const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
-
-    activeCourses(courses, groups).forEach(c => {
-        const courseGroups = groups.filter(g => g.courseId === c.id);
-        const studentCount = courseGroups.reduce((acc, g) => acc + (g.studentIds || []).length, 0);
-        const revenue = studentCount * c.price;
-        const normalizedKey = c.name.trim().toUpperCase();
-
-        if (courseStatsMap[normalizedKey]) {
-            courseStatsMap[normalizedKey].students += studentCount;
-            courseStatsMap[normalizedKey].revenue += revenue;
-        } else {
-            courseStatsMap[normalizedKey] = { name: c.name, students: studentCount, revenue };
-        }
-    });
-
-    const topCourseStats = Object.values(courseStatsMap)
-        .filter(c => c.revenue > 0)
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 3);
 
     // Leads count in period
     const periodNewLeads = useMemo(() => {
@@ -208,8 +181,10 @@ export default function Dashboard() {
     const totalSeats = groups.reduce((n, g) => n + (rooms.find(r => r.id === g.room)?.capacity || 0), 0);
     const seatsPct = groupsWithoutRoom === 0 && totalSeats > 0 ? Math.min(100, Math.round((activeStudents / totalSeats) * 100)) : null;
 
-    // Tushum kutilgan oylik yuklamaga nisbatan.
-    const incomePct = monthlyExpected > 0 ? Math.min(100, Math.round((periodIncome / monthlyExpected) * 100)) : null;
+    // Tushum shu davrda hisoblanganga nisbatan (Moliya → "Hisoblangan oylik · yig'ildi"
+    // bilan bir xil). Ilgari kurs narxi × o'quvchi edi: shaxsiy narx, birinchi oy va
+    // chegirma hisobga olinmasdi.
+    const incomePct = periodCharged > 0 ? Math.min(100, Math.round((periodIncome / periodCharged) * 100)) : null;
 
     // Qarzdorlik: kim qancha vaqtdan beri to'lov qilmagan.
     const debtors = students.filter(s => (s.balance || 0) < 0);
@@ -490,11 +465,11 @@ export default function Dashboard() {
                                 <div className="h-full rounded-full bg-brand" style={{ width: `${incomePct}%` }} />
                             </div>
                             <span className="text-[11px] text-matn-xira block mt-1.5">
-                                kutilgan <span className="raqam">{(monthlyExpected / 1000000).toFixed(1)}</span> mln dan <span className="raqam">{incomePct}%</span>
+                                hisoblangan <span className="raqam">{(periodCharged / 1000000).toFixed(1)}</span> mln dan <span className="raqam">{incomePct}%</span>
                             </span>
                         </>
                     ) : (
-                        <span className="text-[11px] text-matn-xira block mt-2">Kutilayotgan summa hisoblanmadi</span>
+                        <span className="text-[11px] text-matn-xira block mt-2">Bu davrda kurslarga hisob yozilmagan</span>
                     )}
                 </div>
                 )}
@@ -685,29 +660,6 @@ export default function Dashboard() {
                     </div>
                     )}
 
-                    {/* Eng ko'p tushum keltirgan kurslar — bo'sh bo'lsa ko'rsatilmaydi */}
-                    {pulKorinadi && topCourseStats.length > 0 && (
-                    <div className="bg-sirt rounded-xl border border-chiziq p-4">
-                        <h3 className="text-[15px] font-semibold text-matn mb-3.5">Eng ko'p tushum keltirgan kurslar</h3>
-                        <div className="space-y-3.5">
-                            {topCourseStats.map((course, i) => (
-                                <div key={i}>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[12px] text-matn-2 truncate">{course.name}</span>
-                                        <span className="num text-[12px] text-matn-sokin shrink-0">{(course.revenue / 1000000).toFixed(1)} mln</span>
-                                    </div>
-                                    <div className="h-1 w-full bg-chiziq rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-brand rounded-full transition-all duration-700"
-                                            style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[11px] text-matn-xira mt-1"><span className="raqam">{course.students}</span> ta o'quvchi</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    )}
                 </div>
             </div>
 

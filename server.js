@@ -15,7 +15,7 @@ import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken a
 import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi, kirishTokeni } from './middleware/auth.js';
 import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
-import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
+import { releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
 import {
   tolovXabariniUlash, tolovXabari, tolovXabariniBekorQil, tolovNavbati, tolovSozlamasi, tolovSozlamasiniSaqla,
@@ -7856,6 +7856,8 @@ app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next)
 });
 
 async function runAutoProcessJobs() {
+  // Oylik hisob: joriy oy, hisob kuni kelgan bo'lsa — bir marta (oylikHisobAvto).
+  await oylikHisobAvto().catch(e => console.error('[Oylik hisob avto]', e.message));
   // To'lov SMS lari navbati: Eskiz tasdig'ini kutayotganlar va qayta urinishlar.
   await tolovNavbati({ cheklov: 30, byudjetMs: 8000 }).catch(e => console.error("[To'lov xabari navbati]", e.message));
   // Qarz eslatmasi: jadval (markazga kuniga bir marta) va navbat (services/qarzXabari.js).
@@ -8329,14 +8331,18 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
 
 // Oylik hisob-kitob mantiqi services/billing.js ga ko'chirildi.
 
-// Oy faqat kelganda yoziladi (egasi, 2026-09-29).
+// Oy faqat kelganda yoziladi (egasi, 2026-09-29); o'tgan oy qaytadan
+// yozilmaydi — faqat joriy oy.
 const OY_KELMAGAN = "Bu oy hali kelmagan — hisob o'sha oy boshida yoziladi";
+const OY_OTGAN = "O'tgan oy qaytadan hisoblanmaydi — faqat joriy oy";
+const oyTekshir = (month) => String(month) > todayTashkent().slice(0, 7) ? OY_KELMAGAN
+  : String(month) < todayTashkent().slice(0, 7) ? OY_OTGAN : null;
 
 app.post('/api/billing/process-month', authenticate, requireRole('ADMIN'), async (req, res, next) => {
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
-    if (String(month) > todayTashkent().slice(0, 7)) return res.status(400).json({ error: OY_KELMAGAN });
+    if (oyTekshir(month)) return res.status(400).json({ error: oyTekshir(month) });
     const result = await processMonthlyBilling(parseInt(schoolId), month);
     res.json(result);
   } catch (err) { next(err); }
@@ -8346,8 +8352,9 @@ app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), a
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
-    // Kelajak oy uchun qulf olinsa, o'sha oy kelganda hisob umuman yozilmay qolardi.
-    if (String(month) > todayTashkent().slice(0, 7)) return res.status(400).json({ error: OY_KELMAGAN });
+    // Kelajak oy uchun qulf olinsa, o'sha oy kelganda hisob umuman yozilmay
+    // qolardi; o'tgan oyda esa yozuvlar o'chib, qayta yozilmasdi.
+    if (oyTekshir(month)) return res.status(400).json({ error: oyTekshir(month) });
     const sid = parseInt(schoolId);
 
     const allOylik = await prisma.payment.findMany({
@@ -8365,7 +8372,6 @@ app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), a
     }
 
     await releaseBillingRun(sid, month);
-    await claimBillingRun(sid, month);
     const result = await processMonthlyBilling(sid, month);
     res.json({ recalculated: monthPayments.length, ...result });
   } catch (err) { next(err); }
@@ -8397,14 +8403,16 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
     //
     // Joriy oy uchun hisob kuni kelishi kerak: markaz "oylik har oyning
     // 5-kunida" desa, 3-sanada Moliya ochilgani oyni erta yozib qo'ymasin.
-    // O'tgan oylar esa ochilishi bilan yopiladi.
-    const kuniKeldi = month < currentMonthStr || await billingDayReached(sid, today);
-    if (!billingDone && month <= currentMonthStr && kuniKeldi) {
-      if (await claimBillingRun(sid, month)) {
-        await processMonthlyBilling(sid, month);
-      }
+    // Faqat JORIY oy: o'tgan oyni ko'rish hech narsa yozmaydi. 28.09 tozalanishidan
+    // keyin o'tgan oylarda hisob yozuvi yo'q — "<" bosilsa avgust butun
+    // markazga qaytadan yozilib ketardi (2026-09-30 tekshiruvi).
+    if (!billingDone && month === currentMonthStr && await billingDayReached(sid, today)) {
+      // Bir marta: belgi (BillingRun) hisob bilan birga qo'yiladi (services/billing.js).
+      await processMonthlyBilling(sid, month);
       billingDone = true;
     }
+    // Oylar tanlagichi chegarasi: birinchi yozilgan oydan joriy oygacha.
+    const birinchiRun = await prisma.billingRun.findFirst({ where: { schoolId: sid }, orderBy: { month: 'asc' }, select: { month: true } });
 
     const studentMap = {};
     for (const group of groups) {
@@ -8452,40 +8460,45 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       };
     });
 
-    res.json({ billingDone, billingDay: await billingDayOf(sid), students, groups: groupBreakdown, month });
+    res.json({
+      billingDone, billingDay: await billingDayOf(sid), students, groups: groupBreakdown, month,
+      birinchiOy: birinchiRun?.month && birinchiRun.month < currentMonthStr ? birinchiRun.month : currentMonthStr,
+      joriyOy: currentMonthStr,
+    });
   } catch (err) { next(err); }
 });
+
+/**
+ * Joriy oyning oylik hisobi — hisob kuni kelgan har bir filial uchun, bir
+ * marta (belgi BillingRun hisob bilan birga qo'yiladi). Vercel cron ham, lazy
+ * cron ham shuni chaqiradi: CRON_SECRET sozlanmagan (2026-09-30 tekshiruvi —
+ * sentabr faqat kimdir "Oylik nazorat"ni ochgani uchun yozilgan edi), shuning
+ * uchun oy CRM dagi birinchi faollikda o'zi yoziladi.
+ */
+async function oylikHisobAvto() {
+  const schools = await prisma.school.findMany({ select: { id: true, name: true } });
+  // Oy O'zbekiston vaqti bo'yicha: Vercel UTC da ishlaydi.
+  const today = toDateStr();
+  const month = today.slice(0, 7);
+  const results = [];
+  for (const school of schools) {
+    // Filial o'z hisob kunini tanlaydi (sukut — oyning 1-kuni). Kun kelmagan
+    // bo'lsa hech narsa qilinmaydi — keyingi kuni yana ko'riladi.
+    if (!(await billingDayReached(school.id, today))) {
+      results.push({ schoolId: school.id, schoolName: school.name, skipped: 'kun-kelmadi', month });
+      continue;
+    }
+    const result = await processMonthlyBilling(school.id, month);
+    results.push({ schoolId: school.id, schoolName: school.name, ...result });
+  }
+  return { month, results };
+}
 
 app.get('/api/billing/auto-process', async (req, res, next) => {
   try {
     const cronError = cronRequestRejected(req);
     if (cronError) return res.status(401).json({ error: cronError });
-    const schools = await prisma.school.findMany({ select: { id: true, name: true } });
-    // Oy O'zbekiston vaqti bo'yicha: Vercel UTC da ishlaydi, 1-kuni 00:00 UTC
-    // allaqachon 05:00 mahalliy — baribir yangi oy, lekin boshqa vaqtda
-    // chaqirilsa ham to'g'ri oy olinsin.
-    const today = toDateStr();
-    const month = today.slice(0, 7);
-    const results = [];
-    for (const school of schools) {
-      // Cron endi har kuni chaqiriladi: filial o'z hisob kunini tanlaydi
-      // (sukut — oyning 1-kuni). Kun kelmagan bo'lsa hech narsa qilinmaydi,
-      // qulf ham olinmaydi — keyingi kuni yana ko'riladi.
-      if (!(await billingDayReached(school.id, today))) {
-        results.push({ schoolId: school.id, schoolName: school.name, skipped: 'kun-kelmadi', month });
-        continue;
-      }
-      // /api/billing/status bilan bir xil qulf: (filial, oy) bir marta. Ilgari
-      // qulfsiz edi — har chaqiruv o'sha oyda hali hisoblanmagan juftliklarni
-      // qayta ko'rib chiqardi (masalan oy o'rtasida qo'shilganlarni ham).
-      if (!(await claimBillingRun(school.id, month))) {
-        results.push({ schoolId: school.id, schoolName: school.name, skipped: 'already-claimed', month });
-        continue;
-      }
-      const result = await processMonthlyBilling(school.id, month);
-      results.push({ schoolId: school.id, schoolName: school.name, ...result });
-    }
-    res.json({ success: true, month, results });
+    res.json({ success: true, ...(await oylikHisobAvto()) });
   } catch (err) { next(err); }
 });
 

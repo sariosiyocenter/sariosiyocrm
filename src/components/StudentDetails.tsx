@@ -2635,7 +2635,8 @@ export default function StudentDetails() {
 }
 
 
-function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
+/** To'lov qo'shish oynasi — o'quvchi kartochkasi va kurs sahifasida bitta. */
+export function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
     const { students, groups, courses, payments, settings, showNotification, user: crmUser, ozgartira } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');

@@ -2,13 +2,16 @@ import React, { useMemo } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { Activity, TrendingUp, Users, DollarSign, Target, Briefcase } from 'lucide-react';
 import { StatCard, BarChart, LineChart, DonutChart, ReportCard, SectionHeader } from './shared';
+import { isCashIncome } from '../../lib/money';
 
 export default function CenterStatsReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
     const { students, teachers, groups, leads, payments: rawPayments, expenses: rawExpenses, courses } = useCRM();
 
     const payments = useMemo(() => {
-        if (!startDate || !endDate) return rawPayments;
-        return rawPayments.filter(p => p.date >= startDate && p.date <= endDate);
+        // Faqat haqiqatan kelgan pul: oylik hisob (manfiy Oylik), tuzatish va chegirma tushum emas.
+        const naqd = rawPayments.filter(isCashIncome);
+        if (!startDate || !endDate) return naqd;
+        return naqd.filter(p => p.date >= startDate && p.date <= endDate);
     }, [rawPayments, startDate, endDate]);
 
     const expenses = useMemo(() => {

@@ -5,17 +5,10 @@ import { courseStartOf, birinchiOyHisobi, birinchiOyKaliti, todayTashkent } from
 // Split out of server.js so the money-handling logic sits on its own and can be read
 // (and tested) without scrolling past a hundred route handlers.
 
-// Claims the right to bill one (school, month). Returns false when another request
-// already holds the claim, so concurrent callers cannot charge the same month twice.
-export async function claimBillingRun(schoolId, month) {
-  try {
-    await prisma.billingRun.create({ data: { schoolId, month } });
-    return true;
-  } catch (err) {
-    if (err.code === 'P2002') return false;   // unique violation — someone else won
-    throw err;
-  }
-}
+// (filial, oy) bir marta yoziladi: BillingRun belgisi hisob bilan bitta
+// tranzaksiyada qo'yiladi (processMonthlyBilling). Ilgari belgi hisobdan OLDIN
+// alohida qo'yilardi — hisob yarmida uzilsa oy "yozilgan" bo'lib, lekin
+// yozilmay qolardi.
 
 // Recalculation deliberately re-bills a month, so the old claim has to go first.
 export async function releaseBillingRun(schoolId, month) {
@@ -98,8 +91,15 @@ export async function processMonthlyBilling(schoolId, month) {
     throw new Error(`Noto'g'ri oy formati: ${month} (kutilgan "YYYY-MM")`);
   }
   // Oy faqat kelganda yoziladi (egasi, 2026-09-29) — hali boshlanmagan oy
-  // hisoblanmaydi, kim chaqirsa ham.
-  if (month > todayTashkent().slice(0, 7)) return { processed: 0, total: 0, month, keyinroq: true };
+  // hisoblanmaydi, kim chaqirsa ham. O'tgan oy ham qaytadan yozilmaydi: 28.09
+  // tozalanishidan keyin o'tgan oylarda yozuv yo'q, hammasi qayta hisoblanardi.
+  const joriyOy = todayTashkent().slice(0, 7);
+  if (month > joriyOy) return { processed: 0, total: 0, month, keyinroq: true };
+  if (month < joriyOy) return { processed: 0, total: 0, month, otganOy: true };
+  // Shu oy allaqachon yozilgan — hech narsa qilinmaydi (tez yo'l).
+  if (await prisma.billingRun.findFirst({ where: { schoolId, month }, select: { id: true } })) {
+    return { processed: 0, total: 0, month, alreadyDone: true };
+  }
   const lastDay = new Date(year, monthNum, 0).getDate();
   // Hisob yozuvining sanasi — markazning oylik hisob kuni ("Oylik hisoblandi
   // 01.10.2026"). Ilgari bu doim oyning oxirgi kuni edi: hisob 1-sanada
@@ -162,14 +162,20 @@ export async function processMonthlyBilling(schoolId, month) {
     }
   }
 
-  if (charges.length) {
-    // One transaction: either the whole month is billed or none of it is.
+  // One transaction: either the whole month is billed (and marked) or none of it
+  // is. Parallel chaqiruvlardan faqat bittasi belgini qo'ya oladi (unique) —
+  // ikkinchisi to'liq bekor bo'ladi, ikki marta yozilmaydi.
+  try {
     await prisma.$transaction([
-      prisma.payment.createMany({ data: charges }),
+      prisma.billingRun.create({ data: { schoolId, month } }),
+      ...(charges.length ? [prisma.payment.createMany({ data: charges })] : []),
       ...[...totalPerStudent].map(([studentId, total]) =>
         prisma.student.update({ where: { id: studentId }, data: { balance: { decrement: total } } })
       ),
     ]);
+  } catch (err) {
+    if (err.code === 'P2002') return { processed: 0, total: 0, month, alreadyDone: true };
+    throw err;
   }
 
   return { processed: results.length, total: results.reduce((s, r) => s + r.amount, 0), month };

@@ -120,7 +120,9 @@ export default function Finance() {
     const [billingMonth, setBillingMonth] = useState(() => {
         const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
-    const [billingData, setBillingData] = useState<{ billingDone: boolean; billingDay?: number; students: any[]; groups: any[] } | null>(null);
+    // birinchiOy..joriyOy — ko'rish mumkin bo'lgan oylar (server aytadi): o'tgan
+    // oyni ochish hech narsa yozmaydi, kelajak oy esa hali hisoblanmagan.
+    const [billingData, setBillingData] = useState<{ billingDone: boolean; billingDay?: number; students: any[]; groups: any[]; birinchiOy?: string; joriyOy?: string } | null>(null);
     const [billingLoading, setBillingLoading] = useState(false);
     const [billingProcessing, setBillingProcessing] = useState(false);
     const [billingFilter, setBillingFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
@@ -967,13 +969,17 @@ export default function Finance() {
                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Moliyaviy nazorat paneli</p>
                             </div>
                             <div className="flex items-center gap-2 bg-ichki/60 p-1.5 rounded-2xl border border-chiziq">
-                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
+                                <button onClick={prevBillingMonth} aria-label="Oldingi oy"
+                                    disabled={!!billingData?.birinchiOy && billingMonth <= billingData.birinchiOy}
+                                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-default">
                                     <ChevronLeft size={14} className="text-matn-sokin" />
                                 </button>
                                 <div className="text-center min-w-[110px]">
                                     <p className="text-xs font-black text-matn">{billingMonthLabel(billingMonth)}</p>
                                 </div>
-                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
+                                <button onClick={nextBillingMonth} aria-label="Keyingi oy"
+                                    disabled={!!billingData?.joriyOy && billingMonth >= billingData.joriyOy}
+                                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-default">
                                     <ChevronRight size={14} className="text-matn-sokin" />
                                 </button>
                             </div>

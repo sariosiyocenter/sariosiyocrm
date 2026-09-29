@@ -17,6 +17,7 @@ import FaceAttendance from './FaceAttendance';
 import { DavomatXabarModal } from './DavomatXabari';
 import KursHisobModal from './KursHisobModal';
 import KursdanChiqarishModal from './KursdanChiqarishModal';
+import { PaymentAddModal } from './StudentDetails';
 import { kelganSana } from '../lib/taqsimot';
 import BirinchiOyInput from './BirinchiOyInput';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
@@ -76,9 +77,6 @@ export default function CourseDetails() {
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<number | null>(null);
-    const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentType, setPaymentType] = useState<'Naqd' | 'Karta' | 'Peyme' | 'Klik'>('Naqd');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
     const [paymentMonth, setPaymentMonth] = useState(() => {
         const d = new Date();
@@ -272,32 +270,7 @@ export default function CourseDetails() {
 
     const openPaymentModal = (studentId: number) => {
         setSelectedStudentForPayment(studentId);
-        const targetStudent = students.find(s => s.id === studentId);
-        const studentCustomPrice = targetStudent?.customPrices && typeof targetStudent.customPrices === 'object'
-            ? (targetStudent.customPrices as Record<string, number>)[group.id]
-            : undefined;
-        setPaymentAmount(String(studentCustomPrice !== undefined ? studentCustomPrice : (course?.price || '')));
-        setPaymentDate(new Date().toISOString().split('T')[0]);
-        setPaymentType('Naqd');
         setIsPaymentModalOpen(true);
-    };
-
-    const handleAddPayment = async () => {
-        if (!selectedStudentForPayment || !paymentAmount) return;
-        const st = students.find(s => s.id === selectedStudentForPayment);
-        try {
-            await addPayment({
-                studentId: selectedStudentForPayment,
-                amount: Number(paymentAmount),
-                type: paymentType,
-                date: paymentDate,
-                description: `${course?.name || group.name} — oylik to'lov`
-            });
-            setIsPaymentModalOpen(false);
-            showNotification(`${st?.name} dan ${Number(paymentAmount).toLocaleString()} UZS qabul qilindi`, "success");
-        } catch {
-            showNotification("Xatolik yuz berdi", "error");
-        }
     };
 
     // Monthly payment status based on actual payment records (not balance)
@@ -1483,74 +1456,11 @@ export default function CourseDetails() {
                 </div>
             )}
 
-            {/* Payment Modal */}
-            {isPaymentModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
-                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-lg font-black text-matn tracking-tight">To'lov qabul qilish</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">
-                                    {students.find(s => s.id === selectedStudentForPayment)?.name}
-                                </p>
-                            </div>
-                            <button onClick={() => setIsPaymentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
-                        </div>
-                        {course?.price && (
-                            <div className="mb-4 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-matn-xira">Kurs narxi</span>
-                                <span className="text-sm font-black text-brand">{course.price.toLocaleString()} UZS</span>
-                            </div>
-                        )}
-                        <div className="space-y-4">
-                            <div>
-                                <label className={labelCls}>To'lov miqdori (UZS)</label>
-                                <input
-                                    type="number"
-                                    placeholder="0"
-                                    value={paymentAmount}
-                                    onChange={e => setPaymentAmount(e.target.value)}
-                                    className={inputCls}
-                                />
-                                {course?.price && (
-                                    <div className="flex gap-2 mt-2">
-                                        <button type="button" onClick={() => setPaymentAmount(String(course.price))}
-                                            className="flex-1 py-1.5 bg-chiziq rounded-lg text-[11px] font-bold text-matn-2 hover:bg-teal-50 hover:text-brand transition-all cursor-pointer">
-                                            To'liq ({course.price.toLocaleString()})
-                                        </button>
-                                        <button type="button" onClick={() => setPaymentAmount(String(Math.round(course.price / 2)))}
-                                            className="flex-1 py-1.5 bg-chiziq rounded-lg text-[11px] font-bold text-matn-2 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer">
-                                            Yarmi ({Math.round(course.price / 2).toLocaleString()})
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <label className={labelCls}>To'lov turi</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(['Naqd', 'Karta', 'Click', 'Payme'] as const).map(type => (
-                                        <button key={type} type="button"
-                                            onClick={() => setPaymentType(type as any)}
-                                            className={`py-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${paymentType === type ? 'bg-brand text-brand-ust border-brand' : 'bg-ichki text-matn-2 border-chiziq hover:border-brand'}`}>
-                                            {type}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <label className={labelCls}>Sana</label>
-                                <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
-                            </div>
-                            <button onClick={handleAddPayment}
-                                disabled={!paymentAmount || Number(paymentAmount) <= 0}
-                                className="w-full py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl font-bold text-[11px] shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
-                                <Check size={14} />
-                                To'lovni tasdiqlash
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            {/* To'lov — o'quvchi kartochkasidagi bilan bir xil oyna (Klik cheki,
+                Payme havolasi, chek chiqarish). Ilgari bu yerda soddalashtirilgan
+                nusxa bor edi: "Click"/"Payme" turlarini server qabul qilmasdi. */}
+            {isPaymentModalOpen && selectedStudentForPayment !== null && (
+                <PaymentAddModal studentId={selectedStudentForPayment} onClose={() => setIsPaymentModalOpen(false)} onAdd={addPayment} />
             )}
 
             {/* Add/Edit Topic Modal */}

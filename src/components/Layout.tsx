@@ -94,6 +94,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     if (searchQuery.trim().length < 2) return null;
     const lowerQ = searchQuery.trim().toLowerCase();
     const s = (val: string | undefined | null) => (val || '').toLowerCase();
+    // Telefon raqamlari bo'shliqsiz solishtiriladi: "90 747" ham "+998907472429" ni topsin.
+    const raqam = lowerQ.replace(/\D/g, '');
+    const telTopildi = (...tel: (string | null | undefined)[]) => raqam.length >= 4 && tel.some(p => (p || '').replace(/\D/g, '').includes(raqam));
     // Eng mosi tepada (egasi, 2026-09-26): "hasan" yozilganda ro'yxatdagi
     // birinchi uchta "Hasanov ..." chiqib, ismi aynan "Hasan" bo'lgan o'quvchi
     // umuman ko'rinmasdi. Tartib: ism aynan teng → ismdagi bir so'z teng →
@@ -106,14 +109,23 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       if (n.startsWith(lowerQ)) return 2;
       if (sozlar.some(w => w.startsWith(lowerQ))) return 3;
       if (n.includes(lowerQ)) return 4;
-      if (s(phone).includes(lowerQ)) return 5;
+      if (s(phone).includes(lowerQ) || telTopildi(phone)) return 5;
       return -1;
     };
     const eng = <T,>(list: T[] | undefined, nom: (x: T) => string | null | undefined, tel: (x: T) => string | null | undefined, n: number) =>
       (list || []).map(x => ({ x, d: daraja(nom(x), tel(x)) })).filter(v => v.d >= 0)
         .sort((p, q) => p.d - q.d).slice(0, n).map(v => v.x);
+    // O'quvchi yana 5 xonali ID si (Payme shu raqam bilan to'lanadi) va ota-ona
+    // telefoni bo'yicha ham topiladi — bolaning o'z telefoni ko'pincha yo'q.
+    const oquvchiDaraja = (st: typeof students[number]) => {
+      if (st.kod && /^\d{3,5}$/.test(lowerQ) && String(st.kod).startsWith(lowerQ)) return String(st.kod) === lowerQ ? 0 : 3;
+      const d = daraja(st.name, st.phone);
+      if (d >= 0) return d;
+      return telTopildi(st.fatherPhone, st.motherPhone) ? 5 : -1;
+    };
     return {
-      students: eng(students, st => st.name, st => st.phone, 5),
+      students: (students || []).map(x => ({ x, d: oquvchiDaraja(x) })).filter(v => v.d >= 0)
+        .sort((p, q) => p.d - q.d).slice(0, 5).map(v => v.x),
       leads: eng(leads, l => l.name, l => l.phone, 3),
       groups: (groups || []).filter(g => s(g.name).includes(lowerQ) || s(courses.find(c => c.id === g.courseId)?.name).includes(lowerQ)).slice(0, 3),
       // Ustoz natijasi xodim kartasini ochadi — faqat Xodimlarni ko'radiganga.
@@ -251,7 +263,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="O'quvchi, ustoz, guruh yoki telefon..."
+                placeholder="O'quvchi, ID, ustoz, kurs yoki telefon..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-gray-850 border border-chiziq focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-500 outline-none transition-all"
@@ -274,7 +286,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                               <div className="w-8 h-8 rounded-lg bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand flex items-center justify-center text-xs font-bold shrink-0">{s.name.charAt(0)}</div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{s.name}</p>
-                                <p className="text-xs text-slate-400">{s.phone}</p>
+                                <p className="text-xs text-slate-400">{[s.kod ? `ID ${s.kod}` : null, s.phone || s.fatherPhone || s.motherPhone].filter(Boolean).join(' · ')}</p>
                               </div>
                             </div>
                           ))}

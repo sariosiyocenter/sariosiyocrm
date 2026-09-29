@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { CreditCard, Download, TrendingUp, Users, Calendar, Hash } from 'lucide-react';
 import { StatCard, BarChart, DonutChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
-import { newestFirst } from '../../lib/money';
+import { newestFirst, isCashIncome } from '../../lib/money';
 
 interface Props { startDate: string; endDate: string; }
 
@@ -10,7 +10,8 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
     const { payments, students } = useCRM();
 
     const filtered = useMemo(() =>
-        payments.filter(p => p.date >= startDate && p.date <= endDate),
+        // Faqat to'lovlar: oylik hisob, tuzatish va chegirma yozuvlari bu hisobotga kirmaydi.
+        payments.filter(p => p.date >= startDate && p.date <= endDate && isCashIncome(p)),
         [payments, startDate, endDate]
     );
 
@@ -43,7 +44,7 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
     // Monthly trend (last 6 months)
     const monthlyTrend = useMemo(() => {
         const map: Record<string, number> = {};
-        payments.forEach(p => {
+        payments.filter(isCashIncome).forEach(p => {
             const m = p.date.slice(0, 7);
             map[m] = (map[m] || 0) + p.amount;
         });
