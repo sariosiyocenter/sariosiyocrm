@@ -755,6 +755,12 @@ model User {
   // ro'yxatdan yo'qoladi, tarix esa buzilmaydi.
   status    String   @default("Faol")
 
+  // Parol versiyasi — parol har o'zgarganda 1 ga oshadi. Kirish tokenida
+  // shu raqam (`pv`) turadi; mos kelmasa token rad etiladi. Egasi
+  // (2026-09-29): "parol o'zgarsa avvalgi parol bilan kirganlarda sessiya
+  // tugasin, yangi parolni kiritishi kerak — faqat parol o'zgarganda".
+  passwordVersion Int @default(0)
+
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
 
