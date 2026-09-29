@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace, ArrowUpDown
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace, ArrowUpDown, Bus
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -17,14 +17,25 @@ import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/
 import BirinchiOyInput from './BirinchiOyInput';
 import { kursUstozlari, kursUstozIdlari } from '../lib/teacherState';
 import { kursdaOqiydi } from '../../lib/oquvchiHolati.js';
-import { useKursQarzlari, somQisqa } from '../lib/kursQarzi';
+import { somQisqa } from '../lib/kursQarzi';
+import { useHisobKitob } from '../lib/hisobKitob';
+import { useDavomatFoizi } from '../lib/davomatFoizi';
+import { davrOraligi } from '../lib/davr';
+import { isCashIncome } from '../lib/money';
+import { PaymentAddModal } from './StudentDetails';
+import PaymeLinkModal from './PaymeLinkModal';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 
 export default function Students() {
-    const { students, groups, teachers, transports, routes, attendances, directions, payments, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira } = useCRM();
+    const { students, groups, teachers, transports, routes, attendances, directions, payments, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira, addPayment, settings } = useCRM();
+    // Qatordan to'lov qabul qilish va Payme havolasi (egasi, 2026-09-30).
+    const tolovQabul = ozgartira('oquvchilar.tolov');
+    const paymeOn = tolovQabul && (settings.paymeMode === 'live' || settings.paymeMode === 'test');
+    const [tolovOquvchi, setTolovOquvchi] = useState<number | null>(null);
+    const [paymeOquvchi, setPaymeOquvchi] = useState<number | null>(null);
     // Lavozim ruxsati (Sozlamalar → Ruxsatlar): qo'shish/import/havola, o'chirish, balans.
     const oquvchiTahrir = ozgartira('oquvchilar.royxat');
     const oquvchiOchirish = ozgartira('oquvchilar.ochirish');
@@ -219,7 +230,7 @@ export default function Students() {
             .catch(() => showNotification("Nusxalab bo'lmadi", 'error'));
     };
 
-    const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv' | 'kurssiz'>('all');
+    const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv' | 'kurssiz' | 'sinov'>('all');
     const [sortBy, setSortBy] = useState<StudentSort>('default');
     /** Kengaytirilgan filtrlar yopiq turadi: sakkizta ochiladigan ro'yxat doim
      *  ochiq bo'lganda ekranning uchdan birini egallar, lekin ularning deyarli
@@ -238,13 +249,26 @@ export default function Students() {
     const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
     // Har o'quvchining kurslar bo'yicha qarzi — kurs chipida ko'rinadi
     // (egasi, 2026-09-29: "qarzdorligi kurs bo'yicha ko'rinsin").
-    const kursQarzlari = useKursQarzlari(balansKorinadi ? students : [], payments);
-    /** Kurs filtri tanlangan bo'lsa — shu kursdagi qarz, aks holda umumiy balans bo'yicha. */
+    // Qarz — Moliya va Bosh sahifa bilan bir xil hisobdan (src/lib/hisobKitob.ts).
+    const hisob = useHisobKitob(balansKorinadi ? students : [], payments);
+    const kursQarzlari = useMemo(() => new Map([...hisob].map(([id, h]) => [id, h.kurslar])), [hisob]);
+    /** Kurs filtri tanlangan bo'lsa — shu kursdagi qarz, aks holda umumiy qarz. */
     const qarzdormi = (s: { id: number; balance?: number }) => {
         const gid = Number(filters.groupId);
         if (Number.isInteger(gid) && gid > 0) return (kursQarzlari.get(s.id)?.get(gid) || 0) > 0;
-        return (s.balance || 0) < 0;
+        return (hisob.get(s.id)?.qarz || 0) > 0;
     };
+    // Oxirgi to'lov (sana va usul) — ro'yxatda va eksportda.
+    const oxirgiTolov = useMemo(() => {
+        const m = new Map<number, { date: string; type: string; amount: number }>();
+        for (const p of payments || []) {
+            if (!isCashIncome(p)) continue;
+            const x = m.get(p.studentId);
+            if (!x || p.date > x.date) m.set(p.studentId, { date: p.date, type: p.type, amount: p.amount });
+        }
+        return m;
+    }, [payments]);
+    const usulNomi = (tur: string) => (tur === 'Peyme' ? 'Payme' : tur);
 
     const lastSeen = (id: number) => {
         const ds = (attendances || []).filter(a => a.studentId === id && a.status === 'Keldi').map(a => a.date).sort();
@@ -253,7 +277,8 @@ export default function Students() {
     const quickCounts = {
         all: students.length,
         faol: students.filter(s => s.status === 'Faol').length,
-        qarzdor: students.filter(s => (s.balance || 0) < 0).length,
+        qarzdor: students.filter(s => (hisob.get(s.id)?.qarz || 0) > 0).length,
+        sinov: students.filter(s => s.status === 'Sinov').length,
         kelmayotgan: students.filter(s => s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo).length,
         arxiv: students.filter(s => s.status === 'Arxiv').length,
         // Faqat o'qiydiganlar (Faol, Sinov): Passiv, Arxiv va boshqalar kursdan
@@ -420,7 +445,9 @@ export default function Students() {
                     .map(g => g.name)
                     .join(', ');
 
+                const oxirgi = oxirgiTolov.get(student.id);
                 return {
+                    "ID": student.kod || '',
                     "F.I.SH.": student.name,
                     "Telefon": student.phone,
                     "Jins": student.gender || 'Erkak',
@@ -435,7 +462,11 @@ export default function Students() {
                     "Manzil (ko'cha, uy)": student.address || '',
                     "Holati": student.status || 'Faol',
                     "A'zo bo'lgan sana": student.joinedDate || '',
-                    ...(balansKorinadi ? { "Balans (UZS)": student.balance || 0 } : {}),
+                    ...(balansKorinadi ? {
+                        "Balans (UZS)": student.balance || 0,
+                        "Qarz (UZS)": hisob.get(student.id)?.qarz || 0,
+                        "Oxirgi to'lov": oxirgi ? `${oxirgi.date} · ${usulNomi(oxirgi.type)}` : '',
+                    } : {}),
                     "Kurslar": groupNames || 'Kurslarsiz',
                     "Otasining ismi": student.fatherName || '',
                     "Otasining telefoni": student.fatherPhone || '',
@@ -579,7 +610,10 @@ export default function Students() {
     // Davomat foizi mavjud yozuvlardan. "Dars bo'lmadi" hisobga olinmaydi,
     // chunki bu o'quvchining aybi emas. Yozuvi yo'q o'quvchida foiz
     // ko'rsatilmaydi — nol deb yozish yolg'on bo'lardi.
+    const joriyOy = davrOraligi('this_month');
+    const davomatOy = useDavomatFoizi(joriyOy.start, joriyOy.end, (attendances || []).length);
     const attRate = useMemo(() => {
+        if (davomatOy) return davomatOy.oquvchilar;
         const acc = new Map<number, { keldi: number; jami: number }>();
         for (const a of (attendances || [])) {
             if (a.status === 'Dars bo\'lmadi') continue;
@@ -591,7 +625,7 @@ export default function Students() {
         const out = new Map<number, number>();
         acc.forEach((v, k) => { if (v.jami) out.set(k, Math.round((v.keldi / v.jami) * 100)); });
         return out;
-    }, [attendances]);
+    }, [attendances, davomatOy]);
 
     const getStudentGroups = (studentGroupIds: number[]) => {
         return groups.filter(g => (studentGroupIds || []).includes(g.id)).map(g => ({
@@ -672,6 +706,7 @@ export default function Students() {
         if (quickFilter === 'qarzdor') matchesQuick = qarzdormi(s);
         else if (quickFilter === 'faol') matchesQuick = s.status === 'Faol';
         else if (quickFilter === 'arxiv') matchesQuick = s.status === 'Arxiv';
+        else if (quickFilter === 'sinov') matchesQuick = s.status === 'Sinov';
         else if (quickFilter === 'kelmayotgan') matchesQuick = s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo;
         else if (quickFilter === 'kurssiz') matchesQuick = kursdaOqiydi(s.status) && !(s.groups || []).length;
         if (!matchesQuick) return false;
@@ -800,12 +835,13 @@ export default function Students() {
                 bu qator eng ko'p ishlatiladigan to'rt kesimni bir bosishda beradi.
                 Sanoqlar joriy filtrga bog'liq emas, aks holda bitta chip bosilgach
                 qolganlari nolga tushib qolardi. */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-3">
                 {([
                     ['all', t('all'), quickCounts.all, false],
                     ['qarzdor', 'Qarzdor', quickCounts.qarzdor, true],
                     ['kelmayotgan', 'Kelmayotgan', quickCounts.kelmayotgan, false],
                     ['kurssiz', 'Kurssizlar', quickCounts.kurssiz, false],
+                    ['sinov', 'Sinovda', quickCounts.sinov, false],
                     // "Faol" chipi jami bilan teng bo'lsa ko'rsatilmaydi — ikkita
                     // bir xil raqamli chip yonma-yon turishi chalkashtiradi.
                     ['faol', t('status_active'), quickCounts.faol === quickCounts.all ? 0 : quickCounts.faol, false],
@@ -1062,7 +1098,10 @@ export default function Students() {
                                         : student.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-matn truncate">{student.name}</p>
+                                    <p className="text-xs font-bold text-matn truncate">
+                                        {displayName(student.name)}
+                                        {student.status !== 'Faol' && <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium align-middle ${student.status === 'Sinov' ? 'bg-ogoh-fon text-ogoh' : 'bg-ichki text-matn-sokin'}`}>{student.status}</span>}
+                                    </p>
                                     <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">
                                         {student.kod && <span className="text-matn-2">ID {student.kod} · </span>}
                                         {student.phone || "telefon yo'q"}
@@ -1122,7 +1161,10 @@ export default function Students() {
                                 {balansKorinadi && (
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[124px]">{t('student_balance')}</th>
                                 )}
-                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[82px]">Davomat</th>
+                                {balansKorinadi && (
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[120px]">Oxirgi to'lov</th>
+                                )}
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[82px]" title="Shu oy davomati">Davomat</th>
                                 <th className="px-2 py-2.5 w-10"></th>
                             </tr>
                         </thead>
@@ -1139,6 +1181,9 @@ export default function Students() {
                                             <div className="min-w-0">
                                                 <p className="text-[13px] text-matn truncate group-hover:text-brand transition-colors">
                                                     {displayName(student.name)}
+                                                    {student.needsTransport && (
+                                                        <span title="Transportda keladi" className="inline-flex align-middle ml-1.5 text-brand"><Bus size={12} /></span>
+                                                    )}
                                                     {/* Holat faqat "Faol" bo'lmaganda ko'rsatiladi: ilgari
                                                         har qatorda yashil "Faol" turardi va hech narsa
                                                         anglatmasdi. */}
@@ -1193,6 +1238,16 @@ export default function Students() {
                                         <span className={`num text-[13px] ${student.balance > 0 ? 'text-yaxshi' : student.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
                                             {student.balance.toLocaleString('ru-RU')}
                                         </span>
+                                    </td>
+                                    )}
+                                    {balansKorinadi && (
+                                    <td className="px-4 py-2.5">
+                                        {(() => {
+                                            const o = oxirgiTolov.get(student.id);
+                                            return o
+                                                ? <span className="text-[12px] text-matn-2"><span className="num">{o.date.slice(8, 10)}.{o.date.slice(5, 7)}</span> <span className="text-matn-xira">· {usulNomi(o.type)}</span></span>
+                                                : <span className="text-[12px] text-matn-xira">&#8212;</span>;
+                                        })()}
                                     </td>
                                     )}
                                     <td className="px-4 py-2.5 text-right">
@@ -1981,12 +2036,24 @@ export default function Students() {
                             top: `${activeMenu.coords.top + 4}px`,
                             left: `${activeMenu.coords.left - 128}px`,
                         }}
-                        className="bg-sirt border border-chiziq rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
+                        className="bg-sirt border border-chiziq rounded-xl shadow-xl py-1 w-44 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
-                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-matn-2 hover:bg-gray-55 dark:hover:bg-gray-700 cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[12px] text-matn-2 hover:bg-ichki cursor-pointer">
                             {t('details')}
                         </button>
+                        {tolovQabul && (
+                        <button onClick={() => { setActiveMenu(null); setTolovOquvchi(activeMenu.id); }}
+                            className="w-full text-left px-4 py-2 text-[12px] text-matn-2 hover:bg-ichki cursor-pointer">
+                            To'lov qabul qilish
+                        </button>
+                        )}
+                        {paymeOn && (
+                        <button onClick={() => { setActiveMenu(null); setPaymeOquvchi(activeMenu.id); }}
+                            className="w-full text-left px-4 py-2 text-[12px] text-matn-2 hover:bg-ichki cursor-pointer">
+                            Payme havolasi
+                        </button>
+                        )}
                         {oquvchiOchirish && (
                         <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}
                             className="w-full text-left px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer">
@@ -1995,6 +2062,13 @@ export default function Students() {
                         )}
                     </div>
                 </>
+            )}
+
+            {tolovOquvchi !== null && (
+                <PaymentAddModal studentId={tolovOquvchi} onClose={() => setTolovOquvchi(null)} onAdd={addPayment} />
+            )}
+            {paymeOquvchi !== null && (
+                <PaymeLinkModal studentId={paymeOquvchi} onClose={() => setPaymeOquvchi(null)} />
             )}
         </div>
     );

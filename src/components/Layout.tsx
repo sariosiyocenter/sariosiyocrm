@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useHisobKitob } from '../lib/hisobKitob';
 import { useLang } from '../context/LanguageContext';
 import { useConfirm } from './ConfirmDialog';
 import ZukkoPanel from './zukko/ZukkoPanel';
@@ -36,7 +37,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     });
     if (ok) onLogout();
   };
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad, modulKorinadi, kora } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, payments, darkMode, toggleDarkMode, notification, settings, error, retryLoad, modulKorinadi, kora } = useCRM();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
@@ -135,8 +136,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
   const results = getSearchResults();
 
-  // Qarzdorlar soni — faqat balansni ko'radiganga.
-  const debtorCount = kora('oquvchilar.balans') ? (students || []).filter(s => (s.balance || 0) < 0).length : 0;
+  // Qarzdorlar soni — faqat balansni ko'radiganga. O'quvchilar, Moliya va Bosh
+  // sahifadagi bilan bir xil hisob (src/lib/hisobKitob.ts).
+  const hisob = useHisobKitob(kora('oquvchilar.balans') ? students : [], payments);
+  const debtorCount = [...hisob.values()].filter(h => h.qarz > 0).length;
 
   const handleResultClick = (path: string) => {
     navigate(path);

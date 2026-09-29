@@ -4858,6 +4858,39 @@ app.get('/api/attendances', authenticate, async (req, res, next) => {
     res.json(attendances);
   } catch (error) { next(error); }
 });
+
+// Davomat foizi davr bo'yicha — o'quvchi va kurs kesimida (2026-09-30).
+// Brauzerga /api/init bilan faqat oxirgi 14 kun keladi, kurs sahifasi
+// ochilsa yana 120 kun qo'shiladi — foiz qaysi sahifa ochilganiga qarab
+// o'zgarardi. keldi — Keldi, Kechikdi, ErtaKetdi; jami — "Dars bo'lmadi"dan tashqari.
+app.get('/api/attendances/foiz', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!Number.isInteger(schoolId)) return res.status(400).json({ error: 'schoolId required' });
+    const sana = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+    const from = sana(req.query.from), to = sana(req.query.to);
+    const where = { schoolId };
+    if (from || to) where.date = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+    if (req.ruxsat?.faqatOz) where.groupId = { in: [...(await ozKurslari(req.user)).groupIds] };
+    const [bySt, byGr] = await Promise.all([
+      prisma.attendance.groupBy({ by: ['studentId', 'status'], where, _count: { _all: true } }),
+      prisma.attendance.groupBy({ by: ['groupId', 'status'], where, _count: { _all: true } }),
+    ]);
+    const KELDI = ['Keldi', 'Kechikdi', 'ErtaKetdi'];
+    const yig = (rows, kalit) => {
+      const out = {};
+      for (const r of rows) {
+        if (r.status === "Dars bo'lmadi") continue;
+        const x = out[r[kalit]] || (out[r[kalit]] = { keldi: 0, jami: 0 });
+        x.jami += r._count._all;
+        if (KELDI.includes(r.status)) x.keldi += r._count._all;
+      }
+      return out;
+    };
+    res.json({ from, to, oquvchilar: yig(bySt, 'studentId'), kurslar: yig(byGr, 'groupId') });
+  } catch (error) { next(error); }
+});
+
 app.post('/api/attendances', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
