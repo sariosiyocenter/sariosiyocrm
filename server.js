@@ -32,6 +32,7 @@ import { davomatYuboruvchiniUlash, davomatSozlamasi, davomatSozlamasiniSaqla, da
 import { normalizePayShare } from './lib/allocation.js';
 import { USTOZ_NOMLARI, ustozNomlari, ustozKurslari } from './lib/ustozlar.js';
 import { kursdaOqiydi } from './lib/oquvchiHolati.js';
+import { vercelKonteksti, fondaTugat } from './lib/fonIshi.js';
 import { ochirishQoldi, OCHIRISH_MUDDATI_XATO, XARAJAT_OCHIRISH_DAQIQA } from './lib/xarajat.js';
 import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor, adminChatlari } from './services/klikTasdiq.js';
 import { kodlarniTaminla } from './services/oquvchiKod.js';
@@ -149,28 +150,7 @@ const publicRemoveBgLimiter = rateLimit({
   message: { success: false, error: 'Juda ko\'p urinish. Birozdan keyin qayta urinib ko\'ring.' },
 });
 
-/**
- * Vercel javob qaytgach funksiyani muzlatadi: fondagi ish (Telegram, Eskiz)
- * yarmida uzilib "Telegram timeout" / "fetch failed" bo'lardi — 2026-09-27
- * dagi 12:00 tug'ilgan kun tabrigi shunday ketmadi. waitUntil funksiyani ish
- * tugaguncha tirik tutadi (@vercel/functions shu kontekstdan foydalanadi).
- * Lokal serverda yo'q — oddiy fon ishi bo'lib qoladi.
- */
-function vercelKonteksti() {
-  try {
-    return globalThis[Symbol.for('@vercel/request-context')]?.get?.() || null;
-  } catch {
-    return null;
-  }
-}
-function fondaTugat(promise) {
-  const ctx = vercelKonteksti();
-  if (ctx && typeof ctx.waitUntil === 'function') {
-    ctx.waitUntil(promise);
-    return true;
-  }
-  return false;
-}
+// Javobdan keyingi fon ishi (Vercel waitUntil) — lib/fonIshi.js.
 
 // Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
 let lastLazyCronRun = 0;

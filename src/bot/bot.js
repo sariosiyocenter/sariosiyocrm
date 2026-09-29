@@ -22,6 +22,7 @@ import {
 import { registerKlikTasdiq } from './klikTasdiq.js';
 import { ustozNomlari, ustozKurslari } from '../../lib/ustozlar.js';
 import { OQIYDIGAN_HOLATLAR } from '../../lib/oquvchiHolati.js';
+import { fondaTugat } from '../../lib/fonIshi.js';
 import { registerQarzJavob } from './qarzJavob.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
@@ -32,10 +33,19 @@ const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 // Bir nechta farzandli ota-onada belgi farzand raqami bilan: "· B123".
 const PAYME_PROMPT_RE = /·\s(?:G\d+|B(\d*))\s*$/;
 
+// Xuddi shunday ForceReply belgilari (serverda holat yo'q): ommaviy xabar,
+// shikoyat / taklif, sinov darsiga ariza.
+const OMMAVIY_BELGI = '· OX';
+const SHIKOYAT_BELGI = '· SH';
+const SINOV_BELGI = '· L';
+const OMMAVIY_AJRATGICH = '\n———\n';
+const belgiliJavob = (belgi) => new RegExp('·\\s' + belgi.slice(2) + '\\s*$');
+const OMMAVIY_RE = belgiliJavob(OMMAVIY_BELGI);
+const SHIKOYAT_RE = belgiliJavob(SHIKOYAT_BELGI);
+const SINOV_RE = belgiliJavob(SINOV_BELGI);
+
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
-// In-memory state tracking
-const adminStates = {};
 const botCache = new Map(); // token -> botInstance
 
 // User roles and menus
@@ -60,7 +70,8 @@ const getTeacherMenu = () => Markup.keyboard([
 // bugungi tushumni ko'rardi va barcha ota-onalarga ommaviy xabar yubora olardi.
 const getAdminMenu = (ruxsat) => {
     const q1 = [yetadimi(ruxsat, 'lidlar.royxat', 1) && '📢 Yangi Lidlar', yetadimi(ruxsat, 'bosh.korsatkich', 1) && '📊 Kunlik Hisobot'].filter(Boolean);
-    const q2 = [yetadimi(ruxsat, 'xabarlar.yuborish', 2) && '📧 Ommaviy xabar', '⚙️ Sozlamalar'].filter(Boolean);
+    // "⚙️ Sozlamalar" tugmasi bor edi, lekin uning ishlovchisi yo'q edi — bosilsa hech narsa bo'lmasdi.
+    const q2 = [yetadimi(ruxsat, 'xabarlar.yuborish', 2) && '📧 Ommaviy xabar'].filter(Boolean);
     return Markup.keyboard([q1, q2, ['🚪 Chiqish']].filter(q => q.length)).resize();
 };
 
@@ -82,6 +93,10 @@ const getDriverMenu = () => Markup.keyboard([
 
 /** HTML rejimidagi xabar uchun: ism yoki manzilda "<" yoki "&" bo'lsa xabar yuborilmay qolardi. */
 const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Dars kunlari odam tilida: bazadagi "TOQ" / "JUFT" ota-onaga ko'rinmasin (lib/lessons.js). */
+const KUNLAR = { TOQ: 'Du, Chor, Ju', JUFT: 'Se, Pay, Shan', HAR_KUNI: 'Har kuni (yakshanbadan tashqari)' };
+const kunlarMatni = (d) => KUNLAR[d] || (d === 'Belgilanmagan' ? '' : String(d || ''));
 
 /** Reja xabaridagi belgi: bola hozir qaysi holatda. */
 const holatBelgisi = (belgi) =>
@@ -397,6 +412,15 @@ const oilaniTop = async (tidStr, ids) => {
 /** O'quvchi yoki ota-ona hisobimi (o'quvchi menyusi). */
 const oilami = (user) => !!user && (user.type === 'student' || user.type.startsWith('parent_'));
 
+/** Foydalanuvchining o'z menyusi (findUser natijasiga qarab). */
+const menyu = async (u) => {
+    if (!u) return getGuestMenu();
+    if (oilami(u)) return getStudentMenu();
+    if (u.type === 'teacher') return getTeacherMenu();
+    if (u.type === 'driver') return getDriverMenu();
+    return getAdminMenu(await xodimRuxsati(u.data));
+};
+
 /** "1. Ali\n2. Vali" */
 const farzandlarRoyxati = (farzandlar) => farzandlar.map((s, i) => `${i + 1}. ${ismKor(s.name)}`).join('\n');
 
@@ -510,9 +534,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     });
 
     const logoutHandler = async (ctx) => {
-        const schoolId = await filial(ctx);
         const tidStr = String(ctx.from.id);
-        const scWhere = schoolId ? { schoolId } : {};
+        // Hamma filialda: ilgari faqat joriy filialdagi bog'lanish uzilardi va
+        // boshqa filialda farzandi bor ota-ona "Chiqish"dan keyin ham tanilardi.
+        const scWhere = {};
 
         await Promise.all([
             prisma.student.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } }),
@@ -560,6 +585,41 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         // shuning uchun raqam tashkilotning hamma filialida qidiriladi.
         const ids = await orgSchoolIds(schoolId);
 
+        // Avval xodim, keyin oila (2026-09-29): ustoz Suvonqulov Hasanning raqami
+        // sinov o'quvchisi "HASAN" ga ham yozilgan edi — bot uni o'quvchi qilib
+        // bog'lar va ustoz davomat qila olmasdi. Xodimga bot ish uchun kerak;
+        // farzandining ma'lumoti unga CRM da ham ko'rinadi.
+        //
+        // Arxivdagi ustoz va xodim hisobga olinmaydi: 2026-09-29 da
+        // administratorning ikkinchi raqami arxivdagi eski ustoz yozuvida ham
+        // turgan edi — bot uni ustoz qilib bog'lar va admin menyusi chiqmasdi.
+        // Raqamlar turlicha yozilgan bo'lishi mumkin ("+998 91 511-55-32"),
+        // shuning uchun oxirgi 9 raqam JS da solishtiriladi (o'quvchilardagidek).
+        const filialTartibi = (a, b) => ids.indexOf(a.schoolId) - ids.indexOf(b.schoolId);
+        const [ustozlar, xodimlar] = await Promise.all([
+            prisma.teacher.findMany({
+                where: { schoolId: { in: ids }, status: { not: 'Arxiv' }, OR: [{ userId: null }, { user: { status: { not: 'Arxiv' } } }] },
+                orderBy: { id: 'asc' },
+            }),
+            prisma.user.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
+        ]);
+        const teacher = ustozlar.filter(t => oxirgi9(t.phone) === phoneSuffix).sort(filialTartibi)[0];
+        if (teacher) {
+            await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
+            return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
+        }
+
+        // Xodim (Admin/Menejer/Resepshn/Haydovchi). Ikkinchi raqam (phone2)
+        // bo'yicha ham: u telegramId2 ga bog'lanadi — bitta xodimga ikki
+        // Telegram (masalan administratorning ikki telefoni).
+        const user = xodimlar.filter(u => oxirgi9(u.phone) === phoneSuffix || oxirgi9(u.phone2) === phoneSuffix).sort(filialTartibi)[0];
+        if (user) {
+            const ikkinchi = oxirgi9(user.phone) !== phoneSuffix;
+            await prisma.user.update({ where: { id: user.id }, data: ikkinchi ? { telegramId2: tid } : { telegramId: tid } });
+            const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu(await xodimRuxsati(user));
+            return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
+        }
+
         // O'quvchi, ota yoki ona — shu raqamdagi HAMMA bolalar. Ilgari faqat
         // birinchi topilgani bog'lanardi: aka-ukaning ikkinchisi botda ham,
         // xabarlarda ham yo'q edi. Ota (ona) raqami mos kelgan har bir bola
@@ -588,36 +648,6 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
                     : oila.farzandlar.length > 1 ? "Siz ota-ona sifatida ro'yxatdan o'tdingiz." : "Siz o'quvchi sifatida ro'yxatdan o'tdingiz.";
                 return ctx.reply(oilaMatni(oila, boshi), getStudentMenu());
             }
-        }
-
-        // Ustoz va xodim. Arxivdagilar hisobga olinmaydi: 2026-09-29 da
-        // administratorning ikkinchi raqami arxivdagi eski ustoz yozuvida ham
-        // turgan edi — bot uni ustoz qilib bog'lar va admin menyusi chiqmasdi.
-        // Raqamlar turlicha yozilgan bo'lishi mumkin ("+998 91 511-55-32"),
-        // shuning uchun oxirgi 9 raqam JS da solishtiriladi (o'quvchilardagidek).
-        const filialTartibi = (a, b) => ids.indexOf(a.schoolId) - ids.indexOf(b.schoolId);
-        const [ustozlar, xodimlar] = await Promise.all([
-            prisma.teacher.findMany({
-                where: { schoolId: { in: ids }, status: { not: 'Arxiv' }, OR: [{ userId: null }, { user: { status: { not: 'Arxiv' } } }] },
-                orderBy: { id: 'asc' },
-            }),
-            prisma.user.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
-        ]);
-        const teacher = ustozlar.filter(t => oxirgi9(t.phone) === phoneSuffix).sort(filialTartibi)[0];
-        if (teacher) {
-            await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
-            return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
-        }
-
-        // Xodim (Admin/Menejer/Resepshn/Haydovchi). Ikkinchi raqam (phone2)
-        // bo'yicha ham: u telegramId2 ga bog'lanadi — bitta xodimga ikki
-        // Telegram (masalan administratorning ikki telefoni).
-        const user = xodimlar.filter(u => oxirgi9(u.phone) === phoneSuffix || oxirgi9(u.phone2) === phoneSuffix).sort(filialTartibi)[0];
-        if (user) {
-            const ikkinchi = oxirgi9(user.phone) !== phoneSuffix;
-            await prisma.user.update({ where: { id: user.id }, data: ikkinchi ? { telegramId2: tid } : { telegramId: tid } });
-            const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu(await xodimRuxsati(user));
-            return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
         }
 
         ctx.reply("Kechirasiz, ushbu raqam tizimda topilmadi. Ma'lumot olish uchun mehmon menyusidan foydalaning.", getGuestMenu());
@@ -654,7 +684,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             if (s.groups.length === 0) { msg += "Hozircha kursga yozilmagan\n\n"; continue; }
             s.groups.forEach(g => {
                 msg += `🔹 ${escHtml(g.name)}${g.course?.name && g.course.name !== g.name ? ` (${escHtml(g.course.name)})` : ''}\n`;
-                msg += `🕒 ${escHtml(g.schedule || '')} | ${escHtml(g.days || '')}\n`;
+                msg += `🕒 ${escHtml([g.schedule, kunlarMatni(g.days)].filter(Boolean).join(' | '))}\n`;
                 if (ustozNomlari(g)) msg += `👨‍🏫 Ustoz: ${escHtml(ustozNomlari(g))}\n`;
                 msg += `🚪 Xona: ${escHtml(g.roomRel?.name || "Noma'lum")}\n\n`;
             });
@@ -754,12 +784,14 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     const paymeBalanceMenu = async (ctx, student, kop = false) => {
         const ledger = await studentLedger(student.id);
         const kurslar = ledger.courses.filter(c => c.isMember);
-        if (!kurslar.length) {
+        const debt = Math.max(0, Math.round(ledger.debt || 0));
+        // Kursdan chiqqan (masalan Passiv qilingan) o'quvchining qarzi qolgan
+        // bo'lsa ham to'lay olsin — faqat na kursi, na qarzi bo'lmasa to'xtatiladi.
+        if (!kurslar.length && debt <= 0) {
             return ctx.reply(kop
                 ? `${ismKor(student.name)} hozir hech qaysi kursda emas — to'lov uchun markazga murojaat qiling.`
                 : "Siz hozir hech qaysi kursda emassiz — to'lov uchun markazga murojaat qiling.");
         }
-        const debt = Math.max(0, Math.round(ledger.debt || 0));
         const oylik = kurslar.reduce((a, c) => a + (c.monthlyPrice || 0), 0);
         const rows = [];
         if (debt >= PAYME_MIN && debt <= PAYME_MAX) rows.push([Markup.button.callback(`Qarzni yopish — ${somFmt(debt)} so'm`, `payme_sb_${student.id}_${debt}`)]);
@@ -768,7 +800,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         let info = kop ? `👤 ${ismKor(student.name)}\n` : '';
         info += `💰 Qarz: ${somFmt(debt)} so'm\n`;
         if (ledger.wallet > 0) info += `Balansda: ${somFmt(ledger.wallet)} so'm\n`;
-        info += `Oylik: ${somFmt(oylik)} so'm\n`;
+        if (oylik > 0) info += `Oylik: ${somFmt(oylik)} so'm\n`;
         return ctx.reply(info + "\nPul balansga tushadi. Summani tanlang:", Markup.inlineKeyboard(rows));
     };
 
@@ -981,9 +1013,13 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     botInstance.hears('📝 Imtihonlar', imtihonlarniKorsat);
     botInstance.command('imtihon', imtihonlarniKorsat);
 
-    botInstance.hears('✍️ Shikoyat va takliflar', async (ctx) => {
-        ctx.reply("Sizning fikringiz biz uchun muhim! ✍️\n\nShikoyat yoki taklifingiz bo'lsa, shu yerga yozib qoldiring. Adminlarimiz uni albatta ko'rib chiqishadi.");
-    });
+    // Ilgari "yozib qoldiring, adminlar ko'rib chiqadi" derdi-yu, yozilgan matn
+    // hech kimga bormasdi (vergulli bo'lsa esa soxta "lid" bo'lib qolardi).
+    // Endi javob ForceReply bilan olinadi ("· SH" belgisi) va rahbarlarga yuboriladi.
+    botInstance.hears('✍️ Shikoyat va takliflar', (ctx) => ctx.reply(
+        `Sizning fikringiz biz uchun muhim! ✍️\n\nShikoyat yoki taklifingizni shu xabarga javob qilib yozing — u to'g'ridan-to'g'ri rahbariyatga boradi.\n${SHIKOYAT_BELGI}`,
+        { reply_markup: { force_reply: true, input_field_placeholder: 'Shikoyat yoki taklif...', selective: true } }
+    ));
 
     botInstance.hears('👤 Profil', async (ctx) => {
         const schoolId = await filial(ctx);
@@ -1172,7 +1208,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         let msg = "📅 Sizning dars jadvalingiz:\n\n";
         groups.forEach(g => {
             msg += `👥 ${g.name} (${g.course.name})\n`;
-            msg += `🕒 ${g.schedule} | ${g.days}\n`;
+            msg += `🕒 ${[g.schedule, kunlarMatni(g.days)].filter(Boolean).join(' | ')}\n`;
             msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
         });
 
@@ -1799,41 +1835,123 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const ruxsat = await xodimRuxsati(user.data);
         if (!yetadimi(ruxsat, 'bosh.korsatkich', 1)) return ctx.reply("Hisobotni ko'rishga ruxsatingiz yo'q.");
 
-        const today = new Date().toISOString().split('T')[0];
+        // Sana O'zbekiston bo'yicha (server UTC da: 00:00–05:00 orasida kechagi
+        // kun chiqardi). Tushum — faqat kelgan pul: ilgari manfiy "Oylik"
+        // hisoblar ham qo'shilib, oy boshida tushum minusga tushardi.
+        const today = toDateStr();
+        const kunBoshi = new Date(`${today}T00:00:00+05:00`);
 
-        const [studentsCount, leadsToday, paymentsToday] = await Promise.all([
-            prisma.student.count({ where: { schoolId } }),
-            prisma.lead.count({ where: { schoolId, createdAt: { gte: new Date(today) } } }),
-            prisma.payment.aggregate({
-                where: { schoolId, date: today },
-                _sum: { amount: true }
+        const [studentsCount, leadsToday, kirimlar] = await Promise.all([
+            prisma.student.count({ where: { schoolId, status: 'Faol' } }),
+            prisma.lead.count({ where: { schoolId, createdAt: { gte: kunBoshi } } }),
+            prisma.payment.groupBy({
+                by: ['type'],
+                where: { schoolId, date: today, amount: { gt: 0 }, type: { notIn: ['Oylik', 'Chegirma'] } },
+                _sum: { amount: true }, _count: true,
             })
         ]);
 
-        let msg = `📊 Kunlik Hisobot (${today})\n\n`;
-        msg += `👥 Jami o'quvchilar: ${studentsCount}\n`;
+        let msg = `📊 Kunlik Hisobot (${today.split('-').reverse().join('.')})\n\n`;
+        msg += `👥 Faol o'quvchilar: ${studentsCount}\n`;
         msg += `🆕 Bugungi lidlar: ${leadsToday}\n`;
         // Tushum — faqat pul ko'rsatkichlarini ko'radiganga.
-        if (yetadimi(ruxsat, 'bosh.pul', 1)) msg += `💰 Bugungi tushum: ${(paymentsToday._sum.amount || 0).toLocaleString()} UZS\n`;
+        if (yetadimi(ruxsat, 'bosh.pul', 1)) {
+            const jami = kirimlar.reduce((s, k) => s + (k._sum.amount || 0), 0);
+            msg += `💰 Bugungi tushum: ${somFmt(jami)} so'm\n`;
+            for (const k of kirimlar) msg += `   ▫️ ${k.type === 'Peyme' ? 'Payme' : k.type}: ${somFmt(k._sum.amount)} (${k._count} ta)\n`;
+        }
 
         ctx.reply(msg);
     });
 
+    // ===== Ommaviy xabar =====
+    //
+    // Ilgari "kutilmoqda" holati server xotirasida (adminStates) turardi:
+    // Vercel'da keyingi xabar boshqa konteynerga tushib, yozilgan matn hech
+    // kimga ketmasdi. Ota-onalarga esa umuman yuborilmasdi (faqat o'quvchining
+    // o'z Telegrami). Endi: ForceReply ("· OX") → ko'rib chiqish va tasdiq
+    // (matn xabarning o'zida turadi) → fonda yuborish.
+
+    /** Ommaviy xabar yubora oladigan xodim, aks holda null. */
+    const ommaviyXodim = async (ctx, schoolId) => {
+        const u = await findUser(ctx.from.id, schoolId);
+        if (!u || u.type !== 'admin') return null;
+        return yetadimi(await xodimRuxsati(u.data), 'xabarlar.yuborish', 2) ? u.data : null;
+    };
+
+    /** Qabul qiluvchilar: o'qiyotgan o'quvchilar va ularning ota-onasi, faol ustoz va xodimlar. */
+    const ommaviyOluvchilar = async (xodim, schoolId, ozi) => {
+        // Administrator butun markaz nomidan yozadi, boshqa xodim — o'z filiali.
+        const ids = toliqRuxsatli(xodim.role) ? await orgSchoolIds(schoolId) : [schoolId];
+        const [oquvchilar, ustozlar, xodimlar] = await Promise.all([
+            prisma.student.findMany({ where: { schoolId: { in: ids }, status: { in: OQIYDIGAN_HOLATLAR } }, select: { telegramId: true, fatherTelegramId: true, motherTelegramId: true } }),
+            prisma.teacher.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' }, telegramId: { not: null } }, select: { telegramId: true } }),
+            prisma.user.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, select: { telegramId: true, telegramId2: true } }),
+        ]);
+        const chatlar = new Set();
+        const qosh = (t) => { if (t) chatlar.add(String(t)); };
+        oquvchilar.forEach(o => { qosh(o.telegramId); qosh(o.fatherTelegramId); qosh(o.motherTelegramId); });
+        ustozlar.forEach(t => qosh(t.telegramId));
+        xodimlar.forEach(u => { qosh(u.telegramId); qosh(u.telegramId2); });
+        chatlar.delete(String(ozi));
+        return [...chatlar];
+    };
+
     botInstance.hears('📧 Ommaviy xabar', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || user.type !== 'admin') {
-            return ctx.reply("Bu buyruq faqat xodimlar uchun.");
-        }
-        if (!yetadimi(await xodimRuxsati(user.data), 'xabarlar.yuborish', 2)) {
-            return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.");
-        }
-
-        adminStates[ctx.from.id] = 'AWAITING_BROADCAST';
-        ctx.reply(
-            "Hammaga yuborilishi kerak bo'lgan xabarni kiriting (yoki Bekor qilish uchun quyidagi tugmani bosing):", 
-            Markup.keyboard([['❌ Bekor qilish']]).resize()
+        if (!user || user.type !== 'admin') return ctx.reply("Bu buyruq faqat xodimlar uchun.");
+        if (!(await ommaviyXodim(ctx, schoolId))) return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.");
+        return ctx.reply(
+            `📧 Hammaga yuboriladigan xabarni shu xabarga javob qilib yozing.\nYuborishdan oldin yana bir bor so'raladi.\n${OMMAVIY_BELGI}`,
+            { reply_markup: { force_reply: true, input_field_placeholder: 'Xabar matni...', selective: true } }
         );
+    });
+
+    /** Yozilgan matn — ko'rib chiqish va "Yuborish / Bekor". Matn shu xabarda saqlanadi. */
+    const ommaviyKorib = async (ctx, schoolId, matn) => {
+        const xodim = await ommaviyXodim(ctx, schoolId);
+        if (!xodim) return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.");
+        if (matn.length > 3500) return ctx.reply("Xabar juda uzun — 3500 belgidan qisqaroq yozing.");
+        const chatlar = await ommaviyOluvchilar(xodim, schoolId, ctx.from.id);
+        if (!chatlar.length) return ctx.reply("Botga ulangan qabul qiluvchi topilmadi.");
+        return ctx.reply(
+            `📧 Bu xabar ${chatlar.length} kishiga yuboriladi (o'quvchilar, ota-onalar, ustozlar, xodimlar). Yuborilsinmi?${OMMAVIY_AJRATGICH}${matn}`,
+            Markup.inlineKeyboard([[Markup.button.callback('✅ Yuborish', 'ox_ha'), Markup.button.callback('❌ Bekor qilish', 'ox_yoq')]])
+        );
+    };
+
+    botInstance.action('ox_yoq', async (ctx) => {
+        await ctx.answerCbQuery('Bekor qilindi').catch(() => {});
+        await ctx.editMessageText('❌ Ommaviy xabar bekor qilindi.').catch(() => {});
+    });
+
+    botInstance.action('ox_ha', async (ctx) => {
+        const schoolId = await filial(ctx);
+        const xodim = await ommaviyXodim(ctx, schoolId);
+        if (!xodim) return ctx.answerCbQuery("Ommaviy xabar yuborishga ruxsatingiz yo'q", { show_alert: true }).catch(() => {});
+        const asl = ctx.callbackQuery.message?.text || '';
+        const i = asl.indexOf(OMMAVIY_AJRATGICH);
+        const matn = i >= 0 ? asl.slice(i + OMMAVIY_AJRATGICH.length).trim() : '';
+        if (!matn || !asl.startsWith('📧')) return ctx.answerCbQuery('Xabar topilmadi').catch(() => {});
+        await ctx.answerCbQuery('Yuborilmoqda...').catch(() => {});
+        // Tugmalar darhol olinadi — ikkinchi bosish ikkinchi marta yubormasin.
+        await ctx.editMessageText(`⏳ Yuborilmoqda...${OMMAVIY_AJRATGICH}${matn}`).catch(() => {});
+        const chatlar = await ommaviyOluvchilar(xodim, schoolId, ctx.from.id);
+        const ish = (async () => {
+            // Telegram bir botdan soniyasiga ~30 xabar qabul qiladi.
+            let ok = 0, xato = 0;
+            for (let k = 0; k < chatlar.length; k += 25) {
+                if (k) await new Promise(r => setTimeout(r, 1100));
+                const natija = await Promise.allSettled(chatlar.slice(k, k + 25).map(c => botInstance.telegram.sendMessage(c, matn)));
+                natija.forEach(n => (n.status === 'fulfilled' ? ok++ : xato++));
+            }
+            await ctx.editMessageText(
+                `✅ ${ok} kishiga yuborildi${xato ? `, ${xato} tasiga yetmadi (botni bloklagan yoki o'chirgan)` : ''}.${OMMAVIY_AJRATGICH}${matn}`
+            ).catch(() => {});
+        })().catch(e => console.error('[Ommaviy xabar]', e.message));
+        // Vercel'da javobdan keyin ham oxirigacha yuboriladi; lokalda — kutamiz.
+        if (!fondaTugat(ish)) await ish;
     });
 
     // Guest Handlers
@@ -1874,13 +1992,60 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         ctx.replyWithLocation(lat, lng);
     });
 
-    botInstance.hears('📞 Kontaktlar', (ctx) => {
-        ctx.reply("Biz bilan bog'lanish uchun o'quv markazimiz ma'muriyatiga murojaat qiling.");
+    // Ilgari bu yerda raqamsiz "ma'muriyatga murojaat qiling" turardi.
+    botInstance.hears('📞 Kontaktlar', async (ctx) => {
+        const schoolId = await filial(ctx);
+        const settings = await getSchoolSettings(schoolId);
+        const raqamlar = [settings?.adminPhone, settings?.adminPhone2].filter(Boolean);
+        const qatorlar = ["📞 Biz bilan bog'lanish:"];
+        if (raqamlar.length) raqamlar.forEach(r => qatorlar.push('• ' + r));
+        else qatorlar.push("O'quv markazimiz ma'muriyatiga murojaat qiling.");
+        if (settings?.address) qatorlar.push('', '📍 ' + settings.address);
+        if (settings?.workingHours) qatorlar.push('🕒 ' + settings.workingHours);
+        return ctx.reply(qatorlar.join('\n'));
     });
 
-    botInstance.hears('📝 Sinov darsiga yozilish', (ctx) => {
-        ctx.reply("Iltimos, ismingiz va qaysi kursga qiziqayotganingizni yozib qoldiring. \n\nMasalan: Ali, Ingliz tili");
-    });
+    // Ilgari vergulli HAR QANDAY matn (ota-onaning "Assalomu alaykum, ..." ham)
+    // lid bo'lib yozilardi, telefon o'rniga esa "Bot orqali" — qo'ng'iroq qilib
+    // bo'lmasdi. Endi faqat shu so'rovga javob ("· L") va telefon raqami bilan.
+    const sinovSorovi = (ctx, qoshimcha = '') => ctx.reply(
+        `${qoshimcha}Ismingiz, qaysi kursga qiziqayotganingiz va telefon raqamingizni shu xabarga javob qilib yozing.\n\nMasalan: Ali, Ingliz tili, 90 123 45 67\n${SINOV_BELGI}`,
+        { reply_markup: { force_reply: true, input_field_placeholder: 'Ali, Ingliz tili, 90 123 45 67', selective: true } }
+    );
+    botInstance.hears('📝 Sinov darsiga yozilish', (ctx) => sinovSorovi(ctx));
+
+    /** Sinov darsiga ariza: Lead + rahbarlarga xabar. */
+    const sinovArizasi = async (ctx, schoolId, matn) => {
+        const raqam = oxirgi9(matn);
+        if (!raqam) return sinovSorovi(ctx, "📞 Telefon raqamingizni ham yozing — siz bilan bog'lanishimiz uchun.\n\n");
+        const qismlar = matn.split(/[,\n]/).map(q => q.trim()).filter(q => q && q.replace(/\D/g, '').length < 7);
+        const name = (qismlar[0] || [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') || 'Telegram').slice(0, 100);
+        const course = qismlar.slice(1).join(', ').slice(0, 100);
+        const phone = '+998' + raqam;
+        const sid = schoolId || botSchoolId;
+        await prisma.lead.create({ data: { name, course, phone, source: 'Telegram Bot', schoolId: sid } });
+        // Kutiladi: Vercel javobdan keyingi ishni muzlatadi (lib/fonIshi.js).
+        await notifyAdmins(`📝 Yangi ariza (Telegram bot)\n👤 ${name}\n📚 ${course || '—'}\n📞 ${phone}`, sid).catch(() => {});
+        return ctx.reply("✅ Rahmat! Arizangiz qabul qilindi — tez orada siz bilan bog'lanamiz.", getGuestMenu());
+    };
+
+    /** Shikoyat / taklif — rahbarlarga (ADMIN va filial menejeri) Telegram orqali. */
+    const shikoyatQabul = async (ctx, schoolId, matn) => {
+        const u = await findUser(ctx.from.id, schoolId);
+        const tg = [[ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' '), ctx.from.username ? '@' + ctx.from.username : ''].filter(Boolean).join(' ');
+        let kim = `Mehmon: ${tg || ctx.from.id}`;
+        let tel = '';
+        if (u && oilami(u)) {
+            const s = u.data;
+            kim = `${u.type === 'parent_father' ? 'Ota' : u.type === 'parent_mother' ? 'Ona' : "O'quvchi"} — ${u.farzandlar.map(f => ismKor(f.name)).join(', ')}`;
+            tel = (u.type === 'parent_father' ? s.fatherPhone : u.type === 'parent_mother' ? s.motherPhone : s.phone) || '';
+        } else if (u) {
+            kim = `${u.type === 'teacher' ? 'Ustoz' : u.type === 'driver' ? 'Haydovchi' : 'Xodim'} — ${u.data.name}`;
+            tel = u.data.phone || '';
+        }
+        await notifyAdmins(`✍️ Shikoyat / taklif\n👤 ${kim}${tel ? `\n📞 ${tel}` : ''}${u && tg ? `\n💬 ${tg}` : ''}\n\n${matn}`, u?.data?.schoolId || schoolId);
+        return ctx.reply("✅ Rahmat! Xabaringiz rahbariyatga yetkazildi.", await menyu(u));
+    };
 
     // Message handler for trial registration and general text
     botInstance.on('text', async (ctx, next) => {
@@ -1899,70 +2064,23 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             return paymeSendLink(ctx, student, amount);
         }
 
-        if (adminStates[tid] === 'AWAITING_BROADCAST') {
-            const xodim = await findUser(tid, schoolId);
-            const xodimR = xodim?.type === 'admin' ? await xodimRuxsati(xodim.data) : null;
-            if (text === '❌ Bekor qilish') {
-                delete adminStates[tid];
-                return ctx.reply('Bekor qilindi.', getAdminMenu(xodimR));
-            }
+        // Bizning so'rovlarimizga javoblar (ForceReply belgilari).
+        const soroq = replyTo?.from?.is_bot ? (replyTo.text || '') : '';
+        if (OMMAVIY_RE.test(soroq)) return ommaviyKorib(ctx, schoolId, text.trim());
+        if (SHIKOYAT_RE.test(soroq)) return shikoyatQabul(ctx, schoolId, text.trim());
+        if (SINOV_RE.test(soroq)) return sinovArizasi(ctx, schoolId, text.trim());
 
-            delete adminStates[tid];
-            // Ruxsat shu orada olib qo'yilgan bo'lishi mumkin — yuborishdan oldin yana tekshiramiz.
-            if (!yetadimi(xodimR, 'xabarlar.yuborish', 2)) return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.", getAdminMenu(xodimR));
-            const statusMsg = await ctx.reply("Xabar yuborilmoqda...");
+        // Eski klaviaturadagi tugma (ommaviy xabar endi ForceReply bilan).
+        if (text === '❌ Bekor qilish') return ctx.reply('Bekor qilindi.', await menyu(await findUser(tid, schoolId)));
 
-            try {
-                const [students, teachers, users] = await Promise.all([
-                    prisma.student.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } }),
-                    // Arxivdagi (o'chirilgan) ustoz va xodimlarga ommaviy xabar bormaydi.
-                    prisma.teacher.findMany({ where: { telegramId: { not: null }, schoolId, status: { not: 'Arxiv' } }, select: { telegramId: true } }),
-                    prisma.user.findMany({ where: { telegramId: { not: null }, schoolId, status: { not: 'Arxiv' } }, select: { telegramId: true } })
-                ]);
-
-                const allTids = new Set([
-                    ...students.map(s => s.telegramId),
-                    ...teachers.map(t => t.telegramId),
-                    ...users.map(u => u.telegramId)
-                ]);
-
-                let successCount = 0;
-                for (const targetId of allTids) {
-                    try {
-                        await botInstance.telegram.sendMessage(targetId, text);
-                        successCount++;
-                    } catch (e) {
-                        console.error(`Broadcast failed for ${targetId}:`, e.message);
-                    }
-                }
-
-                await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id).catch(() => {});
-                return ctx.reply(`Xabar ${successCount} ta foydalanuvchiga muvaffaqiyatli yuborildi! ✅`, getAdminMenu(xodimR));
-            } catch (err) {
-                console.error("Broadcast global error:", err);
-                return ctx.reply("Xabar yuborishda xatolik yuz berdi.", getAdminMenu(xodimR));
-            }
-        }
-
-        if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤', '🚪'].some(icon => text.includes(icon))) {
+        if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤', '🚪', '🆔', '✍️', '🚌', '🚍'].some(icon => text.includes(icon))) {
             return next();
         }
 
-        if (text.includes(',') && text.length > 5) {
-            const [name, course] = text.split(',').map(s => s.trim());
-            const phone = "Bot orqali";
-
-            await prisma.lead.create({
-                data: {
-                    name,
-                    course,
-                    phone,
-                    source: 'Telegram Bot',
-                    schoolId: schoolId || 1,
-                }
-            });
-
-            return ctx.reply("Rahmat! Sizning so'rovingiz qabul qilindi. Tez orada adminlarimiz bog'lanishadi.");
+        // Ro'yxatdan o'tmagan mehmon oddiy matn yozsa — nima qilishni aytamiz
+        // (ilgari vergulli har qanday matn lid bo'lib yozilardi).
+        if (!(await findUser(tid, schoolId))) {
+            return ctx.reply("Sinov darsiga yozilish uchun «📝 Sinov darsiga yozilish» ni bosing. O'quvchi, ota-ona yoki xodim bo'lsangiz — /start bosib telefon raqamingizni yuboring.", getGuestMenu());
         }
 
         next();
