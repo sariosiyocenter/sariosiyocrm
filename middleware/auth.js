@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
-import { JWT_SECRET } from '../lib/config.js';
+import { JWT_SECRET, TOKEN_TTL } from '../lib/config.js';
 import { rolRuxsati, yetadimi, bolimNomi, toliqRuxsatli } from '../lib/ruxsatlar.js';
 import { soroqTalablari } from '../lib/ruxsatApi.js';
 import { xodimKurslari } from '../lib/ustozlar.js';
@@ -113,7 +113,7 @@ async function freshUser(payload) {
     row = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
-        role: true, schoolId: true, status: true, name: true, branches: { select: { id: true } },
+        role: true, schoolId: true, status: true, name: true, passwordVersion: true, branches: { select: { id: true } },
         school: { select: { organizationId: true } },
       }
     });
@@ -124,8 +124,24 @@ async function freshUser(payload) {
     ...payload, role: row.role, schoolId: row.schoolId, name: row.name,
     branchIds: (row.branches || []).map(b => b.id),
     organizationId: row.school?.organizationId ?? null,
+    passwordVersion: row.passwordVersion ?? 0,
   };
 }
+
+/**
+ * Kirish tokeni. `pv` — parol versiyasi (User.passwordVersion): parol
+ * o'zgarganda versiya oshadi va eski parol bilan olingan tokenlar rad etiladi.
+ * Login ham, parolni o'zgartirgan odamning yangi tokeni ham shu yerdan.
+ */
+export function kirishTokeni(user) {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role, schoolId: user.schoolId, pv: user.passwordVersion ?? 0 },
+    JWT_SECRET,
+    { expiresIn: TOKEN_TTL }
+  );
+}
+
+export const PAROL_OZGARDI = "Parolingiz o'zgartirilgan — yangi parol bilan qaytadan kiring.";
 
 // --- Lavozim ruxsatlari (lib/ruxsatlar.js) ---------------------------------
 // Tashkilotning sozlamasi Organization.permissions da. Har so'rovda bazaga
@@ -297,6 +313,13 @@ export const authenticate = (req, res, next) => {
       const user = await freshUser(payload);
       if (!user) {
         return res.status(401).json({ error: 'Hisobingiz faol emas, administrator bilan bog\'laning' });
+      }
+      // Parol o'zgargan: eski parol bilan olingan token endi yaroqsiz — yangi
+      // parol bilan qayta kirish kerak. Tokenda `pv` bo'lmasa (bu o'zgarishdan
+      // oldin berilgan) — 0 deb olinadi: parol hali o'zgarmagan xodim chiqarilmaydi.
+      // `sessiyaTugadi` — mijoz foydalanuvchini login sahifasiga shu xabar bilan olib chiqadi.
+      if (user.role !== 'SUPERADMIN' && (payload.pv ?? 0) !== (user.passwordVersion ?? 0)) {
+        return res.status(401).json({ error: PAROL_OZGARDI, sessiyaTugadi: true });
       }
 
       // Haydovchi uchun web CRM yopiq (u faqat Telegram botda ishlaydi).

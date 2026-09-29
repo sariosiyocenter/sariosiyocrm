@@ -11,7 +11,7 @@ import { auditMiddleware } from './lib/audit.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
-import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi } from './middleware/auth.js';
+import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi, kirishTokeni } from './middleware/auth.js';
 import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
@@ -341,11 +341,8 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       }
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, schoolId: user.schoolId },
-      JWT_SECRET,
-      { expiresIn: TOKEN_TTL }
-    );
+    // Tokenda parol versiyasi bor: parol o'zgarsa bu token ishlamay qoladi.
+    const token = kirishTokeni(user);
     res.json({
       token,
       user: {
@@ -394,11 +391,19 @@ app.post('/api/auth/change-password', authenticate, async (req, res, next) => {
     if (!(await bcrypt.compare(oldPassword, user.password))) {
       return res.status(400).json({ error: "Eski parol noto'g'ri" });
     }
+    if (await bcrypt.compare(String(newPassword), user.password)) {
+      return res.status(400).json({ error: "Yangi parol eskisi bilan bir xil" });
+    }
 
-    await prisma.user.update({
+    // Parol versiyasi oshadi — boshqa qurilmalardagi (eski parol bilan
+    // kirilgan) sessiyalar tugaydi. Parolni o'zgartirayotgan shu qurilma esa
+    // yangi token oladi (X-Yangi-Token), chunki odam yangi parolni hozir kiritdi.
+    const yangilangan = await prisma.user.update({
       where: { id: user.id },
-      data: { password: await bcrypt.hash(newPassword, 10) }
+      data: { password: await bcrypt.hash(newPassword, 10), passwordVersion: { increment: 1 } }
     });
+    forgetUser(user.id);
+    res.set('X-Yangi-Token', kirishTokeni(yangilangan));
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -961,7 +966,15 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       // (qaytsa, botga raqamini qayta yuboradi).
       if (status === 'Arxiv' && target.status !== 'Arxiv') { data.telegramId = null; data.telegramId2 = null; }
     }
-    if (password) data.password = await bcrypt.hash(password, 10);
+    // Parol haqiqatan o'zgarsa — versiya oshadi va shu xodimning eski parol
+    // bilan kirilgan barcha sessiyalari tugaydi. Aynan o'sha parol qayta
+    // yozilsa bu o'zgarish emas: sessiyalarga tegilmaydi.
+    let parolOzgardi = false;
+    if (password && !(await bcrypt.compare(String(password), target.password || ''))) {
+      data.password = await bcrypt.hash(password, 10);
+      data.passwordVersion = { increment: 1 };
+      parolOzgardi = true;
+    }
 
     let user;
     try {
@@ -1058,6 +1071,11 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       console.error('[Ustoz yozuvini moslash]', e.message);
     }
 
+    // Xodim o'z parolini shu yerdan o'zgartirgan bo'lsa (masalan administrator
+    // o'z kartasida) — shu qurilma yangi token oladi, boshqa qurilmalari chiqadi.
+    if (parolOzgardi && user.id === req.user.id) {
+      res.set('X-Yangi-Token', kirishTokeni({ ...user, passwordVersion: (target.passwordVersion ?? 0) + 1 }));
+    }
     const { branches, ...javob } = user;
     res.json({ ...javob, branchIds: branches.map(b => b.id) });
   } catch (error) { next(error); }
@@ -4041,8 +4059,10 @@ app.put('/api/organizations/:id/subscription', authenticate, async (req, res, ne
           if (existingUser) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
           adminData.email = adminEmail;
         }
-        if (adminPassword) {
+        if (adminPassword && !(await bcrypt.compare(String(adminPassword), firstAdmin.password || ''))) {
           adminData.password = await bcrypt.hash(adminPassword, 10);
+          // Parol o'zgardi — administratorning eski sessiyalari tugaydi.
+          adminData.passwordVersion = { increment: 1 };
         }
 
         if (Object.keys(adminData).length > 0) {
@@ -4050,6 +4070,7 @@ app.put('/api/organizations/:id/subscription', authenticate, async (req, res, ne
             where: { id: firstAdmin.id },
             data: adminData
           });
+          forgetUser(firstAdmin.id);
         }
       } else if (adminEmail) {
         const hashedPassword = await bcrypt.hash(adminPassword || '123456', 10);

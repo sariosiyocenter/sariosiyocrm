@@ -134,6 +134,10 @@ const API_BASE = '/api';
 // Tanlangan filial. 0 — "To'liq o'quv markazi", ya'ni tashkilotning barcha filiallari.
 const BRANCH_KEY = 'crm_branch';
 
+// Sessiya tugagani sababi — login sahifasi shu xabarni ko'rsatadi (Login.tsx).
+export const SESSIYA_XABARI_KEY = 'sessiya_xabari';
+let sessiyaTugayapti = false;
+
 function storedBranchId(): number | null {
     try {
         const raw = localStorage.getItem(BRANCH_KEY);
@@ -175,6 +179,42 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+
+    // Parol o'zgarsa eski parol bilan kirilgan sessiya tugaydi (egasi, 2026-09-29).
+    // Server bunday tokenga 401 + `sessiyaTugadi` qaytaradi (middleware/auth.js).
+    // Har qanday /api so'rovi — apiCall ham, komponentlardagi to'g'ridan-to'g'ri
+    // fetch ham — shu yerdan o'tadi, shuning uchun bitta joyda ushlanadi:
+    // foydalanuvchi login sahifasiga sababi bilan chiqariladi. Parolni o'zi
+    // o'zgartirgan qurilma esa yangi tokenni `X-Yangi-Token` sarlavhasida oladi.
+    useEffect(() => {
+        const asl = window.fetch;
+        const kuzatuvchi: typeof window.fetch = async (input, init) => {
+            const res = await asl(input, init);
+            try {
+                const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+                if (url.includes('/api/')) {
+                    const yangiToken = res.headers.get('X-Yangi-Token');
+                    if (yangiToken) {
+                        localStorage.setItem('token', yangiToken);
+                        setToken(yangiToken);
+                    }
+                    if (res.status === 401 && !sessiyaTugayapti) {
+                        const body = await res.clone().json().catch(() => null);
+                        if (body?.sessiyaTugadi) {
+                            sessiyaTugayapti = true;
+                            try { sessionStorage.setItem(SESSIYA_XABARI_KEY, body.error || "Qaytadan kiring."); } catch { /* private mode */ }
+                            localStorage.removeItem('token');
+                            try { localStorage.removeItem(BRANCH_KEY); } catch { /* private mode */ }
+                            window.location.replace('/login');
+                        }
+                    }
+                }
+            } catch { /* kuzatuv so'rovning o'zini buzmasin */ }
+            return res;
+        };
+        window.fetch = kuzatuvchi;
+        return () => { if (window.fetch === kuzatuvchi) window.fetch = asl; };
+    }, []);
     const [darkMode, setDarkMode] = useState<boolean>(() => {
         const saved = localStorage.getItem('darkMode');
         return saved ? JSON.parse(saved) : false;

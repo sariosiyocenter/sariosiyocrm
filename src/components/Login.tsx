@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCRM } from '../context/CRMContext';
-import { Atom, Lock, Mail, ArrowRight, ShieldAlert } from 'lucide-react';
+import { useCRM, SESSIYA_XABARI_KEY } from '../context/CRMContext';
+import { Atom, Lock, Mail, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 
 export default function Login() {
   const { login, error: authError } = useCRM();
+  // Sessiya nega tugagani (masalan parol o'zgartirilgan) — CRMContext yozib qo'yadi.
+  const [sessiyaXabari] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(SESSIYA_XABARI_KEY); } catch { return null; }
+  });
+  useEffect(() => {
+    try { sessionStorage.removeItem(SESSIYA_XABARI_KEY); } catch { /* private mode */ }
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -80,6 +87,12 @@ export default function Login() {
         <div className="login-glass-card rounded-2xl p-8 shadow-2xl relative overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-500">
           
           <form onSubmit={handleLogin} className="space-y-5">
+            {sessiyaXabari && !authError && (
+              <div className="bg-amber-500/10 border border-amber-500/25 text-amber-100 px-4 py-3 rounded-xl text-[13px] font-medium flex items-center gap-2.5">
+                <KeyRound size={16} className="text-amber-400 shrink-0" />
+                <span>{sessiyaXabari}</span>
+              </div>
+            )}
             {authError && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-xl text-[13px] font-medium flex items-center gap-2.5 animate-bounce-soft">
                 <ShieldAlert size={16} className="text-red-400 shrink-0" />

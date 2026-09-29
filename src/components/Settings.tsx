@@ -644,7 +644,7 @@ export default function Settings() {
                     </div>
                     <p className="text-[11px] font-bold text-matn-xira">Parol kamida 6 ta belgidan iborat bo'lsin.</p>
                     {pwState.error && <p className="text-[11px] font-bold text-rose-500">⚠️ {pwState.error}</p>}
-                    {pwState.ok && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Parol yangilandi</p>}
+                    {pwState.ok && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Parol yangilandi. Boshqa qurilmalarda yangi parol bilan qaytadan kirish kerak bo'ladi.</p>}
                     <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
                         <button type="submit" disabled={pwState.busy}
                             className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">

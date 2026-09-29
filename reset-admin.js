@@ -12,7 +12,8 @@ async function main() {
 
   const user = await prisma.user.update({
     where: { email },
-    data: { password: hashedPassword }
+    // Parol versiyasi oshadi — eski parol bilan kirilgan sessiyalar tugaydi.
+    data: { password: hashedPassword, passwordVersion: { increment: 1 } }
   });
 
   console.log(`Password for ${email} has been reset to: ${newPassword}`);

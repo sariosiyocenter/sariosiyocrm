@@ -943,6 +943,10 @@ function UserModal({
                                 <label className={lbl}>{showPassword ? `${t('password')} *` : t('new_password')}</label>
                                 <input type="password" required={showPassword && !isTechStaff} placeholder={showPassword ? t('min_password_length') : t('leave_blank_to_keep')} className={inp}
                                     value={user.password || ''} onChange={e => onChange({ ...user, password: e.target.value })} />
+                                {/* Parol o'zgarsa xodimning eski parol bilan ochilgan sessiyalari yopiladi (middleware/auth.js). */}
+                                {!showPassword && user.password && (
+                                    <p className="text-[10px] text-matn-xira mt-1">Saqlangach xodim barcha qurilmalarda yangi parol bilan qaytadan kiradi.</p>
+                                )}
                             </div>
                         </div>
                     )}

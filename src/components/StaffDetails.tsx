@@ -1804,7 +1804,7 @@ export default function StaffDetails() {
                             {/* Haydovchi (faqat Telegram bot) va texnik xodim CRM ga kirmaydi — login maydonlari yo'q. */}
                             {staffUser.role !== 'DRIVER' && staffUser.role !== 'TECH_STAFF' && <>
                             <div><label className={lbl}>Email (tizimga kirish logini)</label><input type="email" placeholder="xodim@example.uz" className={inp} value={editData.email||''} onChange={e => setEditData((p:any)=>({...p,email:e.target.value}))} /></div>
-                            <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
+                            <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} />{editData.password ? <p className="text-[10px] text-matn-xira mt-1">Saqlangach xodim barcha qurilmalarda yangi parol bilan qaytadan kiradi.</p> : null}</div>
                             </>}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq">
                                 <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
