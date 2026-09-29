@@ -9,8 +9,8 @@ import type { BankDaraxt } from '../../../types';
 // Bankning birinchi qavati — fanlar. Har kartada: savollar va mavzular soni,
 // qiyinlik bo'yicha taqsimoti, e'tibor kerak bo'lganlar (qoralama, chala).
 
-export default function FanlarKorinishi({ daraxt, onFan, yangila, onYangiSavol }: {
-  daraxt: BankDaraxt; onFan: (id: number) => void; yangila: () => Promise<any>; onYangiSavol?: () => void;
+export default function FanlarKorinishi({ daraxt, onFan, yangila, onQosh }: {
+  daraxt: BankDaraxt; onFan: (id: number) => void; yangila: () => Promise<any>; onQosh?: () => void;
 }) {
   const { ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar');
@@ -41,9 +41,9 @@ export default function FanlarKorinishi({ daraxt, onFan, yangila, onYangiSavol }
     return (
       <div className="bg-sirt border border-chiziq rounded-2xl shadow-sm">
         <BoshHolat ikonka={<BookOpen size={22} />} sarlavha="Bank hali bo'sh"
-          izoh="Tuzilma: fan → mavzu → qiyinlik (oson, o'rta, qiyin). Avval fanni qo'shing, mavzularini o'quv rejadan bir bosishda oling, keyin har mavzuga savollar kiriting — qo'lda, Excel yoki AI bilan.">
+          izoh="Tuzilma: fan → mavzu → qiyinlik (oson, o'rta, qiyin). Fanni qo'shing, mavzularini o'quv rejadan bir bosishda oling, keyin «Savol qo'shish» — kitob yoki test sahifasini suratga oling yoki PDF, Excel yuklang: AI savollarni o'qib, mavzu va qiyinlikka o'zi ajratadi.">
           {tahrir && <Tugma turi="asosiy" ikonka={<Plus size={14} />} onClick={() => setYangiFan('')}>Fan qo'shish</Tugma>}
-          {tahrir && onYangiSavol && <Tugma ikonka={<Plus size={14} />} onClick={onYangiSavol}>Savol qo'shish</Tugma>}
+          {tahrir && onQosh && <Tugma ikonka={<Plus size={14} />} onClick={onQosh}>Savol qo'shish</Tugma>}
         </BoshHolat>
       </div>
     );

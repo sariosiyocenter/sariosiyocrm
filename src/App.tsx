@@ -4,13 +4,23 @@
  */
 
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
 import { useCRM } from './context/CRMContext';
 import { MODULLAR } from '../lib/ruxsatlar.js';
 
 // Eager (har doim kerak)
 import Login from './components/Login';
 import Layout from './components/Layout';
+
+// Savol qo'lda kiritilmaydi (2026-09-29): eski "yangi savol" havolasi bankdagi
+// "Savol qo'shish" oynasini ochadi (rasm, PDF, Excel yoki matn → AI).
+function YangiSavolgaYol() {
+  const p = new URLSearchParams(useLocation().search);
+  const q = new URLSearchParams({ tab: 'savollar', qosh: '1' });
+  for (const k of ['fan', 'mavzu']) { const v = p.get(k); if (v) q.set(k, v); }
+  return <Navigate to={`/exams?${q}`} replace />;
+}
 
 // Helper to reload page if a dynamic import fails due to new deployment chunks mismatch
 function lazyRetry<T extends React.ComponentType<any>>(componentImport: () => Promise<{ default: T }>) {
@@ -193,7 +203,7 @@ export default function App() {
             <Route path="/exams/:id/reyting"    element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ReytingEkrani />)} />
             <Route path="/scanner"              element={<Navigate to="/exams?tab=skaner" replace />} />
             <Route path="/questions"            element={<Navigate to="/exams?tab=savollar" replace />} />
-            <Route path="/questions/new"        element={sahifa(ozgartira('imtihonlar.savollar'), <QuestionEditor />)} />
+            <Route path="/questions/new"        element={<YangiSavolgaYol />} />
             <Route path="/questions/:id/edit"   element={sahifa(kora('imtihonlar.savollar'), <QuestionEditor />)} />
             <Route path="/exam-results"         element={sahifa(kora('imtihonlar.natija'), <ExamResults />)} />
             <Route path="*"                     element={<Navigate to="/" replace />} />

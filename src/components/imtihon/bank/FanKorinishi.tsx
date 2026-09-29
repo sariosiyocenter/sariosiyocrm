@@ -12,8 +12,8 @@ import type { BankFan, BankMavzu } from '../../../types';
 // har mavzuda oson / o'rta / qiyin savollar soni. Mavzular o'quv rejadan
 // bir bosishda olinadi.
 
-export default function FanKorinishi({ fan, onMavzu, onOrqaga, yangila, onYangiSavol }: {
-  fan: BankFan; onMavzu: (id: number) => void; onOrqaga: () => void; yangila: () => Promise<any>; onYangiSavol: () => void;
+export default function FanKorinishi({ fan, onMavzu, onOrqaga, yangila, onQosh }: {
+  fan: BankFan; onMavzu: (id: number) => void; onOrqaga: () => void; yangila: () => Promise<any>; onQosh: () => void;
 }) {
   const { ozgartira, showNotification, syllabuses } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar');
@@ -117,7 +117,6 @@ export default function FanKorinishi({ fan, onMavzu, onOrqaga, yangila, onYangiS
           </div>
           {tahrir && (
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={onYangiSavol}>Savol</Tugma>
               <Tugma kichik ikonka={<Plus size={14} />} onClick={() => setYangiMavzu({ name: '', section: '' })}>Mavzu</Tugma>
               {rejalar.length > 0 && (
                 <div className="relative" ref={menyuRef}>

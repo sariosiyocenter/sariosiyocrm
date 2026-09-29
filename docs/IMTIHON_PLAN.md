@@ -790,3 +790,29 @@ serverdagi `GEMINI_API_KEY`. Model nomi eskirsa — zaxira nomlar (`gemini-flash
 Sinov: `scratch/test_ai_oxshash.mjs` (mantiq, yo'llar, global omit, haqiqiy Google soxta
 kalit bilan), `test_oxshash_ui.mjs` va `test_ai_kalit_ui.mjs` (brauzer; soxta AI server —
 `scratch/ai_soxta_server.mjs`).
+
+## 16. Savol qo'shish — faqat fayl yoki kameradan (2026-09-29)
+
+Egasi: "qo'lda savol kiritish — eng eski usul; fayldan yoki kameradan bo'lsin, fanlar bo'yicha,
+qisqa va aniq; o'zing avtomatlashtir".
+
+**Bitta tugma — "Savol qo'shish"** (bank sarlavhasida; mavzu sahifasida bo'sh holatda ham), oyna
+`imtihon/bank/SavolYuklash.tsx`:
+- Manba: **kamera** (telefonda ketma-ket sahifalar), **fayl** (PDF — hamma sahifasi, rasm, Excel),
+  **matnni joylash** (Word/Telegramdan). 40 sahifagacha; kompyuterda tashlash va Ctrl+V.
+- Fan (majburiy), mavzu — "AI o'zi mavzularga ajratsin" (standart) yoki aniq mavzu.
+- AI (3 sahifadan qism-qism, `POST /api/questions/ai/import`): har savolni fanning bor
+  mavzulariga (mos kelmasa — yangi qisqa nom) va qiyinlikka ajratadi, materialdagi raqamini va
+  javoblar kalitini (`kalit`) qaytaradi, tilni o'zi aniqlaydi. Mijoz barcha qismlardan keyin
+  kalitni **raqam bo'yicha** ulaydi (kitob oxiridagi "Javoblar" sahifasi), takror savollarni
+  tashlaydi. Server shu fanda matni aynan bir xil savolni `takrorId` bilan belgilaydi.
+- Mustaqil tekshiruv (`/api/ai/tekshir`, 12 tadan, ikki oqim): ✓ javob to'g'ri / ⚠ AI boshqa
+  javob chiqardi / javob topilmadi. Ko'rib chiqish — mavzular bo'yicha guruh, filtr "Tekshirish
+  kerak", "Bankda bor"; har kartada qiyinlik va mavzu, tuzatish.
+- Saqlash: tekshiruvdan o'tgan, ustoz tuzatgan yoki yozma — **faol**, qolgani — **qoralama**;
+  Excel qatori — faylidagi holat. "Bankda bor" — tanlanmagan.
+
+Qo'lda kiritish olib tashlandi: "Yangi savol", ustunlardagi "+", Import menyusi; `/questions/new`
+bankdagi shu oynani ochadi. Savol muharriri faqat mavjud savolni tuzatish uchun. "O'xshash masala"
+(15-bo'lim) — bank sarlavhasida. Sinov: `scratch/test_ajrat_mantiq.mjs`,
+`test_savol_yuklash_ui.mjs` (soxta AI server — `scratch/ai_soxta_server.mjs`).

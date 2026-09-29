@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Search, TrendingUp, CheckSquare, X, Trash2, Camera } from 'lucide-react';
+import { Plus, Pencil, Search, TrendingUp, CheckSquare, X, Trash2 } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
 import { Karta, Tugma, Tanlov, INPUT, SELECT, Yuklanmoqda, Maydon } from '../ui';
 import { oddiyMatn } from '../../../lib/matn';
 import { SavolKartasi, SavolOynasi } from './SavolKartasi';
-import OxshashSavollar from './OxshashSavollar';
 import { QIYINLIK, QiyinlikTanlov, qiyinlikDaraja } from './qiyinlik';
 import type { BankDaraxt, BankFan, BankMavzu, Question, SavolTuri } from '../../../types';
 
@@ -16,9 +15,9 @@ import type { BankDaraxt, BankFan, BankMavzu, Question, SavolTuri } from '../../
 
 type TurFiltr = 'hammasi' | SavolTuri;
 
-export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onYangiSavol }: {
+export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onQosh }: {
   fan: BankFan; mavzu: BankMavzu; daraxt: BankDaraxt; yangila: () => Promise<any>;
-  onFan: () => void; onYangiSavol: (qiyinlik?: number) => void;
+  onFan: () => void; onQosh: () => void;
 }) {
   const { ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar');
@@ -34,7 +33,6 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
   const [tahrirOyna, setTahrirOyna] = useState(false);
   const [ustida, setUstida] = useState<number | null>(null);
   const [band, setBand] = useState(false);
-  const [oxshash, setOxshash] = useState(false);
 
   const yukla = useCallback(() => soro<{ items: Question[] }>('GET', `questions?mavzuId=${mavzu.id}&soni=200`)
     .then(r => setSavollar(r.items)).catch(e => showNotification(e.message, 'error')), [mavzu.id, soro, showNotification]);
@@ -118,8 +116,6 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
           </div>
           {tahrir && (
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={() => onYangiSavol()}>Savol qo'shish</Tugma>
-              <Tugma kichik ikonka={<Camera size={14} />} onClick={() => setOxshash(true)} title="AI masala rasmini o'qib, sonlari va javobi boshqa yangilarini tuzadi">Rasmdan o'xshash</Tugma>
               {!!savollar?.length && <Tugma kichik turi={belgilash ? 'ikkinchi' : 'oddiy'} ikonka={belgilash ? <X size={14} /> : <CheckSquare size={14} />}
                 onClick={() => { setBelgilash(v => !v); setTanlangan(new Set()); }}>{belgilash ? 'Belgilashni tugatish' : 'Belgilash'}</Tugma>}
             </div>
@@ -156,8 +152,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
             }))} />
             <div className="space-y-2">
               {kartalar(ustun(mobilD))}
-              {!ustun(mobilD).length && <BoshUstun d={mobilD} tahrir={tahrir} onQosh={() => onYangiSavol(mobilD)} />}
-              {tahrir && ustun(mobilD).length > 0 && <Tugma kichik turi="oddiy" className="w-full" ikonka={<Plus size={13} />} onClick={() => onYangiSavol(mobilD)}>{qiyinlikDaraja(mobilD).nom} savol qo'shish</Tugma>}
+              {!ustun(mobilD).length && <BoshUstun d={mobilD} />}
             </div>
           </div>
           {/* Kompyuterda: uch ustun, karta boshqa ustunga sudraladi. */}
@@ -170,15 +165,19 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
                   className={`rounded-2xl border bg-ichki/50 p-2 space-y-2 min-h-[160px] transition-colors ${ustida === q.d ? `${q.chiziq} ${q.fon}` : 'border-chiziq'}`}>
                   <div className="flex items-center justify-between gap-2 px-1.5 pt-1">
                     <span className={`inline-flex items-center gap-1.5 text-[13px] font-bold ${q.matn}`}><span className={`w-2.5 h-2.5 rounded-full ${q.nuqta}`} />{q.nom}<span className="raqam text-matn-xira font-semibold">{royxat.length}</span></span>
-                    {tahrir && <button aria-label={`${q.nom} savol qo'shish`} onClick={() => onYangiSavol(q.d)} className="p-1.5 rounded-lg text-matn-xira hover:text-brand hover:bg-sirt cursor-pointer"><Plus size={15} /></button>}
                   </div>
                   {kartalar(royxat)}
-                  {!royxat.length && <BoshUstun d={q.d} tahrir={tahrir} onQosh={() => onYangiSavol(q.d)} />}
+                  {!royxat.length && <BoshUstun d={q.d} />}
                 </section>
               );
             })}
           </div>
-          {tahrir && !savollar.length && <p className="text-center text-[12px] text-matn-xira">Excel shablonida «Mavzu» ustuniga «{mavzu.name}», «Qiyinlik» ga oson / o'rta / qiyin yozsangiz — savollar shu yerga tushadi.</p>}
+          {tahrir && !savollar.length && (
+            <div className="text-center space-y-2 py-2">
+              <p className="text-[12.5px] text-matn-xira">Kitob yoki test sahifasini suratga oling yoki PDF, Excel yuklang — AI savollarni o'qib, qiyinlikka ajratadi va shu mavzuga qo'shadi.</p>
+              <Tugma turi="asosiy" ikonka={<Plus size={14} />} onClick={onQosh}>Savol qo'shish</Tugma>
+            </div>
+          )}
         </>
       )}
 
@@ -200,17 +199,15 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
       )}
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
-      {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan.id} mavzuId={mavzu.id} onYop={() => setOxshash(false)} onSaqlandi={ozgardi} />}
       {tahrirOyna && <MavzuTahriri fan={fan} mavzu={mavzu} daraxt={daraxt} onYop={() => setTahrirOyna(false)} onSaqlandi={async (ochdi) => { setTahrirOyna(false); await yangila(); if (ochdi) onFan(); }} />}
     </div>
   );
 }
 
-function BoshUstun({ d, tahrir, onQosh }: { d: number; tahrir: boolean; onQosh: () => void }) {
+function BoshUstun({ d }: { d: number }) {
   return (
     <div className="rounded-xl border border-dashed border-chiziq px-3 py-6 text-center text-[12px] text-matn-xira">
       {qiyinlikDaraja(d).nom} savol yo'q
-      {tahrir && <div className="mt-2"><Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={onQosh}>Qo'shish</Tugma></div>}
     </div>
   );
 }

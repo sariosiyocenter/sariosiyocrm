@@ -10,10 +10,10 @@
 import rateLimit from 'express-rate-limit';
 import prisma from '../lib/prisma.js';
 import { encryptSecret, decryptSecret } from '../lib/secrets.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
 import { savolVariantlari, varaqTuzilmasi, turi, qiyinlikDarajasi, HARFLAR } from '../lib/imtihon.js';
 import {
-  aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn,
+  aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn, matnIzi,
   savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, tarjimaQil, yozmaBaho,
 } from '../lib/imtihonAI.js';
 
@@ -126,13 +126,29 @@ export function registerImtihonAIRoutes(app) {
   });
 
   // Fayl sahifalari (rasm) yoki matndan savollar — bankka hali yozilmaydi.
+  // Fayl sahifalari (rasm) yoki matndan savollar — bankka hali yozilmaydi. `mavzular` —
+  // fanning mavzulari (AI savolni shularga ajratadi); bankda allaqachon bor savol
+  // (matni aynan bir xil, shu fanda) `takrorId` bilan qaytadi.
   app.post('/api/questions/ai/import', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
       if (!tayyormi(res)) return;
-      const { matn = '', rasmlar = [], fan = '', mavzu = '', til = 'uz' } = req.body || {};
+      const { matn = '', rasmlar = [], fan = '', mavzu = '', mavzular = [], til = 'uz' } = req.body || {};
       if (!String(fan).trim()) return res.status(400).json({ error: 'Fanni kiriting' });
       if (!String(matn).trim() && !(Array.isArray(rasmlar) && rasmlar.length)) return res.status(400).json({ error: 'Fayl yoki matn kerak' });
-      res.json(await savollarniAjrat({ matn: String(matn), rasmlar: Array.isArray(rasmlar) ? rasmlar : [], fan: String(fan), mavzu: String(mavzu), til }));
+      const natija = await savollarniAjrat({
+        matn: String(matn), rasmlar: Array.isArray(rasmlar) ? rasmlar : [], fan: String(fan), mavzu: String(mavzu),
+        mavzular: Array.isArray(mavzular) ? mavzular : [], til: ['uz', 'ru', 'en', 'auto'].includes(til) ? til : 'uz',
+      });
+      if (natija.savollar.length) {
+        const orgIds = await organizationSchoolIds(req.user);
+        const bor = await prisma.question.findMany({
+          where: { schoolId: { in: orgIds }, subject: { equals: String(fan).trim(), mode: 'insensitive' } },
+          select: { id: true, text: true },
+        });
+        const izlar = new Map(bor.map(q => [matnIzi(q.text), q.id]));
+        natija.savollar.forEach(q => { q.takrorId = izlar.get(matnIzi(q.text)) ?? null; });
+      }
+      res.json(natija);
     } catch (err) { aiXatosi(err, res, next); }
   });
 
@@ -155,7 +171,7 @@ export function registerImtihonAIRoutes(app) {
       const klonlar = await klonlarYasa(q, savolVariantlari(q), { soni: req.body?.soni });
       const yaratildi = [];
       for (const k of klonlar) {
-        const { xato, matnId, tekshirildi, aslBilanBir, ...d } = k; // eslint-disable-line no-unused-vars
+        const { xato, matnId, tekshirildi, aslBilanBir, raqam, javobManbasi, ...d } = k; // eslint-disable-line no-unused-vars
         const yangi = await prisma.question.create({
           data: {
             ...d,
