@@ -8,6 +8,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useHisobKitob } from '../lib/hisobKitob';
+import { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { useLang } from '../context/LanguageContext';
 import { useConfirm } from './ConfirmDialog';
 import ZukkoPanel from './zukko/ZukkoPanel';
@@ -70,20 +71,50 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   // Ilgari o'qituvchi ham Moliya, Xodimlar kabi bandlarni ko'rardi va bosganda
   // bosh sahifaga qaytib qolardi.
   const baseItems = [
-    { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/',          modul: 'bosh' },
-    { label: t('nav_leads'),     icon: Target,          path: '/leads',     modul: 'lidlar' },
-    { label: t('nav_groups'),    icon: Users,           path: '/courses',   modul: 'kurslar' },
-    { label: t('nav_students'),  icon: User,            path: '/students',  modul: 'oquvchilar' },
-    { label: t('nav_daily'),     icon: Printer,         path: '/daily',     modul: 'kunlik' },
-    { label: t('nav_syllabus'),  icon: BookOpen,        path: '/syllabus',  modul: 'dastur' },
-    { label: t('nav_finance'),   icon: Wallet,          path: '/finance',   modul: 'moliya' },
-    { label: t('nav_logistics'), icon: Bus,             path: '/logistics', modul: 'logistika' },
-    { label: t('nav_exams'),     icon: FileText,        path: '/exams',     modul: 'imtihonlar' },
-    { label: t('nav_messaging'), icon: MessageSquare,   path: '/messaging', modul: 'xabarlar' },
-    { label: t('nav_hr'),        icon: Users2,          path: '/hr',        modul: 'xodimlar' },
-    { label: t('nav_journal'),   icon: History,         path: '/journal',   modul: 'jurnal' },
-    { label: t('nav_settings'),  icon: Settings,        path: '/settings',  modul: 'sozlamalar' },
+    // bolim — menyuda ajratgich chizig'i uchun: o'quv, pul, xizmatlar, boshqaruv.
+    { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/',          modul: 'bosh',       bolim: 1 },
+    { label: t('nav_leads'),     icon: Target,          path: '/leads',     modul: 'lidlar',     bolim: 1 },
+    { label: t('nav_groups'),    icon: Users,           path: '/courses',   modul: 'kurslar',    bolim: 1 },
+    { label: t('nav_students'),  icon: User,            path: '/students',  modul: 'oquvchilar', bolim: 1 },
+    { label: t('nav_daily'),     icon: Printer,         path: '/daily',     modul: 'kunlik',     bolim: 1 },
+    { label: t('nav_syllabus'),  icon: BookOpen,        path: '/syllabus',  modul: 'dastur',     bolim: 1 },
+    { label: t('nav_finance'),   icon: Wallet,          path: '/finance',   modul: 'moliya',     bolim: 2 },
+    { label: t('nav_logistics'), icon: Bus,             path: '/logistics', modul: 'logistika',  bolim: 3 },
+    { label: t('nav_exams'),     icon: FileText,        path: '/exams',     modul: 'imtihonlar', bolim: 3 },
+    { label: t('nav_messaging'), icon: MessageSquare,   path: '/messaging', modul: 'xabarlar',   bolim: 3 },
+    { label: t('nav_hr'),        icon: Users2,          path: '/hr',        modul: 'xodimlar',   bolim: 4 },
+    { label: t('nav_journal'),   icon: History,         path: '/journal',   modul: 'jurnal',     bolim: 4 },
+    { label: t('nav_settings'),  icon: Settings,        path: '/settings',  modul: 'sozlamalar', bolim: 4 },
   ].filter(item => modulKorinadi(item.modul));
+
+  /** Menyu bandi faol: ichki sahifalar ham (o'quvchi, kurs, imtihon …); Hisobotlar — Bosh sahifadan. */
+  const faolmi = (path: string) => path === '/'
+    ? location.pathname === '/' || location.pathname.startsWith('/reports')
+    : location.pathname === path || location.pathname.startsWith(path + '/')
+      || (path === '/exams' && ['/scanner', '/questions', '/exam-results'].some(p => location.pathname.startsWith(p)));
+
+  // Kutayotgan ishlar soni menyuda: Moliya — Klik tasdig'i (administrator),
+  // Xabarlar — ota-onalarning "to'laganman" javoblari. 2 daqiqada bir.
+  const [nishon, setNishon] = useState<{ moliya: number; xabarlar: number }>({ moliya: 0, xabarlar: 0 });
+  const nishonAdmin = user?.role === 'ADMIN';
+  const nishonJavob = kora('moliya.oylik') || kora('oquvchilar.tolov') || kora('xabarlar.avto');
+  useEffect(() => {
+    if (!selectedSchoolId || (!nishonAdmin && !nishonJavob)) { setNishon({ moliya: 0, xabarlar: 0 }); return; }
+    let tirik = true;
+    const yukla = async () => {
+      const h = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      const [klik, javob] = await Promise.all([
+        nishonAdmin ? fetch(`/api/tolov-tasdiq?schoolId=${selectedSchoolId}&status=kutilmoqda`, { headers: h }).then(r => (r.ok ? r.json() : [])).catch(() => []) : Promise.resolve([]),
+        nishonJavob ? fetch(`/api/qarz-javob/soni?schoolId=${selectedSchoolId}`, { headers: h }).then(r => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null),
+      ]);
+      if (tirik) setNishon({ moliya: Array.isArray(klik) ? klik.length : 0, xabarlar: Number(javob?.ochiq) || 0 });
+    };
+    yukla();
+    const t = setInterval(yukla, 120000);
+    window.addEventListener(TASDIQ_HODISASI, yukla);
+    return () => { tirik = false; clearInterval(t); window.removeEventListener(TASDIQ_HODISASI, yukla); };
+  }, [selectedSchoolId, nishonAdmin, nishonJavob]);
+  const nishonSoni = (path: string) => (path === '/finance' ? nishon.moliya : path === '/messaging' ? nishon.xabarlar : 0);
 
   const navItems = user?.role === 'SUPERADMIN'
     ? [{ label: 'Super Admin', icon: Shield, path: '/superadmin' }]
@@ -160,23 +191,30 @@ export default function Layout({ children, onLogout }: LayoutProps) {
         </Link>
 
         <nav className="flex-1 overflow-y-auto no-scrollbar py-3 px-1.5 space-y-0.5">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+          {navItems.map((item, i) => {
+            const isActive = faolmi(item.path);
             const Icon = item.icon;
+            const soni = nishonSoni(item.path);
+            const yangiBolim = i > 0 && (item as any).bolim !== (navItems[i - 1] as any).bolim;
             return (
+              <React.Fragment key={item.path}>
+              {yangiBolim && <div className="mx-3 my-1.5 border-t border-chiziq" />}
               <button
-                key={item.path}
                 onClick={() => navigate(item.path)}
-                title={item.label}
-                className={`w-full flex flex-col items-center gap-1 px-1 py-2 rounded-[10px] transition-colors cursor-pointer ${isActive
+                title={soni ? `${item.label} — ${soni} ta ish kutmoqda` : item.label}
+                className={`relative w-full flex flex-col items-center gap-1 px-1 py-2 rounded-[10px] transition-colors cursor-pointer ${isActive
                   ? 'bg-brand/12 text-brand'
                   : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}
               >
+                {soni > 0 && (
+                  <span className="absolute top-1 right-2 min-w-[16px] h-4 px-1 rounded-full bg-xato text-white text-[9px] font-bold leading-4 text-center">{soni > 99 ? '99+' : soni}</span>
+                )}
                 <Icon size={19} strokeWidth={isActive ? 2.2 : 1.75} />
                 <span className={`text-[10px] leading-tight text-center line-clamp-2 whitespace-normal break-words ${isActive ? 'font-semibold' : 'font-normal'}`}>
                   {item.label}
                 </span>
               </button>
+              </React.Fragment>
             );
           })}
         </nav>
@@ -488,12 +526,15 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               </div>
             )}
             <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
+              {navItems.map((item, i) => {
+                const isActive = faolmi(item.path);
                 const Icon = item.icon;
+                const soni = nishonSoni(item.path);
+                const yangiBolim = i > 0 && (item as any).bolim !== (navItems[i - 1] as any).bolim;
                 return (
+                  <React.Fragment key={item.path}>
+                  {yangiBolim && <div className="mx-4 my-1.5 border-t border-chiziq" />}
                   <button
-                    key={item.path}
                     onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
                       ${isActive
@@ -503,8 +544,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                     `}
                   >
                     <Icon size={18} />
-                    {item.label}
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {soni > 0 && <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-xato text-white text-[11px] font-bold leading-5 text-center">{soni}</span>}
                   </button>
+                  </React.Fragment>
                 );
               })}
             </div>
