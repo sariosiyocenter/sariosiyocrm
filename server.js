@@ -8430,14 +8430,19 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
     // qarab chiqadi. Avgustda 2 mln avans bergan o'quvchi sentabrda hech
     // narsa to'lamasa ham "to'langan" — hisobi hamyonidan yopilgan.
     const coverage = await monthCoverage(Object.keys(studentMap).map(Number), month);
+    const kodlar = await oquvchiKodlari(Object.keys(studentMap).map(Number));
 
+    // Hisoblangan — faqat shu oyda haqiqatan yozilgan hisob. Ilgari hisob
+    // yo'q o'quvchiga kurs narxi "kutilgan" deb qo'yilardi va u "to'lamagan"
+    // chiqardi (hali kelmagan, 0 so'mlik, keyingi oyda keladigan o'quvchi ham).
     const students = Object.values(studentMap).map(({ student, groupEntries }) => {
       const cov = coverage.get(student.id);
-      const expected = cov && cov.due > 0 ? cov.due : groupEntries.reduce((s, g) => s + g.price, 0);
+      const expected = cov && cov.due > 0 ? cov.due : 0;
       const paid = cov ? Math.min(cov.covered, expected) : 0;
-      const status = expected > 0 && paid >= expected ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      const status = expected <= 0 ? 'none' : paid >= expected ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
       return {
-        studentId: student.id, name: student.name, phone: student.phone, balance: student.balance,
+        studentId: student.id, kod: kodlar.get(student.id) ?? null,
+        name: student.name, phone: student.phone || student.fatherPhone || student.motherPhone || '', balance: student.balance,
         groups: groupEntries.map(g => ({ ...g, ...(cov?.groups.get(g.groupId) || {}) })),
         expected, paid, status,
         debt: cov ? cov.debt : 0, wallet: cov ? cov.wallet : 0,
@@ -8446,17 +8451,16 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
 
     const groupBreakdown = groups.map(group => {
       const active = group.students;
-      let expected = 0, actual = 0, paidCount = 0;
+      let expected = 0, actual = 0, paidCount = 0, unpaidCount = 0;
       for (const st of active) {
         const g = coverage.get(st.id)?.groups.get(group.id);
-        if (!g) continue;
+        if (!g || g.due <= 0) continue;
         expected += g.due; actual += g.covered;
-        if (g.remaining <= 0 && g.due > 0) paidCount++;
+        if (g.remaining <= 0) paidCount++; else unpaidCount++;
       }
       return {
         groupId: group.id, groupName: group.name, courseName: group.course.name,
-        totalStudents: active.length, paidCount,
-        unpaidCount: active.length - paidCount, expected, actual
+        totalStudents: active.length, paidCount, unpaidCount, expected, actual
       };
     });
 

@@ -186,9 +186,10 @@ export default function KassaPanel() {
                     <p className="text-[10px] text-matn-xira mt-0.5">{data.todayOutCount} ta xarajat{data.todayHandover > 0 ? ` + ${money(data.todayHandover)} inkassatsiya` : ''}</p>
                 </div>
                 <div className="px-4 py-4 rounded-2xl border border-chiziq bg-ichki">
-                    <span className="text-[11px] text-matn-sokin flex items-center gap-1"><CreditCard size={12} /> Bugun karta / o'tkazma</span>
+                    {/* Server bularni birga sanaydi: Karta, O'tkazma, Payme, Klik (server.js → /api/kassa). */}
+                    <span className="text-[11px] text-matn-sokin flex items-center gap-1"><CreditCard size={12} /> Bugun naqdsiz</span>
                     <p className="raqam text-[22px] font-semibold text-matn leading-tight mt-1">{money(data.todayNonCash)}</p>
-                    <p className="text-[10px] text-matn-xira mt-0.5">kassaga kirmaydi, bankka tushadi</p>
+                    <p className="text-[10px] text-matn-xira mt-0.5">karta, o'tkazma, Payme, Klik — bankka tushadi</p>
                 </div>
             </div>
 
