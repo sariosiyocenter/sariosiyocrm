@@ -3,7 +3,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
     AlertCircle, CreditCard, ArrowUpRight, Calendar,
-    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote, Pencil
+    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote, Pencil, Lock
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -24,6 +24,8 @@ import { QarzdorlarModal } from './QarzXabari';
 import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
 import TolovTasdiqPanel, { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
+import { ochirishQoldi, XARAJAT_OCHIRISH_DAQIQA } from '../../lib/xarajat.js';
+import MoliyaKorsatkichlari from './MoliyaKorsatkichlari';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -40,6 +42,35 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
     const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
 };
+
+/**
+ * Xarajatni o'chirish tugmasi: kiritilganidan keyin 15 daqiqa ko'rinadi va
+ * qolgan daqiqani ko'rsatadi, keyin qulf (egasi, 2026-09-29 — lib/xarajat.js).
+ */
+function XarajatOchirishTugmasi({ createdAt, onDelete }: { createdAt?: string; onDelete: () => void }) {
+    const [, yangila] = useState(0);
+    const qoldi = ochirishQoldi(createdAt);
+    useEffect(() => {
+        if (qoldi <= 0) return;
+        const t = setInterval(() => yangila(x => x + 1), 15000);
+        return () => clearInterval(t);
+    }, [qoldi > 0]);
+    if (qoldi <= 0) {
+        return (
+            <span title={`Xarajat ${XARAJAT_OCHIRISH_DAQIQA} daqiqadan keyin o'chirilmaydi`}
+                className="w-7 h-7 rounded-lg text-matn-xira/60 flex items-center justify-center">
+                <Lock size={12} />
+            </span>
+        );
+    }
+    return (
+        <button onClick={onDelete} title={`O'chirish — yana ${Math.ceil(qoldi / 60000)} daqiqa mumkin`}
+            className="h-7 px-2 rounded-lg text-matn-xira hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center gap-1 transition-colors cursor-pointer">
+            <Trash2 size={13} />
+            <span className="raqam text-[11px]">{Math.ceil(qoldi / 60000)} daq</span>
+        </button>
+    );
+}
 
 export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification, retryLoad, user, kora, ozgartira } = useCRM();
@@ -618,9 +649,10 @@ export default function Finance() {
                     </div>
 
                     {activeTab !== 'billing' && activeTab !== 'kassa' && (
-                        <div className="flex flex-wrap items-center gap-3">
-                            {/* Presets */}
-                            <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
+                        <div className="flex flex-wrap items-center gap-3 min-w-0 max-w-full">
+                            {/* Presets. Telefonda qator sig'maydi — sahifa yon tomonga
+                                toshmasin, tugmalar o'zi suriladi. */}
+                            <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq max-w-full overflow-x-auto no-scrollbar">
                                 {['today', 'this_week', 'this_month', 'last_30', 'this_year', 'all', 'custom'].map((type) => {
                                     const label = type === 'today' ? 'Kun'
                                         : type === 'this_week' ? 'Hafta'
@@ -634,7 +666,7 @@ export default function Finance() {
                                             key={type}
                                             type="button"
                                             onClick={() => type === 'custom' ? setSelectedPreset('custom') : handlePreset(type as any)}
-                                            className={`px-3 py-1.5 rounded-lg text-[12px] transition-colors cursor-pointer ${
+                                            className={`px-3 py-1.5 rounded-lg text-[12px] whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                                                 selectedPreset === type
                                                     ? 'bg-brand text-brand-ust font-semibold'
                                                     : 'text-matn-sokin hover:text-matn'
@@ -691,53 +723,9 @@ export default function Finance() {
                 {/* ─── HISOBOTLAR TAB ──────────────────────────────────────── */}
                 {activeTab === 'reports' && kora('moliya.hisobot') && (
                     <div className="p-4 space-y-8">
-                        {/* To'rtta ko'rsatkich, bitta qatorda. Summalar millionda:
-                            "500 001 UZS" o'rniga "0,5 mln" — raqamni bir qarashda
-                            o'qish uchun aniq so'm kerak emas. */}
-                        <div>
-                            <p className="text-[12px] text-matn-sokin mb-3">Muddat: {dateLabel}</p>
-                            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-                                <StatTile
-                                    label="Tushum"
-                                    value={mln(metrics.thisMonthRevenue)}
-                                    unit="mln"
-                                    subValue={<>
-                                        <span className="raqam">{metrics.thisMonthCount}</span> ta to'lov
-                                        {metrics.avgPayment > 0 && <> · o'rtacha <span className="raqam">{mln(metrics.avgPayment)}</span> mln</>}
-                                    </>}
-                                />
-                                <StatTile
-                                    label="Xarajat"
-                                    value={mln(metrics.thisMonthExpenses)}
-                                    unit="mln"
-                                    subValue={metrics.thisMonthRevenue > 0
-                                        ? <>tushumning <span className="raqam">{Math.round((metrics.thisMonthExpenses / metrics.thisMonthRevenue) * 100)}%</span></>
-                                        : 'tanlangan davr'}
-                                />
-                                <StatTile
-                                    label="Sof foyda"
-                                    value={mln(metrics.thisMonthProfit)}
-                                    unit="mln"
-                                    tone={metrics.thisMonthProfit >= 0 ? 'good' : 'bad'}
-                                    bar={metrics.thisMonthRevenue > 0 ? Math.max(0, Math.round((metrics.thisMonthProfit / metrics.thisMonthRevenue) * 100)) : null}
-                                    barTone={metrics.thisMonthProfit >= 0 ? 'good' : 'bad'}
-                                    barCaption={<>tushumning <span className="raqam">{metrics.thisMonthRevenue > 0 ? Math.round((metrics.thisMonthProfit / metrics.thisMonthRevenue) * 100) : 0}%</span></>}
-                                    subValue={metrics.thisMonthRevenue > 0 ? undefined : 'tanlangan davr'}
-                                />
-                                <StatTile
-                                    label="Qarzdorlik"
-                                    value={mln(metrics.totalDebt)}
-                                    unit="mln"
-                                    tone="bad"
-                                    accent={metrics.totalDebt > 0}
-                                    subValue={<>
-                                        <span className="raqam">{metrics.debtors.length}</span> o'quvchi
-                                        {metrics.staleDebtCount > 0 && <> · <span className="raqam">{metrics.staleDebtCount}</span> tasi 30 kundan oshgan</>}
-                                    </>}
-                                    subTone="bad"
-                                />
-                            </div>
-                        </div>
+                        {/* Ko'rsatkichlar: tushum usullar bo'yicha (Payme ham), hisob va natija,
+                            o'quvchilar harakati, kurslar bo'yicha qarz (egasi, 2026-09-29). */}
+                        <MoliyaKorsatkichlari startDate={startDate} endDate={endDate} dateLabel={dateLabel} />
 
                         {/* Trend va qarzdorlik yoshi yonma-yon. Moliyadagi asosiy
                             savol "qancha tushdi" emas, "qarz qancha eskirgan":
@@ -798,181 +786,17 @@ export default function Finance() {
                             </div>
                         )}
 
-                        {/* To'lov usullari + Xarajat kategoriyalari */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
-                                <p className="text-[11px] font-bold text-matn-xira mb-4">Bu oy to'lov usullari</p>
-                                {metrics.typeSlices.length > 0
-                                    ? <DonutChart slices={metrics.typeSlices} size={140} />
-                                    : <p className="text-[11px] text-matn-xira font-bold text-center py-8">Bu oy to'lovlar yo'q</p>
-                                }
-                            </div>
-                            <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
-                                <p className="text-[11px] font-bold text-matn-xira mb-4">Bu oy xarajat kategoriyalari</p>
-                                {metrics.catBars.length > 0
-                                    ? <BarChart data={metrics.catBars} horizontal />
-                                    : <p className="text-[11px] text-matn-xira font-bold text-center py-8">Bu oy xarajatlar yo'q</p>
-                                }
-                            </div>
+                        {/* Xarajat kategoriyalari. To'lov usullari endi tepadagi
+                            ko'rsatkichlarda; o'tgan oy taqqoslash — "Jami tushum" izohida.
+                            Ilgari shu yerda qarzdorlik yoshi va top qarzdorlar ikkinchi marta
+                            takrorlanardi, umumiy qarz esa uch joyda turardi. */}
+                        <div className="bg-sirt rounded-xl border border-chiziq p-5">
+                            <p className="text-[14px] font-semibold text-matn mb-4">Xarajat kategoriyalari <span className="text-[12px] font-normal text-matn-sokin">· {dateLabel}</span></p>
+                            {metrics.catBars.length > 0
+                                ? <BarChart data={metrics.catBars} horizontal />
+                                : <p className="text-[12px] text-matn-xira text-center py-6">Bu davrda xarajat yo'q</p>
+                            }
                         </div>
-
-                        {/* O'tgan oy taqqoslash */}
-                        <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
-                            <p className="text-[11px] font-bold text-matn-xira mb-4">
-                                O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
-                            </p>
-                            <div className="grid grid-cols-3 gap-4">
-                                {[
-                                    { label: "Tushum", cur: metrics.thisMonthRevenue, prev: metrics.lastMonthRevenue, pos: true },
-                                    { label: "Xarajat", cur: metrics.thisMonthExpenses, prev: metrics.lastMonthExpenses, pos: false },
-                                    { label: "Foyda", cur: metrics.thisMonthProfit, prev: metrics.lastMonthRevenue - metrics.lastMonthExpenses, pos: true },
-                                ].map((item, i) => {
-                                    const diff = item.cur - item.prev;
-                                    const isUp = diff > 0;
-                                    return (
-                                        <div key={i} className="text-center">
-                                            <p className="text-[11px] font-bold text-matn-xira mb-2">{item.label}</p>
-                                            <p className="text-lg font-black text-matn tabular-nums">{item.cur.toLocaleString()}</p>
-                                            <p className="text-[11px] text-matn-xira tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
-                                            {diff !== 0 && (
-                                                <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
-                                                    {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
-                                                    {Math.abs(diff).toLocaleString()} UZS
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* O'quvchilar balansi va qarzdorligi */}
-                        <div className="border-t border-chiziq/80 pt-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                                <p className="text-[11px] font-bold text-matn-xira">
-                                    O'quvchilar moliyaviy holati va qarzdorligi
-                                </p>
-                                <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq self-start sm:self-auto">
-                                    {[
-                                        { value: 'all', label: "Barcha o'quvchilar" },
-                                        { value: 'active', label: "Faol o'quvchilar" },
-                                        { value: 'inactive', label: "Ketgan / Nofaol" }
-                                    ].map((opt) => (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => setStudentStatus(opt.value as any)}
-                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                                                studentStatus === opt.value
-                                                    ? 'bg-brand text-brand-ust shadow'
-                                                    : 'text-matn-xira hover:text-gray-600'
-                                            }`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Asosiy 2 ta moliyaviy metrika */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                <StatCard
-                                    label="Umumiy talabalar qarzdorligi"
-                                    value={metrics.totalDebt.toLocaleString() + ' UZS'}
-                                    sub={`${metrics.debtors.length} ta qarzdor o'quvchi`}
-                                    icon={<AlertCircle size={18} />}
-                                    color="rose"
-                                />
-                                <StatCard
-                                    label="Avans to'lovlar summasi"
-                                    value={metrics.totalCredit.toLocaleString() + ' UZS'}
-                                    sub={`${metrics.creditors.length} ta o'quvchi oldindan to'lagan`}
-                                    icon={<ArrowUpRight size={18} />}
-                                    color="emerald"
-                                />
-                            </div>
-
-                            {/* O'quvchilar moliyaviy holati bloklari */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-4">
-                                    <span className="text-[11px] font-bold text-rose-500 block mb-1">Qarzdorlar</span>
-                                    <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{metrics.debtors.length} ta</p>
-                                    <p className="text-[11px] font-bold text-rose-400 mt-1 tabular-nums">{metrics.totalDebt.toLocaleString()} UZS</p>
-                                </div>
-                                <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 p-4">
-                                    <span className="text-[11px] font-bold text-emerald-500 block mb-1">Musbat balans</span>
-                                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{metrics.creditors.length} ta</p>
-                                    <p className="text-[11px] font-bold text-emerald-400 mt-1 tabular-nums">{metrics.totalCredit.toLocaleString()} UZS</p>
-                                </div>
-                                <div className="bg-ichki rounded-2xl border border-chiziq p-4">
-                                    <span className="text-[11px] font-bold text-matn-xira block mb-1">Nol balans</span>
-                                    <p className="text-2xl font-black text-matn-2">{metrics.zeroBalanceCount} ta</p>
-                                    <p className="text-[11px] font-bold text-matn-xira mt-1">to'langan</p>
-                                </div>
-                                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/40 p-4">
-                                    <span className="text-[11px] font-bold text-amber-500 block mb-1">Bu oy to'lamagan</span>
-                                    <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{metrics.unpaidCount} ta</p>
-                                    <p className="text-[11px] font-bold text-amber-400 mt-1">faol o'quvchi</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Qarz yoshi bo'yicha. Umumiy qarz raqami "qanchalik
-                            jiddiy" ekanini ko'rsatmaydi — 15 kunlik qarz bilan
-                            60 kunlikning farqi katta. */}
-                        {metrics.debtors.length > 0 && (
-                            <div>
-                                <p className="text-[13px] font-semibold text-matn mb-3">Qarz yoshi bo'yicha</p>
-                                <div className="space-y-2.5">
-                                    {metrics.debtAge.map(b => (
-                                        <div key={b.label}>
-                                            <div className="flex items-center justify-between text-[12px]">
-                                                <span className="text-matn-sokin">
-                                                    {b.label}
-                                                    {b.count > 0 && <span className="num text-matn-xira"> · {b.count}</span>}
-                                                </span>
-                                                <span className="num text-matn-2">
-                                                    {(b.sum / 1000000).toFixed(1)} mln
-                                                </span>
-                                            </div>
-                                            <div className="mt-1 h-1.5 rounded-full bg-chiziq overflow-hidden">
-                                                <div className={`h-full rounded-full ${b.color}`}
-                                                    style={{ width: `${Math.round((b.sum / metrics.debtAgeMax) * 100)}%` }} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Top qarzdorlar */}
-                        {metrics.topDebtors.length > 0 && (
-                            <div>
-                                <p className="text-[11px] font-bold text-matn-xira mb-4">Eng ko'p qarzdorlar (top 5)</p>
-                                <div className="space-y-2">
-                                    {metrics.topDebtors.map((st, i) => (
-                                        <div
-                                            key={st.id}
-                                            onClick={() => navigate(`/students/${st.id}`)}
-                                            className="flex items-center justify-between px-4 py-3 bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition-all group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[11px] font-bold text-rose-300 w-5">{i + 1}.</span>
-                                                <div>
-                                                    <p className="text-xs font-bold text-matn">{st.name}</p>
-                                                    {st.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{st.phone}</p>}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-black text-rose-600 tabular-nums">{st.balance.toLocaleString()} UZS</span>
-                                                <ChevronRight size={13} className="text-rose-300 group-hover:text-rose-400 transition-colors" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
 
                         {/* ── Jadvallar ── */}
                         {(() => {
@@ -1396,11 +1220,10 @@ export default function Finance() {
                                     <div className="flex items-center gap-3 shrink-0">
                                         <span className="text-xs font-black text-rose-600 tabular-nums">-{e.amount.toLocaleString()} UZS</span>
                                         {ozgartira('moliya.xarajat') && (
-                                        <button onClick={async () => { if (await confirm(`Harajat o'chirilsinmi?
+                                            <XarajatOchirishTugmasi createdAt={e.createdAt}
+                                                onDelete={async () => { if (await confirm(`Xarajat o'chirilsinmi?
 
-${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) deleteExpense(e.id); }} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                            <Trash2 size={13} />
-                                        </button>
+${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) deleteExpense(e.id); }} />
                                         )}
                                     </div>
                                 </div>

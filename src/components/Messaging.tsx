@@ -14,6 +14,7 @@ import { TolovQoidaKartasi, TolovQoidaFormasi, XabarNavbati, xatoSababi } from '
 import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabari';
 import { TransportQoidaKartasi, TransportQoidaFormasi } from './TransportXabari';
 import { QoidaKartasi } from './QoidaKartasi';
+import { kursUstozlari } from '../lib/teacherState';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -913,7 +914,7 @@ export default function Messaging() {
       g.courseName || (courses || []).find((c: any) => c.id === g.courseId)?.name
     ).filter(Boolean))].join(', ');
     const ustozNomlari = [...new Set(oqKurslari.map(g =>
-      g.teacherName || (teachers || []).find((tc: any) => tc.id === g.teacherId)?.name
+      g.teacherName || kursUstozlari(g, teachers || [])
     ).filter(Boolean))].join(', ');
     // {markaz} — filial emas, markaz nomi: filialdan qat'iy nazar bitta.
     const schoolName = settings?.orgName || schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || '';

@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
 import Avatar from './ui/Avatar';
 import { displayName } from '../lib/displayName';
-import { teacherProblem } from '../lib/teacherState';
+import { teacherProblem, kursUstozlari } from '../lib/teacherState';
 import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
@@ -19,6 +19,9 @@ import KursHisobModal from './KursHisobModal';
 import { kelganSana } from '../lib/taqsimot';
 import BirinchiOyInput from './BirinchiOyInput';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
+import { useKursQarzlari, somQisqa } from '../lib/kursQarzi';
+
+const BOSH: never[] = [];
 
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
@@ -41,6 +44,10 @@ export default function CourseDetails() {
     // ("Belgilanmagan" kabi) uni tuzatishning boshqa yo'li yo'q edi.
     const [editForm, setEditForm] = useState({
         teacherId: 0,
+        // Ikkinchi ustoz (ixtiyoriy) va uning shu kurs uchun haqi.
+        teacher2Id: 0,
+        pay2Type: '' as string,
+        pay2Value: '' as string,
         courseName: '',
         days: '',
         startTime: '',
@@ -79,6 +86,13 @@ export default function CourseDetails() {
     const [davomatXabarOchiq, setDavomatXabarOchiq] = useState(false);
     const [sortBy, setSortBy] = useState<StudentSort>('default');
 
+    // Shu kurs o'quvchilarining kurslar bo'yicha qarzi (hook — return dan oldin).
+    const kursOquvchilari = React.useMemo(() => {
+        const g = groups.find(x => x.id === Number(id));
+        return g ? students.filter(s => (g.studentIds || []).includes(s.id)) : BOSH;
+    }, [groups, students, id]);
+    const kursQarzlari = useKursQarzlari(balansKorinadi ? kursOquvchilari : BOSH, payments);
+
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-matn-sokin font-medium">Kurs topilmadi</div>;
 
@@ -97,8 +111,12 @@ export default function CourseDetails() {
     const lessonsThisMonth = new Set(
         groupAttendances.filter(a => (a.date || '').startsWith(monthPrefix)).map(a => a.date)
     ).size;
-    const groupDebt = groupStudents.reduce((sum, st) => sum + (st.balance < 0 ? -st.balance : 0), 0);
-    const debtorCount = groupStudents.filter(st => st.balance < 0).length;
+    // Qarzdorlik — faqat SHU kurs bo'yicha (egasi, 2026-09-29). Ilgari umumiy
+    // balans olinardi: ikki kursdagi o'quvchining butun qarzi har ikkala kursda
+    // ham sanalardi.
+    const kursQarzi = (sid: number) => kursQarzlari.get(sid)?.get(group.id) || 0;
+    const groupDebt = groupStudents.reduce((sum, st) => sum + kursQarzi(st.id), 0);
+    const debtorCount = groupStudents.filter(st => kursQarzi(st.id) > 0).length;
 
     // Xona sig'imi — guruhga xona biriktirilgan bo'lsagina ma'lum.
     // Kiritilmagan bo'lsa nisbat chizig'i chizilmaydi: 60 o'quvchi "necha
@@ -306,6 +324,9 @@ export default function CourseDetails() {
         const [start, end] = group.schedule.split(' - ');
         setEditForm({
             teacherId: group.teacherId,
+            teacher2Id: group.teacher2Id || 0,
+            pay2Type: group.pay2Type || '',
+            pay2Value: group.pay2Value ? String(group.pay2Value) : '',
             courseName: course?.name || '',
             days: group.days,
             startTime: start || '',
@@ -330,15 +351,21 @@ export default function CourseDetails() {
                 showNotification("O'qituvchini tanlang", "error");
                 return;
             }
+            const teacher2Id = Number(editForm.teacher2Id) && Number(editForm.teacher2Id) !== teacherId ? Number(editForm.teacher2Id) : null;
             await updateGroup(group.id, {
                 teacherId,
+                teacher2Id,
                 days: editForm.days,
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
                 room: roomId,
                 syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId),
                 ...(narxTahrir ? {
                     payType: (editForm.payType || null) as 'Belgilangan' | 'Foiz' | null,
-                    payValue: editForm.payType ? Number(editForm.payValue) || 0 : 0
+                    payValue: editForm.payType ? Number(editForm.payValue) || 0 : 0,
+                    ...(teacher2Id ? {
+                        pay2Type: (editForm.pay2Type || null) as 'Belgilangan' | 'Foiz' | null,
+                        pay2Value: editForm.pay2Type ? Number(editForm.pay2Value) || 0 : 0,
+                    } : {}),
                 } : {})
             });
             if (course) {
@@ -468,9 +495,7 @@ export default function CourseDetails() {
                     {isEditingInfo ? (
                         <div className="flex items-center gap-2 mt-2 text-[13px] text-matn-sokin">
                             <span className="text-matn-2">
-                                {teachers.find(tc => tc.id === Number(editForm.teacherId))?.name
-                                    ? displayName(teachers.find(tc => tc.id === Number(editForm.teacherId))!.name)
-                                    : 'Ustoz tanlanmagan'}
+                                {kursUstozlari({ teacherId: Number(editForm.teacherId), teacher2Id: Number(editForm.teacher2Id) || null }, teachers, displayName) || 'Ustoz tanlanmagan'}
                             </span>
                             <span className="text-[11px] text-matn-xira">
                                 &mdash; pastdagi &laquo;Ma'lumotlar&raquo; bo'limidan o'zgartiring
@@ -494,7 +519,7 @@ export default function CourseDetails() {
                                 {(() => {
                                     const problem = teacherProblem(group, teachers);
                                     if (problem) return <span className="text-ogoh">{problem}</span>;
-                                    return <span className="text-matn-2">{displayName(teacher!.name)}</span>;
+                                    return <span className="text-matn-2">{kursUstozlari(group, teachers, displayName)}</span>;
                                 })()}
                                 {kursTahrir && <Pencil size={11} className="text-matn-xira" />}
                             </button>
@@ -612,7 +637,7 @@ export default function CourseDetails() {
                                                         <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin">O'quvchi</th>
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin">Kelgan sana</th>
                                                         {balansKorinadi && (
-                                                        <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right">Balans</th>
+                                                        <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right" title="Shu kurs bo'yicha qarz">Qarz (kurs)</th>
                                                         )}
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right w-20">Davomat</th>
                                                         <th className="py-2 pl-3 w-20" />
@@ -654,11 +679,21 @@ export default function CourseDetails() {
                                                                         );
                                                                     })()}
                                                                 </td>
-                                                                {balansKorinadi && (
-                                                                <td className={`num py-2.5 px-3 text-right text-[13px] align-middle ${s.balance > 0 ? 'text-yaxshi' : s.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
-                                                                    {s.balance.toLocaleString('ru-RU')}
-                                                                </td>
-                                                                )}
+                                                                {balansKorinadi && (() => {
+                                                                    // Shu kurs bo'yicha qarz; umumiy balans boshqacha bo'lsa
+                                                                    // (boshqa kursda ham qarzi bor) — ostida kichik yozuv.
+                                                                    const qarz = kursQarzi(s.id);
+                                                                    const jami = s.balance || 0;
+                                                                    const farqli = jami < 0 && Math.round(-jami) !== Math.round(qarz);
+                                                                    return (
+                                                                        <td className="num py-2.5 px-3 text-right text-[13px] align-middle">
+                                                                            <span className={qarz > 0 ? 'text-xato' : jami > 0 ? 'text-yaxshi' : 'text-matn-xira'}>
+                                                                                {qarz > 0 ? '−' + somQisqa(qarz) : jami > 0 ? '+' + somQisqa(jami) : '0'}
+                                                                            </span>
+                                                                            {farqli && <span className="block text-[10px] text-matn-xira whitespace-nowrap">jami {jami.toLocaleString('ru-RU')}</span>}
+                                                                        </td>
+                                                                    );
+                                                                })()}
                                                                 {/* Ilgari bu yerda "Qarzdor" belgisi turardi — yonidagi
                                                                     qizil balans allaqachon shuni aytadi. Davomat esa
                                                                     hech qayerda ko'rinmasdi. */}
@@ -749,6 +784,23 @@ export default function CourseDetails() {
                                                             <option key={tc.id} value={tc.id}>{displayName(tc.name)}</option>
                                                         ))}
                                                     </select>
+                                                </div>
+                                                {/* Egasi, 2026-09-29: "bitta kursga ikkita o'qituvchi". */}
+                                                <div>
+                                                    <label className={labelCls}>Ikkinchi o'qituvchi (ixtiyoriy)</label>
+                                                    <select
+                                                        value={editForm.teacher2Id || 0}
+                                                        onChange={e => setEditForm({ ...editForm, teacher2Id: Number(e.target.value) })}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value={0}>Yo'q</option>
+                                                        {teachers.filter(tc => (tc.status !== 'Arxiv' || tc.id === group.teacher2Id) && tc.id !== Number(editForm.teacherId)).map(tc => (
+                                                            <option key={tc.id} value={tc.id}>{displayName(tc.name)}</option>
+                                                        ))}
+                                                    </select>
+                                                    <p className="text-[10px] text-matn-xira mt-1">
+                                                        U ham kursni ko'radi, davomat qiladi va botda kursi chiqadi.
+                                                    </p>
                                                 </div>
                                                 <div>
                                                     <label className={labelCls}>Kurs nomi</label>
@@ -843,6 +895,29 @@ export default function CourseDetails() {
                                                     </p>
                                                 </div>
                                                 )}
+                                                {narxTahrir && Number(editForm.teacher2Id) > 0 && Number(editForm.teacher2Id) !== Number(editForm.teacherId) && (
+                                                <div>
+                                                    <label className={labelCls}>Ikkinchi ustoz haqi</label>
+                                                    <select
+                                                        value={editForm.pay2Type}
+                                                        onChange={e => setEditForm({ ...editForm, pay2Type: e.target.value })}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="">Xodim kartasidagi umumiy KPI foizi</option>
+                                                        <option value="Belgilangan">Shu kurs uchun belgilangan summa</option>
+                                                        <option value="Foiz">Shu kurs uchun alohida foiz</option>
+                                                    </select>
+                                                    {editForm.pay2Type && (
+                                                        <input
+                                                            type="number"
+                                                            placeholder={editForm.pay2Type === 'Foiz' ? 'Masalan: 20' : 'Masalan: 1000000'}
+                                                            value={editForm.pay2Value}
+                                                            onChange={e => setEditForm({ ...editForm, pay2Value: e.target.value })}
+                                                            className={inputCls + ' mt-2'}
+                                                        />
+                                                    )}
+                                                </div>
+                                                )}
                                                 <div>
                                                     <label className={labelCls}>O'quv programmasi (Syllabus)</label>
                                                     <select
@@ -873,6 +948,16 @@ export default function CourseDetails() {
                                                             : "Umumiy KPI foizi"
                                                 } />
                                                 )}
+                                                {group.teacher2Id ? (
+                                                    <InfoItem icon={<Users size={13} />} label="Ikkinchi ustoz" value={
+                                                        displayName(teachers.find(tc => tc.id === group.teacher2Id)?.name || '—')
+                                                        + (ulushKorinadi
+                                                            ? ' · ' + (group.pay2Type === 'Belgilangan'
+                                                                ? (group.pay2Value || 0).toLocaleString() + ' UZS/oy'
+                                                                : group.pay2Type === 'Foiz' ? (group.pay2Value || 0) + '%' : 'umumiy KPI')
+                                                            : '')
+                                                    } />
+                                                ) : null}
                                             </>
                                         )}
                                     </div>

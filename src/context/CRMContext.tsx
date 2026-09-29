@@ -713,11 +713,20 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updateStudent = async (id: number, student: Partial<Student>) => {
         try {
-            const { activation, warning, ledgerChanged, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
+            const { activation, warning, ledgerChanged, removedFrom, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
             // O'quvchi ID si (kod) tahrir javobida kelmaydi — o'zgarmaydi, eskisi qoladi.
-            setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? { ...updated, kod: updated.kod ?? s.kod } : s) }));
-            // Sinov → Faol: shu kundan oy oxirigacha hisob yozildi — rahbar buni ko'rsin.
-            if (activation && activation.total > 0) {
+            // Passiv qilinganda server kurslardan chiqardi — kurslar ro'yxati ham shunga mos.
+            setState(prev => ({
+                ...prev,
+                students: prev.students.map(s => s.id === id ? { ...updated, kod: updated.kod ?? s.kod } : s),
+                groups: removedFrom?.length
+                    ? prev.groups.map(g => (g.studentIds || []).includes(id) && !(updated.groups || []).includes(g.id)
+                        ? { ...g, studentIds: g.studentIds.filter(x => x !== id) } : g)
+                    : prev.groups,
+            }));
+            if (removedFrom?.length) {
+                showNotification(`${updated.status} — ${removedFrom.join(', ')} kursidan chiqarildi. Qarzi saqlanadi.`, 'success');
+            } else if (activation && activation.total > 0) {
                 const parts = (activation.charges || []).map((c: any) => `${c.groupName}: ${c.lessons} dars`).join(', ');
                 showNotification(`Faol qilindi — ${parts}; jami ${Number(activation.total).toLocaleString('ru-RU')} so'm hisoblandi`, 'success');
             } else {
@@ -806,9 +815,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 ...prev,
                 groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
                 students: prev.students.map(s => s.id === studentId
-                    ? { ...s, groups: [...(s.groups || []), groupId], balance: (s.balance || 0) - (groupRes.charge || 0) }
+                    ? { ...s, groups: [...(s.groups || []), groupId], balance: (s.balance || 0) - (groupRes.charge || 0),
+                        // Passiv (Muzlatilgan …) o'quvchi kursga qaytdi — server uni Faol qildi.
+                        ...(groupRes.activated ? { status: 'Faol' as Student['status'] } : {}) }
                     : s)
             }));
+            if (groupRes.activated) showNotification(`${student.name} yana Faol qilindi`, 'info');
 
             // Qo'shilgan kundan oy oxirigacha hisob yozildi (yoki sinov — yozilmadi).
             if (groupRes.trial) {
@@ -1273,7 +1285,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const deleteExpense = async (id: number) => {
-        await apiCall(`expenses/${id}`, 'DELETE');
+        // 15 daqiqadan keyin server rad etadi (lib/xarajat.js) — sababi ko'rinsin.
+        try {
+            await apiCall(`expenses/${id}`, 'DELETE');
+        } catch (err: any) {
+            showNotification(err?.message || "Xarajat o'chirilmadi", 'error');
+            return;
+        }
         setState(prev => ({ ...prev, expenses: prev.expenses.filter(e => e.id !== id) }));
         showNotification("Xarajat o'chirildi", "info");
     };

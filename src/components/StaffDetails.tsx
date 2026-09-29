@@ -15,6 +15,8 @@ import { displayName } from '../lib/displayName';
 import PhotoCapture from './PhotoCapture';
 import BranchCheckboxes from './ui/BranchCheckboxes';
 import { useLang } from '../context/LanguageContext';
+import { ochirishQoldi } from '../../lib/xarajat.js';
+import { ustozKursimi } from '../lib/teacherState';
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN:           'Admin',
@@ -285,7 +287,7 @@ export default function StaffDetails() {
 
     // Guruh uchun ustoz haqini saqlash. Bo'sh tur tanlansa guruh xodimning
     // umumiy KPI foiziga qaytadi.
-    const saveGroupPay = async (groupId: number) => {
+    const saveGroupPay = async (groupId: number, ikkinchi = false) => {
         const raw = parseFloat(payEditVal.replace(/\s/g, ''));
         const value = Number.isFinite(raw) && raw > 0 ? raw : 0;
         if (payEditType && value <= 0) {
@@ -301,7 +303,10 @@ export default function StaffDetails() {
             const res = await fetch(`/api/groups/${groupId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ payType: payEditType || null, payValue: payEditType ? value : 0 }),
+                // Kursda ikkinchi ustoz bo'lsa — uning haqi alohida maydonda (pay2Type/pay2Value).
+                body: JSON.stringify(ikkinchi
+                    ? { pay2Type: payEditType || null, pay2Value: payEditType ? value : 0 }
+                    : { payType: payEditType || null, payValue: payEditType ? value : 0 }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) { showNotification("Saqlanmadi: " + (data.error || 'server xatosi'), 'error'); return; }
@@ -393,7 +398,7 @@ export default function StaffDetails() {
 
     // Ustoz yuritayotgan guruhlar va ular bo'yicha ko'rsatkichlar.
     // Hammasi mavjud yozuvlardan; reyting kabi bazada yo'q qiymat ko'rsatilmaydi.
-    const myGroups = linkedTeacher ? (groups || []).filter(g => g.teacherId === linkedTeacher.id) : [];
+    const myGroups = linkedTeacher ? (groups || []).filter(g => ustozKursimi(g, linkedTeacher.id)) : [];
     const myStudentCount = myGroups.reduce((n, g) => n + ((g.studentIds || []).length), 0);
     // Toq/juft kunlar — haftada 3 dars, har kuni — 6.
     const weeklyLessons = myGroups.reduce((n, g) => n + (g.days === 'TOQ' || g.days === 'JUFT' ? 3 : 6), 0);
@@ -699,7 +704,7 @@ export default function StaffDetails() {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error(`Server ${res.status}`);
+            if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || `Server ${res.status}`);
             setSalaryPayments(prev => prev.filter(p => p.id !== pid));
             showNotification("Oylik to'lov yozuvi o'chirildi", 'success');
         } catch (err: any) {
@@ -1220,11 +1225,11 @@ export default function StaffDetails() {
                                                         className="flex items-center gap-1.5 text-[11px] font-bold text-brand border border-brand/30 hover:bg-brand/10 transition-colors cursor-pointer px-3 py-1.5 rounded-xl">
                                                         <Pencil size={12} /> Tahrirlash
                                                     </button>
-                                                    <button onClick={() => deleteSalaryPayment(currentPayment.id)}
+                                                    {ochirishQoldi(currentPayment.paidAt) > 0 && (<button onClick={() => deleteSalaryPayment(currentPayment.id)}
                                                         title="O'chirish"
                                                         className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
                                                         <Trash2 size={14} />
-                                                    </button>
+                                                    </button>)}
                                                 </div>
                                             )}
                                         </div>
@@ -1321,7 +1326,10 @@ export default function StaffDetails() {
                                                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                                                                     {kpiData.groups.map((g: any) => (
                                                                         <tr key={g.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                                                                            <td className="p-3 text-[11px] font-bold text-matn">{g.name}</td>
+                                                                            <td className="p-3 text-[11px] font-bold text-matn">
+                                                                                {g.name}
+                                                                                {g.ikkinchi && <span className="ml-1.5 text-[10px] font-semibold text-matn-xira">· 2-ustoz</span>}
+                                                                            </td>
                                                                             <td className="p-3 text-[11px] font-bold text-matn-sokin">{g.studentCount}</td>
                                                                             <td className="p-3 num text-[11px] font-bold text-matn-sokin text-right">{g.lessons ?? 0}</td>
                                                                             <td className="p-3 num text-[11px] font-bold text-matn-xira text-right">{(g.charged ?? 0).toLocaleString()}</td>
@@ -1346,10 +1354,10 @@ export default function StaffDetails() {
                                                                                                 className="w-24 bg-ichki border border-chiziq rounded-lg px-2 py-1.5 text-[11px] font-bold text-matn"
                                                                                                 value={payEditVal}
                                                                                                 onChange={e => setPayEditVal(e.target.value)}
-                                                                                                onKeyDown={e => { if (e.key === 'Enter') saveGroupPay(g.id); if (e.key === 'Escape') setPayEditId(null); }}
+                                                                                                onKeyDown={e => { if (e.key === 'Enter') saveGroupPay(g.id, !!g.ikkinchi); if (e.key === 'Escape') setPayEditId(null); }}
                                                                                             />
                                                                                         )}
-                                                                                        <button disabled={savingPay} onClick={() => saveGroupPay(g.id)}
+                                                                                        <button disabled={savingPay} onClick={() => saveGroupPay(g.id, !!g.ikkinchi)}
                                                                                             className="px-2.5 py-1.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[11px] font-extrabold rounded-lg cursor-pointer">
                                                                                             {t('save')}
                                                                                         </button>
@@ -1536,7 +1544,7 @@ export default function StaffDetails() {
                                                                     <td className="p-3 text-[11px] font-bold text-brand">{p.amount.toLocaleString()}</td>
                                                                     <td className="p-3 text-[11px] font-bold text-matn-xira">{new Date(p.paidAt).toLocaleDateString('uz-UZ')}</td>
                                                                     <td className="p-3">
-                                                                        {maoshTahrir && (
+                                                                        {maoshTahrir && ochirishQoldi(p.paidAt) > 0 && (
                                                                             <button onClick={() => deleteSalaryPayment(p.id)}
                                                                                 className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer">
                                                                                 <Trash2 size={13} />

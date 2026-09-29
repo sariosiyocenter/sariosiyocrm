@@ -186,7 +186,12 @@ model Expense {
   // Pul qayerdan chiqqani: Naqd (kassadan) yoki Karta / O'tkazma (bankdan).
   // Kassadagi naqd qoldiq faqat "Naqd" chiqimlarni hisobga oladi.
   method      String   @default("Naqd")
-  
+
+  // Yozuv bazaga qachon tushgani (`date` emas — uni qo'lda tanlash mumkin).
+  // Xarajatni faqat kiritilganidan keyin 15 daqiqa ichida o'chirish mumkin
+  // (egasi, 2026-09-29: "xarajatlarni o'chirish imkoniyati bo'lmasligi kerak, 15 minut").
+  createdAt   DateTime @default(now())
+
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
 
@@ -220,7 +225,9 @@ model Teacher {
 
   schoolId        Int
   school          School    @relation(fields: [schoolId], references: [id])
-  groups          Group[]
+  groups          Group[]   @relation("GroupToTeacher")
+  // Ikkinchi ustoz bo'lib dars beradigan kurslari (Group.teacher2Id).
+  groups2         Group[]   @relation("GroupTeacher2")
   teacherAttendances TeacherAttendance[]
 
   @@index([schoolId])
@@ -243,7 +250,14 @@ model Group {
   id         Int       @id @default(autoincrement())
   name       String
   teacherId  Int
-  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  teacher    Teacher   @relation("GroupToTeacher", fields: [teacherId], references: [id])
+  // Ikkinchi ustoz — ixtiyoriy (egasi, 2026-09-29: "bitta kursga ikkita
+  // o'qituvchi"). U ham kursni ko'radi, davomat qiladi, botda kursi chiqadi;
+  // haqi pay2Type/pay2Value bilan alohida belgilanadi (payType bilan bir xil ma'noda).
+  teacher2Id Int?
+  teacher2   Teacher?  @relation("GroupTeacher2", fields: [teacher2Id], references: [id], onDelete: SetNull)
+  pay2Type   String?
+  pay2Value  Float     @default(0)
   courseId   Int
   course     Course    @relation(fields: [courseId], references: [id])
   schedule   String
@@ -271,6 +285,7 @@ model Group {
   examAssignments ExamAssignment[]
 
   @@index([schoolId])
+  @@index([teacher2Id])
 }
 
 model Lead {

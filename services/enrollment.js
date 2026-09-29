@@ -1,4 +1,6 @@
 import prisma from '../lib/prisma.js';
+import { ustozNomlari } from '../lib/ustozlar.js';
+import { kursdaOqiydi } from '../lib/oquvchiHolati.js';
 import { hasSchedule, countLessons, lessonPrice, monthBounds, dayBefore } from '../lib/lessons.js';
 
 // O'quvchini guruhlar orasida ko'chirish va o'quv markazidan chiqishda pulni
@@ -138,7 +140,7 @@ async function loadGroup(groupId, schoolId) {
   if (!groupId) return null;
   return prisma.group.findFirst({
     where: { id: Number(groupId), schoolId },
-    include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } } }
+    include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } }, teacher2: { select: { id: true, name: true } } }
   });
 }
 
@@ -179,8 +181,8 @@ export async function transferStudent({ studentId, fromGroupId, toGroupId, date,
     month, date: day,
     moneyFree: true,
     student: { id: student.id, name: student.name, balanceBefore: student.balance },
-    from: from ? { id: from.id, name: from.name, teacher: from.teacher?.name || null, price: monthlyPriceFor(student, from) } : null,
-    to: { id: to.id, name: to.name, teacher: to.teacher?.name || null, price: monthlyPriceFor(student, to) },
+    from: from ? { id: from.id, name: from.name, teacher: ustozNomlari(from) || null, price: monthlyPriceFor(student, from) } : null,
+    to: { id: to.id, name: to.name, teacher: ustozNomlari(to) || null, price: monthlyPriceFor(student, to) },
     lines: [],
     balanceDelta: 0,
     balanceAfter: student.balance,
@@ -225,7 +227,7 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
     where: { id: Number(studentId), schoolId },
     include: {
       groups: {
-        include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } } }
+        include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } }, teacher2: { select: { id: true, name: true } } }
       }
     }
   });
@@ -261,7 +263,7 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
     const used = periodDue(student, group, month, since, dayBefore(date));
     const adjust = trial ? 0 : charged - used.due;
     lines.push({
-      groupId: group.id, groupName: group.name, teacher: group.teacher?.name || null,
+      groupId: group.id, groupName: group.name, teacher: ustozNomlari(group) || null,
       ...used, alreadyCharged: charged, adjust,
     });
     if (adjust !== 0) {
@@ -402,6 +404,15 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
   const already = student.groups.some(g => g.id === group.id);
   const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, charge: 0, lessons: 0, warning: null, applied: false };
 
+  // Passiv (Muzlatilgan, Arxiv …) o'quvchi kursga qaytarilsa — u yana
+  // o'qiydi, demak Faol bo'ladi. Aks holda kurs ro'yxatida Passiv o'quvchi
+  // turib qolardi, oylik hisobi esa unga yozilmasdi (billing faqat Faol).
+  const faollashadi = !already && !kursdaOqiydi(student.status);
+  if (faollashadi) {
+    student.status = 'Faol';
+    result.activated = true;
+  }
+
   let write = null;
   if (!already) {
     if (student.status === 'Sinov') {
@@ -433,6 +444,7 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
       data: {
         ...(already ? {} : { groups: { connect: { id: group.id } }, courseStart: starts }),
         ...(write ? { balance: { decrement: -write.amount } } : {}),
+        ...(faollashadi ? { status: 'Faol', statusChangedAt: new Date() } : {}),
       },
     }));
   }
@@ -440,6 +452,27 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
   if (ops.length) await prisma.$transaction(ops);
   result.applied = true;
   return result;
+}
+
+/**
+ * O'quvchini barcha kurslaridan chiqarish — u endi o'qimaydi (Passiv,
+ * Muzlatilgan, Arxiv, Bitiruvchi, Sertifikatli). Egasi (2026-09-29):
+ * "passiv qilingan o'quvchi kurs ro'yxatida qolib ketayapdi".
+ *
+ * Pulga tegilmaydi (unenrollStudent kabi — qaytarish yo'q): shu oyning
+ * hisobi va qarzi joyida qoladi. Qaysi kurslardan chiqqani amallar
+ * jurnalida ("Kurslar" maydoni) saqlanadi.
+ *
+ * @returns {Promise<string[]>} chiqarilgan kurslar nomi
+ */
+export async function kurslardanChiqarish(studentId) {
+  const student = await prisma.student.findUnique({
+    where: { id: Number(studentId) },
+    select: { id: true, groups: { select: { id: true, name: true } } },
+  });
+  if (!student || !student.groups.length) return [];
+  await prisma.student.update({ where: { id: student.id }, data: { groups: { set: [] } } });
+  return student.groups.map(g => g.name);
 }
 
 /**
@@ -693,7 +726,7 @@ export async function activateStudent({ studentId, date, schoolId }) {
   const student = await prisma.student.findFirst({
     where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
     include: {
-      groups: { include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } } } },
+      groups: { include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } }, teacher2: { select: { id: true, name: true } } } },
     },
   });
   if (!student) return { error: "O'quvchi topilmadi" };

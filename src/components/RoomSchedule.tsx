@@ -4,6 +4,7 @@ import { Clock, MapPin, Calendar, X, Users, Edit2, Save, Sun, Sunset, Filter, La
 import { Group } from '../types';
 import { toDateStr, toTimeStr } from '../../lib/lessons.js';
 import { daqiqaga } from '../../lib/jadval.js';
+import { kursUstozlari } from '../lib/teacherState';
 
 const WEEK_DAYS = [
     { id: 'ALL', label: 'Barchasi', short: 'Barch' },
@@ -481,7 +482,7 @@ export default function RoomSchedule() {
                                                         )}
                                                     </div>
                                                     <p className="text-[11px] font-bold text-matn-sokin mt-0.5">
-                                                        {(course?.name && course.name !== 'birinchi') ? `${course.name} • ` : ''}{teacher?.name || '—'}
+                                                        {(course?.name && course.name !== 'birinchi') ? `${course.name} • ` : ''}{kursUstozlari(g, teachers) || '—'}
                                                     </p>
                                                     <div className="flex items-center gap-3 mt-1">
                                                         <span className="flex items-center gap-1 text-[11px] font-bold text-matn-sokin">

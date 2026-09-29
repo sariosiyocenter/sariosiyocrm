@@ -14,6 +14,8 @@ import StudentLocationMap from './StudentLocationMap';
 import PhotoCapture from './PhotoCapture';
 import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import { toDateStr } from '../../lib/lessons.js';
+import { kursdaOqiydi } from '../../lib/oquvchiHolati.js';
+import { kursUstozlari } from '../lib/teacherState';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer, { photoActionCls } from './PhotoViewer';
@@ -328,9 +330,8 @@ export default function StudentDetails() {
     }
 
     const studentGroups = groups.filter(g => (student.groups || []).includes(g.id)).map(g => {
-        const teacher = teachers.find(t => t.id === g.teacherId);
         const course = courses.find(c => c.id === g.courseId);
-        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: (course?.name && course.name !== 'birinchi') ? course.name : '', coursePrice: course?.price || 0 };
+        return { ...g, teacherName: kursUstozlari(g, teachers) || t('unknown_teacher'), courseName: (course?.name && course.name !== 'birinchi') ? course.name : '', coursePrice: course?.price || 0 };
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
@@ -441,6 +442,16 @@ export default function StudentDetails() {
     };
 
     const handleSaveEdit = async () => {
+        // O'qimaydigan holat (Passiv, Muzlatilgan, Arxiv …) — o'quvchi barcha
+        // kurslaridan chiqariladi (lib/oquvchiHolati.js). Oldindan aytiladi.
+        if (editForm.status !== student.status && !kursdaOqiydi(editForm.status) && studentGroups.length > 0) {
+            const ok = await confirm({
+                title: `${editForm.status} qilinsinmi?`,
+                message: `O'quvchi ${studentGroups.map(g => g.name).join(', ')} kursidan chiqariladi va kurs ro'yxatida ko'rinmaydi. Qarzi o'chmaydi. Qaytib kelsa — kursga qayta qo'shasiz, u yana Faol bo'ladi.`,
+                confirmLabel: `Ha, ${editForm.status} qilish`,
+            });
+            if (!ok) return;
+        }
         try {
             setIsSaving(true);
 
@@ -733,6 +744,18 @@ export default function StudentDetails() {
                         const bal = student.balance || 0;
                         const sinov = student.status === 'Sinov';
                         const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
+                        // Hozirgi kurslardan tashqaridagi qarz: eski (kursga bog'lanmagan)
+                        // qoldiq va o'quvchi chiqqan kurslar (masalan Passiv qilinganda) qarzi.
+                        const boshqaQarzlar = (() => {
+                            const m = new Map<string, number>();
+                            for (const b of ledger?.buckets || []) {
+                                if ((b.remaining || 0) <= 0) continue;
+                                if (b.groupId && kurslarHolati.some(c => c.groupId === b.groupId)) continue;
+                                const nom = b.groupId ? `${b.groupName} (chiqqan)` : 'Eski qoldiq';
+                                m.set(nom, (m.get(nom) || 0) + b.remaining);
+                            }
+                            return [...m.entries()];
+                        })();
                         const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
                             || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
                             || kurslarHolati[0];
@@ -761,6 +784,31 @@ export default function StudentDetails() {
                                         oyiga<br /><span className="raqam text-[13px] text-matn-2">{oylikJami.toLocaleString('ru-RU')}</span>
                                     </p>
                                 </div>
+                                )}
+                                {/* Kurslar bo'yicha qarz (egasi, 2026-09-29: "qarzdorligi kurs
+                                    bo'yicha ko'rinsin"). Hisob serverdagi bilan bir xil —
+                                    /api/students/:id/ledger. Eski (kursga bog'lanmagan) qoldiq alohida. */}
+                                {balansKorinadi && !sinov && ledger && (kurslarHolati.length > 0 || boshqaQarzlar.length > 0) && (
+                                    <div className="rounded-xl bg-ichki/60 border border-chiziq-mayin divide-y divide-chiziq-mayin">
+                                        {kurslarHolati.map(c => (
+                                            <div key={c.groupId} className="flex items-center justify-between gap-3 px-3 py-2">
+                                                <span className="text-[12px] text-matn-2 truncate">{c.groupName}</span>
+                                                {c.debt > 0 ? (
+                                                    <span className="raqam text-[13px] font-semibold text-xato shrink-0">−{Math.round(c.debt).toLocaleString('ru-RU')}</span>
+                                                ) : c.advance > 0 ? (
+                                                    <span className="raqam text-[12px] text-yaxshi shrink-0">+{Math.round(c.advance).toLocaleString('ru-RU')}</span>
+                                                ) : (
+                                                    <span className="text-[12px] text-yaxshi shrink-0">qarz yo'q</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {boshqaQarzlar.map(([nom, summa]) => (
+                                            <div key={nom} className="flex items-center justify-between gap-3 px-3 py-2">
+                                                <span className="text-[12px] text-matn-sokin truncate">{nom}</span>
+                                                <span className="raqam text-[13px] font-semibold text-xato shrink-0">−{Math.round(summa).toLocaleString('ru-RU')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                                 {balansKorinadi && (
                                 <p className="text-[12px] text-matn-sokin">

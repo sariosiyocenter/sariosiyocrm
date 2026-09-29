@@ -5,6 +5,7 @@ import { QoidaKartasi } from './QoidaKartasi';
 import { displayName } from '../lib/displayName';
 import { fillTemplate } from '../../lib/xabarMatni.js';
 import { DAVOMAT_HOLATLARI, holatKaliti, eskizTasdiqlangan } from '../../lib/davomatXabari.js';
+import { kursUstozlari } from '../lib/teacherState';
 
 /**
  * Davomat xabari (egasi, 2026-09-26): kurs yo'qlamasidan keyin ota-onaga har
@@ -286,7 +287,7 @@ const vaqt = (iso: string) => {
 };
 
 export function DavomatXabarModal({ group, date, students, statusOf, onClose }: {
-    group: { id: number; name: string; schoolId: number; courseId?: number; teacherId?: number };
+    group: { id: number; name: string; schoolId: number; courseId?: number; teacherId?: number; teacher2Id?: number | null };
     date: string;
     /** Kurs o'quvchilari — ko'rsatish tartibida (kurs sahifasidagi bilan bir xil). */
     students: Oquvchi[];
@@ -341,7 +342,7 @@ export function DavomatXabarModal({ group, date, students, statusOf, onClose }: 
     const kursMalumoti = [{
         id: group.id, name: group.name,
         courseName: (courses || []).find((c: any) => c.id === group.courseId)?.name || '',
-        teacherName: (teachers || []).find((t: any) => t.id === group.teacherId)?.name || '',
+        teacherName: kursUstozlari(group, teachers || []),
     }];
     const markaz = { name: settings?.orgName || '', orgName: settings?.orgName || '' };
 

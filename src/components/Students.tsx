@@ -15,13 +15,16 @@ import * as XLSX from 'xlsx';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
 import BirinchiOyInput from './BirinchiOyInput';
+import { kursUstozlari, kursUstozIdlari } from '../lib/teacherState';
+import { kursdaOqiydi } from '../../lib/oquvchiHolati.js';
+import { useKursQarzlari, somQisqa } from '../lib/kursQarzi';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 
 export default function Students() {
-    const { students, groups, teachers, transports, routes, attendances, directions, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira } = useCRM();
+    const { students, groups, teachers, transports, routes, attendances, directions, payments, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira } = useCRM();
     // Lavozim ruxsati (Sozlamalar → Ruxsatlar): qo'shish/import/havola, o'chirish, balans.
     const oquvchiTahrir = ozgartira('oquvchilar.royxat');
     const oquvchiOchirish = ozgartira('oquvchilar.ochirish');
@@ -233,6 +236,16 @@ export default function Students() {
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
      *  aks holda bitta chip bosilgach qolganlari nolga tushib qolardi. */
     const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    // Har o'quvchining kurslar bo'yicha qarzi — kurs chipida ko'rinadi
+    // (egasi, 2026-09-29: "qarzdorligi kurs bo'yicha ko'rinsin").
+    const kursQarzlari = useKursQarzlari(balansKorinadi ? students : [], payments);
+    /** Kurs filtri tanlangan bo'lsa — shu kursdagi qarz, aks holda umumiy balans bo'yicha. */
+    const qarzdormi = (s: { id: number; balance?: number }) => {
+        const gid = Number(filters.groupId);
+        if (Number.isInteger(gid) && gid > 0) return (kursQarzlari.get(s.id)?.get(gid) || 0) > 0;
+        return (s.balance || 0) < 0;
+    };
+
     const lastSeen = (id: number) => {
         const ds = (attendances || []).filter(a => a.studentId === id && a.status === 'Keldi').map(a => a.date).sort();
         return ds[ds.length - 1] || null;
@@ -243,9 +256,9 @@ export default function Students() {
         qarzdor: students.filter(s => (s.balance || 0) < 0).length,
         kelmayotgan: students.filter(s => s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo).length,
         arxiv: students.filter(s => s.status === 'Arxiv').length,
-        // Arxivdagilar hisobga olinmaydi: ular kursdan chiqarilgan, "kurssiz"
-        // ro'yxatida ular faqat shovqin bo'lardi.
-        kurssiz: students.filter(s => s.status !== 'Arxiv' && !(s.groups || []).length).length,
+        // Faqat o'qiydiganlar (Faol, Sinov): Passiv, Arxiv va boshqalar kursdan
+        // chiqarilgan (lib/oquvchiHolati.js), "kurssiz" ro'yxatida ular shovqin bo'lardi.
+        kurssiz: students.filter(s => kursdaOqiydi(s.status) && !(s.groups || []).length).length,
     };
 
     // Yuqori paneldagi "N qarzdor" tugmasi bu yerga ?filter=debt bilan olib keladi.
@@ -581,12 +594,9 @@ export default function Students() {
     }, [attendances]);
 
     const getStudentGroups = (studentGroupIds: number[]) => {
-        return groups.filter(g => (studentGroupIds || []).includes(g.id)).map(g => {
-            const teacher = teachers.find(t => t.id === g.teacherId);
-            return {
-                ...g, teacherName: teacher?.name || "Noma'lum"
-            };
-        });
+        return groups.filter(g => (studentGroupIds || []).includes(g.id)).map(g => ({
+            ...g, teacherName: kursUstozlari(g, teachers) || "Noma'lum"
+        }));
     }
 
     // Memoised: with 266 students and eleven filters, re-running this on every render
@@ -600,19 +610,16 @@ export default function Students() {
     // ismiga QARAMAYDI (egasi, 2026-09-26: "o'quvchilarda qidirganda ustoz
     // chiqmaydi"): "hasan" yozilganda Hasan ismli o'quvchi o'rniga ustozi
     // Suvonqulov Hasan bo'lgan 216 ta o'quvchi chiqqan edi.
+    // Kursda ikki ustoz bo'lishi mumkin (egasi, 2026-09-29) — ikkalasi ham.
     const groupTeacher = useMemo(() => {
-        const tName = new Map<number, string>();
-        (teachers || []).forEach(tc => tName.set(tc.id, (tc.name || '').toLowerCase()));
-        const out = new Map<number, { id: number; name: string }>();
-        (groups || []).forEach(g => {
-            if (g.teacherId) out.set(g.id, { id: g.teacherId, name: tName.get(g.teacherId) || '' });
-        });
+        const out = new Map<number, number[]>();
+        (groups || []).forEach(g => out.set(g.id, kursUstozIdlari(g)));
         return out;
-    }, [groups, teachers]);
+    }, [groups]);
 
     // Filtrdagi ustozlar: kamida bitta kursi borlari, alifbo tartibida.
     const teacherOptions = useMemo(() => {
-        const withGroups = new Set(Array.from(groupTeacher.values()).map(v => v.id));
+        const withGroups = new Set(Array.from(groupTeacher.values()).flat());
         return (teachers || [])
             .filter(tc => withGroups.has(tc.id))
             .sort((a, b) => displayName(a.name).localeCompare(displayName(b.name), 'uz'));
@@ -631,7 +638,7 @@ export default function Students() {
                // 5 xonali o'quvchi ID si (kamida 3 raqam yozilganda boshidan).
                (!!s.kod && /^\d{3,5}$/.test(lowerSearch) && String(s.kod).startsWith(lowerSearch));
         const matchesTeacher = !filters.teacherId
-            || (s.groups || []).some(gid => groupTeacher.get(gid)?.id === Number(filters.teacherId));
+            || (s.groups || []).some(gid => (groupTeacher.get(gid) || []).includes(Number(filters.teacherId)));
 
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (filters.groupId === '__none__'
@@ -658,14 +665,14 @@ export default function Students() {
         let matchesBalance = true;
         // Tez filtr chiplari asosiy filtrlardan mustaqil ishlaydi.
         let matchesQuick = true;
-        if (quickFilter === 'qarzdor') matchesQuick = (s.balance || 0) < 0;
+        if (quickFilter === 'qarzdor') matchesQuick = qarzdormi(s);
         else if (quickFilter === 'faol') matchesQuick = s.status === 'Faol';
         else if (quickFilter === 'arxiv') matchesQuick = s.status === 'Arxiv';
         else if (quickFilter === 'kelmayotgan') matchesQuick = s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo;
-        else if (quickFilter === 'kurssiz') matchesQuick = s.status !== 'Arxiv' && !(s.groups || []).length;
+        else if (quickFilter === 'kurssiz') matchesQuick = kursdaOqiydi(s.status) && !(s.groups || []).length;
         if (!matchesQuick) return false;
 
-        if (filters.balanceStatus === 'debt') matchesBalance = (s.balance || 0) < 0;
+        if (filters.balanceStatus === 'debt') matchesBalance = qarzdormi(s);
         else if (filters.balanceStatus === 'positive') matchesBalance = (s.balance || 0) >= 0;
 
         let matchesDate = true;
@@ -697,7 +704,7 @@ export default function Students() {
         }
 
         return matchesSearch && matchesTeacher && matchesStatus && matchesGroup && matchesGender && matchesPrivilege && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
-    }), [students, qidiruv, filters, quickFilter, attendances, groupTeacher]);
+    }), [students, qidiruv, filters, quickFilter, attendances, groupTeacher, kursQarzlari]);
 
     // Saralash filtrdan keyin: Excel eksporti ham ekrandagi tartibda chiqadi.
     const absences = useMemo(() => absenceCounts(attendances), [attendances]);
@@ -1053,6 +1060,20 @@ export default function Students() {
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-matn truncate">{student.name}</p>
                                     <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
+                                    {/* Kurslar va har biridagi qarz — telefonda ham. */}
+                                    {(student.groups || []).length > 0 && (
+                                        <p className="text-[11px] text-matn-sokin mt-0.5 truncate">
+                                            {getStudentGroups(student.groups || []).map((g, i) => {
+                                                const qarz = balansKorinadi ? (kursQarzlari.get(student.id)?.get(g.id) || 0) : 0;
+                                                return (
+                                                    <React.Fragment key={g.id}>
+                                                        {i > 0 && ' · '}
+                                                        {g.name}{qarz > 0 && <span className="num text-xato"> −{somQisqa(qarz)}</span>}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </p>
+                                    )}
                                 </div>
                                 {balansKorinadi && (
                                 <div className="text-right shrink-0">
@@ -1144,11 +1165,17 @@ export default function Students() {
                                         {/* Guruh nomi butun ustunni ko'k havolaga aylantirmasin —
                                             12 ta ko'k qator ko'zni charchatadi. */}
                                         <div className="flex flex-wrap gap-1">
-                                            {getStudentGroups(student.groups || []).map(g => (
-                                                <span key={g.id} className="px-2 py-0.5 border border-chiziq text-matn-2 rounded-md text-[11px] whitespace-nowrap">
-                                                    {g.name}
-                                                </span>
-                                            ))}
+                                            {getStudentGroups(student.groups || []).map(g => {
+                                                // Shu kurs bo'yicha qarz (kurs chipining o'zida).
+                                                const qarz = balansKorinadi ? (kursQarzlari.get(student.id)?.get(g.id) || 0) : 0;
+                                                return (
+                                                    <span key={g.id} title={qarz > 0 ? `${g.name}: ${somQisqa(qarz)} so'm qarz` : g.name}
+                                                        className="px-2 py-0.5 border border-chiziq text-matn-2 rounded-md text-[11px] whitespace-nowrap">
+                                                        {g.name}
+                                                        {qarz > 0 && <span className="num text-xato ml-1.5">−{somQisqa(qarz)}</span>}
+                                                    </span>
+                                                );
+                                            })}
                                             {(student.groups || []).length === 0 && <span className="text-[11px] text-matn-xira">{t('no_group')}</span>}
                                         </div>
                                     </td>

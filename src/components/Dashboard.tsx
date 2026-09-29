@@ -27,6 +27,7 @@ import LeadsReport from './reports/LeadsReport';
 import StudentsGeneralReport from './reports/StudentsGeneralReport';
 import GraduatesReport from './reports/GraduatesReport';
 import CenterStatsReport from './reports/CenterStatsReport';
+import { kursUstozlari } from '../lib/teacherState';
 
 export default function Dashboard() {
     const { students, groups, teachers, leads, payments, courses, rooms, attendances, user, kora, ozgartira } = useCRM();
@@ -295,7 +296,7 @@ export default function Dashboard() {
             id: g.id,
             name: g.name,
             time: sched && !sched.includes('Belgilanmagan') ? sched : null,
-            teacher: teacher ? displayName(teacher.name) : null,
+            teacher: teacher ? kursUstozlari(g, teachers, displayName) : null,
             room: room ? room.name : null,
             marked: (attendances || []).some(a => a.groupId === g.id && (a.date || '').slice(0, 10) === todayISO),
             holat,

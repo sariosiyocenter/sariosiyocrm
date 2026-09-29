@@ -5,6 +5,7 @@ import { useCRM } from '../context/CRMContext';
 import type { Attendance, Group, Student } from '../types';
 import { lessonDatesBetween, isLessonDay } from '../../lib/lessons.js';
 import { allocate, groupRows, withOpening, shareOpts } from '../../lib/allocation.js';
+import { kursUstozIdlari, kursUstozlari } from '../lib/teacherState';
 
 /**
  * Kunlik ro'yxat — o'qituvchilar har kuni chop etadigan varaq.
@@ -157,7 +158,7 @@ export default function DailySheet() {
     );
     const vaqtKaliti = (g: Group) => (String(g.schedule || '').match(/\d{1,2}:\d{2}/)?.[0] || '99:99').padStart(5, '0');
     const kurslar = useMemo(() => {
-        const list = (groups || []).filter(g => !ustozRoli || !meningUstozIdlarim.length || meningUstozIdlarim.includes(g.teacherId));
+        const list = (groups || []).filter(g => !ustozRoli || !meningUstozIdlarim.length || kursUstozIdlari(g).some(tid => meningUstozIdlarim.includes(tid)));
         return [...list].sort((a, b) => vaqtKaliti(a).localeCompare(vaqtKaliti(b)) || a.name.localeCompare(b.name));
     }, [groups, ustozRoli, meningUstozIdlarim]);
 
@@ -310,7 +311,7 @@ export default function DailySheet() {
         setQolda(true);
         setTanlov(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
-    const ustoz = (g: Group) => (teachers || []).find(t => t.id === g.teacherId)?.name || '—';
+    const ustoz = (g: Group) => kursUstozlari(g, teachers || []) || '—';
     const xona = (g: Group) => (rooms || []).find(r => r.id === g.room)?.name;
 
     return (

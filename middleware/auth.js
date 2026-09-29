@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { JWT_SECRET } from '../lib/config.js';
 import { rolRuxsati, yetadimi, bolimNomi, toliqRuxsatli } from '../lib/ruxsatlar.js';
 import { soroqTalablari } from '../lib/ruxsatApi.js';
+import { xodimKurslari } from '../lib/ustozlar.js';
 
 // SUPERADMIN oversees every organization; SELLER works the SaaS funnel, not school data.
 const CROSS_SCHOOL_ROLES = ['SUPERADMIN', 'SELLER'];
@@ -181,14 +182,15 @@ export async function ruxsatXatosi(req) {
 }
 
 // "Faqat o'z kurslari": ustoz o'zi dars beradigan kurslar va shu kurslardagi
-// o'quvchilar bilan cheklanadi. Ro'yxat — Teacher.userId orqali.
+// o'quvchilar bilan cheklanadi. Ro'yxat — Teacher.userId orqali. Ikkinchi
+// ustoz bo'lgan kurslari ham shu yerga kiradi.
 const ozKursKeshi = new Map();
 
 export async function ozKurslari(user) {
   const hit = ozKursKeshi.get(user.id);
   if (hit && Date.now() - hit.at < USER_TTL_MS) return hit.val;
   const guruhlar = await prisma.group.findMany({
-    where: { teacher: { userId: user.id } },
+    where: xodimKurslari(user.id),
     select: { id: true, students: { select: { id: true } } },
   });
   const val = {

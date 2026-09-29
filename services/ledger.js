@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { allocate, groupRows, groupStanding, withOpening, shareOpts, LEGACY_KEY } from '../lib/allocation.js';
 import { paidUntil } from '../lib/access.js';
+import { USTOZ_NOMLARI, ustozNomlari } from '../lib/ustozlar.js';
 
 export { withOpening };
 
@@ -79,7 +80,7 @@ export async function studentLedger(studentId) {
         select: {
           id: true, name: true, days: true, courseId: true,
           course: { select: { name: true, price: true } },
-          teacher: { select: { name: true } },
+          ...USTOZ_NOMLARI,
         },
       })
     : [];
@@ -106,7 +107,7 @@ export async function studentLedger(studentId) {
       groupName: g.name,
       courseId: g.courseId,
       courseName: g.course?.name || '',
-      teacher: g.teacher?.name || null,
+      teacher: ustozNomlari(g) || null,
       monthlyPrice: price,
       isMember: member,
       ...standing,
@@ -136,7 +137,7 @@ export async function studentLedger(studentId) {
       ...b,
       groupName: b.groupId ? (gmap.get(b.groupId)?.name || '#' + b.groupId) : (b.key === LEGACY_KEY ? "Eski qoldiq (01.09.2026 gacha)" : 'Qaytarish'),
       courseName: b.groupId ? (gmap.get(b.groupId)?.course?.name || '') : '',
-      teacher: b.groupId ? (gmap.get(b.groupId)?.teacher?.name || null) : null,
+      teacher: b.groupId ? (ustozNomlari(gmap.get(b.groupId)) || null) : null,
       status: b.remaining <= 0 ? 'paid' : b.covered > 0 ? 'partial' : 'unpaid',
     })),
     rows: rows.filter(r => r.id != null).map(r => ({ ...r, usedFor: usedBy.get(r.id) || [] })),

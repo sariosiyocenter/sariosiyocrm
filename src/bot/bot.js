@@ -20,6 +20,8 @@ import {
     MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, payIdFor as paymePayIdFor,
 } from '../../services/payme.js';
 import { registerKlikTasdiq } from './klikTasdiq.js';
+import { ustozNomlari, ustozKurslari } from '../../lib/ustozlar.js';
+import { OQIYDIGAN_HOLATLAR } from '../../lib/oquvchiHolati.js';
 import { registerQarzJavob } from './qarzJavob.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
@@ -620,7 +622,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
 
         const bolalar = await prisma.student.findMany({
             where: { id: { in: user.farzandlar.map(f => f.id) } },
-            include: { groups: { include: { teacher: true, course: true, roomRel: true } } }
+            include: { groups: { include: { teacher: true, teacher2: true, course: true, roomRel: true } } }
         });
         const tartib = user.farzandlar.map(f => bolalar.find(b => b.id === f.id)).filter(Boolean);
         if (tartib.every(s => s.groups.length === 0)) {
@@ -634,7 +636,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             s.groups.forEach(g => {
                 msg += `🔹 ${escHtml(g.name)}${g.course?.name && g.course.name !== g.name ? ` (${escHtml(g.course.name)})` : ''}\n`;
                 msg += `🕒 ${escHtml(g.schedule || '')} | ${escHtml(g.days || '')}\n`;
-                if (g.teacher?.name) msg += `👨‍🏫 Ustoz: ${escHtml(g.teacher.name)}\n`;
+                if (ustozNomlari(g)) msg += `👨‍🏫 Ustoz: ${escHtml(ustozNomlari(g))}\n`;
                 msg += `🚪 Xona: ${escHtml(g.roomRel?.name || "Noma'lum")}\n\n`;
             });
         }
@@ -1033,10 +1035,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'teacher') return null;
         const group = await prisma.group.findFirst({
-            where: { id: groupId, teacherId: user.data.id },
+            where: { id: groupId, ...ustozKurslari(user.data.id) },
             include: {
                 students: {
-                    where: { status: { not: 'Arxiv' } },
+                    where: { status: { in: OQIYDIGAN_HOLATLAR } },
                     select: { id: true, name: true, telegramId: true, fatherTelegramId: true, motherTelegramId: true },
                 },
             },
@@ -1125,8 +1127,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         if (!user || user.type !== 'teacher') return;
 
         const groups = await prisma.group.findMany({
-            where: { teacherId: user.data.id },
-            select: { id: true, name: true, _count: { select: { students: { where: { status: { not: 'Arxiv' } } } } } },
+            where: ustozKurslari(user.data.id),
+            select: { id: true, name: true, _count: { select: { students: { where: { status: { in: OQIYDIGAN_HOLATLAR } } } } } },
             orderBy: { name: 'asc' },
         });
 
@@ -1142,7 +1144,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         if (!user || user.type !== 'teacher') return;
 
         const groups = await prisma.group.findMany({
-            where: { teacherId: user.data.id, schoolId },
+            where: { ...ustozKurslari(user.data.id), schoolId },
             include: { course: true, roomRel: true }
         });
 
@@ -1215,8 +1217,12 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         lines.push('\u{1F4B5} Asosiy oylik: ' + (staff?.salary || 0).toLocaleString() + ' UZS');
 
         const guruhlar = await prisma.group.findMany({
-            where: { teacherId: teacher.id },
-            select: { name: true, payType: true, payValue: true }
+            where: ustozKurslari(teacher.id),
+            select: { name: true, teacherId: true, payType: true, payValue: true, pay2Type: true, pay2Value: true }
+        });
+        // Ikkinchi ustoz bo'lgan kursda haq pay2Type/pay2Value dan olinadi.
+        guruhlar.forEach(g => {
+            if (g.teacherId !== teacher.id) { g.payType = g.pay2Type; g.payValue = g.pay2Value; }
         });
         const umumiyFoiz = staff?.kpiPercent || 0;
 

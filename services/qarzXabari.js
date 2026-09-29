@@ -18,6 +18,7 @@
 import prisma from '../lib/prisma.js';
 import { fillTemplate, oxirgiTolov } from '../lib/xabarMatni.js';
 import { markazNomi } from '../lib/markazBrendi.js';
+import { USTOZ_NOMLARI, ustozNomlari } from '../lib/ustozlar.js';
 import { allocate } from '../lib/allocation.js';
 import { loadRowsByStudent, rulesForStudents } from './ledger.js';
 import { loadSettings as paymeSozlamasi, isConfigured as paymeUlangan } from './payme.js';
@@ -268,9 +269,9 @@ async function shablonKurslari(body, studentId) {
   if (!/\{(kurs|guruh|fan|ustoz)\}/i.test(String(body || ''))) return [];
   const g = await prisma.group.findMany({
     where: { students: { some: { id: studentId } } },
-    select: { id: true, name: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
+    select: { id: true, name: true, course: { select: { name: true } }, ...USTOZ_NOMLARI },
   });
-  return g.map(x => ({ id: x.id, name: x.name, courseName: x.course?.name || '', teacherName: x.teacher?.name || '' }));
+  return g.map(x => ({ id: x.id, name: x.name, courseName: x.course?.name || '', teacherName: ustozNomlari(x) }));
 }
 
 const TG_YAKUNIY = /bloklagan|blocked|chat not found|deactivated|kicked/i;

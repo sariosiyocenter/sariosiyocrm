@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
 import BranchCheckboxes from './ui/BranchCheckboxes';
+import { ustozKursimi } from '../lib/teacherState';
 
 
 const ROLE_LABELS: Record<string, string> = {
@@ -373,7 +374,7 @@ export default function HRManagement() {
     // ---- Ko'rsatkichlar. Hammasi mavjud yozuvlardan; hisoblab bo'lmasa
     // kartochka son o'rniga nima yetishmayotganini aytadi.
     const staffGroups = (u: any) =>
-        (groups || []).filter(g => g.teacherId === (u._source === 'teacher' ? u._tid : u.teacherId));
+        (groups || []).filter(g => ustozKursimi(g, u._source === 'teacher' ? u._tid : u.teacherId));
     // Haftalik dars soni: toq/juft kunlar haftada 3 marta, har kuni — 6.
     // To'liq stavka 24 dars deb olingan.
     const TOLIQ_STAVKA = 24;
@@ -520,7 +521,7 @@ export default function HRManagement() {
                                             const isLegacy = u._source === 'teacher';
                                             const ozHisobi = !isLegacy && u.id === currentUser?.id;
                                             const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
-                                            const myGroups = (groups || []).filter(g => g.teacherId === (isLegacy ? u._tid : u.teacherId));
+                                            const myGroups = (groups || []).filter(g => ustozKursimi(g, isLegacy ? u._tid : u.teacherId));
                                             const groupCount = myGroups.length;
                                             // Haftalik dars soni: toq/juft kunlar haftada 3 marta,
                                             // har kuni — 6 marta. Boshqa maydon bazada yo'q.

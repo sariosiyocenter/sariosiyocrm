@@ -123,6 +123,10 @@ export interface Group {
     // 'Belgilangan' — payValue summa, 'Foiz' — payValue foiz.
     payType?: 'Belgilangan' | 'Foiz' | null;
     payValue?: number;
+    // Ikkinchi ustoz (ixtiyoriy) va uning shu kurs uchun haqi — payType bilan bir xil ma'noda.
+    teacher2Id?: number | null;
+    pay2Type?: 'Belgilangan' | 'Foiz' | null;
+    pay2Value?: number;
     schoolId: number;
 }
 
@@ -190,6 +194,8 @@ export interface Expense {
     description: string;
     /** Pul qayerdan chiqdi: Naqd — kassadan, qolganlari bankdan. */
     method?: 'Naqd' | 'Karta' | 'O\'tkazma';
+    /** Bazaga tushgan vaqt — o'chirish shundan 15 daqiqa ichida (lib/xarajat.js). */
+    createdAt?: string;
     schoolId: number;
     staffId?: number | null;   // "Ish haqi" uchun xodim ID
     staffName?: string | null; // "Ish haqi" uchun xodim ismi

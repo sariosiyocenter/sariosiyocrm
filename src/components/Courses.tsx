@@ -3,7 +3,7 @@ import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal, BookOp
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { groupHasTeacher, teacherProblem } from '../lib/teacherState';
+import { groupHasTeacher, teacherProblem, ustozKursimi, kursUstozlari } from '../lib/teacherState';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -33,6 +33,7 @@ export default function Courses() {
         name: '',
         price: '',
         teacherId: 0,
+        teacher2Id: 0,
         startTime: '',
         endTime: '',
         days: 'TOQ',
@@ -123,6 +124,8 @@ export default function Courses() {
             await addGroup({
                 name: newGroup.name.trim(),
                 teacherId: Number(newGroup.teacherId),
+                // Ikkinchi ustoz — ixtiyoriy (egasi, 2026-09-29).
+                teacher2Id: newGroup.teacher2Id && newGroup.teacher2Id !== Number(newGroup.teacherId) ? Number(newGroup.teacher2Id) : null,
                 courseId: courseId,
                 room: Number(newGroup.room),
                 days: newGroup.days,
@@ -135,6 +138,7 @@ export default function Courses() {
                 name: '',
                 price: '',
                 teacherId: 0,
+                teacher2Id: 0,
                 startTime: '',
                 endTime: '',
                 days: 'TOQ',
@@ -200,7 +204,7 @@ export default function Courses() {
         const lowerSearch = search.toLowerCase();
         const matchesSearch = (g.name || '').toLowerCase().includes(lowerSearch);
 
-        const matchesTeacher = !filters.teacherId || g.teacherId === Number(filters.teacherId);
+        const matchesTeacher = !filters.teacherId || ustozKursimi(g, Number(filters.teacherId));
         const matchesRoom = !filters.roomId || g.room === Number(filters.roomId);
 
         let matchesDay = true;
@@ -365,12 +369,13 @@ export default function Courses() {
                                 {filteredGroups.map(group => {
                                     const st = getGroupStats(group);
                                     const teacher = teachers.find(tc => tc.id === group.teacherId);
+                                    const ustozlar = kursUstozlari(group, teachers);
                                     return (
                                         <tr key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
                                             className="group hover:bg-ichki transition-colors cursor-pointer">
                                             <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">{group.name}</td>
                                             <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-matn-sokin' : 'text-amber-500'}`}>
-                                                {teacher?.name || "Biriktirilmagan"}
+                                                {teacher ? ustozlar : "Biriktirilmagan"}
                                             </td>
                                             <td className="px-3 py-3 text-[12px] text-matn-sokin">
                                                 {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
@@ -408,7 +413,7 @@ export default function Courses() {
                                         <h3 className="text-[14px] font-semibold text-matn truncate group-hover:text-brand transition-colors">{group.name}</h3>
                                         {(() => {
                                             const problem = teacherProblem(group, teachers);
-                                            const tName = teachers.find(tc => tc.id === group.teacherId)?.name;
+                                            const tName = kursUstozlari(group, teachers);
                                             return (
                                                 <p className={`text-[11px] truncate ${problem ? 'text-amber-500' : 'text-matn-xira'}`}
                                                     title={problem || tName || ''}>
@@ -516,6 +521,14 @@ export default function Courses() {
                                         {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </div>
+                            </div>
+                            {/* Kursga ikkinchi ustoz (egasi, 2026-09-29) — bo'sh qolishi mumkin. */}
+                            <div>
+                                <label className={lbl}>Ikkinchi o'qituvchi (ixtiyoriy)</label>
+                                <select className={inp} value={newGroup.teacher2Id} onChange={e => setNewGroup({ ...newGroup, teacher2Id: Number(e.target.value) })}>
+                                    <option value={0}>Yo'q</option>
+                                    {teachers.filter(tc => tc.status !== 'Arxiv' && tc.id !== Number(newGroup.teacherId)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

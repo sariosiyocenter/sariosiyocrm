@@ -13,6 +13,7 @@
 import prisma from '../lib/prisma.js';
 import { fillTemplate } from '../lib/xabarMatni.js';
 import { markazNomi } from '../lib/markazBrendi.js';
+import { USTOZ_NOMLARI, ustozNomlari } from '../lib/ustozlar.js';
 import { holatKaliti, sozlamaniTozala, shablonTaxmini, STANDART_SOZLAMA, KANALLAR } from '../lib/davomatXabari.js';
 
 let yuboruvchi = null;
@@ -125,7 +126,7 @@ export async function davomatXabariniYuborish({ groupId, date, studentIds, kanal
   if (!yuboruvchi) throw new Error('Xabar yuboruvchi ulanmagan');
   const group = await prisma.group.findUnique({
     where: { id: groupId },
-    select: { id: true, name: true, schoolId: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
+    select: { id: true, name: true, schoolId: true, course: { select: { name: true } }, ...USTOZ_NOMLARI },
   });
   if (!group) return { error: 'Kurs topilmadi' };
 
@@ -151,7 +152,7 @@ export async function davomatXabariniYuborish({ groupId, date, studentIds, kanal
   // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
   if (school) school.orgName = await markazNomi(group.schoolId);
   // {kurs}, {fan}, {ustoz} — aynan shu dars kursi, o'quvchining hamma kurslari emas.
-  const kurs = [{ id: group.id, name: group.name, courseName: group.course?.name || '', teacherName: group.teacher?.name || '' }];
+  const kurs = [{ id: group.id, name: group.name, courseName: group.course?.name || '', teacherName: ustozNomlari(group) }];
   const shablonXaritasi = new Map(shablonlar.map(s => [s.id, s]));
 
   const natija = { jami: oquvchiBoyicha.size, yuborildi: 0, xato: 0, shablonsiz: 0, aloqasiz: 0, xatolar: [] };

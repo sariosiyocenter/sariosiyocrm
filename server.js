@@ -30,11 +30,14 @@ import {
 import crypto from 'node:crypto';
 import { davomatYuboruvchiniUlash, davomatSozlamasi, davomatSozlamasiniSaqla, davomatXabariniYuborish, kursKuniYuborilganlar, bugunDavomatXabariOlganlar } from './services/davomatXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
+import { USTOZ_NOMLARI, ustozNomlari, ustozKurslari } from './lib/ustozlar.js';
+import { kursdaOqiydi } from './lib/oquvchiHolati.js';
+import { ochirishQoldi, OCHIRISH_MUDDATI_XATO, XARAJAT_OCHIRISH_DAQIQA } from './lib/xarajat.js';
 import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor, adminChatlari } from './services/klikTasdiq.js';
 import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent, kurslardanChiqarish } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi, kunniSaqlash, holatniOchirish } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
@@ -929,7 +932,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         const ustozYozuvi = await ustozniTop(target);
         if (ustozYozuvi) {
           const kursSoni = await prisma.group.count({
-            where: { teacherId: ustozYozuvi.id, schoolId: { notIn: [asosiy, ...qoshimcha] } }
+            where: { ...ustozKurslari(ustozYozuvi.id), schoolId: { notIn: [asosiy, ...qoshimcha] } }
           });
           if (kursSoni > 0) {
             return res.status(400).json({
@@ -1105,27 +1108,22 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
       prisma.salaryPayment.count({ where: { userId: targetId } })
     ]);
     // Rahbar baribir butunlay o'chirishni tanlasa (force), bog'langan yozuvlarni
-    // ham olib tashlaymiz. Oylik yozuvi Moliyadagi xarajat bilan bog'langan —
-    // u ham ketadi, aks holda kassada egasiz xarajat qolib ketadi.
+    // ham olib tashlaymiz. Moliyadagi oylik xarajati esa QOLADI: pul haqiqatan
+    // chiqqan, xarajatni o'chirib bo'lmaydi (egasi, 2026-09-29, lib/xarajat.js).
+    // Xarajat izohida xodimning ismi va oyi yozilgan.
     const majburiy = String(req.query.force || '') === '1' || req.body?.force === true;
 
     if ((davomatSoni > 0 || oylikSoni > 0) && majburiy) {
-      const oyliklar = await prisma.salaryPayment.findMany({
-        where: { userId: targetId },
-        select: { expenseId: true }
-      });
-      const xarajatIds = oyliklar.map(o => o.expenseId).filter(Boolean);
       await prisma.$transaction(async (tx) => {
         await tx.staffAttendance.deleteMany({ where: { userId: targetId } });
         await tx.salaryPayment.deleteMany({ where: { userId: targetId } });
-        if (xarajatIds.length) await tx.expense.deleteMany({ where: { id: { in: xarajatIds } } });
       });
     } else if (davomatSoni > 0 || oylikSoni > 0) {
       const qismlar = [];
       if (davomatSoni > 0) qismlar.push(davomatSoni + ' ta davomat');
       if (oylikSoni > 0) qismlar.push(oylikSoni + ' ta oylik');
       return res.status(400).json({
-        error: 'Bu xodimda ' + qismlar.join(' va ') + ' yozuvi bor. Arxivga olsangiz ro\'yxatdan yo\'qoladi, tarix saqlanadi. Butunlay o\'chirsangiz shu yozuvlar ham, Moliyadagi oylik xarajati bilan birga, o\'chib ketadi.',
+        error: 'Bu xodimda ' + qismlar.join(' va ') + ' yozuvi bor. Arxivga olsangiz ro\'yxatdan yo\'qoladi, tarix saqlanadi. Butunlay o\'chirsangiz shu yozuvlar o\'chadi (Moliyadagi oylik xarajati esa qoladi).',
         canArchive: true,
         canForce: true
       });
@@ -1138,7 +1136,7 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
       try {
         const teacher = await ustozniTop(target);
         if (teacher) {
-          const guruhSoni = await prisma.group.count({ where: { teacherId: teacher.id } });
+          const guruhSoni = await prisma.group.count({ where: ustozKurslari(teacher.id) });
           const tDavomat = await prisma.teacherAttendance.count({ where: { teacherId: teacher.id } });
           if (guruhSoni === 0 && (tDavomat === 0 || majburiy)) {
             if (tDavomat > 0) await prisma.teacherAttendance.deleteMany({ where: { teacherId: teacher.id } });
@@ -1415,6 +1413,11 @@ app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const payment = await prisma.salaryPayment.findUnique({ where: { id: parseInt(id) } });
     if (!payment) return res.status(404).json({ error: 'Not found' });
+    // Berilgan oylik — Moliyadagi xarajat. Xarajat kabi faqat 15 daqiqa
+    // ichida o'chiriladi (lib/xarajat.js); keyin summani tuzatish mumkin.
+    if (ochirishQoldi(payment.paidAt) <= 0) {
+      return res.status(403).json({ error: `Berilgan oylikni faqat ${XARAJAT_OCHIRISH_DAQIQA} daqiqa ichida o'chirish mumkin. Xato bo'lsa — summasini tahrirlang.` });
+    }
 
     // Oylik yozuvi va unga bog'langan xarajat birga ketadi.
     await prisma.$transaction(async (tx) => {
@@ -1451,8 +1454,10 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     // BARCHA to'lovlari qo'shilardi — bir nechta guruhda o'qiydigan o'quvchining
     // puli har bir ustozga to'liq yozilib, ikki marta sanalardi. Endi pul
     // guruhga bog'langan yozuvlar (Payment.groupId) bo'yicha olinadi.
+    // Ikkinchi ustoz bo'lgan kurslari ham: ular uchun haq kursning
+    // pay2Type/pay2Value maydonidan olinadi (asosiy ustozniki payType/payValue).
     const groups = await prisma.group.findMany({
-      where: { teacherId: teacher.id },
+      where: ustozKurslari(teacher.id),
       include: { course: { select: { name: true } }, students: { select: { id: true } } }
     });
     const groupIds = groups.map(g => g.id);
@@ -1500,6 +1505,7 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
       totalPayments += received;
       totalCharged += groupCharged;
       totalLessons += lessons;
+      const ikkinchi = g.teacherId !== teacher.id && g.teacher2Id === teacher.id;
       return {
         id: g.id,
         name: g.name,
@@ -1508,8 +1514,11 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
         lessons,
         charged: groupCharged,
         total: received,
-        payType: g.payType || null,
-        payValue: g.payValue || 0,
+        // Shu xodim kursda ikkinchi ustozmi — haqini tahrirlashda qaysi
+        // maydon yozilishini mijoz shundan biladi.
+        ikkinchi,
+        payType: (ikkinchi ? g.pay2Type : g.payType) || null,
+        payValue: (ikkinchi ? g.pay2Value : g.payValue) || 0,
       };
     });
 
@@ -1887,12 +1896,16 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 
     // If status is changing, update statusChangedAt
     let activating = false;
+    // O'qimaydigan holatga (Passiv, Muzlatilgan, Arxiv, Bitiruvchi,
+    // Sertifikatli) o'tdi — barcha kurslaridan chiqariladi (lib/oquvchiHolati.js).
+    let kursdanChiqadi = false;
     if (data.status) {
       const oldStudent = await prisma.student.findUnique({ where: { id: studentId } });
       if (oldStudent && oldStudent.status !== data.status) {
         data.statusChangedAt = new Date();
         // Sinov → Faol: sinov darslari bepul edi, endi hisob boshlanadi.
         activating = oldStudent.status === 'Sinov' && data.status === 'Faol';
+        kursdanChiqadi = !kursdaOqiydi(data.status);
       }
     }
 
@@ -1939,7 +1952,11 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     // uchun hisob, chiqarilganlarga qaytarish. Ilgari shunchaki "set" edi.
     const notes = [];
     let ledgerChanged = false;
-    if (groups) {
+    let chiqarilganKurslar;
+    if (kursdanChiqadi) {
+      // Formadan kelgan kurslar ro'yxati bu holatda e'tiborga olinmaydi.
+      chiqarilganKurslar = await kurslardanChiqarish(studentId);
+    } else if (groups) {
       const sync = await syncStudentGroups({ studentId, groupIds: groups.map(gId => parseInt(gId)) });
       if (sync.error) notes.push(sync.error);
       if (sync.warning) notes.push(sync.warning);
@@ -1965,6 +1982,8 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       ...updatedStudent,
       groups: updatedStudent.groups.map(g => g.id),
       activation: activation || undefined,
+      // Qaysi kurslardan chiqarilgani — xodim xabarda ko'radi.
+      removedFrom: chiqarilganKurslar,
       warning: notes.join(' ') || undefined,
       ledgerChanged: ledgerChanged || undefined,
     });
@@ -2138,7 +2157,7 @@ app.delete('/api/teachers/:id', authenticate, async (req, res, next) => {
     }
 
     const [guruhlar, davomatSoni] = await Promise.all([
-      prisma.group.findMany({ where: { teacherId }, select: { name: true } }),
+      prisma.group.findMany({ where: ustozKurslari(teacherId), select: { name: true } }),
       prisma.teacherAttendance.count({ where: { teacherId } })
     ]);
 
@@ -2201,11 +2220,22 @@ app.get('/api/groups', authenticate, async (req, res, next) => {
     const ulushKorinadi = yetadimi(req.ruxsat, 'kurslar.narx', 1);
     res.json(groups.map(g => {
       const o = { ...g, studentIds: g.students.map(s => s.id), courseName: g.course?.name };
-      if (!ulushKorinadi) { delete o.payType; delete o.payValue; }
+      if (!ulushKorinadi) { delete o.payType; delete o.payValue; delete o.pay2Type; delete o.pay2Value; }
       return o;
     }));
   } catch (error) { next(error); }
 });
+// Ikkinchi ustoz (ixtiyoriy). Bo'sh qiymat yoki asosiy ustozning o'zi — "yo'q".
+// undefined — so'rovda umuman kelmagan (tahrirda o'zgarmaydi).
+async function ikkinchiUstozId(qiymat, asosiyId) {
+  if (qiymat === undefined) return { id: undefined };
+  const n = parseInt(qiymat);
+  if (!Number.isInteger(n) || n <= 0 || n === asosiyId) return { id: null };
+  const bor = await prisma.teacher.findUnique({ where: { id: n }, select: { id: true } });
+  if (!bor) return { error: 'Ikkinchi ustoz topilmadi' };
+  return { id: n };
+}
+
 app.post('/api/groups', authenticate, async (req, res, next) => {
   console.log('--- [POST /api/groups] Request received ---');
   try {
@@ -2257,6 +2287,9 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     if (syllabusId !== undefined && syllabusId !== null && syllabusId !== '') {
       prismaData.syllabusId = parseInt(syllabusId);
     }
+    const ikkinchi = await ikkinchiUstozId(req.body.teacher2Id, prismaData.teacherId);
+    if (ikkinchi.error) return res.status(400).json({ error: ikkinchi.error });
+    if (ikkinchi.id) prismaData.teacher2Id = ikkinchi.id;
 
     console.log('Prisma create data:', prismaData);
 
@@ -2317,6 +2350,8 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
       courseName: updatedGroup.course?.name,
       charge: enrol.charge, lessons: enrol.lessons, warning: enrol.warning || undefined,
       trial: enrol.trial || undefined,
+      // Passiv o'quvchi kursga qaytdi — endi Faol.
+      activated: enrol.activated || undefined,
     });
   } catch (error) {
     console.error('Error connecting student to group:', error);
@@ -2377,6 +2412,25 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     if (payValue !== undefined) {
       const v = parseFloat(payValue);
       prismaData.payValue = Number.isFinite(v) && v > 0 ? v : 0;
+    }
+    // Ikkinchi ustozning haqi — xuddi shu ma'noda (bo'sh — xodim kartasidagi KPI foizi).
+    if (req.body.pay2Type !== undefined) {
+      prismaData.pay2Type = (req.body.pay2Type === 'Belgilangan' || req.body.pay2Type === 'Foiz') ? req.body.pay2Type : null;
+    }
+    if (req.body.pay2Value !== undefined) {
+      const v = parseFloat(req.body.pay2Value);
+      prismaData.pay2Value = Number.isFinite(v) && v > 0 ? v : 0;
+    }
+    if (req.body.teacher2Id !== undefined || prismaData.teacherId !== undefined) {
+      const joriy = await prisma.group.findUnique({ where: { id: parseInt(id) }, select: { teacherId: true, teacher2Id: true } });
+      if (!joriy) return res.status(404).json({ error: 'Kurs topilmadi' });
+      const asosiy = prismaData.teacherId ?? joriy.teacherId;
+      const ikkinchi = await ikkinchiUstozId(req.body.teacher2Id !== undefined ? req.body.teacher2Id : joriy.teacher2Id, asosiy);
+      if (ikkinchi.error) return res.status(400).json({ error: ikkinchi.error });
+      // Ikkinchi ustoz asosiy qilib tanlansa — u ikkinchi o'rindan tushadi.
+      if (ikkinchi.id !== joriy.teacher2Id) prismaData.teacher2Id = ikkinchi.id;
+      // Ikkinchi ustoz olib tashlansa — uning haqi ham tozalanadi.
+      if (!ikkinchi.id && joriy.teacher2Id) { prismaData.pay2Type = null; prismaData.pay2Value = 0; }
     }
 
     // "Nothing selected" arrives as 0 or '' from the form. There is no room with id 0, so
@@ -2537,7 +2591,7 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
       select: {
         id: true, name: true, schedule: true, days: true, courseId: true,
         course: { select: { name: true, price: true } },
-        teacher: { select: { name: true } },
+        ...USTOZ_NOMLARI,
         roomRel: { select: { capacity: true } },
         _count: { select: { students: true } }
       },
@@ -2552,7 +2606,7 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
       courseId: g.courseId,
       courseName: g.course?.name || '',
       price: g.course?.price ?? null,
-      teacherName: g.teacher?.name || '',
+      teacherName: ustozNomlari(g),
       studentCount: g._count.students,
       capacity: g.roomRel?.capacity ?? null
     })));
@@ -3245,10 +3299,20 @@ app.post('/api/expenses', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Xarajat faqat kiritilganidan keyin 15 daqiqa ichida o'chiriladi — hamma
+// uchun, administrator ham (lib/xarajat.js, egasi 2026-09-29).
 app.delete('/api/expenses/:id', authenticate, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    await prisma.expense.delete({ where: { id: parseInt(id) } });
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const xarajat = await prisma.expense.findUnique({ where: { id } });
+    if (!xarajat) return res.status(404).json({ error: 'Xarajat topilmadi' });
+    if (ochirishQoldi(xarajat.createdAt) <= 0) return res.status(403).json({ error: OCHIRISH_MUDDATI_XATO });
+    // Oylik to'lovining xarajati Xodimlar bo'limidagi oylik yozuvi bilan birga
+    // yashaydi — alohida o'chirilsa oylik yozuvi egasiz xarajatga ishora qilib qolardi.
+    const oylik = await prisma.salaryPayment.findFirst({ where: { expenseId: id }, select: { id: true } });
+    if (oylik) return res.status(400).json({ error: "Bu xodim oyligi — uni Xodimlar bo'limidagi oylik yozuvidan o'chiring" });
+    await prisma.expense.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -4394,7 +4458,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
         studentIds: g.students.map(s => s.id),
         courseName: g.course?.name
       };
-      if (!ulushKorinadi) { delete o.payType; delete o.payValue; }
+      if (!ulushKorinadi) { delete o.payType; delete o.payValue; delete o.pay2Type; delete o.pay2Value; }
       return o;
     });
     if (!maoshKorinadi) {
@@ -7315,14 +7379,14 @@ async function getStudentGroupsMap(schoolId) {
     include: {
       students: { select: { id: true } },
       course: { select: { name: true } },
-      teacher: { select: { name: true } },
+      ...USTOZ_NOMLARI,
     }
   });
   const map = {}; // studentId -> [{id, name, courseName, teacherName}]
   for (const g of groups) {
     for (const s of g.students) {
       if (!map[s.id]) map[s.id] = [];
-      map[s.id].push({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: g.teacher?.name || '' });
+      map[s.id].push({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: ustozNomlari(g) });
     }
   }
   return map;

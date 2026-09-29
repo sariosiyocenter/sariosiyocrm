@@ -34,6 +34,32 @@ export function groupHasTeacher(group: { teacherId?: number }, teachers: Teacher
     return isActiveTeacher(t);
 }
 
+/**
+ * Kursning ustozlari: asosiy (teacherId) va ixtiyoriy ikkinchi (teacher2Id).
+ * Egasi, 2026-09-29: "bitta kursga ikkita o'qituvchi". Ustozga tegishli
+ * kurslarni qidiradigan har bir joy shu funksiyalarni ishlatadi —
+ * ikkinchi ustoz ham kursini ko'rsin (server: lib/ustozlar.js).
+ */
+type KursUstozi = { teacherId?: number | null; teacher2Id?: number | null };
+
+export function kursUstozIdlari(group: KursUstozi): number[] {
+    return [group.teacherId, group.teacher2Id].filter((x): x is number => !!x);
+}
+
+/** Shu ustoz kursda dars beradimi (asosiy yoki ikkinchi ustoz sifatida). */
+export function ustozKursimi(group: KursUstozi, teacherId?: number | null): boolean {
+    return !!teacherId && kursUstozIdlari(group).includes(teacherId);
+}
+
+/** "Ali Valiyev, Hasan Hasanov" — kurs kartasi, jadval, xabarlar uchun. */
+export function kursUstozlari(group: KursUstozi, teachers: Teacher[], nom: (s: string) => string = s => s): string {
+    return kursUstozIdlari(group)
+        .map(id => teachers.find(t => t.id === id)?.name)
+        .filter((n): n is string => !!n)
+        .map(nom)
+        .join(', ');
+}
+
 /** Nega ustoz hisoblanmasligining sababi (ekranga chiqarish uchun). */
 export function teacherProblem(group: { teacherId?: number }, teachers: Teacher[]): string | null {
     const t = teachers.find(x => x.id === group.teacherId);

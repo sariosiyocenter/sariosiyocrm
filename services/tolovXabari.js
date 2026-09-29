@@ -19,6 +19,7 @@
 import prisma from '../lib/prisma.js';
 import { fillTemplate, kirimmi } from '../lib/xabarMatni.js';
 import { markazNomi } from '../lib/markazBrendi.js';
+import { USTOZ_NOMLARI, ustozNomlari } from '../lib/ustozlar.js';
 import {
   sozlamaniTozala, shablonTaxmini, STANDART_SOZLAMA, eskizYuboradi, eskizRadEtdi,
   smsMatni, smsIsm, uzRaqam, KIMGA_NOMI,
@@ -179,10 +180,10 @@ async function matnniTuz(payment, student, shablon) {
     markazNomi(payment.schoolId),
     prisma.group.findMany({
       where: { students: { some: { id: student.id } } },
-      select: { id: true, name: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
+      select: { id: true, name: true, course: { select: { name: true } }, ...USTOZ_NOMLARI },
     }),
   ]);
-  const oqKurslari = kurslar.map(g => ({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: g.teacher?.name || '' }));
+  const oqKurslari = kurslar.map(g => ({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: ustozNomlari(g) }));
   const target = { ...student, name: smsIsm(student.name) || student.name, customPaymentAmount: payment.amount, lastPaymentAmount: payment.amount };
   return smsMatni(fillTemplate(shablon.body, target, oqKurslari, { ...(school || {}), orgName }));
 }
