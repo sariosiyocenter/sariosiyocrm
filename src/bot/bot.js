@@ -420,7 +420,10 @@ const findUser = async (tid, schoolId) => {
     const oila = await oilaniTop(tidStr, ids);
     if (oila) return oila;
 
-    const teacher = await findAcross('teacher', { telegramId: tidStr }, ids);
+    // Arxivdagi ustoz yozuvi botda ustoz emas: aks holda uning eski raqami
+    // bilan kirgan odam (masalan keyin administrator bo'lgan) ustoz menyusiga
+    // tushib qolardi (2026-09-29).
+    const teacher = await findAcross('teacher', { telegramId: tidStr, status: { not: 'Arxiv' } }, ids);
     if (teacher) return { type: 'teacher', data: teacher };
 
     // Xodimning ikkinchi raqami ham o'z Telegram hisobi bilan (telegramId2).
@@ -583,19 +586,28 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             }
         }
 
-        // Try to find as teacher
-        let teacher = await findAcross('teacher', { phone: { contains: phoneSuffix } }, ids);
+        // Ustoz va xodim. Arxivdagilar hisobga olinmaydi: 2026-09-29 da
+        // administratorning ikkinchi raqami arxivdagi eski ustoz yozuvida ham
+        // turgan edi — bot uni ustoz qilib bog'lar va admin menyusi chiqmasdi.
+        // Raqamlar turlicha yozilgan bo'lishi mumkin ("+998 91 511-55-32"),
+        // shuning uchun oxirgi 9 raqam JS da solishtiriladi (o'quvchilardagidek).
+        const filialTartibi = (a, b) => ids.indexOf(a.schoolId) - ids.indexOf(b.schoolId);
+        const [ustozlar, xodimlar] = await Promise.all([
+            prisma.teacher.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
+            prisma.user.findMany({ where: { schoolId: { in: ids }, status: { not: 'Arxiv' } }, orderBy: { id: 'asc' } }),
+        ]);
+        const teacher = ustozlar.filter(t => oxirgi9(t.phone) === phoneSuffix).sort(filialTartibi)[0];
         if (teacher) {
             await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
             return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
         }
 
-        // Try to find in users (Admin/Manager/Receptionist)
-        // Ikkinchi raqam (phone2) bo'yicha ham: u telegramId2 ga bog'lanadi —
-        // bitta xodimga ikki Telegram (masalan administratorning ikki telefoni).
-        let user = await findAcross('user', { OR: [{ phone: { contains: phoneSuffix } }, { phone2: { contains: phoneSuffix } }] }, ids);
+        // Xodim (Admin/Menejer/Resepshn/Haydovchi). Ikkinchi raqam (phone2)
+        // bo'yicha ham: u telegramId2 ga bog'lanadi — bitta xodimga ikki
+        // Telegram (masalan administratorning ikki telefoni).
+        const user = xodimlar.filter(u => oxirgi9(u.phone) === phoneSuffix || oxirgi9(u.phone2) === phoneSuffix).sort(filialTartibi)[0];
         if (user) {
-            const ikkinchi = !String(user.phone || '').replace(/\D/g, '').includes(phoneSuffix);
+            const ikkinchi = oxirgi9(user.phone) !== phoneSuffix;
             await prisma.user.update({ where: { id: user.id }, data: ikkinchi ? { telegramId2: tid } : { telegramId: tid } });
             const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu(await xodimRuxsati(user));
             return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
