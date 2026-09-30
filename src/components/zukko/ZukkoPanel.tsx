@@ -353,7 +353,9 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
     const faylQosh = (royxat: File[]) => {
         if (!faylQabul || !royxat.length) return;
         const yaroqli = royxat.filter(f => faylTuri(f));
-        if (yaroqli.length < royxat.length) showNotification('Faqat PDF, rasm yoki Excel fayl biriktiriladi', 'error');
+        const eski = royxat.find(f => /\.doc$/i.test(f.name));
+        if (eski) showNotification(`${eski.name}: eski Word formati (.doc) o'qilmaydi — Word'da «Fayl → Saqlash» orqali .docx yoki PDF qilib saqlang`, 'error');
+        else if (yaroqli.length < royxat.length) showNotification('Faqat PDF, Word (.docx), rasm yoki Excel fayl biriktiriladi', 'error');
         const yangi = [...biriktirma, ...yaroqli.filter(f => !biriktirma.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified))];
         if (yangi.length > MAKS_FAYL) showNotification(`Bir xabarga ${MAKS_FAYL} tagacha fayl`, 'error');
         setBiriktirma(yangi.slice(0, MAKS_FAYL));
@@ -497,7 +499,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                         <div className="pointer-events-none absolute inset-2 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand bg-sirt text-center px-6">
                             <FileUp size={28} className="text-brand" />
                             <div className="text-[14px] font-semibold text-matn">Faylni tashlang</div>
-                            <div className="text-[12px] text-matn-sokin">PDF, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</div>
+                            <div className="text-[12px] text-matn-sokin">PDF, Word, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</div>
                         </div>
                     )}
 
@@ -617,7 +619,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                                                 <span className="w-8 h-8 rounded-lg bg-ichki text-matn-sokin flex items-center justify-center shrink-0"><Paperclip size={16} /></span>
                                                 <span className="min-w-0 flex-1">
                                                     <span className="block text-[13px] font-semibold text-matn">Test fayli</span>
-                                                    <span className="block text-[11.5px] text-matn-sokin">PDF, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</span>
+                                                    <span className="block text-[11.5px] text-matn-sokin">PDF, Word, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</span>
                                                 </span>
                                             </button>
                                         )}
@@ -707,7 +709,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
 
                         <div className={`flex items-end gap-1.5 rounded-2xl border bg-ichki px-2 py-1.5 transition-colors ${band ? 'border-brand/40' : 'border-chiziq focus-within:border-brand/50'}`}>
                             {faylQabul && (
-                                <button onClick={() => faylRef.current?.click()} title="Fayl biriktirish — PDF, rasm yoki Excel" aria-label="Fayl biriktirish"
+                                <button onClick={() => faylRef.current?.click()} title="Fayl biriktirish — PDF, Word, rasm yoki Excel" aria-label="Fayl biriktirish"
                                     className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-matn-sokin hover:text-brand hover:bg-sirt transition-colors">
                                     <Paperclip size={16} />
                                 </button>
@@ -752,7 +754,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                             <span className="truncate">/ — tezkor buyruqlar · telefonlar AI ga berilmaydi</span>
                             <span className="hidden sm:inline font-mono shrink-0">Ctrl+/</span>
                         </div>
-                        <input ref={faylRef} type="file" multiple accept="image/*,application/pdf,.pdf,.xlsx,.xls" className="hidden"
+                        <input ref={faylRef} type="file" multiple accept="image/*,application/pdf,.pdf,.docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xlsx,.xls" className="hidden"
                             onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; faylQosh(f); }} />
                     </div>
                 </aside>

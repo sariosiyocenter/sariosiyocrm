@@ -264,6 +264,7 @@ export async function amalTayyorla(token: string | null, schoolId: number | null
 /** Fayl turi — xabar ostidagi belgi va serverga yuboriladigan izoh uchun. */
 export function faylTuri(f: File): string {
     if (/\.xlsx?$/i.test(f.name)) return 'Excel';
+    if (/\.docx$/i.test(f.name) || f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'Word';
     if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) return 'PDF';
     if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name)) return 'rasm';
     return '';

@@ -10,6 +10,7 @@ import { QiyinlikTanlov } from './qiyinlik';
 import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
 import { exceldanSavollar, shablonniYukla, type ExcelSavol } from './excel';
+import { wordniOqi, ESKI_DOC, type WordNatija } from './word';
 import type { BankDaraxt } from '../../../types';
 
 // Savol qo'shish — bankka savol kiritishning yagona yo'li (egasi, 2026-09-29:
@@ -22,7 +23,10 @@ import type { BankDaraxt } from '../../../types';
 
 type Manba =
   | { kalit: number; tur: 'sahifa'; nom: string; rasm: string }
-  | { kalit: number; tur: 'excel'; nom: string; savollar: ExcelSavol[]; xatolar: number };
+  | { kalit: number; tur: 'excel'; nom: string; savollar: ExcelSavol[]; xatolar: number }
+  | ({ kalit: number; tur: 'word'; nom: string } & WordNatija);
+
+const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 interface Natija extends AiSavol {
   kalit: number;
@@ -134,7 +138,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
 
   const sahifalar = manbalar.filter((m): m is Extract<Manba, { tur: 'sahifa' }> => m.tur === 'sahifa');
   const excellar = manbalar.filter((m): m is Extract<Manba, { tur: 'excel' }> => m.tur === 'excel');
-  const aiKerak = sahifalar.length > 0 || !!matn.trim();
+  const wordlar = manbalar.filter((m): m is Extract<Manba, { tur: 'word' }> => m.tur === 'word');
+  const aiKerak = sahifalar.length > 0 || wordlar.length > 0 || !!matn.trim();
 
   /** Fan mavzusining aniq nomi (katta-kichik harfsiz mos kelsa) — bo'lmasa AI bergan yangi nom. */
   const mavzuNomi = (nom: string | null | undefined) => {
@@ -151,6 +156,12 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           if (!r.yaroqli.length) { showNotification(r.xatolar.length ? `${f.name}: ${r.xatolar.length} ta qatorda xato (${r.xatolar[0].qator}-qator: ${r.xatolar[0].xato})` : `${f.name}: savol topilmadi`, 'error'); continue; }
           setManbalar(l => [...l, { kalit: keyingi++, tur: 'excel', nom: f.name, savollar: r.yaroqli, xatolar: r.xatolar.length }]);
           if (r.xatolar.length) showNotification(`${f.name}: ${r.xatolar.length} ta qator o'tkazib yuborildi (${r.xatolar[0].qator}-qator: ${r.xatolar[0].xato})`, 'info');
+        } else if (/\.docx$/i.test(f.name) || f.type === DOCX) {
+          setJarayon({ matn: "Word hujjati o'qilmoqda", i: 0, jami: 0 });
+          const w = await wordniOqi(f);
+          setManbalar(l => [...l, { kalit: keyingi++, tur: 'word', nom: f.name, ...w }]);
+        } else if (/\.doc$/i.test(f.name) || f.type === 'application/msword') {
+          showNotification(`${f.name}: ${ESKI_DOC}`, 'error');
         } else if (/^image\//.test(f.type) || /\.(pdf|jpe?g|png|webp|heic)$/i.test(f.name) || f.type === 'application/pdf') {
           const qoldi = MAKS_SAHIFA - sahifalar.length;
           if (qoldi <= 0) { showNotification(`Bir martada ${MAKS_SAHIFA} sahifagacha`, 'error'); break; }
@@ -158,7 +169,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           const rasmlar = await sahifaRasmlari(f, qoldi, n => setJarayon({ matn: 'Sahifalar tayyorlanmoqda', i: n, jami: 0 }));
           setManbalar(l => [...l, ...rasmlar.map((rasm, i) => ({ kalit: keyingi++, tur: 'sahifa' as const, nom: rasmlar.length > 1 ? `${f.name} · ${i + 1}` : f.name, rasm }))]);
         } else {
-          showNotification(`${f.name}: bu turdagi fayl o'qilmaydi. Word faylni PDF qilib saqlang (Fayl → Saqlash → PDF).`, 'error');
+          showNotification(`${f.name}: bu turdagi fayl o'qilmaydi — PDF, Word (.docx), rasm yoki Excel yuklang`, 'error');
         }
       } catch (e: any) {
         showNotification(`${f.name}: ${e?.message || "o'qib bo'lmadi"}`, 'error');
@@ -181,7 +192,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     if (!avtoKutadi || jarayon || !ai) return;
     setAvtoKutadi(false);
     // Rasm/PDF uchun fan va AI kerak — bo'lmasa xodim o'zi tanlab, tugmani bosadi.
-    if (natijalar || !manbalar.length || (sahifalar.length > 0 && (!fan || !ai.yoqilgan))) return;
+    if (natijalar || !manbalar.length || ((sahifalar.length > 0 || wordlar.length > 0) && (!fan || !ai.yoqilgan))) return;
     ajrat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avtoKutadi, jarayon, ai]);
@@ -200,7 +211,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const ajrat = async () => {
     if (!aiKerak && !excellar.length) return showNotification("Rasm, fayl yoki matn qo'shing", 'error');
     if (aiKerak && !fan) return showNotification('Fanni tanlang', 'error');
-    if (aiKerak && !ai?.yoqilgan) return showNotification("Rasm va PDF ni o'qish uchun avval AI ni ulang (yuqorida)", 'error');
+    if (aiKerak && !ai?.yoqilgan) return showNotification("Rasm, PDF va Word ni o'qish uchun avval AI ni ulang (yuqorida)", 'error');
     const yig: Natija[] = [];
     const matnYig: AiMatn[] = [];
     const kalitYig: { raqam: string; javob: string }[] = [];
@@ -216,13 +227,22 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         }
       }
       if (aiKerak && fan) {
-        const partiyalar = sahifalar.length ? bolaklar(sahifalar.map(s => s.rasm), PARTIYA) : [[]];
+        // So'rovlar: sahifa suratlari 3 tadan, Word — o'qilganda bo'lingan qismlar,
+        // joylangan matn — birinchi so'rov bilan (bo'lmasa alohida).
+        const partiyalar: { rasmlar: string[]; matn: string }[] = [
+          ...bolaklar(sahifalar.map(s => s.rasm), PARTIYA).map(rasmlar => ({ rasmlar, matn: '' })),
+          ...wordlar.flatMap(w => w.qismlar),
+        ];
+        if (matn.trim()) {
+          if (partiyalar[0] && !partiyalar[0].matn) partiyalar[0] = { ...partiyalar[0], matn };
+          else partiyalar.unshift({ rasmlar: [], matn });
+        }
         for (let i = 0; i < partiyalar.length; i++) {
           setJarayon({ matn: `AI o'qimoqda${yig.length ? ` · ${yig.length} ta savol` : ''}`, i, jami: partiyalar.length });
           try {
             const r = await soro<{ savollar: any[]; matnlar: AiMatn[]; kalit: { raqam: string; javob: string }[] }>('POST', 'questions/ai/import', {
               fan: fan.name, mavzu: qatiyMavzu, mavzular: fan.mavzular.map(m => m.name), til: 'auto',
-              rasmlar: partiyalar[i], matn: i === 0 ? matn : '',
+              rasmlar: partiyalar[i].rasmlar, matn: partiyalar[i].matn,
             });
             matnYig.push(...(r.matnlar || []).map(m => ({ ...m, id: `p${i}-${m.id}` })));
             kalitYig.push(...(r.kalit || []));
@@ -371,7 +391,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> Savol qo'shish</h3>
-            <p className="text-[12px] text-matn-xira">Rasm, PDF, Excel yoki matn — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
+            <p className="text-[12px] text-matn-xira">Rasm, PDF, Word, Excel yoki matn — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
@@ -418,9 +438,9 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                 <Tugma ikonka={<FileUp size={15} />} disabled={band} onClick={() => faylRef.current?.click()}>Fayl tanlash</Tugma>
                 <Tugma turi="oddiy" ikonka={<ClipboardPaste size={15} />} disabled={band} onClick={() => setMatnOchiq(v => !v)}>Matnni joylash</Tugma>
               </div>
-              <p className="mt-3 text-[11.5px] text-matn-xira">PDF, rasm (kitob, daftar, test sahifasi) yoki Excel · kompyuterda faylni shu yerga tashlash yoki Ctrl+V · {MAKS_SAHIFA} sahifagacha</p>
+              <p className="mt-3 text-[11.5px] text-matn-xira">PDF, Word, rasm (kitob, daftar, test sahifasi) yoki Excel · kompyuterda faylni shu yerga tashlash yoki Ctrl+V · {MAKS_SAHIFA} sahifagacha</p>
               <input ref={kameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
-              <input ref={faylRef} type="file" multiple accept="image/*,application/pdf,.pdf,.xlsx,.xls" className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
+              <input ref={faylRef} type="file" multiple accept={`image/*,application/pdf,.pdf,.docx,.doc,${DOCX},.xlsx,.xls`} className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
             </div>
 
             {matnOchiq && (
@@ -430,7 +450,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
               </Maydon>
             )}
 
-            {(sahifalar.length > 0 || excellar.length > 0) && (
+            {(sahifalar.length > 0 || excellar.length > 0 || wordlar.length > 0) && (
               <div className="space-y-2">
                 {sahifalar.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -449,6 +469,28 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                     <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileSpreadsheet size={15} className="text-yaxshi shrink-0" /><span className="truncate">{e.nom}</span>
                       <span className="text-matn-xira shrink-0">· {e.savollar.length} ta savol{e.xatolar ? `, ${e.xatolar} ta xato qator` : ''}</span></span>
                     <button type="button" aria-label="Olib tashlash" onClick={() => setManbalar(l => l.filter(x => x.kalit !== e.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
+                  </div>
+                ))}
+                {wordlar.map(w => (
+                  <div key={w.kalit} className="rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileText size={15} className="text-brand shrink-0" />
+                        <span className="min-w-0">
+                          <span className="block truncate">{w.nom}</span>
+                          <span className="block text-[11.5px] text-matn-xira">Word{w.formulaSoni ? ` · ${w.formulaSoni} ta formula` : ''}{w.rasmSoni ? ` · ${w.rasmSoni} ta rasm` : ''}</span>
+                        </span>
+                      </span>
+                      <button type="button" aria-label="Olib tashlash" disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== w.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
+                    </div>
+                    {(w.oqilmagan > 0 || w.tashlangan > 0) && (
+                      <p className="mt-1.5 flex gap-1.5 text-[12px] text-ogoh">
+                        <AlertTriangle size={13} className="mt-[2px] shrink-0" />
+                        <span>
+                          {w.oqilmagan > 0 && <>{w.oqilmagan} ta formula yoki rasm eski formatda (MathType, WMF) — ular o'qilmaydi. Muhim bo'lsa, Word'da «Fayl → Saqlash → PDF» qilib, PDF ni yuklang. </>}
+                          {w.tashlangan > 0 && <>{w.tashlangan} ta rasm chegaradan oshdi — AI ga bormaydi.</>}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
