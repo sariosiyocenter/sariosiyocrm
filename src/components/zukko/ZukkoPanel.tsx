@@ -1,11 +1,11 @@
 import { CSSProperties, KeyboardEvent as RKeyboardEvent, PointerEvent as RPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUp, BookOpen, CalendarClock, DoorOpen, KeyRound, Mic, MicOff, PenLine, Square, Target, TrendingUp, User, UserX, Wallet, X, Zap, BarChart3, Receipt } from 'lucide-react';
+import { ArrowUp, BookOpen, CalendarClock, DoorOpen, KeyRound, Mic, MicOff, PenLine, Square, Target, TrendingUp, User, UserX, Wallet, X, Zap, BarChart3, Receipt, Sparkles, ChevronRight } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import ZukkoBelgi from './ZukkoBelgi';
 import ZukkoXabar from './ZukkoXabar';
 import { tonRangi } from './ZukkoBlok';
-import { Amal, Hodisa, Holat, Turn, ZukkoXato, buyruqBajar, dalilMatni, holatniOl, savolYubor } from './zukkoApi';
+import { AMAL_MUDDATI_MS, Amal, AmalXato, Hodisa, Holat, Turn, ZukkoXato, amalniYubor, buyruqBajar, dalilMatni, holatniOl, natijaIzohi, savolYubor } from './zukkoApi';
 
 /**
  * Zukko — o'ng tomondan chiqadigan AI yordamchi.
@@ -27,6 +27,7 @@ const MAKS_TURN = 24;
 const BUYRUQ_BELGI: Record<string, typeof Zap> = {
     darslar: CalendarClock, kelmaganlar: UserX, qarzdorlar: Wallet, 'bugungi-tushum': TrendingUp, tushum: TrendingUp,
     lidlar: Target, xonalar: DoorOpen, xarajatlar: Receipt, korsatkichlar: BarChart3, oquvchi: User, kurs: BookOpen, 'kurs-qarzi': Wallet,
+    imkoniyatlar: Sparkles,
 };
 
 // AI yoqilmaganda erkin matnni tezkor buyruqqa yo'naltirish (kalit so'z bo'yicha).
@@ -67,7 +68,7 @@ function saqlanganSuhbat(userId?: number): Turn[] {
 }
 
 export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => void }) {
-    const { user, token, selectedSchoolId, addLead, updateLead, updateStudent, showNotification, ozgartira } = useCRM();
+    const { user, token, selectedSchoolId, showNotification, retryLoad } = useCRM();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -230,34 +231,33 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
 
     const toxtat = () => abortRef.current?.abort();
 
-    // --- Amal tasdiqlash: odatdagi API (CRMContext) orqali ---------------------
+    // --- Amal tasdiqlash: kartochkadagi so'rovlar odatdagi API ga ---------------
+    // Server (lib/zukkoAmallar.js) aynan UI yuboradigan so'rovni tayyorlagan;
+    // ruxsat, jurnal ("Zukko orqali") va xabarlar o'sha yo'llarniki.
     const amalniBajar = useCallback(async (turnId: string, indeks: number, tasdiq: boolean) => {
         const turn = turns.find(t => t.id === turnId);
         const amal = turn?.amallar?.[indeks];
-        if (!amal) return;
+        if (!amal || amal.holat === 'bajarilmoqda' || amal.holat === 'bajarildi') return;
         const qoy = (o: Partial<Amal>) => turnniYangila(turnId, t => ({ ...t, amallar: (t.amallar || []).map((a, i) => (i === indeks ? { ...a, ...o } : a)) }));
         if (!tasdiq) return qoy({ holat: 'bekor' });
+        if (amal.yaratildi && Date.now() - amal.yaratildi > AMAL_MUDDATI_MS) return qoy({ holat: 'xato', xato: "Taklif eskirdi — qaytadan so'rang" });
+        if (!amal.sorovlar?.length) return qoy({ holat: 'xato', xato: "Bu kartochka eski — amalni qaytadan so'rang" });
         qoy({ holat: 'bajarilmoqda', xato: undefined });
         try {
-            if (amal.tur === 'lid_qoshish') {
-                if (!ozgartira('lidlar.royxat')) throw new Error("Lid qo'shishga ruxsatingiz yo'q");
-                await addLead({ ...(amal.malumot as any), createdAt: new Date().toISOString() });
-                showNotification(`Lid qo'shildi: ${amal.malumot.name}`, 'success');
-            } else if (amal.tur === 'lid_holati' && amal.id) {
-                if (!ozgartira('lidlar.royxat')) throw new Error("Lidni o'zgartirishga ruxsatingiz yo'q");
-                await updateLead(amal.id, amal.malumot.status);
-                showNotification('Lid holati o\'zgardi', 'success');
-            } else if (amal.tur === 'izoh' && amal.id) {
-                if (!ozgartira('oquvchilar.royxat')) throw new Error("O'quvchini tahrirlashga ruxsatingiz yo'q");
-                await updateStudent(amal.id, { comment: amal.malumot.comment } as any);
-            } else {
-                throw new Error("Noma'lum amal");
-            }
-            qoy({ holat: 'bajarildi' });
+            const javoblar = await amalniYubor(token, amal.sorovlar);
+            qoy({ holat: 'bajarildi', izoh: natijaIzohi(javoblar) });
+            showNotification(amal.natija || 'Bajarildi', 'success');
+            // Ro'yxatlar (o'quvchilar, to'lovlar, lidlar...) fonda yangilanadi — ilova yopilmaydi.
+            retryLoad().catch(() => {});
         } catch (e: any) {
-            qoy({ holat: 'xato', xato: e?.message || "Bajarib bo'lmadi" });
+            if (e instanceof AmalXato && e.bajarildi > 0) {
+                qoy({ holat: 'qisman', xato: e.message, izoh: natijaIzohi(e.javoblar) });
+                retryLoad().catch(() => {});
+            } else {
+                qoy({ holat: 'xato', xato: e?.message || "Bajarib bo'lmadi" });
+            }
         }
-    }, [turns, turnniYangila, addLead, updateLead, updateStudent, showNotification, ozgartira]);
+    }, [turns, turnniYangila, token, showNotification, retryLoad]);
 
     // --- Ovoz bilan yozish (brauzer qo'llasa) ---------------------------------
     const NutqAniqlash = typeof window !== 'undefined' ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
@@ -313,6 +313,15 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
         el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
     }, [matn, ochiq]);
 
+    /** Misolni yozish maydoniga (xodim ismlarni o'zinikiga almashtiradi). */
+    const yozishgaQoy = (m: string) => {
+        setMatn(m);
+        setTimeout(() => {
+            const el = inputRef.current;
+            if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+        }, 0);
+    };
+
     const taklifniOl = (s: string) => {
         // "Izohiga yozib qo'y: " kabi takliflarni xodim o'zi davom ettiradi.
         if (s.endsWith(': ')) { setMatn(s); inputRef.current?.focus(); return; }
@@ -351,8 +360,10 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
         has('qarzdorlar') && "Eng katta 5 ta qarzdor kim, oxirgi marta qachon to'lagan?",
         has('kelmaganlar') && "Shu hafta eng ko'p dars qoldirganlar kim?",
         has('xonalar') && "Ertaga 15:00 da qaysi xona bo'sh?",
-        has('lidlar') && ozgartira('lidlar.royxat') && 'Yangi lid: Aziz Karimov, 90 123 45 67, matematika, Instagramdan',
-    ].filter(Boolean).slice(0, 4) as string[];
+    ].filter(Boolean).slice(0, 3) as string[];
+    // Buyruq namunalari — server xodimning ruxsati bo'yicha beradi; bosilsa yozish maydoniga tushadi.
+    const buyruqNamunalari = (holat?.amalMisollari || []).slice(0, 3);
+    const tezkorlar = umumiyBuyruqlar.filter(b => b.kalit !== 'imkoniyatlar');
 
     return (
         <>
@@ -435,11 +446,11 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                                 </div>
                             )}
 
-                            {umumiyBuyruqlar.length > 0 && (
+                            {tezkorlar.length > 0 && (
                                 <div>
                                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-matn-sokin mb-2"><Zap size={12} /> Tezkor · AI siz</div>
                                     <div className="flex flex-wrap gap-1.5">
-                                        {umumiyBuyruqlar.map(b => {
+                                        {tezkorlar.map(b => {
                                             const Belgi = BUYRUQ_BELGI[b.kalit] || Zap;
                                             return (
                                                 <button key={b.kalit} onClick={() => buyruqniIshga(b.kalit, b.nom)}
@@ -464,23 +475,51 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                                         </button>
                                     ) : <p className="text-[11.5px] text-matn-xira mt-1">Kalitni administrator kiritadi.</p>}
                                 </div>
-                            ) : namunalar.length > 0 && (
-                                <div>
-                                    <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Masalan, so'rang</div>
-                                    <div className="space-y-1">
-                                        {namunalar.map(n => (
-                                            <button key={n} onClick={() => yubor(n)}
-                                                className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
-                                                <span className="text-brand mt-[1px]">›</span><span>{n}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                            ) : (
+                                <>
+                                    {!!holat?.amallarSoni && (
+                                        <button onClick={() => buyruqniIshga('imkoniyatlar', 'Nimalar qila olaman?')}
+                                            className="w-full flex items-center gap-3 rounded-xl border border-brand/25 bg-brand/[0.05] px-3 py-2.5 text-left hover:bg-brand/[0.09] transition-colors">
+                                            <span className="w-8 h-8 rounded-lg bg-brand/12 text-brand flex items-center justify-center shrink-0"><Sparkles size={16} /></span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block text-[13px] font-semibold text-matn">Buyuring — bajaraman</span>
+                                                <span className="block text-[11.5px] text-matn-sokin">{holat.amallarSoni} xil amal: to'lov, yo'qlama, o'quvchi, kurs, xabar… Har birini siz tasdiqlaysiz</span>
+                                            </span>
+                                            <ChevronRight size={16} className="text-matn-xira shrink-0" />
+                                        </button>
+                                    )}
+                                    {buyruqNamunalari.length > 0 && (
+                                        <div>
+                                            <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Masalan, buyuring</div>
+                                            <div className="space-y-1">
+                                                {buyruqNamunalari.map(n => (
+                                                    <button key={n} onClick={() => yozishgaQoy(n)} title="Yozish maydoniga qo'yish"
+                                                        className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
+                                                        <PenLine size={13} className="text-brand mt-[3px] shrink-0" /><span>{n}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {namunalar.length > 0 && (
+                                        <div>
+                                            <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Yoki so'rang</div>
+                                            <div className="space-y-1">
+                                                {namunalar.map(n => (
+                                                    <button key={n} onClick={() => yubor(n)}
+                                                        className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
+                                                        <span className="text-brand mt-[1px]">›</span><span>{n}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     ) : (
                         turns.map(t => (
-                            <ZukkoXabar key={t.id} turn={t} onHavola={havolaniOch} onTaklif={taklifniOl}
+                            <ZukkoXabar key={t.id} turn={t} onHavola={havolaniOch} onTaklif={taklifniOl} onYoz={yozishgaQoy}
                                 onAmal={(i, tasdiq) => amalniBajar(t.id, i, tasdiq)} />
                         ))
                     )}
@@ -520,7 +559,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                             onChange={e => setMatn(e.target.value)}
                             onKeyDown={klavish}
                             rows={1}
-                            placeholder={aiYoq ? 'Masalan: qarzdorlar, bugungi darslar…  ( / — buyruqlar)' : "Savol yozing yoki / — tezkor buyruqlar"}
+                            placeholder={aiYoq ? 'Masalan: qarzdorlar, bugungi darslar' : 'Savol yoki buyruq yozing…'}
                             aria-label="Zukkoga savol"
                             className="flex-1 min-w-0 resize-none bg-transparent px-1.5 py-1.5 text-[13.5px] leading-[1.45] text-matn placeholder:text-matn-xira max-h-[132px]"
                             // index.css dagi umumiy fokus ramkasi qatlamsiz — Tailwind klassi uni bosolmaydi.
@@ -546,7 +585,7 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                         )}
                     </div>
                     <div className="mt-1.5 px-1 flex items-center justify-between gap-2 text-[10.5px] text-matn-xira">
-                        <span className="truncate">Raqamlar bazadan · telefonlar AI ga berilmaydi</span>
+                        <span className="truncate">/ — tezkor buyruqlar · telefonlar AI ga berilmaydi</span>
                         <span className="hidden sm:inline font-mono shrink-0">Ctrl+/</span>
                     </div>
                 </div>

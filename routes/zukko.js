@@ -18,6 +18,7 @@ import { aiBilan, AiXato } from '../lib/imtihonAI.js';
 import { toDateStr } from '../lib/lessons.js';
 import { markazKaliti } from './imtihonAI.js';
 import { zukkoSuhbat, zukkoTayyormi } from '../lib/zukko.js';
+import { ruxsatliAmallar } from '../lib/zukkoAmallar.js';
 import {
   R, korsa, korsatkichlar, vositaniBajar, ruxsatliBuyruqlar, buyruqniBajar, sahifaKonteksti,
 } from '../lib/zukkoVositalar.js';
@@ -103,6 +104,41 @@ async function puls(k) {
   return out.slice(0, 4);
 }
 
+/**
+ * "Nimalar qila olaman?" — xodimning ruxsati bo'yicha amallar, misol bilan.
+ * Misol bosilsa yozish maydoniga tushadi (ismlarni xodim o'zinikiga almashtiradi).
+ */
+function imkoniyatlar(k) {
+  const amallar = ruxsatliAmallar(k);
+  const guruhlar = [...new Set(amallar.map(a => a.guruh))];
+  const savollar = [
+    ["Bu oy tushum o'tgan oyga nisbatan qanday?", R.tushum], ["Eng katta 5 ta qarzdor kim?", R.balans],
+    ["Shu hafta eng ko'p dars qoldirganlar kim?", R.davomat], ["Ertaga 15:00 da qaysi xona bo'sh?", R.xonalar],
+    ["Matematika-4 kursi haqida", R.kurslar], ["2 kundan beri javobsiz lidlar", R.lidlar],
+  ].filter(([, r]) => korsa(k, r)).map(([s]) => s);
+  return {
+    tur: 'royxat',
+    belgi: 'imkoniyatlar',
+    sarlavha: 'Zukko nimalar qila oladi',
+    izoh: `${amallar.length} ta amal — sizning ruxsatingiz bo'yicha. Misolni bossangiz yozish maydoniga tushadi.`,
+    bolimlar: [
+      ...guruhlar.map(g => ({
+        sarlavha: g,
+        qatorlar: amallar.filter(a => a.guruh === g).map(a => ({ tur: 'misol', nom: a.misol, izoh: a.tavsif.split(/[.:;]\s/)[0], savol: a.misol })),
+      })),
+      ...(savollar.length ? [{ sarlavha: "Savollar (ma'lumot)", qatorlar: savollar.map(s => ({ tur: 'misol', nom: s, savol: s })) }] : []),
+    ],
+    ...(amallar.length ? {} : { bosh: "Sizning lavozimingizga amallar ochilmagan — faqat savollar va tezkor tugmalar ishlaydi" }),
+  };
+}
+
+// Bosh ekrandagi buyruq namunalari — xodimga ochiq amallardan, shu tartibda.
+const MISOL_TARTIBI = ['tolov_qabul', 'yoqlama', 'oquvchi_qoshish', 'lid_qoshish', 'kursga_qoshish', 'xarajat_qoshish', 'qarz_eslatmasi', 'xabar_yuborish', 'xodim_davomati'];
+function amalMisollari(k) {
+  const bor = new Map(ruxsatliAmallar(k).map(a => [a.nom, a.misol]));
+  return MISOL_TARTIBI.filter(n => bor.has(n)).map(n => bor.get(n)).slice(0, 3);
+}
+
 function xatoJavob(err, res, next) {
   if (err instanceof AiXato) return res.status(err.status).json({ error: err.message });
   return next(err);
@@ -118,7 +154,12 @@ export function registerZukkoRoutes(app) {
       res.json({
         ai: { yoqilgan: aiBilan(kalit, zukkoTayyormi), sozlay: req.user.role === 'ADMIN' },
         puls: p,
-        buyruqlar: ruxsatliBuyruqlar(k).map(b => ({ kalit: b.kalit, nom: b.nom, sahifa: b.sahifa || null })),
+        buyruqlar: [
+          ...ruxsatliBuyruqlar(k).map(b => ({ kalit: b.kalit, nom: b.nom, sahifa: b.sahifa || null })),
+          { kalit: 'imkoniyatlar', nom: 'Nimalar qila olaman?', sahifa: null },
+        ],
+        amallarSoni: ruxsatliAmallar(k).length,
+        amalMisollari: amalMisollari(k),
         sahifa,
         filial: k.filialMatni,
       });
@@ -131,6 +172,10 @@ export function registerZukkoRoutes(app) {
       if (!k) return res.status(400).json({ error: KONTEKST_YOQ });
       const kalit = String(req.body?.buyruq || '').slice(0, 40);
       const id = parseInt(req.body?.param?.id);
+      if (kalit === 'imkoniyatlar') {
+        const blok = imkoniyatlar(k);
+        return res.json({ blok, xulosa: "Quyidagilarni so'rashingiz mumkin — Zukko kartochka tayyorlaydi, siz tasdiqlaysiz" });
+      }
       const natija = await buyruqniBajar(k, kalit, Number.isInteger(id) ? { id } : null);
       if (natija.xato) return res.status(400).json({ error: natija.xato });
       res.json({ blok: natija.blok, xulosa: natija.xulosa });

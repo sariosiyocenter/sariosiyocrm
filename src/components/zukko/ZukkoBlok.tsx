@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, Copy, DoorOpen, Phone, Receipt, Target, Wallet } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, Copy, CornerDownLeft, DoorOpen, Phone, Receipt, Sparkles, Target, Wallet } from 'lucide-react';
 import { Blok, Qator, Ton, blokMatni } from './zukkoApi';
 
 // Zukko javobining manbasi: vosita bazadan o'qigan ma'lumot kartochkasi.
@@ -60,12 +60,13 @@ function QatorBelgisi({ q }: { q: Qator }) {
     if (q.tur === 'tolov') return <span className={`${quti} bg-yaxshi-fon text-yaxshi`}><Wallet size={14} /></span>;
     if (q.tur === 'xarajat') return <span className={`${quti} bg-xato-fon text-xato`}><Receipt size={14} /></span>;
     if (q.tur === 'xona') return <span className={`${quti} bg-ichki text-matn-sokin`}><DoorOpen size={14} /></span>;
+    if (q.tur === 'misol') return <span className={`${quti} bg-brand/10 text-brand`}><Sparkles size={13} /></span>;
     return <span className={`${quti} bg-ichki`} />;
 }
 
 const KORINADI = 6;
 
-export default function ZukkoBlok({ blok, vaqt, onHavola }: { blok: Blok; vaqt?: number; onHavola: (yol: string) => void }) {
+export default function ZukkoBlok({ blok, vaqt, onHavola, onSavol }: { blok: Blok; vaqt?: number; onHavola: (yol: string) => void; onSavol?: (matn: string) => void }) {
     const [nusxa, setNusxa] = useState(false);
     const [ochiq, setOchiq] = useState<Record<number, boolean>>({});
     const soat = vaqt ? new Date(vaqt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : null;
@@ -88,7 +89,7 @@ export default function ZukkoBlok({ blok, vaqt, onHavola }: { blok: Blok; vaqt?:
                     <span className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-accent text-brand-ust text-[12px] font-semibold flex items-center justify-center shrink-0">{harflar}</span>
                 )}
                 <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[9.5px] tracking-[0.08em] uppercase text-matn-xira">manba · baza{soat ? ` · ${soat}` : ''}</div>
+                    <div className="font-mono text-[9.5px] tracking-[0.08em] uppercase text-matn-xira">{blok.belgi || 'manba · baza'}{soat && !blok.belgi ? ` · ${soat}` : ''}</div>
                     <div className="text-[13.5px] font-semibold text-matn leading-snug break-words">{blok.sarlavha}</div>
                     {blok.izoh && <div className="text-[11.5px] text-matn-sokin mt-0.5 break-words">{blok.izoh}</div>}
                 </div>
@@ -147,8 +148,8 @@ export default function ZukkoBlok({ blok, vaqt, onHavola }: { blok: Blok; vaqt?:
                                     <>
                                         <QatorBelgisi q={q} />
                                         <div className="min-w-0 flex-1">
-                                            <div className="text-[12.5px] font-medium text-matn truncate">{q.nom}</div>
-                                            {q.izoh && <div className="text-[11px] text-matn-xira truncate" title={q.izoh}>{q.izoh}</div>}
+                                            <div className={`text-[12.5px] font-medium text-matn ${q.tur === 'misol' ? 'break-words' : 'truncate'}`}>{q.nom}</div>
+                                            {q.izoh && <div className={`text-[11px] text-matn-xira ${q.tur === 'misol' ? 'break-words' : 'truncate'}`} title={q.izoh}>{q.izoh}</div>}
                                             {q.ulush !== undefined && (
                                                 <div className="mt-1 h-[3px] rounded-full bg-chiziq overflow-hidden">
                                                     <div className="h-full rounded-full bg-brand/70" style={{ width: `${Math.max(2, Math.min(100, q.ulush))}%` }} />
@@ -157,11 +158,16 @@ export default function ZukkoBlok({ blok, vaqt, onHavola }: { blok: Blok; vaqt?:
                                         </div>
                                         {q.qiymat && <span className={`${/^[−+-]?\d/.test(q.qiymat) ? 'num' : ''} text-[12px] font-semibold shrink-0 ${tonRangi(q.ton)}`}>{q.qiymat}</span>}
                                         {q.havola && <ChevronRight size={14} className="text-matn-xira shrink-0 -mr-1" />}
+                                        {q.savol && onSavol && <CornerDownLeft size={13} className="text-matn-xira shrink-0 -mr-1" />}
                                     </>
                                 );
                                 return (
                                     <li key={`${q.tur}-${q.id ?? qi}-${qi}`}>
-                                        {q.havola ? (
+                                        {q.savol && onSavol ? (
+                                            <button onClick={() => onSavol(q.savol!)} title="Yozish maydoniga qo'yish" className="w-full flex items-center gap-2.5 px-3 py-[7px] text-left hover:bg-ichki transition-colors">
+                                                {Ichi}
+                                            </button>
+                                        ) : q.havola ? (
                                             <button onClick={() => onHavola(q.havola!)} className="w-full flex items-center gap-2.5 px-3 py-[7px] text-left hover:bg-ichki transition-colors">
                                                 {Ichi}
                                             </button>

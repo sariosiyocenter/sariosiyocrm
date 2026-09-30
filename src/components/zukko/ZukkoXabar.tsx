@@ -1,8 +1,8 @@
 import { Fragment, ReactNode, useState } from 'react';
-import { AlertTriangle, Check, CheckCircle2, ChevronDown, CircleAlert, Loader2, RotateCcw, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Check, CheckCircle2, ChevronDown, CircleAlert, Loader2, RotateCcw, Zap } from 'lucide-react';
 import ZukkoBelgi from './ZukkoBelgi';
 import ZukkoBlok from './ZukkoBlok';
-import { Amal, Qadam, Turn } from './zukkoApi';
+import { AMAL_MUDDATI_MS, Amal, Qadam, Turn } from './zukkoApi';
 
 // --- Javob matni: qalin, ro'yxat va ajratilgan raqamlar ---------------------
 
@@ -91,34 +91,64 @@ function Iz({ qadamlar, kutmoqda }: { qadamlar: Qadam[]; kutmoqda?: boolean }) {
 
 // --- Amal kartochkasi -------------------------------------------------------
 
-function AmalKarta({ amal, onTasdiq, onBekor }: { amal: Amal; onTasdiq: () => void; onBekor: () => void }) {
+function AmalKarta({ amal, onTasdiq, onBekor, onHavola }: { amal: Amal; onTasdiq: () => void; onBekor: () => void; onHavola: (yol: string) => void }) {
+    const eskirgan = !!amal.yaratildi && Date.now() - amal.yaratildi > AMAL_MUDDATI_MS;
     const holat = amal.holat || 'kutmoqda';
     const tugagan = holat === 'bajarildi' || holat === 'bekor';
+    const [ochiq, setOchiq] = useState<Record<number, boolean>>({});
+    const xavfli = !!amal.xavfli && !tugagan;
+    const chegara = tugagan ? 'border-chiziq bg-sirt' : xavfli ? 'border-xato/40 bg-xato-fon/40' : 'border-brand/35 bg-brand/[0.04]';
+    const yozuv = holat === 'bajarildi' ? 'bajarildi' : holat === 'bekor' ? 'bekor qilindi' : holat === 'qisman' ? 'qisman bajarildi'
+        : eskirgan && holat === 'kutmoqda' ? 'taklif eskirdi' : xavfli ? 'diqqat — tasdiqlash kerak' : 'tasdiqlash kerak';
     return (
-        <div className={`rounded-xl border overflow-hidden zk-kirish ${tugagan ? 'border-chiziq bg-sirt' : 'border-brand/35 bg-brand/[0.04]'}`}>
+        <div className={`rounded-xl border overflow-hidden zk-kirish ${chegara}`}>
             <div className="px-3 pt-2.5">
-                <div className={`font-mono text-[9.5px] tracking-[0.08em] uppercase ${tugagan ? 'text-matn-xira' : 'text-brand'}`}>
-                    {holat === 'bajarildi' ? 'bajarildi' : holat === 'bekor' ? 'bekor qilindi' : 'tasdiqlash kerak'}
-                </div>
+                <div className={`font-mono text-[9.5px] tracking-[0.08em] uppercase ${tugagan ? 'text-matn-xira' : xavfli ? 'text-xato' : 'text-brand'}`}>{yozuv}</div>
                 <div className={`text-[13.5px] font-semibold mt-0.5 ${holat === 'bekor' ? 'text-matn-xira line-through' : 'text-matn'}`}>{amal.sarlavha}</div>
             </div>
             <dl className="px-3 py-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12.5px]">
                 {amal.maydonlar.map((m, i) => (
                     <Fragment key={i}>
                         <dt className="text-matn-sokin">{m.nom}</dt>
-                        <dd className="text-matn font-medium break-words whitespace-pre-line min-w-0">{m.qiymat}</dd>
+                        <dd className="text-matn font-medium break-words whitespace-pre-line min-w-0">
+                            {m.eski !== undefined && (
+                                <><span className="text-matn-xira line-through decoration-matn-xira/60">{m.eski}</span><span className="text-matn-xira mx-1.5">→</span></>
+                            )}
+                            {m.qiymat}
+                        </dd>
                     </Fragment>
                 ))}
             </dl>
+            {(amal.royxat || []).map((r, ri) => {
+                const hammasi = ochiq[ri] || r.qatorlar.length <= 6;
+                const qatorlar = hammasi ? r.qatorlar : r.qatorlar.slice(0, 5);
+                return (
+                    <div key={ri} className="mx-3 mb-2 rounded-lg bg-sirt/70 border border-chiziq-mayin px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-matn-sokin mb-1">{r.sarlavha}</div>
+                        <ul className="space-y-0.5">
+                            {qatorlar.map((q, qi) => <li key={qi} className="text-[12px] text-matn-2 break-words">{q}</li>)}
+                        </ul>
+                        {!hammasi && (
+                            <button onClick={() => setOchiq(o => ({ ...o, [ri]: true }))} className="mt-1 text-[11.5px] text-brand flex items-center gap-1">
+                                <ChevronDown size={12} /> Yana {r.qatorlar.length - 5} ta
+                            </button>
+                        )}
+                        {hammasi && !!r.yana && <div className="mt-1 text-[11px] text-matn-xira">… va yana {r.yana} ta</div>}
+                    </div>
+                );
+            })}
             {!tugagan && amal.ogohlantirish.map((o, i) => (
                 <div key={i} className="mx-3 mb-2 flex gap-1.5 rounded-lg bg-ogoh-fon px-2.5 py-1.5 text-[12px] text-ogoh">
                     <AlertTriangle size={13} className="mt-[2px] shrink-0" /> <span>{o}</span>
                 </div>
             ))}
-            <div className={`flex items-center gap-2 border-t px-3 py-2.5 ${tugagan ? 'border-chiziq-mayin' : 'border-brand/20'}`}>
-                {holat === 'kutmoqda' && (
+            {amal.izoh && (holat === 'bajarildi' || holat === 'qisman') && (
+                <div className="mx-3 mb-2 rounded-lg bg-ichki px-2.5 py-1.5 text-[12px] text-matn-2">{amal.izoh}</div>
+            )}
+            <div className={`flex flex-wrap items-center gap-2 border-t px-3 py-2.5 ${tugagan ? 'border-chiziq-mayin' : xavfli ? 'border-xato/25' : 'border-brand/20'}`}>
+                {holat === 'kutmoqda' && !eskirgan && (
                     <>
-                        <button onClick={onTasdiq} className="flex-1 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-brand-ust hover:opacity-90 transition-opacity">
+                        <button onClick={onTasdiq} className={`flex-1 rounded-lg px-3 py-2 text-[12.5px] font-semibold hover:opacity-90 transition-opacity ${xavfli ? 'bg-xato text-white' : 'bg-brand text-brand-ust'}`}>
                             {amal.tugma}
                         </button>
                         <button onClick={onBekor} className="rounded-lg border border-chiziq px-3 py-2 text-[12.5px] text-matn-2 hover:bg-ichki transition-colors">
@@ -126,14 +156,22 @@ function AmalKarta({ amal, onTasdiq, onBekor }: { amal: Amal; onTasdiq: () => vo
                         </button>
                     </>
                 )}
+                {holat === 'kutmoqda' && eskirgan && <span className="text-[12px] text-matn-xira">15 daqiqadan oshdi — ma'lumot o'zgargan bo'lishi mumkin, qaytadan so'rang</span>}
                 {holat === 'bajarilmoqda' && <span className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> Bajarilmoqda…</span>}
-                {holat === 'bajarildi' && <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-yaxshi"><CheckCircle2 size={15} /> Saqlandi · jurnalga yozildi</span>}
+                {holat === 'bajarildi' && <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-yaxshi"><CheckCircle2 size={15} /> {amal.natija || 'Bajarildi'} · jurnalga yozildi</span>}
                 {holat === 'bekor' && <span className="text-[12px] text-matn-xira">Hech narsa o'zgarmadi</span>}
-                {holat === 'xato' && (
+                {(holat === 'xato' || holat === 'qisman') && (
                     <>
-                        <span className="flex-1 text-[12px] text-xato break-words">{amal.xato || 'Bajarib bo\'lmadi'}</span>
-                        <button onClick={onTasdiq} className="flex items-center gap-1 rounded-lg border border-chiziq px-2.5 py-1.5 text-[12px] text-matn-2 hover:bg-ichki"><RotateCcw size={12} /> Qayta</button>
+                        <span className="flex-1 text-[12px] text-xato break-words">{amal.xato || "Bajarib bo'lmadi"}</span>
+                        {holat === 'xato' && !eskirgan && (
+                            <button onClick={onTasdiq} className="flex items-center gap-1 rounded-lg border border-chiziq px-2.5 py-1.5 text-[12px] text-matn-2 hover:bg-ichki"><RotateCcw size={12} /> Qayta</button>
+                        )}
                     </>
+                )}
+                {(holat === 'bajarildi' || holat === 'qisman') && amal.havola && (
+                    <button onClick={() => onHavola(amal.havola!)} className="ml-auto flex items-center gap-1 text-[12px] font-medium text-brand hover:underline">
+                        Ochish <ArrowUpRight size={13} />
+                    </button>
                 )}
             </div>
         </div>
@@ -144,10 +182,12 @@ function AmalKarta({ amal, onTasdiq, onBekor }: { amal: Amal; onTasdiq: () => vo
 
 const soat = (t: number) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-export default function ZukkoXabar({ turn, onHavola, onTaklif, onAmal }: {
+export default function ZukkoXabar({ turn, onHavola, onTaklif, onYoz, onAmal }: {
     turn: Turn;
     onHavola: (yol: string) => void;
     onTaklif: (savol: string) => void;
+    /** Misolni yozish maydoniga qo'yish (yubormasdan). */
+    onYoz: (matn: string) => void;
     onAmal: (indeks: number, tasdiq: boolean) => void;
 }) {
     if (turn.rol === 'user') {
@@ -184,10 +224,10 @@ export default function ZukkoXabar({ turn, onHavola, onTaklif, onAmal }: {
 
                 {turn.matn && <JavobMatni matn={turn.matn} />}
 
-                {(turn.bloklar || []).map((b, i) => <ZukkoBlok key={i} blok={b} vaqt={turn.vaqt} onHavola={onHavola} />)}
+                {(turn.bloklar || []).map((b, i) => <ZukkoBlok key={i} blok={b} vaqt={turn.vaqt} onHavola={onHavola} onSavol={onYoz} />)}
 
                 {(turn.amallar || []).map((a, i) => (
-                    <AmalKarta key={i} amal={a} onTasdiq={() => onAmal(i, true)} onBekor={() => onAmal(i, false)} />
+                    <AmalKarta key={i} amal={a} onTasdiq={() => onAmal(i, true)} onBekor={() => onAmal(i, false)} onHavola={onHavola} />
                 ))}
 
                 {turn.xato && (
