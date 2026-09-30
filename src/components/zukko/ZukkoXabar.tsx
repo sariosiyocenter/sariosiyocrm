@@ -1,5 +1,5 @@
 import { Fragment, ReactNode, useState } from 'react';
-import { AlertTriangle, ArrowUpRight, Check, CheckCircle2, ChevronDown, CircleAlert, Loader2, RotateCcw, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Check, CheckCircle2, ChevronDown, CircleAlert, Loader2, Paperclip, RotateCcw, Zap } from 'lucide-react';
 import ZukkoBelgi from './ZukkoBelgi';
 import ZukkoBlok from './ZukkoBlok';
 import { AMAL_MUDDATI_MS, Amal, Qadam, Turn } from './zukkoApi';
@@ -157,7 +157,7 @@ function AmalKarta({ amal, onTasdiq, onBekor, onHavola }: { amal: Amal; onTasdiq
                     </>
                 )}
                 {holat === 'kutmoqda' && eskirgan && <span className="text-[12px] text-matn-xira">15 daqiqadan oshdi — ma'lumot o'zgargan bo'lishi mumkin, qaytadan so'rang</span>}
-                {holat === 'bajarilmoqda' && <span className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> Bajarilmoqda…</span>}
+                {holat === 'bajarilmoqda' && <span className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> {amal.maxsus ? "«Savol qo'shish» oynasida — natijani ko'rib, saqlang" : 'Bajarilmoqda…'}</span>}
                 {holat === 'bajarildi' && <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-yaxshi"><CheckCircle2 size={15} /> {amal.natija || 'Bajarildi'} · jurnalga yozildi</span>}
                 {holat === 'bekor' && <span className="text-[12px] text-matn-xira">Hech narsa o'zgarmadi</span>}
                 {(holat === 'xato' || holat === 'qisman') && (
@@ -192,7 +192,16 @@ export default function ZukkoXabar({ turn, onHavola, onTaklif, onYoz, onAmal }: 
 }) {
     if (turn.rol === 'user') {
         return (
-            <div className="flex justify-end zk-kirish">
+            <div className="flex flex-col items-end gap-1 zk-kirish">
+                {!!turn.fayllar?.length && (
+                    <div className="flex max-w-[86%] flex-wrap justify-end gap-1">
+                        {turn.fayllar.map((f, i) => (
+                            <span key={i} title={f.nom} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-chiziq bg-sirt px-2 py-1 text-[11.5px] text-matn-2">
+                                <Paperclip size={11} className="shrink-0 text-brand" /><span className="truncate">{f.nom}</span>
+                            </span>
+                        ))}
+                    </div>
+                )}
                 <div className="max-w-[86%] rounded-2xl rounded-br-md border border-brand/15 bg-brand/[0.09] px-3.5 py-2 text-[13.5px] leading-relaxed text-matn whitespace-pre-wrap break-words">
                     {turn.matn}
                 </div>

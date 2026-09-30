@@ -614,10 +614,12 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         if (xato) { xatolar.push({ qator: raw?.qator ?? i + 1, xato }); return; }
         data.push({ ...d, text: d.text ?? '', schoolId, createdById: req.user.id || null });
       });
-      const result = data.length ? await prisma.question.createMany({ data }) : { count: 0 };
+      // id lar ham qaytadi: Zukko saqlangan savollarni imtihonga "tanlangan savollar"
+      // qilib qo'shadi (faqat faollari — variant faol savollardan yasaladi).
+      const rows = data.length ? await prisma.question.createManyAndReturn({ data, select: { id: true, status: true } }) : [];
       // Excel dagi fan va mavzu nomlari bank tuzilmasiga bog'lanadi (topilmasa yaratiladi).
-      if (result.count) await bankniSinxronla(await organizationSchoolIds(req.user));
-      res.status(201).json({ count: result.count, xatolar });
+      if (rows.length) await bankniSinxronla(await organizationSchoolIds(req.user));
+      res.status(201).json({ count: rows.length, ids: rows.map(r => r.id), faolIds: rows.filter(r => r.status === 'faol').map(r => r.id), xatolar });
     } catch (err) { next(err); }
   });
 

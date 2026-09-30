@@ -66,6 +66,23 @@ export interface Amal {
     xato?: string;
     /** Bajarilgach server javobidan qisqa izoh (SMS ketdi, ogohlantirish...). */
     izoh?: string;
+    /** So'rov emas, panel oynasi bilan bajariladigan amal (fayldan savol yuklash). */
+    maxsus?: SavolYuklashAmali;
+}
+
+export interface SavolYuklashAmali {
+    tur: 'savol_yuklash';
+    fanId: number;
+    fanNomi: string;
+    mavzuId: number | null;
+    /** Saqlangach faol savollar shu imtihonga qo'shiladi (yangi kartochka). */
+    imtihon: { id: number; nom: string } | null;
+}
+
+/** Xabarga biriktirilgan fayl — serverga faqat nomi va turi boradi. */
+export interface FaylBelgi {
+    nom: string;
+    tur: string;
 }
 
 /** Taklif shuncha vaqtdan keyin tasdiqlanmaydi — ma'lumot eskirgan bo'lishi mumkin. */
@@ -83,6 +100,8 @@ export interface Turn {
     rol: 'user' | 'zukko';
     vaqt: number;
     matn?: string;
+    /** Foydalanuvchi xabariga biriktirilgan fayllar (nomi, turi). */
+    fayllar?: FaylBelgi[];
     qadamlar?: Qadam[];
     bloklar?: Blok[];
     amallar?: Amal[];
@@ -107,6 +126,8 @@ export interface Holat {
     ai: { yoqilgan: boolean; sozlay: boolean };
     amallarSoni?: number;
     amalMisollari?: string[];
+    /** Test faylini biriktirsa bo'ladi (savol qo'shish ruxsati bor). */
+    faylQabul?: boolean;
     puls: PulsKarta[];
     buyruqlar: { kalit: string; nom: string; sahifa: 'oquvchi' | 'kurs' | null }[];
     sahifa: { tur: 'oquvchi' | 'kurs' | 'sahifa'; id?: number; nom?: string; sahifa?: string | null };
@@ -166,13 +187,14 @@ export async function savolYubor(opts: {
     savol: string;
     tarix: { rol: 'user' | 'model'; matn: string; dalil?: string }[];
     yol: string;
+    fayllar?: FaylBelgi[];
     signal?: AbortSignal;
     onHodisa: (h: Hodisa) => void;
 }) {
     const res = await fetch('/api/zukko/savol', {
         method: 'POST',
         headers: sarlavhalar(opts.token, true),
-        body: JSON.stringify({ savol: opts.savol, tarix: opts.tarix, yol: opts.yol, schoolId: schoolParam(opts.schoolId) }),
+        body: JSON.stringify({ savol: opts.savol, tarix: opts.tarix, yol: opts.yol, fayllar: opts.fayllar?.length ? opts.fayllar : undefined, schoolId: schoolParam(opts.schoolId) }),
         signal: opts.signal,
     });
     if (!res.ok || !res.body) throw await xatoniOl(res);
@@ -226,6 +248,25 @@ export function blokMatni(b: Blok): string {
         if (bo.yana) q.push(`… yana ${bo.yana} ta`);
     }
     return q.join('\n');
+}
+
+/** AI siz amal kartochkasi (masalan, savollar saqlangach — imtihonga qo'shish taklifi). */
+export async function amalTayyorla(token: string | null, schoolId: number | null | undefined, nom: string, args: Record<string, unknown>): Promise<Amal> {
+    const res = await fetch('/api/zukko/amal', {
+        method: 'POST',
+        headers: sarlavhalar(token, true),
+        body: JSON.stringify({ nom, args, schoolId: schoolParam(schoolId) }),
+    });
+    if (!res.ok) throw await xatoniOl(res);
+    return (await res.json()).amal;
+}
+
+/** Fayl turi — xabar ostidagi belgi va serverga yuboriladigan izoh uchun. */
+export function faylTuri(f: File): string {
+    if (/\.xlsx?$/i.test(f.name)) return 'Excel';
+    if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) return 'PDF';
+    if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name)) return 'rasm';
+    return '';
 }
 
 export class AmalXato extends Error {

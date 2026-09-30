@@ -97,8 +97,13 @@ function Belgilar({ n }: { n: Natija }) {
   );
 }
 
-export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, onYop, onSaqlandi }: {
-  daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null; onYop: () => void; onSaqlandi: () => void;
+/** Saqlash natijasi — Zukko faol savollarni imtihonga qo'shishi uchun. */
+export interface SaqlashNatijasi { soni: number; ids: number[]; faolIds: number[] }
+
+export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
+  daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null; onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
+  /** Zukko dan: biriktirilgan fayllar; avto — yuklangach ajratish o'zi boshlanadi; yuqorida — Zukko panelining ustida. */
+  boshFayllar?: File[]; avto?: boolean; yuqorida?: boolean;
 }) {
   const { showNotification } = useCRM();
   const { soro, filial } = useImtihonApi();
@@ -162,6 +167,24 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       }
     }
   };
+
+  // Zukko dan kelgan fayllar ochilishi bilan yuklanadi; avto bo'lsa ajratish ham o'zi boshlanadi.
+  const boshlandi = useRef(false);
+  const [avtoKutadi, setAvtoKutadi] = useState(false);
+  useEffect(() => {
+    if (boshlandi.current || !boshFayllar?.length) return;
+    boshlandi.current = true;
+    fayllarniQosh(boshFayllar).then(() => { if (avto) setAvtoKutadi(true); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!avtoKutadi || jarayon || !ai) return;
+    setAvtoKutadi(false);
+    // Rasm/PDF uchun fan va AI kerak — bo'lmasa xodim o'zi tanlab, tugmani bosadi.
+    if (natijalar || !manbalar.length || (sahifalar.length > 0 && (!fan || !ai.yoqilgan))) return;
+    ajrat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avtoKutadi, jarayon, ai]);
 
   // Kompyuterda: nusxalangan rasm (Ctrl+V).
   useEffect(() => {
@@ -296,10 +319,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           status: holatiQanday(n), qator: i + 1,
         };
       });
-      const r = await soro<{ count: number; xatolar: { qator: number; xato: string }[] }>('POST', 'questions/bulk', { questions, schoolId: filial });
+      const r = await soro<{ count: number; ids?: number[]; faolIds?: number[]; xatolar: { qator: number; xato: string }[] }>('POST', 'questions/bulk', { questions, schoolId: filial });
       const qoralama = questions.filter(q => q.status === 'qoralama').length;
       showNotification(`${r.count} ta savol bankka qo'shildi${qoralama ? ` — ${qoralama} tasi qoralama (bankda ko'rib, faol qilasiz)` : ''}${r.xatolar.length ? `; ${r.xatolar.length} tasi qo'shilmadi: ${r.xatolar[0].xato}` : ''}`, r.xatolar.length ? 'info' : 'success');
-      onSaqlandi();
+      onSaqlandi({ soni: r.count, ids: r.ids || [], faolIds: r.faolIds || [] });
       onYop();
     } catch (e: any) {
       showNotification(e.message, 'error');
@@ -342,7 +365,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   // ---- Oyna ------------------------------------------------------------------
 
   return (
-    <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="Savol qo'shish">
+    <div className={`fixed inset-0 ${yuqorida ? 'z-[400]' : 'z-[260]'} flex items-start justify-center overflow-y-auto p-2 sm:p-4`} role="dialog" aria-modal="true" aria-label="Savol qo'shish">
       <div className="fixed inset-0 bg-black/50" onClick={() => !band && onYop()} />
       <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-4xl border border-chiziq my-2 sm:my-4">
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">

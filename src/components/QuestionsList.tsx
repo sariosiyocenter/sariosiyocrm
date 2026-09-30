@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Tugma, INPUT, Yuklanmoqda, BoshHolat, Karta } from './imtihon/ui';
-import { useBankDaraxt, fanniTop, mavzuniTop } from './imtihon/bank/useBankDaraxt';
+import { useBankDaraxt, fanniTop, mavzuniTop, BANK_YANGILANDI } from './imtihon/bank/useBankDaraxt';
 import FanlarKorinishi from './imtihon/bank/FanlarKorinishi';
 import FanKorinishi from './imtihon/bank/FanKorinishi';
 import MavzuKorinishi from './imtihon/bank/MavzuKorinishi';
@@ -53,6 +53,13 @@ export default function QuestionsList() {
   }, [qidiruv, qayta, soro]);
 
   const ozgardi = () => { yangila(); setQayta(n => n + 1); };
+
+  // Zukko orqali bankka savol qo'shilsa — ochiq ro'yxat ham yangilanadi.
+  useEffect(() => {
+    const f = () => { yangila(); setQayta(n => n + 1); };
+    window.addEventListener(BANK_YANGILANDI, f);
+    return () => window.removeEventListener(BANK_YANGILANDI, f);
+  }, [yangila]);
 
   if (xato) return <Karta><BoshHolat sarlavha="Bank ochilmadi" izoh={xato}><Tugma onClick={() => yangila()}>Qayta urinish</Tugma></BoshHolat></Karta>;
   if (!daraxt) return <Yuklanmoqda />;

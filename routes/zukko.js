@@ -18,7 +18,7 @@ import { aiBilan, AiXato } from '../lib/imtihonAI.js';
 import { toDateStr } from '../lib/lessons.js';
 import { markazKaliti } from './imtihonAI.js';
 import { zukkoSuhbat, zukkoTayyormi } from '../lib/zukko.js';
-import { ruxsatliAmallar } from '../lib/zukkoAmallar.js';
+import { ruxsatliAmallar, amalniTayyorla } from '../lib/zukkoAmallar.js';
 import {
   R, korsa, korsatkichlar, vositaniBajar, ruxsatliBuyruqlar, buyruqniBajar, sahifaKonteksti,
 } from '../lib/zukkoVositalar.js';
@@ -160,6 +160,8 @@ export function registerZukkoRoutes(app) {
         ],
         amallarSoni: ruxsatliAmallar(k).length,
         amalMisollari: amalMisollari(k),
+        // Fayl biriktirish (test fayli → savollar banki/imtihon) — savol qo'shish ruxsati borlarga.
+        faylQabul: ruxsatliAmallar(k).some(a => a.nom === 'savol_yuklash'),
         sahifa,
         filial: k.filialMatni,
       });
@@ -179,6 +181,18 @@ export function registerZukkoRoutes(app) {
       const natija = await buyruqniBajar(k, kalit, Number.isInteger(id) ? { id } : null);
       if (natija.xato) return res.status(400).json({ error: natija.xato });
       res.json({ blok: natija.blok, xulosa: natija.xulosa });
+    } catch (err) { next(err); }
+  });
+
+  // Amalni AI siz tayyorlash (kartochka) — masalan fayldan saqlangan savollarni
+  // imtihonga qo'shish bosqichi. Hech narsa yozmaydi: kartochkani xodim tasdiqlaydi.
+  app.post('/api/zukko/amal', authenticate, buyruqCheklovi, async (req, res, next) => {
+    try {
+      const k = await kontekst(req);
+      if (!k) return res.status(400).json({ error: KONTEKST_YOQ });
+      const natija = await amalniTayyorla(k, String(req.body?.nom || '').slice(0, 60), req.body?.args || {});
+      if (natija.xato) return res.status(400).json({ error: natija.xato });
+      res.json({ amal: natija.amal });
     } catch (err) { next(err); }
   });
 
@@ -208,7 +222,10 @@ export function registerZukkoRoutes(app) {
 
       try {
         const sahifa = await sahifaKonteksti(k, req.body?.yol);
-        await zukkoSuhbat({ k, savol, tarix: req.body?.tarix, sahifa, yubor, toxtadimi: () => uzildi });
+        // Biriktirilgan fayllar — faqat nomi va turi (mazmuni savol yuklash oynasida o'qiladi).
+        const fayllar = (Array.isArray(req.body?.fayllar) ? req.body.fayllar : []).slice(0, 20)
+          .map(f => ({ nom: String(f?.nom || '').slice(0, 120), tur: String(f?.tur || '').slice(0, 20) })).filter(f => f.nom);
+        await zukkoSuhbat({ k, savol, tarix: req.body?.tarix, sahifa, fayllar, yubor, toxtadimi: () => uzildi });
       } catch (err) {
         if (err instanceof AiXato) yubor({ t: 'xato', matn: err.message, status: err.status });
         else {

@@ -27,6 +27,9 @@ export function useBankDaraxt(til = '') {
   return { daraxt, xato, yangila };
 }
 
+/** Bankka boshqa joydan (Zukko) savol qo'shildi — ochiq ro'yxat yangilanadi. */
+export const BANK_YANGILANDI = 'bank-yangilandi';
+
 /** Fan (id bo'yicha, bo'lmasa nomi bo'yicha — eski imtihonlar uchun). */
 export function fanniTop(daraxt: BankDaraxt | null, id?: number | null, nomi?: string): BankFan | null {
   if (!daraxt) return null;

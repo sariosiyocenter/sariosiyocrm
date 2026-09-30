@@ -1,11 +1,15 @@
-import { CSSProperties, KeyboardEvent as RKeyboardEvent, PointerEvent as RPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, KeyboardEvent as RKeyboardEvent, PointerEvent as RPointerEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUp, BookOpen, CalendarClock, DoorOpen, KeyRound, Mic, MicOff, PenLine, Square, Target, TrendingUp, User, UserX, Wallet, X, Zap, BarChart3, Receipt, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowUp, BookOpen, CalendarClock, DoorOpen, KeyRound, Mic, MicOff, PenLine, Square, Target, TrendingUp, User, UserX, Wallet, X, Zap, BarChart3, Receipt, Sparkles, ChevronRight, Paperclip, FileText, FileSpreadsheet, Image as RasmBelgi, FileUp, Loader2 } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import ZukkoBelgi from './ZukkoBelgi';
 import ZukkoXabar from './ZukkoXabar';
 import { tonRangi } from './ZukkoBlok';
-import { AMAL_MUDDATI_MS, Amal, AmalXato, Hodisa, Holat, Turn, ZukkoXato, amalniYubor, buyruqBajar, dalilMatni, holatniOl, natijaIzohi, savolYubor } from './zukkoApi';
+import { AMAL_MUDDATI_MS, Amal, AmalXato, FaylBelgi, Hodisa, Holat, SavolYuklashAmali, Turn, ZukkoXato, amalTayyorla, amalniYubor, buyruqBajar, dalilMatni, faylTuri, holatniOl, natijaIzohi, savolYubor } from './zukkoApi';
+import type { SaqlashNatijasi } from '../imtihon/bank/SavolYuklash';
+
+// Savol yuklash oynasi (bank kodi bilan) — faqat kartochka tasdiqlanganda yuklanadi.
+const ZukkoSavolYuklash = lazy(() => import('./ZukkoSavolYuklash'));
 
 /**
  * Zukko — o'ng tomondan chiqadigan AI yordamchi.
@@ -23,6 +27,9 @@ import { AMAL_MUDDATI_MS, Amal, AmalXato, Hodisa, Holat, Turn, ZukkoXato, amalni
 const KENGLIK_KALIT = 'zukko_kenglik';
 const suhbatKaliti = (userId?: number) => `zukko_suhbat_${userId ?? 0}`;
 const MAKS_TURN = 24;
+const MAKS_FAYL = 10;
+// Fayl biriktirib, matn yozmay yuborilsa.
+const FAYL_SAVOLI = "Shu fayldagi savollarni bankka qo'sh";
 
 const BUYRUQ_BELGI: Record<string, typeof Zap> = {
     darslar: CalendarClock, kelmaganlar: UserX, qarzdorlar: Wallet, 'bugungi-tushum': TrendingUp, tushum: TrendingUp,
@@ -58,12 +65,28 @@ const HAFTA = ['yakshanba', 'dushanba', 'seshanba', 'chorshanba', 'payshanba', '
 const OYLAR = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
 const bugunMatni = () => { const d = new Date(); return `${HAFTA[d.getDay()]}, ${d.getDate()}-${OYLAR[d.getMonth()]}`; };
 
+/** Savol yuklash oynasi (kodi va bank daraxti) yuklanguncha. */
+function OynaKutish() {
+    return (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40" role="status">
+            <div className="flex items-center gap-2 rounded-xl bg-sirt px-4 py-3 text-[13px] text-matn shadow-xl">
+                <Loader2 size={16} className="animate-spin text-brand" /> Savollar banki ochilmoqda…
+            </div>
+        </div>
+    );
+}
+
 function saqlanganSuhbat(userId?: number): Turn[] {
     try {
         const raw = localStorage.getItem(suhbatKaliti(userId));
         const turns: Turn[] = raw ? JSON.parse(raw) : [];
-        // Yarim qolgan javob (sahifa yangilangan) — uzilgan deb belgilanadi.
-        return Array.isArray(turns) ? turns.map(t => (t.kutmoqda ? { ...t, kutmoqda: false, xato: t.xato || 'Javob uzildi' } : t)) : [];
+        // Yarim qolgan javob (sahifa yangilangan) — uzilgan deb belgilanadi; ochiq
+        // qolgan savol yuklash oynasi yopilgan — kartochka yana tasdiqlashni kutadi.
+        return Array.isArray(turns) ? turns.map(t => {
+            const u = t.kutmoqda ? { ...t, kutmoqda: false, xato: t.xato || 'Javob uzildi' } : t;
+            if (!u.amallar?.some(a => a.maxsus && a.holat === 'bajarilmoqda')) return u;
+            return { ...u, amallar: u.amallar.map(a => (a.maxsus && a.holat === 'bajarilmoqda' ? { ...a, holat: 'kutmoqda' as const } : a)) };
+        }) : [];
     } catch { return []; }
 }
 
@@ -88,6 +111,15 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const nutqRef = useRef<any>(null);
     const pastdami = useRef(true);
+
+    // Biriktirilgan fayllar. Serverga (AI ga) faqat nomi boradi; fayl o'zi xotirada,
+    // xabar id si bo'yicha — savol yuklash oynasi o'qiydi. Sahifa yangilansa qayta tanlanadi.
+    const [biriktirma, setBiriktirma] = useState<File[]>([]);
+    const [sudralmoqda, setSudralmoqda] = useState(false);
+    const [yuklash, setYuklash] = useState<{ turnId: string; indeks: number; maxsus: SavolYuklashAmali; fayllar: File[] } | null>(null);
+    const faylRef = useRef<HTMLInputElement>(null);
+    const fayllarRef = useRef(new Map<string, File[]>());
+    const saqlandiRef = useRef(false);
 
     // Suhbat saqlanadi (xodim bo'yicha) — sahifa yangilansa ham yo'qolmaydi.
     useEffect(() => {
@@ -176,7 +208,8 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
     }, [turnniYangila]);
 
     const yubor = useCallback(async (kirish?: string) => {
-        const savol = (kirish ?? matn).trim();
+        const fayllar = biriktirma;
+        const savol = (kirish ?? matn).trim() || (fayllar.length ? FAYL_SAVOLI : '');
         if (!savol || band) return;
         setMatn('');
 
@@ -195,20 +228,27 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
             .filter(t => !t.kutmoqda && (t.matn || t.bloklar?.length))
             .slice(-10)
             .map(t => (t.rol === 'user'
-                ? { rol: 'user' as const, matn: t.matn || '' }
+                // Oldingi xabardagi fayl — keyingi javobda ("Matematikaga") AI uni bilsin.
+                ? { rol: 'user' as const, matn: `${t.matn || ''}${t.fayllar?.length ? `\n[Biriktirilgan fayllar: ${t.fayllar.map(f => f.nom).join(', ')}]` : ''}` }
                 : { rol: 'model' as const, matn: t.matn || (t.bloklar || []).map(b => b.sarlavha).join(', '), dalil: dalilMatni(t) || undefined }));
 
+        const belgilar: FaylBelgi[] = fayllar.map(f => ({ nom: f.name, tur: faylTuri(f) }));
+        const uid = yangiId();
+        if (fayllar.length) {
+            fayllarRef.current.set(uid, fayllar);
+            setBiriktirma([]);
+        }
         const zid = yangiId();
         pastdami.current = true;
         setTurns(ts => [...ts,
-            { id: yangiId(), rol: 'user', matn: savol, vaqt: Date.now() },
+            { id: uid, rol: 'user', matn: savol, vaqt: Date.now(), ...(belgilar.length ? { fayllar: belgilar } : {}) },
             { id: zid, rol: 'zukko', vaqt: Date.now(), kutmoqda: true, qadamlar: [], bloklar: [], amallar: [] }]);
         setBand(true);
         const ac = new AbortController();
         abortRef.current = ac;
         const t0 = Date.now();
         try {
-            await savolYubor({ token, schoolId: selectedSchoolId, savol, tarix, yol, signal: ac.signal, onHodisa: h => hodisa(zid, h) });
+            await savolYubor({ token, schoolId: selectedSchoolId, savol, tarix, yol, fayllar: belgilar, signal: ac.signal, onHodisa: h => hodisa(zid, h) });
         } catch (e: any) {
             if (e?.name === 'AbortError') {
                 turnniYangila(zid, t => ({ ...t, xato: t.matn ? undefined : "To'xtatildi" }));
@@ -227,20 +267,40 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
             abortRef.current = null;
             setBand(false);
         }
-    }, [matn, band, holat, buyruqlar, buyruqniIshga, turns, token, selectedSchoolId, yol, hodisa, turnniYangila]);
+    }, [matn, biriktirma, band, holat, buyruqlar, buyruqniIshga, turns, token, selectedSchoolId, yol, hodisa, turnniYangila]);
 
     const toxtat = () => abortRef.current?.abort();
 
     // --- Amal tasdiqlash: kartochkadagi so'rovlar odatdagi API ga ---------------
     // Server (lib/zukkoAmallar.js) aynan UI yuboradigan so'rovni tayyorlagan;
     // ruxsat, jurnal ("Zukko orqali") va xabarlar o'sha yo'llarniki.
+    const amalniQoy = useCallback((turnId: string, indeks: number, o: Partial<Amal>) => {
+        turnniYangila(turnId, t => ({ ...t, amallar: (t.amallar || []).map((a, i) => (i === indeks ? { ...a, ...o } : a)) }));
+    }, [turnniYangila]);
+
     const amalniBajar = useCallback(async (turnId: string, indeks: number, tasdiq: boolean) => {
         const turn = turns.find(t => t.id === turnId);
         const amal = turn?.amallar?.[indeks];
         if (!amal || amal.holat === 'bajarilmoqda' || amal.holat === 'bajarildi') return;
-        const qoy = (o: Partial<Amal>) => turnniYangila(turnId, t => ({ ...t, amallar: (t.amallar || []).map((a, i) => (i === indeks ? { ...a, ...o } : a)) }));
+        const qoy = (o: Partial<Amal>) => amalniQoy(turnId, indeks, o);
         if (!tasdiq) return qoy({ holat: 'bekor' });
         if (amal.yaratildi && Date.now() - amal.yaratildi > AMAL_MUDDATI_MS) return qoy({ holat: 'xato', xato: "Taklif eskirdi — qaytadan so'rang" });
+        // Fayldan savollar: so'rov emas — bankdagi «Savol qo'shish» oynasi ochiladi
+        // (fayllar shu suhbatdagi eng yaqin xabardan), saqlashni xodim o'zi bosadi.
+        if (amal.maxsus?.tur === 'savol_yuklash') {
+            let fayllar: File[] = [];
+            for (let i = turns.findIndex(t => t.id === turnId); i >= 0; i--) {
+                const t = turns[i];
+                if (t.rol !== 'user' || !t.fayllar?.length) continue;
+                fayllar = fayllarRef.current.get(t.id) || [];
+                if (!fayllar.length) showNotification("Fayl sahifa yangilanganda xotiradan o'chdi — oynada qayta tanlang", 'info');
+                break;
+            }
+            saqlandiRef.current = false;
+            qoy({ holat: 'bajarilmoqda', xato: undefined });
+            setYuklash({ turnId, indeks, maxsus: amal.maxsus, fayllar });
+            return;
+        }
         if (!amal.sorovlar?.length) return qoy({ holat: 'xato', xato: "Bu kartochka eski — amalni qaytadan so'rang" });
         qoy({ holat: 'bajarilmoqda', xato: undefined });
         try {
@@ -257,7 +317,48 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                 qoy({ holat: 'xato', xato: e?.message || "Bajarib bo'lmadi" });
             }
         }
-    }, [turns, turnniYangila, token, showNotification, retryLoad]);
+    }, [turns, amalniQoy, token, showNotification, retryLoad]);
+
+    // Savol yuklash oynasi saqladi: kartochka bajarildi; imtihon aytilgan bo'lsa —
+    // faol savollarni unga qo'shish kartochkasi (yana xodim tasdiqlaydi).
+    const yuklashSaqlandi = async (n: SaqlashNatijasi) => {
+        if (!yuklash) return;
+        saqlandiRef.current = true;
+        const { turnId, indeks, maxsus } = yuklash;
+        const qoralama = n.soni - n.faolIds.length;
+        const izoh = `${n.soni} ta savol bankka qo'shildi${qoralama > 0 ? ` · ${n.faolIds.length} tasi faol, ${qoralama} tasi qoralama` : ''}`;
+        amalniQoy(turnId, indeks, { holat: 'bajarildi', izoh });
+        if (!maxsus.imtihon) return;
+        if (!n.faolIds.length) {
+            amalniQoy(turnId, indeks, { izoh: `${izoh}. Imtihonga faqat faol savol qo'shiladi — bankda tekshirib, faol qiling` });
+            return;
+        }
+        try {
+            const keyingi = await amalTayyorla(token, selectedSchoolId, 'imtihonga_savol_qoshish', { imtihon: String(maxsus.imtihon.id), savolIdlar: n.faolIds });
+            pastdami.current = true;
+            turnniYangila(turnId, t => ({ ...t, amallar: [...(t.amallar || []), { ...keyingi, holat: 'kutmoqda' }] }));
+        } catch (e: any) {
+            amalniQoy(turnId, indeks, { izoh: `${izoh}. «${maxsus.imtihon.nom}» ga qo'shib bo'lmadi: ${e?.message || 'xato'}` });
+        }
+    };
+
+    const yuklashYopildi = (xato?: string) => {
+        if (!yuklash) return;
+        if (!saqlandiRef.current) amalniQoy(yuklash.turnId, yuklash.indeks, xato ? { holat: 'xato', xato } : { holat: 'kutmoqda' });
+        setYuklash(null);
+    };
+
+    // --- Fayl biriktirish -----------------------------------------------------
+    const faylQabul = !!holat?.ai.yoqilgan && !!holat?.faylQabul;
+    const faylQosh = (royxat: File[]) => {
+        if (!faylQabul || !royxat.length) return;
+        const yaroqli = royxat.filter(f => faylTuri(f));
+        if (yaroqli.length < royxat.length) showNotification('Faqat PDF, rasm yoki Excel fayl biriktiriladi', 'error');
+        const yangi = [...biriktirma, ...yaroqli.filter(f => !biriktirma.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified))];
+        if (yangi.length > MAKS_FAYL) showNotification(`Bir xabarga ${MAKS_FAYL} tagacha fayl`, 'error');
+        setBiriktirma(yangi.slice(0, MAKS_FAYL));
+        if (window.matchMedia?.('(pointer: fine)').matches) setTimeout(() => inputRef.current?.focus(), 0);
+    };
 
     // --- Ovoz bilan yozish (brauzer qo'llasa) ---------------------------------
     const NutqAniqlash = typeof window !== 'undefined' ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
@@ -349,7 +450,16 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
         setMatn('');
     };
 
-    if (!ochiq) return null;
+    // Savol yuklash oynasi panel yopilsa ham turadi (AI ishi yo'qolmasin): ikkala holatda
+    // ham fragmentning ikkinchi bolasi — React uni qayta yaratmaydi.
+    const oyna = yuklash ? (
+        <Suspense fallback={<OynaKutish />}>
+            <ZukkoSavolYuklash fanId={yuklash.maxsus.fanId} mavzuId={yuklash.maxsus.mavzuId} fayllar={yuklash.fayllar}
+                kutish={<OynaKutish />} onYop={yuklashYopildi} onSaqlandi={yuklashSaqlandi} />
+        </Suspense>
+    ) : null;
+
+    if (!ochiq) return <>{null}{oyna}</>;
 
     const aiYoq = holat ? !holat.ai.yoqilgan : false;
     const has = (k: string) => buyruqlar.some(b => b.kalit === k);
@@ -367,229 +477,287 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
 
     return (
         <>
-            {/* Kichik ekranda panel sahifa ustida: orqa fon bosilsa yopiladi. */}
-            <div className="fixed inset-0 z-[290] bg-slate-900/30 xl:hidden" onClick={yop} aria-hidden="true" />
-            <aside
-                aria-label="Zukko — AI yordamchi"
-                className="fixed z-[300] inset-0 sm:left-auto sm:w-[420px] sm:border-l xl:sticky xl:inset-auto xl:top-0 xl:h-screen xl:z-40 xl:w-[var(--zk-w)] xl:shrink-0 border-chiziq bg-sirt flex flex-col shadow-2xl xl:shadow-none"
-                style={{ '--zk-w': `${kenglik}px` } as CSSProperties}
-            >
-                <div onPointerDown={sudra} className="hidden xl:block absolute left-0 top-0 h-full w-2 -translate-x-1/2 cursor-col-resize z-10 group" title="Kenglikni o'zgartirish">
-                    <div className="mx-auto h-full w-[2px] bg-transparent group-hover:bg-brand/40 transition-colors" />
-                </div>
-
-                {/* Sarlavha */}
-                <div className="zk-nur shrink-0 border-b border-chiziq">
-                    <div className="h-[54px] flex items-center gap-2.5 px-3.5">
-                        <ZukkoBelgi size={30} fikrlaydi={band} />
-                        <div className="min-w-0 flex-1 leading-tight">
-                            <div className="text-[14.5px] font-semibold text-matn tracking-tight">Zukko</div>
-                            <div className="text-[11px] text-matn-sokin truncate">
-                                {aiYoq ? 'Tezkor rejim · AI yoqilmagan' : 'AI yordamchi'}{holat?.filial ? ` · ${holat.filial}` : ''}
-                            </div>
-                        </div>
-                        {turns.length > 0 && (
-                            <button onClick={tozala} title="Yangi suhbat" aria-label="Yangi suhbat"
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-matn-sokin hover:text-matn hover:bg-ichki transition-colors">
-                                <PenLine size={16} />
-                            </button>
-                        )}
-                        <button onClick={yop} title="Yopish (Ctrl + /)" aria-label="Yopish"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-matn-sokin hover:text-matn hover:bg-ichki transition-colors">
-                            <X size={17} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Suhbat oqimi */}
-                <div
-                    ref={oqimRef}
-                    onScroll={e => { const el = e.currentTarget; pastdami.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}
-                    className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none] px-3.5 py-4 space-y-4"
+            <>
+                {/* Kichik ekranda panel sahifa ustida: orqa fon bosilsa yopiladi. */}
+                <div className="fixed inset-0 z-[290] bg-slate-900/30 xl:hidden" onClick={yop} aria-hidden="true" />
+                <aside
+                    aria-label="Zukko — AI yordamchi"
+                    className="fixed z-[300] inset-0 sm:left-auto sm:w-[420px] sm:border-l xl:sticky xl:inset-auto xl:top-0 xl:h-screen xl:z-40 xl:w-[var(--zk-w)] xl:shrink-0 border-chiziq bg-sirt flex flex-col shadow-2xl xl:shadow-none"
+                    style={{ '--zk-w': `${kenglik}px` } as CSSProperties}
+                    // Test faylini panelga tashlash (kompyuterda).
+                    onDragOver={e => { if (faylQabul && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setSudralmoqda(true); } }}
+                    onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSudralmoqda(false); }}
+                    onDrop={e => { if (!faylQabul) return; e.preventDefault(); setSudralmoqda(false); faylQosh(Array.from(e.dataTransfer.files || [])); }}
                 >
-                    {turns.length === 0 ? (
-                        <div className="space-y-5 zk-kirish">
-                            <div>
-                                <div className="text-[19px] font-semibold text-matn tracking-tight">{salom(user?.name)}</div>
-                                <div className="text-[12.5px] text-matn-sokin mt-0.5">Bugun {bugunMatni()}. Nimani bilmoqchisiz?</div>
-                            </div>
+                    <div onPointerDown={sudra} className="hidden xl:block absolute left-0 top-0 h-full w-2 -translate-x-1/2 cursor-col-resize z-10 group" title="Kenglikni o'zgartirish">
+                        <div className="mx-auto h-full w-[2px] bg-transparent group-hover:bg-brand/40 transition-colors" />
+                    </div>
 
-                            {holatXato && <div className="rounded-xl border border-xato-chiziq bg-xato-fon px-3 py-2 text-[12px] text-xato">{holatXato}</div>}
+                    {sudralmoqda && (
+                        <div className="pointer-events-none absolute inset-2 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand bg-sirt text-center px-6">
+                            <FileUp size={28} className="text-brand" />
+                            <div className="text-[14px] font-semibold text-matn">Faylni tashlang</div>
+                            <div className="text-[12px] text-matn-sokin">PDF, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</div>
+                        </div>
+                    )}
 
-                            {/* Puls: bugungi holat, AI siz */}
-                            <div className="grid grid-cols-2 gap-2">
-                                {(holat?.puls || Array.from({ length: 4 }, () => null)).map((p, i) => p ? (
-                                    <button key={p.kalit} onClick={() => buyruqniIshga(p.kalit, buyruqlar.find(b => b.kalit === p.kalit)?.nom || p.nom)}
-                                        className="group text-left rounded-xl border border-chiziq bg-sirt px-3 py-2.5 hover:border-brand/40 hover:bg-brand/[0.03] transition-colors min-w-0">
-                                        <div className="text-[11px] text-matn-sokin truncate">{p.nom}</div>
-                                        <div className={`raqam text-[21px] font-semibold leading-tight mt-0.5 truncate ${tonRangi(p.ton)}`}>{p.qiymat}</div>
-                                        {p.izoh && <div className="text-[10.5px] text-matn-xira mt-0.5 truncate">{p.izoh}</div>}
-                                    </button>
-                                ) : (
-                                    <div key={i} className="h-[76px] rounded-xl border border-chiziq bg-ichki/60 animate-pulse" />
-                                ))}
-                            </div>
-
-                            {/* Sahifa konteksti */}
-                            {sahifa && (sahifa.tur === 'oquvchi' || sahifa.tur === 'kurs') && sahifaBuyruqlari.length > 0 && (
-                                <div className="rounded-xl border border-brand/25 bg-brand/[0.04] px-3 py-2.5">
-                                    <div className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-brand">shu sahifa</div>
-                                    <div className="text-[13px] font-semibold text-matn truncate mt-0.5">{sahifa.nom}</div>
-                                    <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {sahifaBuyruqlari.map(b => (
-                                            <button key={b.kalit} onClick={() => menyudanTanla(b)}
-                                                className="rounded-full bg-sirt border border-chiziq px-2.5 py-1 text-[11.5px] text-matn-2 hover:border-brand/40 hover:text-brand transition-colors">
-                                                {b.nom}
-                                            </button>
-                                        ))}
-                                    </div>
+                    {/* Sarlavha */}
+                    <div className="zk-nur shrink-0 border-b border-chiziq">
+                        <div className="h-[54px] flex items-center gap-2.5 px-3.5">
+                            <ZukkoBelgi size={30} fikrlaydi={band} />
+                            <div className="min-w-0 flex-1 leading-tight">
+                                <div className="text-[14.5px] font-semibold text-matn tracking-tight">Zukko</div>
+                                <div className="text-[11px] text-matn-sokin truncate">
+                                    {aiYoq ? 'Tezkor rejim · AI yoqilmagan' : 'AI yordamchi'}{holat?.filial ? ` · ${holat.filial}` : ''}
                                 </div>
+                            </div>
+                            {turns.length > 0 && (
+                                <button onClick={tozala} title="Yangi suhbat" aria-label="Yangi suhbat"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-matn-sokin hover:text-matn hover:bg-ichki transition-colors">
+                                    <PenLine size={16} />
+                                </button>
                             )}
+                            <button onClick={yop} title="Yopish (Ctrl + /)" aria-label="Yopish"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-matn-sokin hover:text-matn hover:bg-ichki transition-colors">
+                                <X size={17} />
+                            </button>
+                        </div>
+                    </div>
 
-                            {tezkorlar.length > 0 && (
+                    {/* Suhbat oqimi */}
+                    <div
+                        ref={oqimRef}
+                        onScroll={e => { const el = e.currentTarget; pastdami.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}
+                        className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none] px-3.5 py-4 space-y-4"
+                    >
+                        {turns.length === 0 ? (
+                            <div className="space-y-5 zk-kirish">
                                 <div>
-                                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-matn-sokin mb-2"><Zap size={12} /> Tezkor · AI siz</div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {tezkorlar.map(b => {
-                                            const Belgi = BUYRUQ_BELGI[b.kalit] || Zap;
-                                            return (
-                                                <button key={b.kalit} onClick={() => buyruqniIshga(b.kalit, b.nom)}
-                                                    className="inline-flex items-center gap-1.5 rounded-full border border-chiziq bg-sirt px-2.5 py-1.5 text-[12px] text-matn-2 hover:border-brand/40 hover:text-brand transition-colors">
-                                                    <Belgi size={13} /> {b.nom}
+                                    <div className="text-[19px] font-semibold text-matn tracking-tight">{salom(user?.name)}</div>
+                                    <div className="text-[12.5px] text-matn-sokin mt-0.5">Bugun {bugunMatni()}. Nimani bilmoqchisiz?</div>
+                                </div>
+
+                                {holatXato && <div className="rounded-xl border border-xato-chiziq bg-xato-fon px-3 py-2 text-[12px] text-xato">{holatXato}</div>}
+
+                                {/* Puls: bugungi holat, AI siz */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(holat?.puls || Array.from({ length: 4 }, () => null)).map((p, i) => p ? (
+                                        <button key={p.kalit} onClick={() => buyruqniIshga(p.kalit, buyruqlar.find(b => b.kalit === p.kalit)?.nom || p.nom)}
+                                            className="group text-left rounded-xl border border-chiziq bg-sirt px-3 py-2.5 hover:border-brand/40 hover:bg-brand/[0.03] transition-colors min-w-0">
+                                            <div className="text-[11px] text-matn-sokin truncate">{p.nom}</div>
+                                            <div className={`raqam text-[21px] font-semibold leading-tight mt-0.5 truncate ${tonRangi(p.ton)}`}>{p.qiymat}</div>
+                                            {p.izoh && <div className="text-[10.5px] text-matn-xira mt-0.5 truncate">{p.izoh}</div>}
+                                        </button>
+                                    ) : (
+                                        <div key={i} className="h-[76px] rounded-xl border border-chiziq bg-ichki/60 animate-pulse" />
+                                    ))}
+                                </div>
+
+                                {/* Sahifa konteksti */}
+                                {sahifa && (sahifa.tur === 'oquvchi' || sahifa.tur === 'kurs') && sahifaBuyruqlari.length > 0 && (
+                                    <div className="rounded-xl border border-brand/25 bg-brand/[0.04] px-3 py-2.5">
+                                        <div className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-brand">shu sahifa</div>
+                                        <div className="text-[13px] font-semibold text-matn truncate mt-0.5">{sahifa.nom}</div>
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {sahifaBuyruqlari.map(b => (
+                                                <button key={b.kalit} onClick={() => menyudanTanla(b)}
+                                                    className="rounded-full bg-sirt border border-chiziq px-2.5 py-1 text-[11.5px] text-matn-2 hover:border-brand/40 hover:text-brand transition-colors">
+                                                    {b.nom}
                                                 </button>
-                                            );
-                                        })}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {aiYoq ? (
-                                <div className="rounded-xl border border-chiziq bg-ichki px-3 py-3">
-                                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-matn"><KeyRound size={14} className="text-ogoh" /> Erkin savollar o'chiq</div>
-                                    <p className="text-[12px] text-matn-sokin mt-1 leading-relaxed">
-                                        «Bu oy tushum qanday?» kabi savollarga javob uchun Gemini AI kaliti kerak. Tezkor tugmalar esa hozir ham ishlaydi.
-                                    </p>
-                                    {holat?.ai.sozlay ? (
-                                        <button onClick={() => havolaniOch('/settings?bolim=integratsiyalar')} className="mt-2 text-[12px] font-medium text-brand hover:underline">
-                                            Sozlamalar → Integratsiyalar →
-                                        </button>
-                                    ) : <p className="text-[11.5px] text-matn-xira mt-1">Kalitni administrator kiritadi.</p>}
-                                </div>
-                            ) : (
-                                <>
-                                    {!!holat?.amallarSoni && (
-                                        <button onClick={() => buyruqniIshga('imkoniyatlar', 'Nimalar qila olaman?')}
-                                            className="w-full flex items-center gap-3 rounded-xl border border-brand/25 bg-brand/[0.05] px-3 py-2.5 text-left hover:bg-brand/[0.09] transition-colors">
-                                            <span className="w-8 h-8 rounded-lg bg-brand/12 text-brand flex items-center justify-center shrink-0"><Sparkles size={16} /></span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block text-[13px] font-semibold text-matn">Buyuring — bajaraman</span>
-                                                <span className="block text-[11.5px] text-matn-sokin">{holat.amallarSoni} xil amal: to'lov, yo'qlama, o'quvchi, kurs, xabar… Har birini siz tasdiqlaysiz</span>
-                                            </span>
-                                            <ChevronRight size={16} className="text-matn-xira shrink-0" />
-                                        </button>
-                                    )}
-                                    {buyruqNamunalari.length > 0 && (
-                                        <div>
-                                            <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Masalan, buyuring</div>
-                                            <div className="space-y-1">
-                                                {buyruqNamunalari.map(n => (
-                                                    <button key={n} onClick={() => yozishgaQoy(n)} title="Yozish maydoniga qo'yish"
-                                                        className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
-                                                        <PenLine size={13} className="text-brand mt-[3px] shrink-0" /><span>{n}</span>
+                                {tezkorlar.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-matn-sokin mb-2"><Zap size={12} /> Tezkor · AI siz</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {tezkorlar.map(b => {
+                                                const Belgi = BUYRUQ_BELGI[b.kalit] || Zap;
+                                                return (
+                                                    <button key={b.kalit} onClick={() => buyruqniIshga(b.kalit, b.nom)}
+                                                        className="inline-flex items-center gap-1.5 rounded-full border border-chiziq bg-sirt px-2.5 py-1.5 text-[12px] text-matn-2 hover:border-brand/40 hover:text-brand transition-colors">
+                                                        <Belgi size={13} /> {b.nom}
                                                     </button>
-                                                ))}
-                                            </div>
+                                                );
+                                            })}
                                         </div>
-                                    )}
-                                    {namunalar.length > 0 && (
-                                        <div>
-                                            <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Yoki so'rang</div>
-                                            <div className="space-y-1">
-                                                {namunalar.map(n => (
-                                                    <button key={n} onClick={() => yubor(n)}
-                                                        className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
-                                                        <span className="text-brand mt-[1px]">›</span><span>{n}</span>
-                                                    </button>
-                                                ))}
+                                    </div>
+                                )}
+
+                                {aiYoq ? (
+                                    <div className="rounded-xl border border-chiziq bg-ichki px-3 py-3">
+                                        <div className="flex items-center gap-2 text-[12.5px] font-semibold text-matn"><KeyRound size={14} className="text-ogoh" /> Erkin savollar o'chiq</div>
+                                        <p className="text-[12px] text-matn-sokin mt-1 leading-relaxed">
+                                            «Bu oy tushum qanday?» kabi savollarga javob uchun Gemini AI kaliti kerak. Tezkor tugmalar esa hozir ham ishlaydi.
+                                        </p>
+                                        {holat?.ai.sozlay ? (
+                                            <button onClick={() => havolaniOch('/settings?bolim=integratsiyalar')} className="mt-2 text-[12px] font-medium text-brand hover:underline">
+                                                Sozlamalar → Integratsiyalar →
+                                            </button>
+                                        ) : <p className="text-[11.5px] text-matn-xira mt-1">Kalitni administrator kiritadi.</p>}
+                                    </div>
+                                ) : (
+                                    <>
+                                        {!!holat?.amallarSoni && (
+                                            <button onClick={() => buyruqniIshga('imkoniyatlar', 'Nimalar qila olaman?')}
+                                                className="w-full flex items-center gap-3 rounded-xl border border-brand/25 bg-brand/[0.05] px-3 py-2.5 text-left hover:bg-brand/[0.09] transition-colors">
+                                                <span className="w-8 h-8 rounded-lg bg-brand/12 text-brand flex items-center justify-center shrink-0"><Sparkles size={16} /></span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-[13px] font-semibold text-matn">Buyuring — bajaraman</span>
+                                                    <span className="block text-[11.5px] text-matn-sokin">{holat.amallarSoni} xil amal: to'lov, yo'qlama, o'quvchi, kurs, xabar… Har birini siz tasdiqlaysiz</span>
+                                                </span>
+                                                <ChevronRight size={16} className="text-matn-xira shrink-0" />
+                                            </button>
+                                        )}
+                                        {faylQabul && (
+                                            <button onClick={() => faylRef.current?.click()}
+                                                className="w-full flex items-center gap-3 rounded-xl border border-dashed border-chiziq-kuchli px-3 py-2.5 text-left hover:border-brand/50 hover:bg-brand/[0.03] transition-colors">
+                                                <span className="w-8 h-8 rounded-lg bg-ichki text-matn-sokin flex items-center justify-center shrink-0"><Paperclip size={16} /></span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-[13px] font-semibold text-matn">Test fayli</span>
+                                                    <span className="block text-[11.5px] text-matn-sokin">PDF, rasm yoki Excel — savollarini ajratib, bankka yoki imtihonga qo'shaman</span>
+                                                </span>
+                                            </button>
+                                        )}
+                                        {buyruqNamunalari.length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Masalan, buyuring</div>
+                                                <div className="space-y-1">
+                                                    {buyruqNamunalari.map(n => (
+                                                        <button key={n} onClick={() => yozishgaQoy(n)} title="Yozish maydoniga qo'yish"
+                                                            className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
+                                                            <PenLine size={13} className="text-brand mt-[3px] shrink-0" /><span>{n}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        turns.map(t => (
-                            <ZukkoXabar key={t.id} turn={t} onHavola={havolaniOch} onTaklif={taklifniOl} onYoz={yozishgaQoy}
-                                onAmal={(i, tasdiq) => amalniBajar(t.id, i, tasdiq)} />
-                        ))
-                    )}
-                </div>
-
-                {/* Yozish maydoni */}
-                <div className="shrink-0 border-t border-chiziq px-3 pt-2.5 pb-3 bg-sirt relative">
-                    {menyu.length > 0 && (
-                        <div className="absolute left-3 right-3 bottom-full mb-2 rounded-xl border border-chiziq bg-sirt shadow-xl overflow-hidden zk-kirish" role="listbox">
-                            <div className="px-3 pt-2 pb-1 font-mono text-[9.5px] uppercase tracking-[0.08em] text-matn-xira">tezkor buyruqlar · AI siz</div>
-                            {menyu.map((b, i) => {
-                                const Belgi = BUYRUQ_BELGI[b.kalit] || Zap;
-                                return (
-                                    <button key={b.kalit} role="option" aria-selected={i === menyuIndeks}
-                                        onMouseEnter={() => setMenyuIndeks(i)} onClick={() => menyudanTanla(b)}
-                                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] ${i === menyuIndeks ? 'bg-brand/[0.07] text-brand' : 'text-matn-2'}`}>
-                                        <Belgi size={14} className="shrink-0" />
-                                        <span className="flex-1 truncate">{b.nom}{b.sahifa && sahifa?.nom ? <span className="text-matn-xira"> · {sahifa.nom}</span> : null}</span>
-                                        <span className="font-mono text-[10px] text-matn-xira">/{b.kalit}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {turns.length > 0 && sahifa && (sahifa.tur === 'oquvchi' || sahifa.tur === 'kurs') && (
-                        <div className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand/[0.07] px-2.5 py-1 text-[11px] text-brand">
-                            {sahifa.tur === 'oquvchi' ? <User size={12} /> : <BookOpen size={12} />}
-                            <span className="truncate">«bu {sahifa.tur === 'oquvchi' ? "o'quvchi" : 'kurs'}» — {sahifa.nom}</span>
-                        </div>
-                    )}
-
-                    <div className={`flex items-end gap-1.5 rounded-2xl border bg-ichki px-2 py-1.5 transition-colors ${band ? 'border-brand/40' : 'border-chiziq focus-within:border-brand/50'}`}>
-                        <textarea
-                            ref={inputRef}
-                            value={matn}
-                            onChange={e => setMatn(e.target.value)}
-                            onKeyDown={klavish}
-                            rows={1}
-                            placeholder={aiYoq ? 'Masalan: qarzdorlar, bugungi darslar' : 'Savol yoki buyruq yozing…'}
-                            aria-label="Zukkoga savol"
-                            className="flex-1 min-w-0 resize-none bg-transparent px-1.5 py-1.5 text-[13.5px] leading-[1.45] text-matn placeholder:text-matn-xira max-h-[132px]"
-                            // index.css dagi umumiy fokus ramkasi qatlamsiz — Tailwind klassi uni bosolmaydi.
-                            // Fokusni tashqi quti (focus-within) ko'rsatadi.
-                            style={{ outline: 'none' }}
-                        />
-                        {NutqAniqlash && !band && (
-                            <button onClick={ovoz} title={tinglaydi ? "To'xtatish" : 'Ovoz bilan yozish'} aria-label="Ovoz bilan yozish"
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${tinglaydi ? 'bg-xato text-white animate-pulse' : 'text-matn-sokin hover:text-brand hover:bg-sirt'}`}>
-                                {tinglaydi ? <MicOff size={16} /> : <Mic size={16} />}
-                            </button>
-                        )}
-                        {band ? (
-                            <button onClick={toxtat} title="To'xtatish" aria-label="To'xtatish"
-                                className="w-8 h-8 rounded-xl bg-matn text-sirt flex items-center justify-center shrink-0 hover:opacity-85">
-                                <Square size={12} fill="currentColor" />
-                            </button>
+                                        )}
+                                        {namunalar.length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-matn-sokin mb-1.5">Yoki so'rang</div>
+                                                <div className="space-y-1">
+                                                    {namunalar.map(n => (
+                                                        <button key={n} onClick={() => yubor(n)}
+                                                            className="w-full text-left rounded-lg px-2.5 py-2 text-[12.5px] text-matn-2 hover:bg-ichki hover:text-matn transition-colors flex items-start gap-2">
+                                                            <span className="text-brand mt-[1px]">›</span><span>{n}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         ) : (
-                            <button onClick={() => yubor()} disabled={!matn.trim()} title="Yuborish (Enter)" aria-label="Yuborish"
-                                className="w-8 h-8 rounded-xl bg-brand text-brand-ust flex items-center justify-center shrink-0 disabled:opacity-35 hover:opacity-90 transition-opacity">
-                                <ArrowUp size={16} strokeWidth={2.4} />
-                            </button>
+                            turns.map(t => (
+                                <ZukkoXabar key={t.id} turn={t} onHavola={havolaniOch} onTaklif={taklifniOl} onYoz={yozishgaQoy}
+                                    onAmal={(i, tasdiq) => amalniBajar(t.id, i, tasdiq)} />
+                            ))
                         )}
                     </div>
-                    <div className="mt-1.5 px-1 flex items-center justify-between gap-2 text-[10.5px] text-matn-xira">
-                        <span className="truncate">/ — tezkor buyruqlar · telefonlar AI ga berilmaydi</span>
-                        <span className="hidden sm:inline font-mono shrink-0">Ctrl+/</span>
+
+                    {/* Yozish maydoni */}
+                    <div className="shrink-0 border-t border-chiziq px-3 pt-2.5 pb-3 bg-sirt relative">
+                        {menyu.length > 0 && (
+                            <div className="absolute left-3 right-3 bottom-full mb-2 rounded-xl border border-chiziq bg-sirt shadow-xl overflow-hidden zk-kirish" role="listbox">
+                                <div className="px-3 pt-2 pb-1 font-mono text-[9.5px] uppercase tracking-[0.08em] text-matn-xira">tezkor buyruqlar · AI siz</div>
+                                {menyu.map((b, i) => {
+                                    const Belgi = BUYRUQ_BELGI[b.kalit] || Zap;
+                                    return (
+                                        <button key={b.kalit} role="option" aria-selected={i === menyuIndeks}
+                                            onMouseEnter={() => setMenyuIndeks(i)} onClick={() => menyudanTanla(b)}
+                                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] ${i === menyuIndeks ? 'bg-brand/[0.07] text-brand' : 'text-matn-2'}`}>
+                                            <Belgi size={14} className="shrink-0" />
+                                            <span className="flex-1 truncate">{b.nom}{b.sahifa && sahifa?.nom ? <span className="text-matn-xira"> · {sahifa.nom}</span> : null}</span>
+                                            <span className="font-mono text-[10px] text-matn-xira">/{b.kalit}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {turns.length > 0 && sahifa && (sahifa.tur === 'oquvchi' || sahifa.tur === 'kurs') && (
+                            <div className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand/[0.07] px-2.5 py-1 text-[11px] text-brand">
+                                {sahifa.tur === 'oquvchi' ? <User size={12} /> : <BookOpen size={12} />}
+                                <span className="truncate">«bu {sahifa.tur === 'oquvchi' ? "o'quvchi" : 'kurs'}» — {sahifa.nom}</span>
+                            </div>
+                        )}
+
+                        {biriktirma.length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-1.5">
+                                {biriktirma.map((f, i) => {
+                                    const tur = faylTuri(f);
+                                    const Belgi = tur === 'Excel' ? FileSpreadsheet : tur === 'rasm' ? RasmBelgi : FileText;
+                                    return (
+                                        <span key={`${f.name}-${f.size}-${i}`} title={f.name}
+                                            className="inline-flex max-w-[230px] items-center gap-1.5 rounded-lg border border-chiziq bg-ichki py-1 pl-2 pr-1 text-[11.5px] text-matn-2">
+                                            <Belgi size={13} className={`shrink-0 ${tur === 'Excel' ? 'text-yaxshi' : 'text-brand'}`} />
+                                            <span className="truncate">{f.name}</span>
+                                            <button onClick={() => setBiriktirma(l => l.filter((_, j) => j !== i))} aria-label={`${f.name} — olib tashlash`}
+                                                className="w-5 h-5 rounded flex items-center justify-center shrink-0 text-matn-xira hover:text-xato hover:bg-sirt">
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className={`flex items-end gap-1.5 rounded-2xl border bg-ichki px-2 py-1.5 transition-colors ${band ? 'border-brand/40' : 'border-chiziq focus-within:border-brand/50'}`}>
+                            {faylQabul && (
+                                <button onClick={() => faylRef.current?.click()} title="Fayl biriktirish — PDF, rasm yoki Excel" aria-label="Fayl biriktirish"
+                                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-matn-sokin hover:text-brand hover:bg-sirt transition-colors">
+                                    <Paperclip size={16} />
+                                </button>
+                            )}
+                            <textarea
+                                ref={inputRef}
+                                value={matn}
+                                onChange={e => setMatn(e.target.value)}
+                                onKeyDown={klavish}
+                                // Nusxalangan rasm (Ctrl+V) — biriktiriladi.
+                                onPaste={e => {
+                                    const rasmlar = Array.from(e.clipboardData?.files || []);
+                                    if (faylQabul && rasmlar.length) { e.preventDefault(); faylQosh(rasmlar); }
+                                }}
+                                rows={1}
+                                placeholder={aiYoq ? 'Masalan: qarzdorlar, bugungi darslar' : 'Savol yoki buyruq yozing…'}
+                                aria-label="Zukkoga savol"
+                                className="flex-1 min-w-0 resize-none bg-transparent px-1.5 py-1.5 text-[13.5px] leading-[1.45] text-matn placeholder:text-matn-xira max-h-[132px]"
+                                // index.css dagi umumiy fokus ramkasi qatlamsiz — Tailwind klassi uni bosolmaydi.
+                                // Fokusni tashqi quti (focus-within) ko'rsatadi.
+                                style={{ outline: 'none' }}
+                            />
+                            {NutqAniqlash && !band && (
+                                <button onClick={ovoz} title={tinglaydi ? "To'xtatish" : 'Ovoz bilan yozish'} aria-label="Ovoz bilan yozish"
+                                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${tinglaydi ? 'bg-xato text-white animate-pulse' : 'text-matn-sokin hover:text-brand hover:bg-sirt'}`}>
+                                    {tinglaydi ? <MicOff size={16} /> : <Mic size={16} />}
+                                </button>
+                            )}
+                            {band ? (
+                                <button onClick={toxtat} title="To'xtatish" aria-label="To'xtatish"
+                                    className="w-8 h-8 rounded-xl bg-matn text-sirt flex items-center justify-center shrink-0 hover:opacity-85">
+                                    <Square size={12} fill="currentColor" />
+                                </button>
+                            ) : (
+                                <button onClick={() => yubor()} disabled={!matn.trim() && !biriktirma.length} title="Yuborish (Enter)" aria-label="Yuborish"
+                                    className="w-8 h-8 rounded-xl bg-brand text-brand-ust flex items-center justify-center shrink-0 disabled:opacity-35 hover:opacity-90 transition-opacity">
+                                    <ArrowUp size={16} strokeWidth={2.4} />
+                                </button>
+                            )}
+                        </div>
+                        <div className="mt-1.5 px-1 flex items-center justify-between gap-2 text-[10.5px] text-matn-xira">
+                            <span className="truncate">/ — tezkor buyruqlar · telefonlar AI ga berilmaydi</span>
+                            <span className="hidden sm:inline font-mono shrink-0">Ctrl+/</span>
+                        </div>
+                        <input ref={faylRef} type="file" multiple accept="image/*,application/pdf,.pdf,.xlsx,.xls" className="hidden"
+                            onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; faylQosh(f); }} />
                     </div>
-                </div>
-            </aside>
+                </aside>
+            </>
+            {oyna}
         </>
     );
 }
