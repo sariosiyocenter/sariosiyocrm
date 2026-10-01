@@ -147,8 +147,10 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     // "JAVOBLAR VARAQASI" va imtihon nomi, o'ngda sana, smena, sahifa.
     if (u.logo) q.push(`<image href="${esc(u.logo)}" x="${CHAP}" y="14" width="11" height="11" preserveAspectRatio="xMidYMid meet"/>`);
     const markazX = u.logo ? CHAP + 13 : CHAP;
-    q.push(matn(markazX, 19, u.markaz, { size: 3.3, bold: true, maxW: 48 - (u.logo ? 13 : 0) }));
-    q.push(matn(markazX, 23.2, "o'quv markazi", { size: 2.3, rang: '#555' }));
+    // "SARIOSIYO o'quv markazi" — nomida bo'lsa, ostida qayta yozilmaydi.
+    const markazdir = /markaz/i.test(u.markaz);
+    q.push(matn(markazX, markazdir ? 21 : 19, u.markaz, { size: 3.3, bold: true, maxW: 48 - (u.logo ? 13 : 0) }));
+    if (!markazdir) q.push(matn(markazX, 23.2, "o'quv markazi", { size: 2.3, rang: '#555' }));
     q.push(matn(105, 20, 'JAVOBLAR VARAQASI', { size: 6.2, bold: true, anchor: 'middle' }));
     q.push(matn(105, 25.6, u.imtihon, { size: 3, anchor: 'middle', rang: '#333', maxW: 76 }));
     q.push(matn(ONG, 18, u.sana, { size: 2.7, anchor: 'end', rang: '#333' }));
@@ -281,6 +283,41 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}"><defs>${[...belgilar.values()].join('')}</defs>${q.join('')}</svg>`;
 }
+
+/**
+ * Qog'oz: A4, A5 yoki A4 ga ikkitadan (keyin kesiladi). O'qigich varaqni burchak
+ * markerlari bo'yicha "varaq millimetri"ga keltiradi — kichraytirilgan (A5) varaq
+ * ham xuddi shunday o'qiladi.
+ */
+export type Qogoz = 'A4' | 'A5' | 'A4x2';
+
+/** Varaq SVG larini qog'ozga joylash (A4x2 — juft-juft, o'rtada kesish chizig'i). */
+export function varaqlarniJoyla(svglar: string[], qogoz: Qogoz): { css: string; body: string } {
+  if (qogoz === 'A4x2') {
+    const juftlar: string[] = [];
+    for (let i = 0; i < svglar.length; i += 2) juftlar.push(`<div class="juft"><div class="varaq">${svglar[i]}</div>${svglar[i + 1] ? `<div class="varaq">${svglar[i + 1]}</div>` : ''}</div>`);
+    return { css: VARAQ_A4X2_CSS, body: juftlar.join('') };
+  }
+  return { css: qogoz === 'A5' ? VARAQ_A5_CSS : VARAQ_CSS, body: svglar.map(s => `<div class="varaq">${s}</div>`).join('') };
+}
+
+const VARAQ_A5_CSS = `
+@page { size: A5; margin: 0; }
+html, body { margin: 0; padding: 0; background: #fff; }
+.varaq { width: 148mm; height: 210mm; page-break-after: always; break-after: page; overflow: hidden; }
+.varaq:last-child { page-break-after: auto; break-after: auto; }
+.varaq svg { display: block; width: 148mm; height: 210mm; }
+`;
+
+const VARAQ_A4X2_CSS = `
+@page { size: A4 landscape; margin: 0; }
+html, body { margin: 0; padding: 0; background: #fff; }
+.juft { width: 297mm; height: 210mm; display: flex; position: relative; page-break-after: always; break-after: page; overflow: hidden; }
+.juft:last-child { page-break-after: auto; break-after: auto; }
+.juft .varaq { width: 148.5mm; height: 210mm; overflow: hidden; }
+.juft .varaq svg { display: block; width: 148.5mm; height: 210mm; }
+.juft::after { content: ''; position: absolute; left: 148.5mm; top: 0; bottom: 0; border-left: 0.25mm dashed #999; }
+`;
 
 /** Chop etish uchun CSS: har varaq alohida A4, chetsiz. */
 export const VARAQ_CSS = `

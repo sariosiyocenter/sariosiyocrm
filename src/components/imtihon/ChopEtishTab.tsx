@@ -2,11 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { BookOpen, FileText, DoorOpen, ClipboardList, Printer, Info } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
-import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, BoshHolat } from './ui';
+import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, BoshHolat, Tanlov } from './ui';
 import { useOrinlar } from './QatnashchilarTab';
 import { chopEt } from '../../lib/chopEtish';
 import { varaqSahifalari } from '../../lib/omr/layout';
-import { varaqSvg, VARAQ_CSS } from '../../lib/omr/render';
+import { varaqSvg, varaqlarniJoyla, type Qogoz } from '../../lib/omr/render';
 import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS } from './chop';
 import type { KitobchaMalumoti } from './chop';
 import { varaqTuzilmasi } from '../../../lib/imtihon.js';
@@ -27,6 +27,9 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const [xona, setXona] = useState<number | 0>(0);
   const [rasmli, setRasmli] = useState(true);
   const [universalSoni, setUniversalSoni] = useState(10);
+  // Qog'oz: A4, A5 yoki A4 ga ikkitadan (30 talik test uchun qog'oz tejaladi). Brauzerda eslab qolinadi.
+  const [qogoz, setQogozHolat] = useState<Qogoz>(() => { try { return (localStorage.getItem('imt_qogoz') as Qogoz) || 'A4'; } catch { return 'A4'; } });
+  const setQogoz = (q: Qogoz) => { setQogozHolat(q); try { localStorage.setItem('imt_qogoz', q); } catch { /* bo'lmasa — eslab qolinmaydi */ } };
   // Bitta qatnashchi varag'i: o'rni o'zgargan yoki varag'i buzilganlar uchun.
   const [yakka, setYakka] = useState<number>(0);
   const [band, setBand] = useState<string | null>(null);
@@ -73,18 +76,20 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const varaqlar = () => ish('varaq', async () => {
     const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : orinlar;
     if (!tanlanganlar.length) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q");
-    const body = tanlanganlar.map(o => sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, {
+    const svglar = tanlanganlar.flatMap(o => sahifalar.map(sh => varaqSvg(sh, umumiy, {
       ism: o.name, kurs: o.groupName, xona: o.roomName, qator: o.row != null ? o.row + 1 : null, orin: o.col != null ? o.col + 1 : null,
       variant: o.variant, sheetCode: o.sheetCode, rasm: rasmli ? o.photo : null, mehmon: o.mehmon,
       filial: filialNomi(o.schoolId), maktab: o.maktab, sinf: o.sinf, kod: o.kod,
-    })}</div>`).join('')).join('');
-    await chopEt({ sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, css: VARAQ_CSS, body, kutish: 45000 });
+    })));
+    const { css, body } = varaqlarniJoyla(svglar, qogoz);
+    await chopEt({ sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, css, body, kutish: 45000 });
   });
 
   const universal = () => ish('universal', async () => {
     const n = Math.max(1, Math.min(500, universalSoni));
-    const bitta = sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, null)}</div>`).join('');
-    await chopEt({ sarlavha: `${exam.name} — universal varaqlar`, css: VARAQ_CSS, body: bitta.repeat(n) });
+    const bitta = sahifalar.map(sh => varaqSvg(sh, umumiy, null));
+    const { css, body } = varaqlarniJoyla(Array.from({ length: n }, () => bitta).flat(), qogoz);
+    await chopEt({ sarlavha: `${exam.name} — universal varaqlar`, css, body });
   });
 
   const royxat = (turi: 'eshik' | 'vedomost') => ish(turi, async () => {
@@ -119,7 +124,10 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
               {xonalar.map(([id, nom]) => <option key={id} value={id}>{nom} ({data.seats.filter(o => o.session === smena && o.roomId === id).length})</option>)}
             </select>
           </Maydon>
-          <p className="pb-2.5 text-[12px] text-matn-xira flex items-center gap-1.5"><Info size={13} /> Chop etish oynasida «Masshtab: 100%» (Actual size) va «Chetlar: yo'q» tanlang.</p>
+          <Maydon nom="Javob varag'i qog'ozi">
+            <Tanlov qiymat={qogoz} onChange={setQogoz} variantlar={[{ v: 'A4', nom: 'A4' }, { v: 'A5', nom: 'A5' }, { v: 'A4x2', nom: 'A4 da 2 ta' }]} />
+          </Maydon>
+          <p className="pb-2.5 text-[12px] text-matn-xira flex items-center gap-1.5"><Info size={13} /> {qogoz === 'A4x2' ? "Har A4 da ikkita varaq (yotiq) — o'rtadan kesiladi. " : ''}Chop etish oynasida «Masshtab: 100%» va «Chetlar: yo'q» tanlang.</p>
         </div>
       </Karta>
 
