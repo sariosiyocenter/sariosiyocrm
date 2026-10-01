@@ -910,3 +910,31 @@ Sinovlar (scratch/):
 
 Ochiq: haqiqiy Addmen QR Word fayli bilan import sinovi va haqiqiy printer/skanerda 30 varaqlik sinov
 (yangi varaq dizayni bilan) hali egasida.
+
+## 19. Ko'rinish: Chop etish ko'rinishli, Andoza → savol qog'ozi (2026-10-01)
+
+Savol: "ko'rinishini yaxshilasa bo'ladimi? blueprint chop etish qismida bo'lmaydimi?"
+
+Addmen'da BLUE PRINT — QPG 1-qadamda (QUESTION BANK yonida, tuzilma), 2-qadam "Generate
+Paper" esa undan setlar yasaydi. Bizda ham shunday: andozaning **ta'rifi** bankda qoladi
+(Savollar banki → Andoza), undan **savol qog'ozi yasash** Chop etishga ko'chdi.
+
+- **Chop etish** ikki panel: chapda hujjatlar (Savol qog'ozi: Kitobchalar, Javoblar kaliti;
+  Imtihon kuni: Javob varaqalari, Universal, Eshik ro'yxati, Vedomost) va tanlangan hujjat
+  sozlamalari; o'ngda **jonli ko'rinish** — chop etiladigan HTML'ning o'zi iframe'da
+  (`KORINISH_CSS` faqat `@media screen`), panel eniga `zoom` bilan sig'adi; "Chop etish · N"
+  tugmasi ko'rinish sarlavhasida. Ko'rinish faqat birinchi betni chizadi (tez).
+- **Javoblar kaliti** varag'i (yangi): `kalitVaragiHtml` — har variant bo'limi, fan bo'yicha
+  katakchalar; kalit tuzatishlari varaq harfiga `it.m` orqali o'giriladi, bekor — ✱/✕.
+  Faqat `imtihonlar.kalit` ko'radiganlarga.
+- **Andozadan savol qog'ozi** (`AndozadanQogoz.tsx`): andoza(lar) tanlanadi (tartib, "bankda
+  yetadi"), nomi/sana/variantlar/bal/daqiqa → `POST /api/exams` (har andoza — blok,
+  `andozadanQoidalar`) → `POST /lock` → Chop etish shu imtihonda ochiladi. Bank yetmasa imtihon
+  qoladi va "Imtihonlar"da ochiladi. Kirish: Chop etish ro'yxati pastida, qulflanmagan holatda
+  ham, va Andoza muharririda "Savol qog'ozi" tugmasi.
+- **Bank**: savollar ro'yxati o'z ichida suriladi (sarlavha yopishqoq, sahifalash doim
+  ko'rinadi), filtr ustunlari balandligi mazmuniga qarab (`max-h-44`).
+
+Sinov: `scratch/chop_shots.mjs` (har hujjat, kun/tun, 390px), `scratch/andozadan_e2e.mjs`
+(ZZ andoza → imtihon → kalit; keyin imtihon, andoza o'chirildi va 8 savolning `usedCount`/
+`lastUsedAt` qaytarildi — qulflash ularni oshiradi).

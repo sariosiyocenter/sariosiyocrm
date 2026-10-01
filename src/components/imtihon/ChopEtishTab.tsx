@@ -1,25 +1,31 @@
-import React, { useMemo, useState } from 'react';
-import { BookOpen, FileText, DoorOpen, ClipboardList, Printer, Info } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, LayoutList, Eye, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
-import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, BoshHolat, Tanlov } from './ui';
+import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, Tanlov } from './ui';
 import { useOrinlar } from './QatnashchilarTab';
-import { chopEt } from '../../lib/chopEtish';
+import { chopEt, type ChopParam } from '../../lib/chopEtish';
 import { varaqSahifalari } from '../../lib/omr/layout';
 import { varaqSvg, varaqlarniJoyla, type Qogoz } from '../../lib/omr/render';
-import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS } from './chop';
-import type { KitobchaMalumoti } from './chop';
+import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS, kalitVaragiHtml, KALIT_CSS, KORINISH_CSS } from './chop';
+import type { KitobchaMalumoti, KalitMalumoti } from './chop';
 import { varaqTuzilmasi } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
+import AndozadanQogoz from './AndozadanQogoz';
 
-// 3-bo'lim: kitobchalar (variant bo'yicha, ksero qilinadi), shaxsiy javob
-// varaqalari (xona → qator → o'rin tartibida — dasta xonaga shu tartibda
-// kiradi), universal varaqlar (kechikkan yoki ro'yxatda yo'qlar uchun),
-// eshik ro'yxati va nazoratchi vedomosti.
+// 3-bo'lim. Chapda — chop etiladigan hujjatlar (Addmen QPG kabi ikki guruh:
+// savol qog'ozi va imtihon kuni), o'ngda — tanlangan hujjat qanday
+// chiqishining jonli ko'rinishi (birinchi betlari). Javob varaqalari xona →
+// qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). "Andozadan
+// savol qog'ozi" — andoza(lar)dan variantli imtihonni bir qadamda yasaydi.
+
+type Hujjat = 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost';
 
 export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
-  const { settings, schools, showNotification } = useCRM();
+  const { settings, schools, showNotification, kora, ozgartira } = useCRM();
+  const navigate = useNavigate();
   const { soro } = useImtihonApi();
   const { data } = useOrinlar(exam.id);
   const s = exam.settings;
@@ -32,7 +38,13 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const setQogoz = (q: Qogoz) => { setQogozHolat(q); try { localStorage.setItem('imt_qogoz', q); } catch { /* bo'lmasa — eslab qolinmaydi */ } };
   // Bitta qatnashchi varag'i: o'rni o'zgargan yoki varag'i buzilganlar uchun.
   const [yakka, setYakka] = useState<number>(0);
-  const [band, setBand] = useState<string | null>(null);
+  const [kitobchaKodi, setKitobchaKodi] = useState('');
+  const [band, setBand] = useState(false);
+  const [andozaOyna, setAndozaOyna] = useState(false);
+  const kalitKorinadi = kora('imtihonlar.kalit');
+  const yaratadi = ozgartira('imtihonlar.imtihon');
+  const kitobchaBor = s.source !== 'kalit';
+  const [hujjat, setHujjat] = useState<Hujjat>(kitobchaBor ? 'kitobcha' : 'varaq');
   const markaz = settings?.orgName || '';
 
   const orinlar = useMemo(() => (data?.seats || []).filter(o => o.session === smena && o.roomId && (!xona || o.roomId === xona))
@@ -54,6 +66,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     logo: settings?.logo || null, manzil: settings?.address || null, telefon: telefon ? `Tel: ${telefon}` : null, fanlar,
   };
   const filialNomi = (id: number) => schools.find(x => x.id === id)?.name || null;
+  const variantlar = useMemo(() => exam.variantlar.filter(v => v.session === smena).map(v => v.code), [exam, smena]);
 
   // Kitobcha nusxalari: har variantga nechta (5% zaxira bilan).
   const nusxalar = useMemo(() => {
@@ -62,131 +75,283 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [data, smena]);
 
-  const ish = async (nom: string, f: () => Promise<void>) => {
-    setBand(nom);
-    try { await f(); } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(null); }
+  // Kitobcha va kalit ma'lumoti serverdan bir marta olinadi (ko'rinish ham, chop etish ham shundan).
+  const kesh = useRef(new Map<string, Promise<unknown>>());
+  const olish = <T,>(yol: string) => {
+    if (!kesh.current.has(yol)) kesh.current.set(yol, soro<T>('GET', yol).catch(e => { kesh.current.delete(yol); throw e; }));
+    return kesh.current.get(yol) as Promise<T>;
   };
+  useEffect(() => { kesh.current.clear(); }, [exam]);
 
-  const kitobcha = (kodlar: string[]) => ish(`kitobcha-${kodlar.join('')}`, async () => {
-    const d = await soro<KitobchaMalumoti>('GET', `exams/${exam.id}/booklets?session=${smena}`);
-    const body = kitobchaHtml(exam, markaz, d, kodlar.map(code => ({ session: smena, code })));
-    await chopEt({ sarlavha: `${exam.name} — kitobcha ${kodlar.join(', ')}`, css: katexCss() + KITOBCHA_CSS, body });
+  const varaqMalumoti = (o: (typeof orinlar)[number]) => ({
+    ism: o.name, kurs: o.groupName, xona: o.roomName, qator: o.row != null ? o.row + 1 : null, orin: o.col != null ? o.col + 1 : null,
+    variant: o.variant, sheetCode: o.sheetCode, rasm: rasmli ? o.photo : null, mehmon: o.mehmon,
+    filial: filialNomi(o.schoolId), maktab: o.maktab, sinf: o.sinf, kod: o.kod,
   });
-
-  const varaqlar = () => ish('varaq', async () => {
-    const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : orinlar;
-    if (!tanlanganlar.length) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q");
-    const svglar = tanlanganlar.flatMap(o => sahifalar.map(sh => varaqSvg(sh, umumiy, {
-      ism: o.name, kurs: o.groupName, xona: o.roomName, qator: o.row != null ? o.row + 1 : null, orin: o.col != null ? o.col + 1 : null,
-      variant: o.variant, sheetCode: o.sheetCode, rasm: rasmli ? o.photo : null, mehmon: o.mehmon,
-      filial: filialNomi(o.schoolId), maktab: o.maktab, sinf: o.sinf, kod: o.kod,
-    })));
-    const { css, body } = varaqlarniJoyla(svglar, qogoz);
-    await chopEt({ sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, css, body, kutish: 45000 });
-  });
-
-  const universal = () => ish('universal', async () => {
-    const n = Math.max(1, Math.min(500, universalSoni));
-    const bitta = sahifalar.map(sh => varaqSvg(sh, umumiy, null));
-    const { css, body } = varaqlarniJoyla(Array.from({ length: n }, () => bitta).flat(), qogoz);
-    await chopEt({ sarlavha: `${exam.name} — universal varaqlar`, css, body });
-  });
-
-  const royxat = (turi: 'eshik' | 'vedomost') => ish(turi, async () => {
-    if (!orinlar.length) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q");
+  const xonalarBoyicha = () => {
     const guruh = new Map<number, typeof orinlar>();
     for (const o of orinlar) { if (!guruh.has(o.roomId!)) guruh.set(o.roomId!, []); guruh.get(o.roomId!)!.push(o); }
-    const body = [...guruh.values()].map(l => (turi === 'eshik' ? eshikRoyxatiHtml : vedomostHtml)({ exam, smena: smenaNomi(smena), xona: l[0].roomName, orinlar: l })).join('');
-    await chopEt({ sarlavha: `${exam.name} — ${turi === 'eshik' ? 'eshik ro\'yxati' : 'vedomost'}`, css: ROYXAT_CSS, body });
-  });
+    return [...guruh.values()];
+  };
+
+  /** Tanlangan hujjat HTML'i. `korinish` — faqat birinchi betlari (tez chiqishi uchun). */
+  const tayyorla = async (turi: Hujjat, korinish: boolean): Promise<ChopParam | null> => {
+    if (turi === 'kitobcha') {
+      const kodlar = kitobchaKodi ? [kitobchaKodi] : korinish ? variantlar.slice(0, 1) : variantlar;
+      if (!kodlar.length) return null;
+      const d = await olish<KitobchaMalumoti>(`exams/${exam.id}/booklets?session=${smena}`);
+      return { sarlavha: `${exam.name} — kitobcha ${kodlar.join(', ')}`, css: katexCss() + KITOBCHA_CSS, body: kitobchaHtml(exam, markaz, d, kodlar.map(code => ({ session: smena, code }))) };
+    }
+    if (turi === 'kalit') {
+      const d = await olish<KalitMalumoti>(`exams/${exam.id}/key`);
+      return { sarlavha: `${exam.name} — javoblar kaliti`, css: ROYXAT_CSS + KALIT_CSS, body: kalitVaragiHtml(exam, markaz, d, smena) };
+    }
+    if (turi === 'varaq') {
+      const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : korinish ? orinlar.slice(0, 1) : orinlar;
+      if (!tanlanganlar.length) {
+        if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichini bajaring");
+        return null;
+      }
+      const svglar = tanlanganlar.flatMap(o => sahifalar.map(sh => varaqSvg(sh, umumiy, varaqMalumoti(o))));
+      if (korinish && qogoz === 'A4x2' && svglar.length === 1 && orinlar[1]) svglar.push(...sahifalar.map(sh => varaqSvg(sh, umumiy, varaqMalumoti(orinlar[1]))));
+      return { sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, ...varaqlarniJoyla(svglar, qogoz), kutish: 45000 };
+    }
+    if (turi === 'universal') {
+      const n = korinish ? (qogoz === 'A4x2' ? 2 : 1) : Math.max(1, Math.min(500, universalSoni));
+      const bitta = sahifalar.map(sh => varaqSvg(sh, umumiy, null));
+      return { sarlavha: `${exam.name} — universal varaqlar`, ...varaqlarniJoyla(Array.from({ length: n }, () => bitta).flat(), qogoz) };
+    }
+    const xonaRoyxati = xonalarBoyicha();
+    if (!xonaRoyxati.length) {
+      if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichini bajaring");
+      return null;
+    }
+    const f = turi === 'eshik' ? eshikRoyxatiHtml : vedomostHtml;
+    const body = (korinish ? xonaRoyxati.slice(0, 1) : xonaRoyxati).map(l => f({ exam, smena: smenaNomi(smena), xona: l[0].roomName, orinlar: l })).join('');
+    return { sarlavha: `${exam.name} — ${turi === 'eshik' ? "eshik ro'yxati" : 'vedomost'}`, css: ROYXAT_CSS, body };
+  };
+
+  const chopEtish = async () => {
+    setBand(true);
+    try {
+      const p = await tayyorla(hujjat, false);
+      if (!p) throw new Error("Chop etiladigan narsa yo'q");
+      await chopEt(p);
+    } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
+  };
+
+  // Jonli ko'rinish: hujjat yoki sozlama o'zgarsa qayta chiziladi.
+  const [korinish, setKorinish] = useState<{ html: string } | { xato: string } | null>(null);
+  useEffect(() => {
+    if (!exam.lockedAt || !data) return;
+    let bekor = false;
+    setKorinish(null);
+    const t = setTimeout(() => {
+      tayyorla(hujjat, true).then(p => {
+        if (bekor) return;
+        setKorinish(p ? { html: `<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><style>${p.css}${KORINISH_CSS}</style></head><body>${p.body}</body></html>` }
+          : { xato: hujjat === 'kitobcha' ? "Bu smenada variant yo'q" : "Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichidan keyin ko'rinadi" });
+      }).catch(e => { if (!bekor) setKorinish({ xato: e.message }); });
+    }, 150);
+    return () => { bekor = true; clearTimeout(t); };
+  }, [hujjat, smena, xona, yakka, rasmli, qogoz, kitobchaKodi, data, exam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const andozadanTayyor = (id: number, qulflandi: boolean) => {
+    setAndozaOyna(false);
+    navigate(qulflandi ? `/exams?tab=chop&imtihon=${id}` : `/exams?imtihon=${id}`);
+  };
+  const andozaTugmasi = yaratadi && (
+    <Tugma ikonka={<LayoutList size={14} />} onClick={() => setAndozaOyna(true)}>Andozadan savol qog'ozi</Tugma>
+  );
+  const andozaOynasi = andozaOyna && <AndozadanQogoz onYop={() => setAndozaOyna(false)} onTayyor={andozadanTayyor} />;
 
   if (!exam.lockedAt) {
-    return <QulfKerak examId={exam.id} ikonka={<Printer size={20} />} izoh="Kitobcha va javob varaqalari variantlar tayyor bo'lgach chiqadi: «Imtihonlar» tabida savollarni (yoki «faqat kalit» rejimida kitobcha kalitini) tayyorlab, qulflang." />;
+    return (
+      <>
+        <QulfKerak examId={exam.id} ikonka={<Printer size={20} />} qoshimcha={andozaTugmasi}
+          izoh="Kitobcha, kalit va javob varaqalari variantlar tayyor bo'lgach chiqadi: «Imtihonlar» tabida savollarni (yoki «faqat kalit» rejimida kitobcha kalitini) tayyorlab, qulflang. Yoki andozadan yangi savol qog'ozi yarating." />
+        {andozaOynasi}
+      </>
+    );
   }
   if (!data) return <Yuklanmoqda />;
 
-  const variantlar = exam.variantlar.filter(v => v.session === smena).map(v => v.code);
+  const smenadagilar = (data.seats || []).filter(o => o.session === smena && o.roomId).length;
+  const HUJJATLAR: { guruh: string; royxat: { id: Hujjat; nom: string; izoh: string; ikonka: React.ReactNode; ochiq: boolean }[] }[] = [
+    {
+      guruh: "Savol qog'ozi", royxat: [
+        { id: 'kitobcha', nom: 'Kitobchalar', izoh: `${variantlar.length} variant · ksero uchun`, ikonka: <BookOpen size={16} />, ochiq: kitobchaBor },
+        { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi },
+      ],
+    },
+    {
+      guruh: 'Imtihon kuni', royxat: [
+        { id: 'varaq', nom: 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: true },
+        { id: 'universal', nom: 'Universal varaqlar', izoh: "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
+        { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: true },
+        { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: true },
+      ],
+    },
+  ];
+  const tanlanganNomi = HUJJATLAR.flatMap(g => g.royxat).find(h => h.id === hujjat)?.nom;
+  const varaqTuri = hujjat === 'varaq' || hujjat === 'universal';
+  const xonaKerak = hujjat === 'varaq' || hujjat === 'eshik' || hujjat === 'vedomost';
+  const sanoq = hujjat === 'kitobcha' ? `${kitobchaKodi ? 1 : variantlar.length} ta kitobcha`
+    : hujjat === 'kalit' ? `${variantlar.length} variant`
+      : hujjat === 'varaq' ? `${yakka ? 1 : orinlar.length} ta varaq${sahifalar.length > 1 ? ` × ${sahifalar.length} bet` : ''}`
+        : hujjat === 'universal' ? `${universalSoni} ta varaq` : `${xonalar.filter(([id]) => !xona || id === xona).length} xona`;
+  const boshMi = (hujjat === 'varaq' || hujjat === 'eshik' || hujjat === 'vedomost') && !orinlar.length;
 
   return (
     <div className="space-y-4">
-      <Karta>
-        <div className="flex flex-wrap items-end gap-3">
-          {s.sessions.length > 1 && (
-            <Maydon nom="Smena" className="w-48">
-              <select className={SELECT} value={smena} onChange={e => { setSmena(Number(e.target.value)); setXona(0); setYakka(0); }}>
-                {s.sessions.map(x => <option key={x.id} value={x.id}>{smenaNomi(x.id)}</option>)}
-              </select>
-            </Maydon>
-          )}
-          <Maydon nom="Xona" className="w-56">
-            <select className={SELECT} value={xona} onChange={e => { setXona(Number(e.target.value)); setYakka(0); }}>
-              <option value={0}>Hamma xona ({(data.seats || []).filter(o => o.session === smena && o.roomId).length} kishi)</option>
-              {xonalar.map(([id, nom]) => <option key={id} value={id}>{nom} ({data.seats.filter(o => o.session === smena && o.roomId === id).length})</option>)}
-            </select>
-          </Maydon>
-          <Maydon nom="Javob varag'i qog'ozi">
-            <Tanlov qiymat={qogoz} onChange={setQogoz} variantlar={[{ v: 'A4', nom: 'A4' }, { v: 'A5', nom: 'A5' }, { v: 'A4x2', nom: 'A4 da 2 ta' }]} />
-          </Maydon>
-          <p className="pb-2.5 text-[12px] text-matn-xira flex items-center gap-1.5"><Info size={13} /> {qogoz === 'A4x2' ? "Har A4 da ikkita varaq (yotiq) — o'rtadan kesiladi. " : ''}Chop etish oynasida «Masshtab: 100%» va «Chetlar: yo'q» tanlang.</p>
+      {andozaOynasi}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 items-start">
+        <div className="space-y-4">
+          <Karta ichki="p-2">
+            {HUJJATLAR.map(g => (
+              <div key={g.guruh} className="mb-1 last:mb-0">
+                <p className="px-2.5 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-matn-xira">{g.guruh}</p>
+                {g.royxat.filter(h => h.ochiq).map(h => {
+                  const faol = h.id === hujjat;
+                  return (
+                    <button key={h.id} onClick={() => setHujjat(h.id)} aria-pressed={faol}
+                      className={`w-full flex items-center gap-3 px-2.5 py-1.5 rounded-xl text-left cursor-pointer transition-colors ${faol ? 'bg-brand-fon dark:bg-brand/15' : 'hover:bg-ichki'}`}>
+                      <span className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${faol ? 'bg-brand text-brand-ust' : 'bg-ichki text-matn-sokin'}`}>{h.ikonka}</span>
+                      <span className="min-w-0">
+                        <span className={`block text-[13px] font-semibold ${faol ? 'text-brand' : 'text-matn'}`}>{h.nom}</span>
+                        <span className="block text-[11.5px] text-matn-xira truncate">{h.izoh}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            {andozaTugmasi && (
+              <div className="border-t border-chiziq mt-1.5 pt-2 px-1 pb-1">
+                <button onClick={() => setAndozaOyna(true)} className="w-full flex items-center gap-3 px-2.5 py-1.5 rounded-xl text-left cursor-pointer hover:bg-ichki">
+                  <span className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center border border-dashed border-brand/50 text-brand"><LayoutList size={16} /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-semibold text-matn">Andozadan savol qog'ozi</span>
+                    <span className="block text-[11.5px] text-matn-xira">Blueprint → variantli imtihon</span>
+                  </span>
+                </button>
+              </div>
+            )}
+          </Karta>
+
+          <Karta sarlavha={tanlanganNomi}>
+            <div className="space-y-3">
+              {s.sessions.length > 1 && (
+                <Maydon nom="Smena">
+                  <select className={SELECT} value={smena} onChange={e => { setSmena(Number(e.target.value)); setXona(0); setYakka(0); setKitobchaKodi(''); }}>
+                    {s.sessions.map(x => <option key={x.id} value={x.id}>{smenaNomi(x.id)}</option>)}
+                  </select>
+                </Maydon>
+              )}
+              {hujjat === 'kitobcha' && (
+                <>
+                  <Maydon nom="Variant">
+                    <select className={SELECT} value={kitobchaKodi} onChange={e => setKitobchaKodi(e.target.value)}>
+                      <option value="">Hammasi ({variantlar.join(', ')})</option>
+                      {variantlar.map(c => <option key={c} value={c}>Variant {c}</option>)}
+                    </select>
+                  </Maydon>
+                  {nusxalar.length > 0 && (
+                    <div className="rounded-xl bg-ichki border border-chiziq p-2.5">
+                      <p className="text-[11.5px] font-semibold text-matn-sokin mb-1.5">Ksero: kerakli nusxalar (5% zaxira)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {nusxalar.map(([v, n]) => <span key={v} className="px-2 py-0.5 rounded-lg bg-sirt border border-chiziq text-[12px]"><b className="text-brand">{v}</b> — {Math.ceil(n * 1.05)} ta</span>)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {hujjat === 'kalit' && <p className="text-[12px] text-matn-sokin">Har variantning to'g'ri javoblari — kalit tuzatishlari va bekor qilingan savollar bilan. Skaner kalitni o'zi biladi: bu bet tekshiruvchilar uchun.</p>}
+              {xonaKerak && (
+                <Maydon nom="Xona">
+                  <select className={SELECT} value={xona} onChange={e => { setXona(Number(e.target.value)); setYakka(0); }}>
+                    <option value={0}>Hamma xona ({smenadagilar} kishi)</option>
+                    {xonalar.map(([id, nom]) => <option key={id} value={id}>{nom} ({data.seats.filter(o => o.session === smena && o.roomId === id).length})</option>)}
+                  </select>
+                </Maydon>
+              )}
+              {hujjat === 'varaq' && (
+                <>
+                  <Maydon nom="Kimga" izoh="O'rni o'zgargan yoki varag'i buzilgan bitta qatnashchi uchun">
+                    <select className={SELECT} value={yakka} onChange={e => setYakka(Number(e.target.value))}>
+                      <option value={0}>Hammasi ({orinlar.length} kishi)</option>
+                      {[...orinlar].sort((a, b) => a.name.localeCompare(b.name)).map(o => (
+                        <option key={o.id} value={o.id}>{o.name} — {o.roomName}, {(o.row ?? 0) + 1}-qator, {(o.col ?? 0) + 1}-o'rin ({o.variant})</option>
+                      ))}
+                    </select>
+                  </Maydon>
+                  <Almashtirgich yoqilgan={rasmli} onChange={setRasmli} nom="O'quvchi rasmi bilan" izoh="Kirishda shaxsni tekshirish uchun; rasmsiz tezroq" />
+                </>
+              )}
+              {hujjat === 'universal' && (
+                <Maydon nom="Nechta" izoh="O'quvchi ID raqamini o'zi bo'yaydi (vedomostda bor)">
+                  <input type="number" min={1} max={500} className={INPUT} value={universalSoni} onChange={e => setUniversalSoni(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} />
+                </Maydon>
+              )}
+              {varaqTuri && (
+                <Maydon nom="Qog'oz">
+                  <Tanlov qiymat={qogoz} onChange={setQogoz} variantlar={[{ v: 'A4', nom: 'A4' }, { v: 'A5', nom: 'A5' }, { v: 'A4x2', nom: 'A4 da 2 ta' }]} />
+                </Maydon>
+              )}
+              <p className="text-[11.5px] text-matn-xira flex gap-1.5"><Info size={13} className="shrink-0 mt-px" />
+                <span>{varaqTuri ? `${qogoz === 'A4x2' ? "Har A4 da ikkita varaq (yotiq) — o'rtadan kesiladi. " : ''}Chop etish oynasida «Masshtab: 100%» va «Chetlar: yo'q» tanlang.${hujjat === 'varaq' ? " Tartib: xona → qator → o'rin." : ''}` : "Chop etish oynasida «PDF sifatida saqlash» ham bor."}</span>
+              </p>
+            </div>
+          </Karta>
         </div>
-      </Karta>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Karta sarlavha={s.source === 'kalit' ? "Kitobchalar — o'zingizniki" : 'Kitobchalar'}
-          izoh={s.source === 'kalit' ? "«Faqat kalit» rejimi: kitobchani CRM chop etmaydi. Har o'ringa qaysi variant berilishi — eshik ro'yxati va vedomostda." : 'Har variantdan bittadan chop eting va ksero qiling'}>
-          <div className="space-y-3">
-            {s.source !== 'kalit' && (
-              <div className="flex flex-wrap gap-2">
-                {variantlar.map(code => (
-                  <Tugma key={code} kichik ikonka={<BookOpen size={13} />} yuklanmoqda={band === `kitobcha-${code}`} onClick={() => kitobcha([code])}>Variant {code}</Tugma>
-                ))}
-                {variantlar.length > 1 && <Tugma kichik turi="asosiy" yuklanmoqda={band === `kitobcha-${variantlar.join('')}`} onClick={() => kitobcha(variantlar)}>Hammasi</Tugma>}
-              </div>
-            )}
-            {nusxalar.length > 0 && (
-              <div className="rounded-xl bg-ichki border border-chiziq p-3">
-                <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">Kerakli nusxalar ({smenaNomi(smena)}, 5% zaxira bilan)</p>
-                <div className="flex flex-wrap gap-2">
-                  {nusxalar.map(([v, n]) => <span key={v} className="px-2.5 py-1 rounded-lg bg-sirt border border-chiziq text-[12.5px]"><b className="text-brand">{v}</b> — {Math.ceil(n * 1.05)} ta</span>)}
-                </div>
-              </div>
-            )}
-          </div>
-        </Karta>
-
-        <Karta sarlavha="Javob varaqalari" izoh="Har qatnashchiga shaxsiy: ism, rasm, o'rin, varaq kodi (QR)">
-          <div className="space-y-3">
-            <Almashtirgich yoqilgan={rasmli} onChange={setRasmli} nom="O'quvchi rasmi bilan" izoh="Kirishda shaxsni tekshirish uchun; rasmsiz chop etish tezroq" />
-            <Maydon nom="Kimga" izoh="O'rni o'zgargan yoki varag'i buzilgan bitta qatnashchi uchun qayta chop etish">
-              <select className={SELECT} value={yakka} onChange={e => setYakka(Number(e.target.value))}>
-                <option value={0}>Hammasi ({orinlar.length} kishi)</option>
-                {[...orinlar].sort((a, b) => a.name.localeCompare(b.name)).map(o => (
-                  <option key={o.id} value={o.id}>{o.name} — {o.roomName}, {(o.row ?? 0) + 1}-qator, {(o.col ?? 0) + 1}-o'rin ({o.variant})</option>
-                ))}
-              </select>
-            </Maydon>
-            <Tugma turi="asosiy" ikonka={<FileText size={14} />} yuklanmoqda={band === 'varaq'} disabled={!orinlar.length} onClick={varaqlar}>
-              {yakka ? '1 ta varaq' : `${orinlar.length} ta varaq`}{sahifalar.length > 1 ? ` × ${sahifalar.length} sahifa` : ''} — chop etish
+        <Korinish holat={korinish} kenglik={varaqTuri && qogoz === 'A4x2' ? 1123 : varaqTuri && qogoz === 'A5' ? 560 : 794}
+          izoh={hujjat === 'kalit' ? 'hamma variant' : hujjat === 'universal' ? 'namuna' : 'birinchi beti — chop etishda hammasi'}
+          tugma={
+            <Tugma turi="asosiy" ikonka={<Printer size={15} />} yuklanmoqda={band} disabled={boshMi || (hujjat === 'kitobcha' && !variantlar.length)} onClick={chopEtish}>
+              Chop etish · {sanoq}
             </Tugma>
-            <p className="text-[11.5px] text-matn-xira">Tartib: xona → qator → o'rin. Dastani xonaga olib kirib, o'rinma-o'rin tarqating.</p>
-          </div>
-        </Karta>
-
-        <Karta sarlavha="Universal varaqlar" izoh="Ro'yxatda yo'q yoki varag'i buzilganlar uchun: o'quvchi ID raqamini o'zi bo'yaydi">
-          <div className="flex flex-wrap items-end gap-3">
-            <Maydon nom="Nechta" className="w-28"><input type="number" min={1} max={500} className={INPUT} value={universalSoni} onChange={e => setUniversalSoni(Number(e.target.value))} /></Maydon>
-            <Tugma ikonka={<Printer size={14} />} yuklanmoqda={band === 'universal'} onClick={universal}>Chop etish</Tugma>
-          </div>
-          <p className="text-[11.5px] text-matn-xira mt-2">ID raqam nazoratchi vedomostida bor (varag'i buzilgan o'quvchiga). Skaner uni doirachalardan o'qiydi; ro'yxatda yo'q qatnashchini skanerda qo'lda tanlaysiz.</p>
-        </Karta>
-
-        <Karta sarlavha="Ro'yxatlar" izoh="Har xona alohida sahifa">
-          <div className="flex flex-wrap gap-2">
-            <Tugma ikonka={<DoorOpen size={14} />} yuklanmoqda={band === 'eshik'} disabled={!orinlar.length} onClick={() => royxat('eshik')}>Eshik ro'yxati (alifbo)</Tugma>
-            <Tugma ikonka={<ClipboardList size={14} />} yuklanmoqda={band === 'vedomost'} disabled={!orinlar.length} onClick={() => royxat('vedomost')}>Nazoratchi vedomosti</Tugma>
-          </div>
-        </Karta>
+          } />
       </div>
     </div>
+  );
+}
+
+/** Jonli ko'rinish: hujjat iframe'da, panel eniga sig'adigan masshtabda. */
+function Korinish({ holat, kenglik, izoh, tugma }: { holat: { html: string } | { xato: string } | null; kenglik: number; izoh: string; tugma: React.ReactNode }) {
+  const quti = useRef<HTMLDivElement>(null);
+  const ramka = useRef<HTMLIFrameElement>(null);
+  const [masshtab, setMasshtab] = useState(1);
+  useLayoutEffect(() => {
+    const el = quti.current;
+    if (!el) return;
+    const hisobla = () => setMasshtab(Math.min(1, (el.clientWidth - 8) / (kenglik + 48)));
+    hisobla();
+    const ro = new ResizeObserver(hisobla);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [kenglik]);
+  const qoy = () => { const d = ramka.current?.contentDocument; if (d?.documentElement) d.documentElement.style.zoom = String(masshtab); };
+  useEffect(qoy, [masshtab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Karta ichki="p-0" className="overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-chiziq">
+        <span className="min-w-0">
+          <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-matn"><Eye size={14} className="text-brand" /> Ko'rinish</span>
+          <span className="block text-[11.5px] text-matn-xira">{izoh}</span>
+        </span>
+        {tugma}
+      </div>
+      <div ref={quti} className="relative bg-[#dfe3e8] dark:bg-[#2a2f36] h-[70vh] lg:h-[calc(100vh-190px)] min-h-[420px]">
+        {!holat ? (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 text-[12.5px] text-slate-600"><Loader2 size={15} className="animate-spin" /> Tayyorlanmoqda…</div>
+        ) : 'xato' in holat ? (
+          <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-[12.5px] text-slate-600">{holat.xato}</div>
+        ) : (
+          <iframe ref={ramka} title="Chop etish ko'rinishi" srcDoc={holat.html} onLoad={qoy} className="absolute inset-0 w-full h-full border-0" />
+        )}
+      </div>
+    </Karta>
   );
 }

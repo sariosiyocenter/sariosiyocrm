@@ -7,7 +7,7 @@ import { Settings2 } from 'lucide-react';
 
 export interface FiltrQiymati<K extends string | number> { k: K; nom: React.ReactNode; soni?: number; izoh?: string }
 
-export default function FiltrUstuni<K extends string | number>({ sarlavha, qiymatlar, tanlangan, onChange, onSozla, bosh = "Qiymat yo'q", balandlik = 'h-44' }: {
+export default function FiltrUstuni<K extends string | number>({ sarlavha, qiymatlar, tanlangan, onChange, onSozla, bosh = "Qiymat yo'q", balandlik = 'max-h-44' }: {
   sarlavha: string;
   qiymatlar: FiltrQiymati<K>[];
   tanlangan: K[];

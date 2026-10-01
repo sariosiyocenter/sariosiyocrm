@@ -170,3 +170,75 @@ export function vedomostHtml(p: { exam: Exam; smena: string; xona: string; orinl
     <div class="imzo"><span>Keldi: ____ · Kelmadi: ____ · Qaytarilgan varaq: ____</span><span>Nazoratchi: ______________________ Imzo: __________</span></div>
   </section>`;
 }
+
+// --- Kalit varag'i ------------------------------------------------------------
+
+export interface KalitMalumoti {
+  manba: string;
+  variants: { session: number; code: string; items: { n: number; q: number | null; t: string; b: number; javob: string | string[] | null; m?: number[]; bekor?: string | null }[] }[];
+  cancelled: Record<string, string>;
+  keyFix: Record<string, string[]>;
+}
+
+/**
+ * Javoblar kaliti (Addmen QPG "answer key"): har variant alohida bo'lim (kichik testda bir betga bir nechtasi sig'adi) — fan
+ * bo'yicha savol raqami va to'g'ri javob (varaqdagi harflarda, kalit
+ * tuzatishlari bilan). Bekor qilingan savol — ✱ (hammaga ball) yoki ✕ (hisobdan chiqarilgan).
+ */
+export function kalitVaragiHtml(exam: Exam, markaz: string, d: KalitMalumoti, session: number): string {
+  return d.variants.filter(v => v.session === session).map(v => {
+    const javob = (it: KalitMalumoti['variants'][number]['items'][number]) => {
+      const bekor = it.bekor || (it.q != null ? d.cancelled[it.q] : null);
+      if (bekor === 'hammaga') return '<span class="bekor">✱</span>';
+      if (bekor === 'chiqarish') return '<span class="bekor">✕</span>';
+      if (it.t === 'yozma') return '<span class="yozma">yozma</span>';
+      const tuz = it.q != null ? d.keyFix[it.q] : null;
+      if (tuz && it.t === 'yopiq' && it.m) return esc(tuz.map(h => HARFLAR[it.m!.indexOf(HARFLAR.indexOf(String(h).toUpperCase()))]).filter(Boolean).join(''));
+      if (tuz) return esc(tuz.join('; '));
+      return esc(Array.isArray(it.javob) ? it.javob.join('; ') : it.javob || '');
+    };
+    const bloklar = exam.blocks.map((b, bi) => ({ nomi: b.subject, items: v.items.filter(it => it.b === bi) })).filter(b => b.items.length);
+    return `<section class="bet kalit">
+      <div class="kalit-bosh"><div><div class="markaz">${esc(markaz)}</div><h1>Javoblar kaliti</h1><h2>${esc(exam.name)} · ${esc(exam.date)}</h2></div><div class="variant"><small>VARIANT</small><b>${esc(v.code)}</b></div></div>
+      ${bloklar.map(b => `<h3>${esc(b.nomi)} <small>${b.items[0].n}–${b.items[b.items.length - 1].n}</small></h3>
+        <div class="kataklar">${b.items.map(it => { const j = javob(it); return `<div class="kt${j.replace(/<[^>]+>/g, '').length > 3 ? ' uzun' : ''}"><span>${it.n}</span><b>${j}</b></div>`; }).join('')}</div>`).join('')}
+      <p class="maxfiy">Maxfiy hujjat — imtihon tugaguncha tarqatilmasin. ✱ — bekor (hammaga ball), ✕ — hisobdan chiqarilgan.</p>
+    </section>`;
+  }).join('');
+}
+
+export const KALIT_CSS = `
+.bet.kalit { break-after: auto; break-inside: avoid; padding-bottom: 5mm; margin-bottom: 6mm; border-bottom: 0.8pt dashed #888; }
+.bet.kalit:last-child { border-bottom: 0; }
+.kalit-bosh { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.2pt solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+.kalit-bosh .markaz { font-size: 9pt; color: #444; }
+.kalit-bosh h1 { font-size: 18pt; margin: 0; }
+.kalit-bosh h2 { margin: 0; }
+.kalit-bosh .variant { border: 1.4pt solid #000; padding: 1mm 5mm; text-align: center; }
+.kalit-bosh .variant small { display: block; font-size: 8pt; letter-spacing: 1pt; }
+.kalit-bosh .variant b { font-size: 28pt; line-height: 1; }
+.kalit h3 { font-size: 11pt; margin: 3mm 0 1.5mm; }
+.kalit h3 small { font-weight: normal; color: #555; }
+.kataklar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 1mm; }
+.kt { border: 0.6pt solid #555; display: flex; justify-content: space-between; align-items: baseline; padding: 1mm 1.6mm; font-size: 10pt; }
+.kt span { color: #555; font-size: 8.5pt; }
+.kt.uzun { grid-column: span 2; }
+.kt b { font-size: 12pt; }
+.kt .bekor { color: #a00; }
+.kt .yozma { font-size: 7.5pt; font-weight: normal; color: #555; }
+.maxfiy { margin-top: 5mm; font-size: 8.5pt; color: #444; }
+`;
+
+/**
+ * Chop etish ko'rinishi (ekranda): varaqlar oq "bet" bo'lib kulrang fonda.
+ * Chop etishda ta'sir qilmaydi — faqat @media screen.
+ */
+export const KORINISH_CSS = `
+@media screen {
+  html, body { background: transparent !important; }
+  body { padding: 16px 0; margin: 0; }
+  .varaq, .juft { margin: 0 auto 16px !important; background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,.25); }
+  .juft .varaq { margin: 0 !important; box-shadow: none; }
+  .kitobcha, .bet { width: 210mm; box-sizing: border-box; padding: 11mm; margin: 0 auto 16px; background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,.25); }
+}
+`;

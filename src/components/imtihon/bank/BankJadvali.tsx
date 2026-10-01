@@ -257,9 +257,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
               <option value="yozma">Yozma</option>
             </select>
           </div>
-          <div className="overflow-x-auto">
+          {/* Ro'yxat o'z ichida suriladi: qidiruv, sarlavha va sahifalash doim ko'rinib turadi. */}
+          <div className="overflow-auto xl:max-h-[calc(100vh-370px)] xl:min-h-[420px] min-h-0">
             <table className="w-full text-[12.5px]">
-              <thead className="bg-ichki text-matn-sokin text-[11.5px]">
+              <thead className="bg-ichki text-matn-sokin text-[11.5px] sticky top-0 z-[1] shadow-[0_1px_0_var(--color-chiziq)]">
                 <tr>
                   <th className="w-8 px-2 py-2"><input type="checkbox" aria-label="Sahifadagi hammasini tanlash" className="w-3.5 h-3.5 accent-[var(--color-brand)] cursor-pointer" checked={sahifaTanlangan} onChange={sahifaniTanla} /></th>
                   <th className="px-1 py-2 text-left font-semibold w-16">

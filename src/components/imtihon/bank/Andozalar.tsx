@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Copy, Save, LayoutList, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Copy, Save, LayoutList, AlertTriangle, CheckCircle2, Loader2, Printer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, INPUT, Yuklanmoqda, BoshHolat } from '../ui';
 import { QIYINLIK } from './qiyinlik';
+import AndozadanQogoz from '../AndozadanQogoz';
 import type { Andoza, AndozaQatori, BankDaraxt, BankFiltrMalumoti, SavolTuri } from '../../../types';
 
 // Andoza — Addmen "BLUE PRINT": qayta ishlatiladigan imtihon tuzilmasi. Har qator
@@ -20,6 +22,9 @@ type Hisob = { bor: number; boshQolgan: number; yetadi: boolean };
 export default function Andozalar({ daraxt }: { daraxt: BankDaraxt }) {
   const { ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar') || ozgartira('imtihonlar.imtihon');
+  const qogozYaratadi = ozgartira('imtihonlar.imtihon');
+  const navigate = useNavigate();
+  const [qogozOyna, setQogozOyna] = useState<number | null>(null);
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
   const [royxat, setRoyxat] = useState<Andoza[] | null>(null);
@@ -130,14 +135,19 @@ export default function Andozalar({ daraxt }: { daraxt: BankDaraxt }) {
         </div>
       ) : (
         <AndozaMuharriri a={qoralama} daraxt={daraxt} tahrir={tahrir} ozgargan={ozgargan} band={band}
-          onChange={ozgartir} onSaqla={saqla} onNusxa={nusxa} onOchir={qoralama.id ? ochir : undefined} />
+          onChange={ozgartir} onSaqla={saqla} onNusxa={nusxa} onOchir={qoralama.id ? ochir : undefined}
+          onQogoz={qogozYaratadi && qoralama.id ? () => setQogozOyna(qoralama.id) : undefined} />
+      )}
+      {qogozOyna && (
+        <AndozadanQogoz boshAndozaId={qogozOyna} onYop={() => setQogozOyna(null)}
+          onTayyor={(id, qulflandi) => { setQogozOyna(null); navigate(qulflandi ? `/exams?tab=chop&imtihon=${id}` : `/exams?imtihon=${id}`); }} />
       )}
     </div>
   );
 }
 
-function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla, onNusxa, onOchir }: {
-  a: Andoza; daraxt: BankDaraxt; tahrir: boolean; ozgargan: boolean; band: boolean;
+function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla, onNusxa, onOchir, onQogoz }: {
+  a: Andoza; daraxt: BankDaraxt; tahrir: boolean; ozgargan: boolean; band: boolean; onQogoz?: () => void;
   onChange: (p: Partial<Andoza>) => void; onSaqla: () => void; onNusxa: () => void; onOchir?: () => void;
 }) {
   const { soro } = useImtihonApi();
@@ -288,11 +298,12 @@ function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla,
             : yetmaydi ? <><AlertTriangle size={13} /> Ba'zi qatorlarga bankda savol yetmaydi (qizil)</>
             : <><CheckCircle2 size={13} /> Bankda yetadi · faqat faol savollar sanaladi</>}
         </span>
-        {tahrir && (
+        {(tahrir || onQogoz) && (
           <div className="flex flex-wrap gap-2">
-            {onOchir && <Tugma kichik turi="xavfli" ikonka={<Trash2 size={13} />} onClick={onOchir}>O'chirish</Tugma>}
-            {a.id > 0 && <Tugma kichik ikonka={<Copy size={13} />} onClick={onNusxa}>Nusxa</Tugma>}
-            <Tugma kichik turi="asosiy" ikonka={<Save size={13} />} yuklanmoqda={band} disabled={!ozgargan && a.id > 0} onClick={onSaqla}>Saqlash</Tugma>
+            {onQogoz && <Tugma kichik ikonka={<Printer size={13} />} disabled={ozgargan || yetmaydi} title={ozgargan ? 'Avval saqlang' : undefined} onClick={onQogoz}>Savol qog'ozi</Tugma>}
+            {tahrir && onOchir && <Tugma kichik turi="xavfli" ikonka={<Trash2 size={13} />} onClick={onOchir}>O'chirish</Tugma>}
+            {tahrir && a.id > 0 && <Tugma kichik ikonka={<Copy size={13} />} onClick={onNusxa}>Nusxa</Tugma>}
+            {tahrir && <Tugma kichik turi="asosiy" ikonka={<Save size={13} />} yuklanmoqda={band} disabled={!ozgargan && a.id > 0} onClick={onSaqla}>Saqlash</Tugma>}
           </div>
         )}
       </div>
