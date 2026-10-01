@@ -697,6 +697,8 @@ export interface ExamSettings {
     jarimaNoldan: boolean;
     /** Qo'shimcha ball komponentlari (og'zaki, yozma ish — Excel'dan). */
     qoshimcha: { nom: string; max: number }[];
+    /** Onlayn test: vaqtlar — O'zbekiston vaqti "YYYY-MM-DDTHH:mm"; daqiqa 0 — imtihon davomiyligi. */
+    onlayn: { yoqilgan: boolean; ochiladi: string; yopiladi: string; daqiqa: number };
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

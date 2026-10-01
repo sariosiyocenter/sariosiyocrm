@@ -8,6 +8,7 @@ import XonaSxemasi from './XonaSxemasi';
 import { xonaOrinlari } from '../../../lib/imtihon.js';
 import { toDateStr } from '../../../lib/lessons.js';
 import type { ImtihonTafsil } from './turlar';
+import OnlaynTestKarta from './OnlaynTestKarta';
 import type { Room } from '../../types';
 
 // 2-bo'lim: kim qatnashadi (kurslar + tashqi qatnashchilar), qaysi xonalarda,
@@ -201,7 +202,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   const ruxsatnomaYubor = async (qayta: boolean) => {
     const kanal = { BOTH: "Telegram, bo'lmasa SMS", TELEGRAM: 'Telegram', SMS: 'SMS', NONE: '' }[s.admit.channel];
     const savol = qayta
-      ? `Ruxsatnoma hamma ${seats.filter(x => x.roomId).length} qatnashchiga qaytadan yuboriladi (${kanal}). Davom etilsinmi?`
+      ? `Ruxsatnoma hamma ${seats.filter(x => onlayn || x.roomId).length} qatnashchiga qaytadan yuboriladi (${kanal}). Davom etilsinmi?`
       : `${kutmoqda} ta qatnashchiga ruxsatnoma yuboriladi (${kanal}).${s.admit.channel !== 'TELEGRAM' ? ' SMS pullik.' : ''} Davom etilsinmi?`;
     if (!(await confirm(savol))) return;
     toxtaRef.current = false;
@@ -244,7 +245,9 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   const smenaOrinlari = seats.filter(x => x.session === smena && x.roomId);
   const xonalarBuSmenada = [...new Map(smenaOrinlari.map(x => [x.roomId, x.roomName])).entries()];
   const joylashmagan = seats.filter(x => !x.roomId);
-  const kutmoqda = seats.filter(x => x.roomId && !x.admitSentAt).length;
+  // Onlayn testda xona kerak emas — ruxsatnoma (test havolasi bilan) hammaga ketadi.
+  const onlayn = s.onlayn?.yoqilgan;
+  const kutmoqda = seats.filter(x => (onlayn || x.roomId) && !x.admitSentAt).length;
   const ruxsatnomaOldi = seats.filter(x => x.admitSentAt && x.admitStatus === 'yuborildi').length;
   // Ruxsatnoma imtihongacha kerak: e'lon qilingan yoki o'tib ketgan imtihonda ko'rsatilmaydi.
   const ruxsatnomaVaqti = !exam.publishedAt && exam.date >= toDateStr();
@@ -293,7 +296,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
               {!exam.lockedAt && <p className="text-[11.5px] text-matn-xira">Variant harflari savollar qulflangach aniq bo'ladi (o'rin shu tartibda qoladi).</p>}
             </div>
           )}
-          {tahrir && ruxsatnomaVaqti && seats.some(x => x.roomId) && s.admit.channel !== 'NONE' && (
+          {tahrir && ruxsatnomaVaqti && (onlayn ? seats.length > 0 : seats.some(x => x.roomId)) && s.admit.channel !== 'NONE' && (
             <div className="mt-4 pt-3 border-t border-chiziq space-y-2">
               <div className="flex items-center justify-between gap-2 text-[13px]">
                 <span className="text-matn">Ruxsatnoma</span>
@@ -315,6 +318,8 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
           )}
         </Karta>
       </div>
+
+      {onlayn && <OnlaynTestKarta exam={exam} tahrir={tahrir} onOzgardi={() => { yukla(); yangila(); }} />}
 
       {natija && (natija.sigmadi.length > 0 || natija.olibTashlandi > 0) && (
         <Karta className="border-ogoh/40">
@@ -426,7 +431,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
               <input className={`${INPUT} pl-9`} placeholder="Ism yoki varaq kodi" value={qidiruv} onChange={e => setQidiruv(e.target.value)} />
             </div>
-            {joylashmagan.length > 0 && <p className="text-[12.5px] text-xato flex items-center gap-1.5"><AlertTriangle size={14} /> {joylashmagan.length} kishiga o'rin berilmagan</p>}
+            {joylashmagan.length > 0 && !onlayn && <p className="text-[12.5px] text-xato flex items-center gap-1.5"><AlertTriangle size={14} /> {joylashmagan.length} kishiga o'rin berilmagan</p>}
             <div className="overflow-x-auto rounded-xl border border-chiziq">
               <table className="w-full min-w-[720px] text-[12.5px]">
                 <thead className="bg-ichki text-matn-sokin">
@@ -452,7 +457,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
                         {o.resultId && <Yorliq rang={o.reviewStatus === 'shubhali' ? 'ogoh' : 'yaxshi'} className="ml-1.5">{o.score} ball</Yorliq>}
                       </td>
                       <td className="px-3 py-2 text-matn-sokin">{o.groupName || '—'}</td>
-                      <td className="px-3 py-2 text-matn-sokin">{o.roomId ? `${s.sessions.length > 1 ? `${o.session}-sm · ` : ''}${o.roomName} · ${(o.row ?? 0) + 1}-qator · ${(o.col ?? 0) + 1}-o'rin` : <span className="text-xato">o'rin yo'q</span>}</td>
+                      <td className="px-3 py-2 text-matn-sokin">{o.roomId ? `${s.sessions.length > 1 ? `${o.session}-sm · ` : ''}${o.roomName} · ${(o.row ?? 0) + 1}-qator · ${(o.col ?? 0) + 1}-o'rin` : onlayn ? <span className="text-matn-xira">onlayn</span> : <span className="text-xato">o'rin yo'q</span>}</td>
                       <td className="px-3 py-2 text-center font-bold text-matn">{exam.lockedAt ? o.variant || '—' : '·'}</td>
                       <td className="px-3 py-2 font-mono text-matn-sokin">{o.sheetCode}</td>
                       <td className="px-3 py-2">

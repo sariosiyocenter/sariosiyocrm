@@ -314,6 +314,26 @@ export default function ExamBuilder() {
               )}
             </div>
           </Karta>
+          <Karta sarlavha="Onlayn test" izoh="Addmen CBT kabi: qatnashchi shaxsiy havola orqali telefonda yechadi (Telegram'da ham ochiladi)">
+            <div className="space-y-3">
+              <Almashtirgich yoqilgan={sozlama.onlayn.yoqilgan} onChange={v => s({ onlayn: { ...sozlama.onlayn, yoqilgan: v } })}
+                nom="Onlayn topshirish mumkin" izoh={kalitRejimi ? "«Faqat kalit»: savollar qog'oz kitobchada, javoblar onlayn varaqqa belgilanadi" : "Savollar formulalar va rasmlar bilan ko'rinadi; javoblar o'zi saqlanadi, vaqt tugasa o'zi yakunlanadi"} />
+              {sozlama.onlayn.yoqilgan && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Maydon nom="Ochiladi" izoh="Bo'sh — qulflangandan keyin darhol">
+                    <input type="datetime-local" className={INPUT} value={sozlama.onlayn.ochiladi} onChange={e => s({ onlayn: { ...sozlama.onlayn, ochiladi: e.target.value } })} />
+                  </Maydon>
+                  <Maydon nom="Yopiladi" izoh="Bo'sh — cheklovsiz">
+                    <input type="datetime-local" className={INPUT} value={sozlama.onlayn.yopiladi} onChange={e => s({ onlayn: { ...sozlama.onlayn, yopiladi: e.target.value } })} />
+                  </Maydon>
+                  <Maydon nom="Har qatnashchiga vaqt (daqiqa)" izoh={`Bo'sh — imtihon davomiyligi (${davom} daqiqa)`}>
+                    <input type="number" min={0} max={600} className={INPUT} value={sozlama.onlayn.daqiqa || ''} placeholder={String(davom)}
+                      onChange={e => s({ onlayn: { ...sozlama.onlayn, daqiqa: Math.max(0, Math.min(600, Number(e.target.value) || 0)) } })} />
+                  </Maydon>
+                </div>
+              )}
+            </div>
+          </Karta>
           <Karta sarlavha="Natija va xabar">
             <div className="space-y-3">
               <Maydon nom="Reyting">

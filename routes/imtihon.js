@@ -21,7 +21,7 @@ import {
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
   kalitdanVariantlar, kalitToplamlari, kalitTuzilmasi, kalitQiymati,
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari,
-  savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar,
+  savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
 
@@ -43,12 +43,45 @@ function tokendanId(token) {
   return crypto.timingSafeEqual(Buffer.from(imzo), Buffer.from(kutilgan)) ? id : null;
 }
 
+// Onlayn test havolasi: o'rin (ExamSeat) id si + imzo — qatnashchiga shaxsan yuboriladi.
+export function testTokeni(seatId) {
+  const imzo = crypto.createHmac('sha256', JWT_SECRET).update(`test:${seatId}`).digest('base64url').slice(0, 16);
+  return `${Number(seatId).toString(36)}.${imzo}`;
+}
+
+function testTokendanId(token) {
+  const [a, imzo] = String(token || '').split('.');
+  const id = parseInt(a, 36);
+  if (!Number.isInteger(id) || id <= 0 || !imzo) return null;
+  const kutilgan = testTokeni(id).split('.')[1];
+  if (imzo.length !== kutilgan.length) return null;
+  return crypto.timingSafeEqual(Buffer.from(imzo), Buffer.from(kutilgan)) ? id : null;
+}
+
+/** Havola uchun manzil: so'rov bo'lsa — undan, avtomatik yuborishda — APP_URL. */
+function tashqiManzil(req) {
+  if (req) return asosiyManzil(req);
+  return String(process.env.PUBLIC_URL || process.env.APP_URL || 'https://sariosiyocrm.vercel.app').replace(/\/+$/, '');
+}
+export const testHavolasi = (seatId, req) => `${tashqiManzil(req)}/test/${testTokeni(seatId)}`;
+
 /** Tashqaridan ochiladigan manzil (Vercel orqasida ham to'g'ri). */
 function asosiyManzil(req) {
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, '');
   const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0];
   return `${proto}://${req.get('x-forwarded-host') || req.get('host')}`;
 }
+
+// Onlayn test: javoblar har bir necha soniyada saqlanadi — cheklov kengroq.
+const testCheklovi = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Juda ko'p so'rov. Birozdan keyin qayta urinib ko'ring." },
+});
+// Vaqt tugaganda tarmoq kechikishi uchun qo'shimcha.
+const TEST_KECHIKISH = 60 * 1000;
 
 const natijaSahifaCheklovi = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -379,7 +412,9 @@ export async function ruxsatnomalarniYubor(examId, { limit = 10, muddat = Infini
   const e = await prisma.exam.findUnique({ where: { id: examId } });
   if (!e) return { yuborildi: 0, xato: 0, qoldi: 0 };
   const s = sozlamaniTozala(e.settings);
-  const kutmoqda = { examId, admitSentAt: null, roomId: { not: null } };
+  // Onlayn testda xona yo'q — ruxsatnoma (havola bilan) hamma qatnashchiga ketadi.
+  const onlayn = s.onlayn.yoqilgan;
+  const kutmoqda = { examId, admitSentAt: null, ...(onlayn ? {} : { roomId: { not: null } }) };
   if (s.admit.channel === 'NONE') return { yuborildi: 0, xato: 0, qoldi: await prisma.examSeat.count({ where: kutmoqda }) };
   const seats = await prisma.examSeat.findMany({ where: kutmoqda, include: { student: true }, orderBy: { id: 'asc' }, take: limit });
   const roomIds = [...new Set(seats.map(x => x.roomId))];
@@ -398,7 +433,9 @@ export async function ruxsatnomalarniYubor(examId, { limit = 10, muddat = Infini
     if (!band.count) continue;
     const room = roomMap.get(o.roomId);
     const smena = s.sessions.find(x => x.id === o.session);
-    const matn = ruxsatnomaMatni(s.admit.template, {
+    const havola = onlayn ? testHavolasi(o.id) : '';
+    const shablon = onlayn && !/\{test_havola\}/i.test(s.admit.template) ? `${s.admit.template}\n📝 Onlayn test: {test_havola}` : s.admit.template;
+    const matn = ruxsatnomaMatni(shablon, {
       ism: o.student?.name || o.guestName || '',
       imtihon: e.name,
       sana: sanaMatni(e.date),
@@ -409,12 +446,15 @@ export async function ruxsatnomalarniYubor(examId, { limit = 10, muddat = Infini
       qator: o.row != null ? o.row + 1 : '',
       orin: o.col != null ? o.col + 1 : '',
       markaz: brend.orgName,
+      test_havola: havola,
     });
     let natija;
     try {
       if (o.student) {
         // Menyu klaviaturasi bilan: botni ilgari ochganlarga ham "📝 Imtihonlar" tugmasi chiqadi.
-        natija = await xabarYuboruvchi({ student: o.student, message: matn, channel: s.admit.channel, recipientTo: kimgaQiymati(s.admit.to), type: 'EXAM_ADMIT', schoolId: o.schoolId, telegramExtra: oquvchiMenyusi ? oquvchiMenyusi() : undefined });
+        // Onlayn testda — "Testni ochish" (Telegram Mini App) tugmasi, aks holda bot menyusi.
+        const extra = onlayn ? natijaTugmasi(havola, '📝 Testni ochish') : undefined;
+        natija = await xabarYuboruvchi({ student: o.student, message: matn, channel: s.admit.channel, recipientTo: kimgaQiymati(s.admit.to), type: 'EXAM_ADMIT', schoolId: o.schoolId, telegramExtra: extra || (oquvchiMenyusi ? oquvchiMenyusi() : undefined) });
       } else if (o.guestPhone && s.admit.channel !== 'TELEGRAM') {
         natija = await xabarYuboruvchi({ student: { id: null, name: o.guestName, phone: o.guestPhone }, message: matn, channel: 'SMS', recipientTo: 'STUDENT', type: 'EXAM_ADMIT', schoolId: o.schoolId });
       } else {
@@ -2185,6 +2225,217 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
   // Ota-ona xabardagi havola orqali ochadi (kirishsiz). Faqat e'lon qilingan
   // imtihon. Sozlamada yoqilgan bo'lsa — savollar, o'quvchining javobi, to'g'ri
   // javob va faqat TASDIQLANGAN yechim ("xatolar ustida ishlash").
+  // ============================ Onlayn test (Addmen CBT) ============================
+
+  async function testOrni(token) {
+    const seatId = testTokendanId(token);
+    if (!seatId) return null;
+    return prisma.examSeat.findUnique({
+      where: { id: seatId },
+      include: { exam: true, student: { select: { name: true } }, results: { take: 1 } },
+    });
+  }
+
+  /** Vaqti tugagan testni yakunlaydi (javoblar o'sha holicha baholanadi). */
+  async function testniYakunla(e, r, tugadi = new Date()) {
+    const items = (await prisma.examVariant.findFirst({ where: { examId: e.id, session: r.session ?? 1, code: r.variantCode } }))?.items || null;
+    const onlayn = { ...(r.onlayn || {}), tugadi: tugadi.toISOString() };
+    return prisma.examResult.update({ where: { id: r.id }, data: { ...hisobMaydonlari(e, items, r), onlayn } });
+  }
+
+  /** Testdagi savollar (kalitsiz): bank rejimida matn va aralashtirilgan variantlar, "faqat kalit" da — raqamlar. */
+  async function testSavollari(e, r) {
+    const s = sozlamaniTozala(e.settings);
+    const v = await prisma.examVariant.findFirst({ where: { examId: e.id, session: r.session ?? 1, code: r.variantCode } });
+    const items = Array.isArray(v?.items) ? v.items : [];
+    const qids = items.map(it => it.q).filter(Number.isInteger);
+    const qs = qids.length ? await prisma.question.findMany({
+      where: { id: { in: qids } },
+      select: { id: true, text: true, imageUrl: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, passageId: true },
+    }) : [];
+    const qmap = new Map(qs.map(q => [q.id, q]));
+    const tuz = varaqTuzilmasi(e.blocks, e.scoring);
+    const savollar = items.map(it => {
+      const q = qmap.get(it.q);
+      const variantlar = q ? savolVariantlari(q) : [];
+      const tartib = it.m || variantlar.map((_, i) => i);
+      return {
+        n: it.n, t: it.t, b: it.b, pa: it.pa || null, matn: q?.text || '', rasm: q?.imageUrl || null,
+        variantlar: it.t === 'yopiq' ? (q ? tartib.map(i => variantlar[i] ?? '') : HARFLAR.slice(0, s.optionCount)) : [],
+        // "Faqat kalit": matn kitobchada — faqat harflar.
+        kitobcha: !q,
+      };
+    });
+    const pids = [...new Set(qs.map(q => q.passageId).filter(Boolean))];
+    const matnlar = pids.length ? await prisma.passage.findMany({ where: { id: { in: pids } }, select: { id: true, title: true, text: true, imageUrl: true } }) : [];
+    return { savollar, matnlar, bloklar: tuz.bloklar.map(b => ({ nomi: b.nomi, boshi: b.boshi, oxiri: b.oxiri })), javoblar: r.raw || {} };
+  }
+
+  async function testJavobi(seat, req) {
+    const e = seat.exam;
+    const s = sozlamaniTozala(e.settings);
+    let r = seat.results[0] || null;
+    let holat;
+    if (r && r.source !== 'onlayn') holat = 'topshirilgan';
+    else if (r?.onlayn?.tugadi) holat = 'tugagan';
+    else if (r?.onlayn?.boshlandi) {
+      if (Date.now() > new Date(r.onlayn.tugash).getTime() + TEST_KECHIKISH) {
+        r = await testniYakunla(e, r, new Date(r.onlayn.tugash));
+        holat = 'tugagan';
+      } else holat = 'boshlangan';
+    } else {
+      holat = onlaynHolati(e.settings);
+      if (holat === 'ochiq' && !e.lockedAt) holat = 'kutilmoqda';
+    }
+    const brend = await markazBrendi(e.schoolId);
+    const javob = {
+      markaz: { nomi: brend.orgName, logo: brend.logo || null },
+      imtihon: {
+        nomi: e.name, sana: e.date, daqiqa: s.onlayn.daqiqa || e.duration, savolSoni: e.totalQuestions,
+        ochiladi: s.onlayn.ochiladi || null, yopiladi: s.onlayn.yopiladi || null,
+      },
+      ism: seat.student?.name || seat.guestName || '',
+      holat,
+      qolgan: holat === 'boshlangan' ? Math.max(0, Math.round((new Date(r.onlayn.tugash).getTime() - Date.now()) / 1000)) : null,
+      javobBerildi: holat === 'tugagan' ? Object.values(r?.raw || {}).filter(v => v !== '' && v != null).length : null,
+      natijaHavolasi: holat === 'tugagan' && e.publishedAt && r ? `${asosiyManzil(req)}/natija/${natijaTokeni(r.id)}` : null,
+    };
+    if (holat === 'boshlangan') Object.assign(javob, await testSavollari(e, r));
+    return javob;
+  }
+
+  app.get('/api/public/test/:token', testCheklovi, async (req, res, next) => {
+    try {
+      const seat = await testOrni(req.params.token);
+      if (!seat || !sozlamaniTozala(seat.exam.settings).onlayn.yoqilgan) return res.status(404).json({ error: "Havola noto'g'ri yoki bu imtihon onlayn emas" });
+      res.json(await testJavobi(seat, req));
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/public/test/:token/boshla', testCheklovi, async (req, res, next) => {
+    try {
+      const seat = await testOrni(req.params.token);
+      if (!seat || !sozlamaniTozala(seat.exam.settings).onlayn.yoqilgan) return res.status(404).json({ error: "Havola noto'g'ri" });
+      const e = seat.exam;
+      const s = sozlamaniTozala(e.settings);
+      if (!seat.results[0]) {
+        const holat = onlaynHolati(e.settings);
+        if (holat !== 'ochiq' || !e.lockedAt) return res.status(409).json({ error: holat === 'tugagan' ? 'Test yopilgan' : 'Test hali ochilmagan' });
+        const hozir = new Date();
+        const yop = uzVaqti(s.onlayn.yopiladi);
+        const tugash = new Date(Math.min(hozir.getTime() + (s.onlayn.daqiqa || e.duration || 60) * 60000, yop ? yop.getTime() : Infinity));
+        const variantCode = seat.variant || VARIANT_KODLARI[seat.id % Math.max(1, s.variantCount)];
+        const items = (await prisma.examVariant.findFirst({ where: { examId: e.id, session: seat.session, code: variantCode } }))?.items || null;
+        if (!items) return res.status(409).json({ error: 'Test savollari tayyor emas' });
+        try {
+          await prisma.examResult.create({
+            data: {
+              ...hisobMaydonlari(e, items, { raw: {}, manual: {}, flags: [], variantCode }),
+              raw: {}, manual: {}, flags: [], examId: e.id, seatId: seat.id, studentId: seat.studentId, schoolId: seat.schoolId,
+              session: seat.session, source: 'onlayn', onlayn: { boshlandi: hozir.toISOString(), tugash: tugash.toISOString() },
+            },
+          });
+        } catch (err) {
+          if (err?.code !== 'P2002') throw err;   // ikki marta bosilgan — birinchisi yaratdi
+        }
+        await prisma.examSeat.update({ where: { id: seat.id }, data: { status: 'keldi', variant: seat.variant || variantCode } });
+        if (e.status === IMTIHON_HOLATLARI.TAYYOR) await prisma.exam.update({ where: { id: e.id }, data: { status: IMTIHON_HOLATLARI.TEKSHIRILMOQDA } });
+      }
+      res.json(await testJavobi(await testOrni(req.params.token), req));
+    } catch (err) { next(err); }
+  });
+
+  /** Javoblarni saqlash (va `yakunla` bo'lsa — yakunlash). Vaqt tugagach qabul qilinmaydi. */
+  async function testJavoblariniSaqla(req, res, yakunla) {
+    const seat = await testOrni(req.params.token);
+    if (!seat) return res.status(404).json({ error: "Havola noto'g'ri" });
+    const e = seat.exam;
+    const r = seat.results[0];
+    if (!r || r.source !== 'onlayn' || !r.onlayn?.boshlandi) return res.status(409).json({ error: 'Test boshlanmagan' });
+    if (r.onlayn.tugadi) return res.status(409).json({ error: 'Test yakunlangan', holat: 'tugagan' });
+    const muddat = new Date(r.onlayn.tugash).getTime();
+    const vaqtTugadi = Date.now() > muddat + TEST_KECHIKISH;
+    const items = (await prisma.examVariant.findFirst({ where: { examId: e.id, session: r.session ?? 1, code: r.variantCode } }))?.items || [];
+    const turlar = new Map(items.map(it => [String(it.n), it.t]));
+    const yangi = {};
+    if (!vaqtTugadi) {
+      for (const [n, v] of Object.entries(req.body?.javoblar && typeof req.body.javoblar === 'object' ? req.body.javoblar : {})) {
+        const t = turlar.get(String(n));
+        if (t === 'yopiq') yangi[n] = HARFLAR.includes(String(v).toUpperCase()) ? String(v).toUpperCase() : '';
+        else if (t === 'raqamli') yangi[n] = raqamniTozala(v).slice(0, 12);
+      }
+    }
+    // Javoblar bazada birlashtiriladi (jsonb ||): bir vaqtda kelgan ikki so'rov bir-birining javobini o'chirmaydi.
+    let raw = r.raw || {};
+    if (Object.keys(yangi).length) {
+      const [qator] = await prisma.$queryRaw`
+        UPDATE "ExamResult" SET raw = COALESCE(raw, '{}'::jsonb) || ${JSON.stringify(yangi)}::jsonb
+        WHERE id = ${r.id} RETURNING raw`;
+      raw = qator?.raw || { ...raw, ...yangi };
+    }
+    const tugadi = yakunla || vaqtTugadi;
+    const onlayn = { ...r.onlayn, ...(tugadi ? { tugadi: new Date(Math.min(Date.now(), muddat + TEST_KECHIKISH)).toISOString() } : {}) };
+    // Ball — bazadagi eng so'nggi javoblardan (yakunlashda ham).
+    if (tugadi) raw = (await prisma.examResult.findUnique({ where: { id: r.id }, select: { raw: true } }))?.raw || raw;
+    const { answers, ...hisob } = hisobMaydonlari(e, items, { ...r, raw });
+    await prisma.examResult.update({ where: { id: r.id }, data: { ...hisob, answers, onlayn } });
+    res.json({ saqlandi: !vaqtTugadi, holat: tugadi ? 'tugagan' : 'boshlangan', qolgan: Math.max(0, Math.round((muddat - Date.now()) / 1000)) });
+  }
+
+  app.post('/api/public/test/:token/javob', testCheklovi, async (req, res, next) => {
+    try { await testJavoblariniSaqla(req, res, false); } catch (err) { next(err); }
+  });
+  app.post('/api/public/test/:token/yakunla', testCheklovi, async (req, res, next) => {
+    try { await testJavoblariniSaqla(req, res, true); } catch (err) { next(err); }
+  });
+
+  // Admin: onlayn test qatnashchilari, havolalari va holati.
+  app.get('/api/exams/:id/onlayn', authenticate, async (req, res, next) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const e = await prisma.exam.findUnique({ where: { id: examId } });
+      if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
+      const where = { examId, schoolId: { in: await allowedSchoolIds(req.user) } };
+      if (req.ruxsat?.faqatOz) where.studentId = { in: [...(await ozKurslari(req.user)).studentIds] };
+      const seats = await prisma.examSeat.findMany({
+        where, orderBy: { id: 'asc' },
+        include: { student: { select: { name: true, oquvchiKod: { select: { kod: true } } } }, results: { take: 1, select: { score: true, source: true, onlayn: true } } },
+      });
+      const gmap = new Map((await prisma.group.findMany({ where: { id: { in: [...new Set(seats.map(x => x.groupId).filter(Boolean))] } }, select: { id: true, name: true } })).map(g => [g.id, g.name]));
+      res.json({
+        holat: onlaynHolati(e.settings),
+        qulflangan: !!e.lockedAt,
+        qatnashchilar: seats.map(x => {
+          const r = x.results[0];
+          return {
+            seatId: x.id, name: x.student?.name || x.guestName || '', kod: x.student?.oquvchiKod?.kod ?? null, groupName: x.groupId ? gmap.get(x.groupId) || '' : '',
+            havola: testHavolasi(x.id, req), admitStatus: x.admitStatus,
+            test: !r ? 'boshlanmagan' : r.source !== 'onlayn' ? 'qogozda' : r.onlayn?.tugadi ? 'tugagan' : 'yechmoqda',
+            ball: r ? r.score : null,
+          };
+        }),
+      });
+    } catch (err) { next(err); }
+  });
+
+  // Onlayn test uchun qatnashchilar: biriktirilgan kurslar o'quvchilari (xonasiz) — o'rinlashtirmasdan.
+  app.post('/api/exams/:id/onlayn/qatnashchilar', authenticate, async (req, res, next) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const e = await prisma.exam.findUnique({ where: { id: examId } });
+      if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
+      const s = sozlamaniTozala(e.settings);
+      const { oquvchilar } = await qatnashchilarniYigish(e);
+      const bor = new Set((await prisma.examSeat.findMany({ where: { examId }, select: { studentId: true } })).map(x => x.studentId).filter(Boolean));
+      const yangilar = [...oquvchilar.values()].filter(p => !bor.has(p.studentId)).map((p, i) => ({
+        examId, studentId: p.studentId, schoolId: p.schoolId, groupId: p.groupId ?? null, session: 1, sheetCode: varaqKodi(), status: 'rejada',
+        variant: VARIANT_KODLARI[i % Math.max(1, s.variantCount)],
+      }));
+      if (yangilar.length) await prisma.examSeat.createMany({ data: yangilar });
+      res.json({ qoshildi: yangilar.length, jami: bor.size + yangilar.length });
+    } catch (err) { next(err); }
+  });
+
   app.get('/api/public/natija/:token', natijaSahifaCheklovi, async (req, res, next) => {
     try {
       const id = tokendanId(req.params.token);

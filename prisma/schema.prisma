@@ -1280,6 +1280,8 @@ model ExamResult {
   // Qo'shimcha ballar (Addmen "manual scores"): og'zaki, yozma ish — Excel'dan {nomi: ball}.
   // Komponentlar va eng yuqori bali — Exam.settings.qoshimcha.
   extra        Json?
+  // Onlayn test (source 'onlayn'): {boshlandi, tugash, tugadi} — ISO vaqtlar.
+  onlayn       Json?
 
   @@unique([studentId, examId])
   @@index([examId, schoolId])
