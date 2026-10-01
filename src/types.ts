@@ -530,8 +530,45 @@ export interface Question {
     /** Bank tuzilmasidagi mavzu (fan → mavzu). */
     bankTopicId?: number | null;
     bankTopic?: { id: number; name: string; subjectId: number } | null;
+    /** Belgilar (Addmen kabi filtrlar) — QuestionTag id lari. */
+    tagIds?: number[];
+    /** To'plam: savol qaysi fayldan kelgan (Addmen "QR file name"). */
+    toplam?: string | null;
+    createdAt?: string;
     schoolId: number;
 }
+
+/** Bank filtri (belgi guruhi) va uning qiymatlari. */
+export interface BelgiGuruhi { id: number; name: string; order: number; tags: { id: number; name: string; order: number }[] }
+
+/** GET /api/bank/filtr — fan bo'yicha filtr ustunlari va sonlar (arxivsiz). */
+export interface BankFiltrMalumoti {
+    fan: { id: number; name: string };
+    jami: number;
+    yashirin: number;
+    holat: Record<'faol' | 'qoralama' | 'arxiv', number>;
+    turlar: Record<SavolTuri, number>;
+    qiyinlik: QiyinlikSoni;
+    bolimlar: { nom: string; soni: number }[];
+    mavzular: { id: number; nom: string; bolim: string; soni: number }[];
+    manbalar: { nom: string; soni: number }[];
+    toplamlar: { nom: string; soni: number }[];
+    /** belgi id → savollar soni */
+    belgilar: Record<number, number>;
+    guruhlar: BelgiGuruhi[];
+}
+
+/** Andoza (Addmen "Blueprint") qatori. */
+export interface AndozaQatori {
+    bolim: string | null;
+    mavzuId: number | null;
+    qiyinlik: number;
+    manba: string | null;
+    tagIds: number[];
+    tur: SavolTuri;
+    soni: number;
+}
+export interface Andoza { id: number; name: string; subjectId: number | null; rows: AndozaQatori[]; updatedAt?: string }
 
 /** Savol qiyinligi: 1 — oson, 2 — o'rta, 3 — qiyin. */
 export type Qiyinlik = 1 | 2 | 3;
@@ -594,6 +631,12 @@ export interface TopicRule {
     points?: number;
     /** Qo'lda tanlangan savollar — har variantga shular tushadi. */
     questionIds?: number[];
+    /** Andoza qatoridan: bo'lim, manba va belgilar (hammasi bo'lishi shart). */
+    section?: string;
+    source?: string;
+    tagIds?: number[];
+    /** Ko'rsatish uchun nom ("Stereometriya · 10-savol"). */
+    label?: string;
 }
 
 /** Imtihon tuzishdagi "aqlli taqsimot" holati (qoidalar shundan yasaladi). */
@@ -616,6 +659,8 @@ export interface ExamBlock {
     topicRules: TopicRule[];
     pointsPerQuestion: number;
     taqsimot?: BlokTaqsimot;
+    /** Blok andozadan olingan (qoidalar — andoza qatorlarining nusxasi). */
+    andoza?: { id: number; nomi: string } | null;
 }
 
 export interface ExamSettings {

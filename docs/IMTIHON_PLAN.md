@@ -816,3 +816,85 @@ Qo'lda kiritish olib tashlandi: "Yangi savol", ustunlardagi "+", Import menyusi;
 bankdagi shu oynani ochadi. Savol muharriri faqat mavjud savolni tuzatish uchun. "O'xshash masala"
 (15-bo'lim) — bank sarlavhasida. Sinov: `scratch/test_ajrat_mantiq.mjs`,
 `test_savol_yuklash_ui.mjs` (soxta AI server — `scratch/ai_soxta_server.mjs`).
+
+## 17. Addmen'ga o'xshatish: savollar banki va Andoza (2026-10-01)
+
+Markaz Addmen OMRv25 (Standard) dasturini sotib olgan va unga o'rgangan: bankida 18 311 ta
+matematika savoli bor. Egasi: "ko'p joyi o'xshasin, dizayni chiroyliroq bo'lsin". Qarorlar:
+- 6 ta tab qoladi, har birining ichi Addmen ekrani tartibida bo'ladi;
+- nomlar o'zbekcha;
+- birinchi navbatda savollar banki va Andoza;
+- javob varaqasi markazning hozirgi bosma varag'iga o'xshaydi (bu hali qilinmagan).
+
+**Savollar banki** (Addmen QUESTION BANK) — tepada [Savollar banki | Andoza (Blueprint)]:
+- **Filtr ustunlari:** bo'limlar, mavzular (tanlangan bo'limlarnikigina), manba, qiyinlik va
+  foydalanuvchi filtrlari. Ustun ichida "yoki", ustunlar orasida "va". Har qiymatda nechta savol
+  borligi ko'rinadi.
+- **Foydalanuvchi filtrlari** — `QuestionTagGroup` → `QuestionTag`, savolda `tagIds Int[]`
+  (masalan "Milliy sertifikat savollari": 1-savol … 10-savol). Ular "Filtr qo'shish" va ustundagi ⚙
+  bilan boshqariladi.
+- **Ro'yxat:** QID, savol (formulalar bilan), to'plam, sana; sahifalab; QID tartibi; matn bo'yicha
+  qidiruv; to'plam, holat va tur bo'yicha filtr.
+- **Amallar paneli:**
+  - QID dan/gacha, Hammasi / Filtr bo'yicha;
+  - hisoblagichlar: Jami, Yashirin (arxiv), Ro'yxatda, Tanlangan;
+  - Hammasini tanlash, Savolni ko'rish;
+  - **Belgilash…** (Addmen SAVE): mavzu, qiyinlik, manba, holat va filtr qiymatlari. Ustunda
+    bittadan tanlangan qiymat oldindan qo'yiladi;
+  - **Belgini olib tashlash** (REMOVE FILTER);
+  - **Ishlatilishini nolga** (RESET USE);
+  - **O'chirish:** ishlatilgan savol arxivga o'tadi.
+- Fan → mavzu tuzilmasi (14-bo'lim) "Tuzilma" tugmasi orqali (`?kor=tuzilma`).
+
+**To'plam** (`Question.toplam`) — savol qaysi fayldan kelgani (Addmen "QR file name"). Word
+jadvali va Excel importida fayl nomi yoziladi.
+
+**Andoza** (Addmen BLUE PRINT, `QuestionBlueprint`):
+- fan va qatorlar; har qatorda bo'lim, mavzu, qiyinlik, manba, har filtrdan bitta qiymat, tur va
+  soni; har qatorda "bankda N" ko'rinadi (`POST /api/bank/andozalar/hisob`, bazaga yozmaydi);
+- imtihon tuzishda fan blokida **"Andozadan"** tanlanadi: qatorlar qoidaga nusxa bo'lib tushadi
+  (`section`, `source`, `tagIds`, `label`) va blokda `andoza: {id, nomi}` saqlanadi;
+- variant yasash va "bank yetarlimi" bu filtrlarni hisobga oladi (`lib/imtihon.js` `filtrMos`).
+
+**Word QR jadvali — AI siz** (`word.ts` `wordJadvalSavollari`):
+- Addmen Question Resource fayli: har qator — bitta savol, ustunlar
+  № | savol | A–E | javob.
+- Jadval aniq qoida bilan o'qiladi:
+  - javob A–F, kirill А–Е yoki 1–6 bo'lishi mumkin;
+  - bo'sh 5-variant tashlanadi;
+  - OMML formulalar LaTeX ga aylanadi;
+  - rasmlar Storage ga yuklanadi va matn ichida qoladi.
+- Javobsiz yoki MathType li savol qoralama bo'ladi, qolgani faol.
+- Shu nomli to'plam bankda bo'lsa, savollar belgilanmaydi (takror bo'lmasin).
+- Saqlash 1000 tadan bo'lib yuboriladi.
+- **Ochiq:** haqiqiy Addmen QR fayli hali ko'rilmagan. Formulalar MathType bo'lsa o'qilmaydi —
+  egasidan namuna fayl kerak.
+
+Yo'llar:
+- `GET /api/bank/belgilar`, `/api/bank/belgi-guruhlari(/:id)`, `/api/bank/belgilar(/:id)`;
+- `GET /api/bank/filtr?fanId=`, `GET /api/bank/royxat?f=<json>` (`&idlar=1` — faqat id lar);
+- `PUT /api/questions/bulk` (+ `source`, `tagQosh`, `tagOl`, `guruhlar`, `ishlatilishNol`);
+- `POST /api/questions/bulk-ochir`;
+- `/api/bank/andozalar(/:id)`.
+
+O'chirish qoidasi: `lastUsedAt` bor savol ham o'chirilmaydi ("ishlatilishini nolga" `usedCount`
+ni tozalaydi, lekin variantlar baribir unga bog'liq).
+
+Audit: bir nechta qoida mos kelsa, eng aniqi tanlanadi (`matchSpec`). Avval
+`PUT /api/questions/bulk` ni `/:id` yutib, ommaviy o'zgartirishlar jurnalga tushmas edi.
+
+Sinovlar:
+- `scratch/test_andoza_mantiq.mjs` (bazasiz);
+- `test_addmen_bank_api.mjs` (jonli baza, ZZ yozuvlari, 50/50);
+- `addmen_bank_ui.mjs` (brauzer, yozishlar ushlanadi, 21/21);
+- sinov hujjati — `qr_docx_yasa.py`.
+
+**Keyingisi (Addmen bilan farq):**
+- javob varaqasini markaz varag'iga o'xshatish;
+- Natijalar tabida Addmen hisobot turlari: ball ro'yxati, shaxsiy hisobot, kelmaganlar, R/W/L,
+  PDF/Word;
+- manfiy va bonus ball, "m dan n";
+- skanerlangan varaqdan kalit;
+- ikki qismni birlashtirish;
+- A5 varaq;
+- onlayn test.

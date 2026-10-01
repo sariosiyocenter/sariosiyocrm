@@ -138,11 +138,17 @@ function blokniTozala(blocks) {
         const d = parseInt(r?.difficulty);
         if (d >= 1 && d <= 5) rule.difficulty = qiyinlikDarajasi(d);
         if (r?.points !== undefined && r?.points !== null && r?.points !== '' && Number.isFinite(Number(r.points))) rule.points = Number(r.points);
+        // Andoza qatoridan: bo'lim, manba, belgilar va ko'rsatiladigan nom.
+        for (const k of ['section', 'source', 'label']) if (String(r?.[k] || '').trim()) rule[k] = String(r[k]).trim().slice(0, 200);
+        const belgilar = [...new Set((Array.isArray(r?.tagIds) ? r.tagIds : []).map(musbatId).filter(Boolean))].slice(0, 20);
+        if (belgilar.length) rule.tagIds = belgilar;
         return rule;
       }).filter(r => r.count > 0),
     };
     const fanId = musbatId(b?.fanId);
     if (fanId) blok.fanId = fanId;
+    const andozaId = musbatId(b?.andoza?.id);
+    if (andozaId) blok.andoza = { id: andozaId, nomi: String(b.andoza.nomi || '').trim().slice(0, 120) };
     const t = taqsimotniTozala(b?.taqsimot);
     if (t) blok.taqsimot = t;
     return blok;
@@ -176,6 +182,9 @@ function savolMalumoti(body) {
   if (body.solutionStatus !== undefined) d.solutionStatus = YECHIM_HOLATLARI.includes(body.solutionStatus) ? body.solutionStatus : 'yoq';
   if (body.status !== undefined) d.status = SAVOL_HOLATLARI.includes(body.status) ? body.status : 'faol';
   for (const k of ['passageId', 'topicId', 'parentId']) if (body[k] !== undefined) d[k] = parseInt(body[k]) || null;
+  if (body.toplam !== undefined) d.toplam = body.toplam ? String(body.toplam).trim().slice(0, 200) : null;
+  // Belgilar mavjudligi saqlashda tekshirilmaydi: yo'q id filtrda shunchaki uchramaydi.
+  if (body.tagIds !== undefined) d.tagIds = [...new Set((Array.isArray(body.tagIds) ? body.tagIds : []).map(x => parseInt(x)).filter(n => n > 0))].slice(0, 50);
   return d;
 }
 
@@ -217,14 +226,18 @@ const BANK_SELECT = {
   id: true, text: true, imageUrl: true, subject: true, topic: true, type: true, options: true,
   optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true,
   lockOptions: true, passageId: true, difficulty: true, language: true, status: true, usedCount: true,
-  bankTopicId: true, bankTopic: { select: { subjectId: true } },
+  source: true, tagIds: true, section: true,
+  bankTopicId: true, bankTopic: { select: { subjectId: true, section: true } },
 };
 
-/** Variant yasash uchun bank: tuzilmaga bog'lab, har savolga fan va mavzu id si. */
+/**
+ * Variant yasash uchun bank: tuzilmaga bog'lab, har savolga fan va mavzu id si.
+ * Bo'lim — mavzuning bo'limi (Andoza qatorlari shu bo'yicha tanlaydi).
+ */
 async function bankniOl(orgIds, qoshimcha = {}) {
   await bankniSinxronla(orgIds);
   const rows = await prisma.question.findMany({ where: { schoolId: { in: orgIds }, ...qoshimcha }, select: BANK_SELECT });
-  return rows.map(({ bankTopic, ...q }) => ({ ...q, mavzuId: q.bankTopicId, fanId: bankTopic?.subjectId ?? null }));
+  return rows.map(({ bankTopic, ...q }) => ({ ...q, section: bankTopic?.section ?? q.section, mavzuId: q.bankTopicId, fanId: bankTopic?.subjectId ?? null }));
 }
 
 // --- Natija yordamchilari ---------------------------------------------------
@@ -657,9 +670,10 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
   app.delete('/api/questions/:id', authenticate, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
-      const q = await prisma.question.findUnique({ where: { id }, select: { usedCount: true } });
+      const q = await prisma.question.findUnique({ where: { id }, select: { usedCount: true, lastUsedAt: true } });
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
-      if (q.usedCount > 0) {
+      // lastUsedAt ham: bankdagi "ishlatilishini nolga" usedCount ni tozalaydi, lekin variantlar baribir bog'liq.
+      if (q.usedCount > 0 || q.lastUsedAt) {
         return res.status(409).json({ error: "Bu savol imtihonda ishlatilgan — o'chirib bo'lmaydi. Holatini «Arxiv» qiling." });
       }
       await prisma.question.delete({ where: { id } });

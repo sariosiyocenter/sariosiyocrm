@@ -10,8 +10,9 @@ import { QiyinlikTanlov } from './qiyinlik';
 import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
 import { exceldanSavollar, shablonniYukla, type ExcelSavol } from './excel';
-import { wordniOqi, ESKI_DOC, type WordNatija } from './word';
-import type { BankDaraxt } from '../../../types';
+import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
+import { compressAndUpload } from '../../../lib/image';
+import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
 
 // Savol qo'shish — bankka savol kiritishning yagona yo'li (egasi, 2026-09-29:
 // "qo'lda savol kiritish — eng eski usul; fayldan yoki kameradan bo'lsin, fanlar
@@ -24,7 +25,9 @@ import type { BankDaraxt } from '../../../types';
 type Manba =
   | { kalit: number; tur: 'sahifa'; nom: string; rasm: string }
   | { kalit: number; tur: 'excel'; nom: string; savollar: ExcelSavol[]; xatolar: number }
-  | ({ kalit: number; tur: 'word'; nom: string } & WordNatija);
+  | ({ kalit: number; tur: 'word'; nom: string } & WordNatija)
+  // Addmen QR jadvali (№ | savol | A–E | javob) — AI siz o'qiladi.
+  | { kalit: number; tur: 'jadval'; nom: string; savollar: JadvalSavol[]; oqilmagan: number };
 
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -33,7 +36,9 @@ interface Natija extends AiSavol {
   tanlangan: boolean;
   subject: string;
   topic: string;
-  manba: 'ai' | 'excel';
+  manba: 'ai' | 'excel' | 'jadval';
+  /** To'plam — qaysi fayldan (Addmen "QR file name"). */
+  toplam?: string | null;
   raqam?: string | null;
   javobManbasi?: 'material' | 'ai' | null;
   /** Javob boshqa sahifadagi kalitdan olindi. */
@@ -56,6 +61,8 @@ const ARALASH = 'Aralash';
 const KICHIK_SELECT = 'max-w-full px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] text-matn outline-none focus:border-brand cursor-pointer';
 
 let keyingi = 1;
+/** To'plam nomi — fayl nomi kengaytmasiz (Addmen'da "QR file name"). */
+const toplamNomi = (nom: string) => nom.replace(/\.(docx?|xlsx?)$/i, '').trim().slice(0, 200);
 const bolaklar = <T,>(l: T[], n: number) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n));
 
 /** Materialdagi javoblar kaliti (boshqa sahifada bo'lsa ham) — savol raqami bo'yicha. */
@@ -90,6 +97,8 @@ function Belgilar({ n }: { n: Natija }) {
     <>
       {n.takrorId ? <Yorliq rang="ogoh"><Copy size={11} /> Bankda bor (#{n.takrorId})</Yorliq> : null}
       {n.manba === 'excel' && <Yorliq><FileSpreadsheet size={11} /> Excel</Yorliq>}
+      {n.manba === 'jadval' && <Yorliq><FileText size={11} /> Word jadvali</Yorliq>}
+      {n.manba === 'jadval' && n.xato && <Yorliq rang="ogoh"><AlertTriangle size={11} /> {n.xato}</Yorliq>}
       {n.tahrirlandi ? <Yorliq rang="brand"><Pencil size={11} /> Tuzatildi</Yorliq>
         : n.tekshiriladi && !n.tekshiruv ? <Yorliq><Loader2 size={11} className="animate-spin" /> Tekshirilmoqda</Yorliq>
         : n.tekshiruv?.tekshirildi === true ? <Yorliq rang="yaxshi"><CheckCircle2 size={11} /> Javob to'g'ri</Yorliq>
@@ -139,6 +148,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const sahifalar = manbalar.filter((m): m is Extract<Manba, { tur: 'sahifa' }> => m.tur === 'sahifa');
   const excellar = manbalar.filter((m): m is Extract<Manba, { tur: 'excel' }> => m.tur === 'excel');
   const wordlar = manbalar.filter((m): m is Extract<Manba, { tur: 'word' }> => m.tur === 'word');
+  const jadvallar = manbalar.filter((m): m is Extract<Manba, { tur: 'jadval' }> => m.tur === 'jadval');
+  const aiSiz = excellar.reduce((a, e) => a + e.savollar.length, 0) + jadvallar.reduce((a, j) => a + j.savollar.length, 0);
   const aiKerak = sahifalar.length > 0 || wordlar.length > 0 || !!matn.trim();
 
   /** Fan mavzusining aniq nomi (katta-kichik harfsiz mos kelsa) — bo'lmasa AI bergan yangi nom. */
@@ -158,6 +169,12 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           if (r.xatolar.length) showNotification(`${f.name}: ${r.xatolar.length} ta qator o'tkazib yuborildi (${r.xatolar[0].qator}-qator: ${r.xatolar[0].xato})`, 'info');
         } else if (/\.docx$/i.test(f.name) || f.type === DOCX) {
           setJarayon({ matn: "Word hujjati o'qilmoqda", i: 0, jami: 0 });
+          // Avval Addmen QR jadvali (№ | savol | A–E | javob): bo'lsa — AI siz, rasmlar saqlanadi.
+          const j = await wordJadvalSavollari(f, (d, nom) => compressAndUpload(d, nom, 1400, 1400, 0.85));
+          if (j?.savollar.length) {
+            setManbalar(l => [...l, { kalit: keyingi++, tur: 'jadval', nom: f.name, savollar: j.savollar, oqilmagan: j.oqilmagan }]);
+            continue;
+          }
           const w = await wordniOqi(f);
           setManbalar(l => [...l, { kalit: keyingi++, tur: 'word', nom: f.name, ...w }]);
         } else if (/\.doc$/i.test(f.name) || f.type === 'application/msword') {
@@ -192,7 +209,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     if (!avtoKutadi || jarayon || !ai) return;
     setAvtoKutadi(false);
     // Rasm/PDF uchun fan va AI kerak — bo'lmasa xodim o'zi tanlab, tugmani bosadi.
-    if (natijalar || !manbalar.length || ((sahifalar.length > 0 || wordlar.length > 0) && (!fan || !ai.yoqilgan))) return;
+    if (natijalar || !manbalar.length || (jadvallar.length > 0 && !fan) || ((sahifalar.length > 0 || wordlar.length > 0) && (!fan || !ai.yoqilgan))) return;
     ajrat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avtoKutadi, jarayon, ai]);
@@ -209,8 +226,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   });
 
   const ajrat = async () => {
-    if (!aiKerak && !excellar.length) return showNotification("Rasm, fayl yoki matn qo'shing", 'error');
-    if (aiKerak && !fan) return showNotification('Fanni tanlang', 'error');
+    if (!aiKerak && !aiSiz) return showNotification("Rasm, fayl yoki matn qo'shing", 'error');
+    if ((aiKerak || jadvallar.length) && !fan) return showNotification('Fanni tanlang', 'error');
     if (aiKerak && !ai?.yoqilgan) return showNotification("Rasm, PDF va Word ni o'qish uchun avval AI ni ulang (yuqorida)", 'error');
     const yig: Natija[] = [];
     const matnYig: AiMatn[] = [];
@@ -222,7 +239,24 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           yig.push({
             kalit: keyingi++, manba: 'excel', excel: q, tanlangan: true, subject: q.subject, topic: q.topic,
             type: q.type, text: q.text, options: q.options, correctAnswer: q.correctAnswer, difficulty: q.difficulty,
-            language: q.language, solution: q.solution, solutionStatus: q.solutionStatus,
+            language: q.language, solution: q.solution, solutionStatus: q.solutionStatus, toplam: toplamNomi(e.nom),
+          });
+        }
+      }
+      // Word jadvali: shu nomli to'plam bankda bo'lsa — qayta qo'shilmasin (belgilanmaydi).
+      let bankdagi: BankFiltrMalumoti['toplamlar'] = [];
+      if (jadvallar.length && fan) {
+        try { bankdagi = (await soro<BankFiltrMalumoti>('GET', `bank/filtr?fanId=${fan.id}`)).toplamlar; } catch { /* tekshiruvsiz davom etadi */ }
+      }
+      for (const j of jadvallar) {
+        const toplam = toplamNomi(j.nom);
+        const bor = bankdagi.find(t => t.nom === toplam);
+        if (bor) showNotification(`«${toplam}» to'plami bankda bor (${bor.soni} ta savol) — savollar belgilanmadi, qayta qo'shilsa takrorlanadi`, 'info');
+        for (const q of j.savollar) {
+          yig.push({
+            kalit: keyingi++, manba: 'jadval', tanlangan: !bor, subject: fan!.name, topic: qatiyMavzu || ARALASH, raqam: q.raqam,
+            type: 'yopiq', text: q.text, options: q.options, correctAnswer: q.correctAnswer, difficulty: 2,
+            language: 'uz', solution: null, solutionStatus: 'yoq', xato: q.xato, toplam,
           });
         }
       }
@@ -309,6 +343,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   // Holat: AI tasdiqlagan, ustoz tuzatgan yoki yozma — faol; Excel — faylidagi holat; qolgani qoralama.
   const holatiQanday = (n: Natija): string => {
     if (n.manba === 'excel' && !n.tahrirlandi) return n.excel?.status || 'faol';
+    // Markazning o'z banki (Addmen) — to'liq bo'lsa faol, kamchiligi bo'lsa qoralama.
+    if (n.manba === 'jadval' && !n.tahrirlandi) return !n.xato && !savolXatosi(n as any) ? 'faol' : 'qoralama';
     const ishonchli = n.tahrirlandi || n.type === 'yozma' || n.tekshiruv?.tekshirildi === true;
     return ishonchli && !savolXatosi(n as any) ? 'faol' : 'qoralama';
   };
@@ -327,9 +363,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       }
       const questions = tanlanganlar.map((n, i) => {
         const bank = n.subject === fan?.name ? fan?.mavzular.find(m => m.name === n.topic) : undefined;
-        const asos = n.manba === 'excel' && n.excel ? (({ qator, ...e }) => e)(n.excel) : { source: 'AI import' };   // eslint-disable-line @typescript-eslint/no-unused-vars
+        const asos = n.manba === 'excel' && n.excel ? (({ qator, ...e }) => e)(n.excel) : n.manba === 'jadval' ? {} : { source: 'AI import' };   // eslint-disable-line @typescript-eslint/no-unused-vars
         return {
           ...asos,
+          toplam: n.toplam || null,
           subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? null,
           type: n.type, text: n.text, options: n.type === 'yopiq' ? n.options : null,
           correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, difficulty: n.difficulty, language: n.language || 'uz',
@@ -339,13 +376,24 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           status: holatiQanday(n), qator: i + 1,
         };
       });
-      const r = await soro<{ count: number; ids?: number[]; faolIds?: number[]; xatolar: { qator: number; xato: string }[] }>('POST', 'questions/bulk', { questions, schoolId: filial });
+      // Katta fayl (Addmen to'plami) — 1000 tadan bo'lib yuboriladi (server chegarasi 2000).
+      const r = { count: 0, ids: [] as number[], faolIds: [] as number[], xatolar: [] as { qator: number; xato: string }[] };
+      for (let i = 0; i < questions.length; i += 1000) {
+        if (questions.length > 1000) setJarayon({ matn: 'Bankka yozilmoqda', i, jami: questions.length });
+        const b = await soro<{ count: number; ids?: number[]; faolIds?: number[]; xatolar: { qator: number; xato: string }[] }>('POST', 'questions/bulk', { questions: questions.slice(i, i + 1000), schoolId: filial });
+        r.count += b.count;
+        r.ids.push(...(b.ids || []));
+        r.faolIds.push(...(b.faolIds || []));
+        r.xatolar.push(...b.xatolar);
+      }
+      setJarayon(null);
       const qoralama = questions.filter(q => q.status === 'qoralama').length;
       showNotification(`${r.count} ta savol bankka qo'shildi${qoralama ? ` — ${qoralama} tasi qoralama (bankda ko'rib, faol qilasiz)` : ''}${r.xatolar.length ? `; ${r.xatolar.length} tasi qo'shilmadi: ${r.xatolar[0].xato}` : ''}`, r.xatolar.length ? 'info' : 'success');
       onSaqlandi({ soni: r.count, ids: r.ids || [], faolIds: r.faolIds || [] });
       onYop();
     } catch (e: any) {
       showNotification(e.message, 'error');
+      setJarayon(null);
     } finally {
       setSaqlanmoqda(false);
     }
@@ -450,7 +498,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
               </Maydon>
             )}
 
-            {(sahifalar.length > 0 || excellar.length > 0 || wordlar.length > 0) && (
+            {(sahifalar.length > 0 || excellar.length > 0 || wordlar.length > 0 || jadvallar.length > 0) && (
               <div className="space-y-2">
                 {sahifalar.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -471,6 +519,26 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                     <button type="button" aria-label="Olib tashlash" onClick={() => setManbalar(l => l.filter(x => x.kalit !== e.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
                   </div>
                 ))}
+                {jadvallar.map(j => {
+                  const chala = j.savollar.filter(q => q.xato).length;
+                  return (
+                    <div key={j.kalit} className="rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileText size={15} className="text-brand shrink-0" />
+                          <span className="min-w-0">
+                            <span className="block truncate">{j.nom}</span>
+                            <span className="block text-[11.5px] text-matn-xira">Word jadvali (Addmen QR) · {j.savollar.length} ta savol{chala ? ` · ${chala} tasi chala (qoralama bo'ladi)` : ''} · AI kerak emas</span>
+                          </span>
+                        </span>
+                        <button type="button" aria-label="Olib tashlash" disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== j.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
+                      </div>
+                      {j.oqilmagan > 0 && (
+                        <p className="mt-1.5 flex gap-1.5 text-[12px] text-ogoh"><AlertTriangle size={13} className="mt-[2px] shrink-0" />
+                          <span>{j.oqilmagan} ta formula yoki rasm eski formatda (MathType, WMF) — shu savollar qoralama bo'ladi. Word'da formulalarni yangi formatga o'tkazib qayta yuklang.</span></p>
+                      )}
+                    </div>
+                  );
+                })}
                 {wordlar.map(w => (
                   <div key={w.kalit} className="rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
                     <div className="flex items-center justify-between gap-2">
@@ -505,9 +573,9 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
 
             <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <button type="button" onClick={shablonniYukla} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-matn-sokin hover:text-brand cursor-pointer w-fit"><Download size={13} /> Excel shablon</button>
-              <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !excellar.length}
+              <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !aiSiz}
                 onClick={ajrat}>
-                {sahifalar.length ? `Savollarni ajratish (${sahifalar.length} sahifa)` : excellar.length && !aiKerak ? `${excellar.reduce((a, e) => a + e.savollar.length, 0)} ta savolni ko'rish` : 'Savollarni ajratish'}
+                {sahifalar.length ? `Savollarni ajratish (${sahifalar.length} sahifa)` : aiSiz && !aiKerak ? `${aiSiz} ta savolni ko'rish` : 'Savollarni ajratish'}
               </Tugma>
             </div>
             <p className="text-[11.5px] text-matn-xira">

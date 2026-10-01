@@ -1050,9 +1050,52 @@ model Question {
   bankTopicId   Int?
   bankTopic     QuestionTopic? @relation(fields: [bankTopicId], references: [id], onDelete: SetNull)
 
+  // Addmen kabi filtrlar: belgi guruhlaridagi qiymatlar (QuestionTag id lari) va
+  // to'plam — savol qaysi fayldan (Word/Excel, Addmen "QR file") kelgani.
+  tagIds        Int[]    @default([])
+  toplam        String?
+
   @@index([schoolId, subject, topic])
   @@index([passageId])
   @@index([bankTopicId])
+}
+
+// Savol belgilari guruhi — Addmen'dagi foydalanuvchi filtrlari ("Milliy sertifikat
+// savollari", "Test turi"...). Butun tashkilotga umumiy; schoolId — yaratgan filial.
+model QuestionTagGroup {
+  id        Int           @id @default(autoincrement())
+  name      String
+  order     Int           @default(0)
+  schoolId  Int
+  createdAt DateTime      @default(now())
+  tags      QuestionTag[]
+
+  @@index([schoolId])
+}
+
+model QuestionTag {
+  id        Int              @id @default(autoincrement())
+  groupId   Int
+  group     QuestionTagGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int              @default(0)
+  createdAt DateTime         @default(now())
+
+  @@index([groupId])
+}
+
+// Andoza (Addmen "Blueprint"): fan va qatorlar — har qatorda filtr (bo'lim, mavzu,
+// qiyinlik, manba, belgilar, tur) va nechta savol. Imtihon blokiga nusxa bo'lib tushadi.
+model QuestionBlueprint {
+  id        Int      @id @default(autoincrement())
+  name      String
+  subjectId Int?
+  rows      Json     // [{bolim?, mavzuId?, qiyinlik?, manba?, tagIds?, tur, soni}]
+  schoolId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
 }
 
 // Savollar banki tuzilmasi: fan → mavzu (butun tashkilotga umumiy; schoolId —
