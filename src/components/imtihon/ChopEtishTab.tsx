@@ -15,6 +15,7 @@ import { varaqTuzilmasi } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
 import AndozadanQogoz from './AndozadanQogoz';
+import { varaqParametrlari } from './varaqParam';
 import TanlanganSavollar from './TanlanganSavollar';
 
 // 3-bo'lim. Chapda — chop etiladigan hujjatlar (Addmen QPG kabi ikki guruh:
@@ -48,17 +49,16 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const setKo = (patch: Partial<KitobchaSozlama>) => setKoHolat(x => { const y = { ...x, ...patch }; try { localStorage.setItem('imt_kitobcha', JSON.stringify(y)); } catch { /* eslab qolinmaydi */ } return y; });
   const kalitKorinadi = kora('imtihonlar.kalit');
   const yaratadi = ozgartira('imtihonlar.imtihon');
-  const kitobchaBor = s.source !== 'kalit';
-  const [hujjat, setHujjat] = useState<Hujjat>(kitobchaBor ? 'kitobcha' : 'varaq');
+  const kitobchaBor = s.source === 'bank';
+  const sorovnoma = s.source === 'sorovnoma';
+  const anonim = sorovnoma && !!s.sorovnoma?.anonim;
+  const [hujjat, setHujjat] = useState<Hujjat>(kitobchaBor ? 'kitobcha' : anonim ? 'universal' : 'varaq');
   const markaz = settings?.orgName || '';
 
   const orinlar = useMemo(() => (data?.seats || []).filter(o => o.session === smena && o.roomId && (!xona || o.roomId === xona))
     .sort((a, b) => (a.roomName || '').localeCompare(b.roomName || '') || (a.roomId! - b.roomId!) || (a.row ?? 0) - (b.row ?? 0) || (a.col ?? 0) - (b.col ?? 0)), [data, smena, xona]);
   const xonalar = useMemo(() => [...new Map((data?.seats || []).filter(o => o.session === smena && o.roomId).map(o => [o.roomId!, o.roomName])).entries()], [data, smena]);
-  const sahifalar = useMemo(() => varaqSahifalari({
-    tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
-    optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
-  }), [exam, s]);
+  const sahifalar = useMemo(() => varaqSahifalari(varaqParametrlari(exam)), [exam]);
   const smenaNomi = (id: number) => { const x = s.sessions.find(y => y.id === id); return x ? `${x.name}${x.time ? ` (${x.time})` : ''}` : `${id}-smena`; };
   // Fan bandi: har blok — nomi va savollar soni (markaz varag'idagi "MATEMATIKA — 30 ta savol").
   const fanlar = useMemo(() => {
@@ -69,6 +69,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const umumiy = {
     markaz, imtihon: exam.name, sana: exam.date, examId: exam.id, session: smena, smena: smenaNomi(smena),
     logo: settings?.logo || null, manzil: settings?.address || null, telefon: telefon ? `Tel: ${telefon}` : null, fanlar,
+    ...(sorovnoma ? { sarlavha: "SO'ROVNOMA VARAQASI", anonim } : {}),
   };
   const filialNomi = (id: number) => schools.find(x => x.id === id)?.name || null;
   const variantlar = useMemo(() => exam.variantlar.filter(v => v.session === smena).map(v => v.code), [exam, smena]);
@@ -123,6 +124,12 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     }
     if (turi === 'universal') {
       const n = korinish ? (qogoz === 'A4x2' ? 2 : 1) : Math.max(1, Math.min(500, universalSoni));
+      // Anonim so'rovnoma: har nusxaga o'z kodi (betlari birga o'qiladi, qayta skanerlash ikki marta sanalmaydi).
+      if (anonim) {
+        const kod = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+        const svglar = Array.from({ length: n }, () => { const k = kod(); return sahifalar.map(sh => varaqSvg(sh, { ...umumiy, anonimKod: k }, null)); }).flat();
+        return { sarlavha: `${exam.name} — so'rovnoma varaqlari`, ...varaqlarniJoyla(svglar, qogoz) };
+      }
       const bitta = sahifalar.map(sh => varaqSvg(sh, umumiy, null));
       return { sarlavha: `${exam.name} — universal varaqlar`, ...varaqlarniJoyla(Array.from({ length: n }, () => bitta).flat(), qogoz) };
     }
@@ -203,15 +210,15 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
       guruh: "Savol qog'ozi", royxat: [
         { id: 'savollar', nom: 'Tanlangan savollar', izoh: "ko'rish va almashtirish", ikonka: <ListChecks size={16} />, ochiq: kitobchaBor },
         { id: 'kitobcha', nom: 'Kitobchalar', izoh: `${variantlar.length} variant · ksero uchun`, ikonka: <BookOpen size={16} />, ochiq: kitobchaBor },
-        { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi },
+        { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi && !sorovnoma },
       ],
     },
     {
-      guruh: 'Imtihon kuni', royxat: [
-        { id: 'varaq', nom: 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: true },
-        { id: 'universal', nom: 'Universal varaqlar', izoh: "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
-        { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: true },
-        { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: true },
+      guruh: sorovnoma ? "So'rovnoma kuni" : 'Imtihon kuni', royxat: [
+        { id: 'varaq', nom: sorovnoma ? "So'rovnoma varaqlari (ismli)" : 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: !anonim },
+        { id: 'universal', nom: anonim ? "So'rovnoma varaqlari (anonim)" : 'Universal varaqlar', izoh: anonim ? 'ism va ID siz · nechta kerak bo\'lsa' : "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
+        { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: !anonim },
+        { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: !anonim },
       ],
     },
   ];
@@ -230,7 +237,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 items-start">
         <div className="space-y-4">
           <Karta ichki="p-2">
-            {HUJJATLAR.map(g => (
+            {HUJJATLAR.filter(g => g.royxat.some(h => h.ochiq)).map(g => (
               <div key={g.guruh} className="mb-1 last:mb-0">
                 <p className="px-2.5 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-matn-xira">{g.guruh}</p>
                 {g.royxat.filter(h => h.ochiq).map(h => {
@@ -248,7 +255,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
                 })}
               </div>
             ))}
-            {andozaTugmasi && (
+            {andozaTugmasi && !sorovnoma && (
               <div className="border-t border-chiziq mt-1.5 pt-2 px-1 pb-1">
                 <button onClick={() => setAndozaOyna(true)} className="w-full flex items-center gap-3 px-2.5 py-1.5 rounded-xl text-left cursor-pointer hover:bg-ichki">
                   <span className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center border border-dashed border-brand/50 text-brand"><LayoutList size={16} /></span>
@@ -322,7 +329,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
                 </>
               )}
               {hujjat === 'universal' && (
-                <Maydon nom="Nechta" izoh="O'quvchi ID raqamini o'zi bo'yaydi (vedomostda bor)">
+                <Maydon nom="Nechta" izoh={anonim ? "Har nusxaning o'z kodi bor — betlari birga o'qiladi, qayta skanerlansa ikki marta sanalmaydi" : "O'quvchi ID raqamini o'zi bo'yaydi (vedomostda bor)"}>
                   <input type="number" min={1} max={500} className={INPUT} value={universalSoni} onChange={e => setUniversalSoni(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} />
                 </Maydon>
               )}

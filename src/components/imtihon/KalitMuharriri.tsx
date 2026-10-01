@@ -4,6 +4,7 @@ import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Tugma, Yorliq, INPUT, Tanlov } from './ui';
+import { varaqParametrlari } from './varaqParam';
 import { HARFLAR, kalitTuzilmasi, kalitToplamlari, kalitQiymati, kalitMatnidan, varaqTuzilmasi } from '../../../lib/imtihon.js';
 import { OmrIshchi, faylSahifalari } from '../../lib/omr/skaner';
 import { varaqSahifalari, type VaraqParametrlari } from '../../lib/omr/layout';
@@ -43,10 +44,7 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
   const [band, setBand] = useState(false);
   const [oqilmoqda, setOqilmoqda] = useState(false);
   const faylRef = useRef<HTMLInputElement>(null);
-  const params: VaraqParametrlari = useMemo(() => ({
-    tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
-    optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
-  }), [exam, s]);
+  const params: VaraqParametrlari = useMemo(() => varaqParametrlari(exam), [exam]);
   const harflar = HARFLAR.slice(0, s.optionCount);
   const kopSmena = toplamlar.some(t => t.session !== 1);
   // Mavzu takliflari: o'quv rejadagi mavzular va shu imtihonda yozilganlar.

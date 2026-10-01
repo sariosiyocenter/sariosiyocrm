@@ -9,6 +9,7 @@ import { varaqSahifalari, type VaraqParametrlari } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, RAQAM_USTUNLARI } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
+import { varaqParametrlari } from './varaqParam';
 import { SARALASH, saralashKodi } from '../../lib/omr/saralash';
 
 // 4-bo'lim: javob varaqalarini o'qish. Asosiy yo'l — ADF skanerdan PDF yoki
@@ -51,10 +52,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
   const idRef = useRef(0);
   const s = exam.settings;
 
-  const params: VaraqParametrlari = useMemo(() => ({
-    tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
-    optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
-  }), [exam, s]);
+  const params: VaraqParametrlari = useMemo(() => varaqParametrlari(exam), [exam]);
   const sahifalar = useMemo(() => varaqSahifalari(params), [params]);
 
   const ishchi = () => (ishchiRef.current ??= new OmrIshchi());
@@ -65,6 +63,11 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
   /** O'qilgan varaqni serverga yuborish (kod yoki o'quvchi aniq bo'lsa). */
   const yubor = useCallback(async (el: Element, qoshimcha: { sheetCode?: string; studentId?: number; session?: number } = {}, source = 'skaner') => {
     const o = el.oqish!;
+    // Universal / anonim varaq QR ida imtihon raqami bor — boshqa imtihonniki aralashib ketmasin.
+    if (o.qr && o.qr.turi !== 'S' && o.qr.examId && o.qr.examId !== exam.id) {
+      yangilaEl(el.id, { holat: 'xato', xato: `Boshqa imtihonning varag'i (#${o.qr.examId})` });
+      return;
+    }
     const sahifa = sahifalar.find(x => x.page === o.page);
     const pageItems = sahifa ? [...sahifa.yopiq.map(q => q.n), ...sahifa.raqamli.map(q => q.n), ...sahifa.yozma.map(q => q.n)] : [];
     const body: any = {
@@ -73,7 +76,11 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     };
     if (qoshimcha.sheetCode) body.sheetCode = qoshimcha.sheetCode;
     else if (o.qr?.turi === 'S') body.sheetCode = o.qr.sheetCode;
-    if (!body.sheetCode) {
+    if (!body.sheetCode && s.source === 'sorovnoma' && s.sorovnoma?.anonim && (o.qr?.turi === 'U' || o.qr?.turi === 'A') && !qoshimcha.studentId) {
+      body.anonim = true;
+      body.session = o.qr.session ?? 1;
+      if (o.qr.turi === 'A') body.anonimKod = o.qr.kod;
+    } else if (!body.sheetCode) {
       const sid = qoshimcha.studentId ?? (o.idRaqam ? idniTop(o.idRaqam) : 0);
       if (!sid) { yangilaEl(el.id, { holat: 'aniqlanmadi', xato: o.qr ? "O'quvchi ID raqami o'qilmadi — o'quvchini tanlang" : "QR o'qilmadi — varaq kodini kiriting" }); return; }
       body.studentId = sid;
@@ -86,7 +93,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     } catch (e: any) {
       yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message, topilmadi: e.status === 404 });
     }
-  }, [exam.id, sahifalar, soro, idniTop]);
+  }, [exam.id, sahifalar, soro, idniTop, s]);
 
   const fayllar = async (files: FileList | null) => {
     if (!files?.length) return;

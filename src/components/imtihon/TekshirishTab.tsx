@@ -3,6 +3,7 @@ import { ClipboardCheck, ChevronRight, CheckCircle2, AlertTriangle, Image as Ima
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, INPUT, Yuklanmoqda, BoshHolat } from './ui';
+import { varaqParametrlari } from './varaqParam';
 import { varaqSahifalari, W, type Sahifa } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, vergul } from '../../../lib/imtihon.js';
 import { useAiHolat, AI_SOZLANMAGAN } from './useAiHolat';
@@ -77,10 +78,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
   const [aiTaklif, setAiTaklif] = useState<Record<number, AiTaklif>>({});
   const [aiBand, setAiBand] = useState<number | null>(null);
 
-  const sahifalar: Sahifa[] = useMemo(() => varaqSahifalari({
-    tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
-    optionCount: exam.settings.optionCount, variantCount: exam.settings.variantCount, variantBubble: exam.settings.variantBubble,
-  }), [exam]);
+  const sahifalar: Sahifa[] = useMemo(() => varaqSahifalari(varaqParametrlari(exam)), [exam]);
   const joy = useMemo(() => {
     const m = new Map<number, { page: number; quti: Quti; turi: string }>();
     for (const sh of sahifalar) {

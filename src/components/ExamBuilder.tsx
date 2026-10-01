@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
 import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
+import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
 import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI } from '../../lib/imtihon.js';
 import { toDateStr } from '../../lib/lessons.js';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
@@ -34,6 +35,7 @@ const JARIMALAR: { v: number; nom: string }[] = [
 
 export default function ExamBuilder() {
   const { id } = useParams();
+  const [urlParams] = useSearchParams();
   const tahrir = !!id;
   const navigate = useNavigate();
   const { schools, selectedSchoolId, user, addExam, updateExam, showNotification } = useCRM();
@@ -116,6 +118,8 @@ export default function ExamBuilder() {
   });
 
   if (yuklanmoqda) return <Yuklanmoqda />;
+  // So'rovnoma — o'z muharriri (savollar va shkala).
+  if (sozlama.source === 'sorovnoma' || (!tahrir && urlParams.get('tur') === 'sorovnoma')) return <SorovnomaMuharriri id={id} />;
 
   const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
 

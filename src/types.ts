@@ -697,7 +697,7 @@ export interface ExamSettings {
     admit: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; auto: boolean; template: string };
     rasch: { enabled: boolean; grades: { label: string; min: number }[] };
     /** 'bank' — variantlar savollar bankidan; 'kalit' — markazning o'z kitobchasi, faqat kalit kiritiladi. */
-    source: 'bank' | 'kalit';
+    source: 'bank' | 'kalit' | 'sorovnoma';
     /** "Faqat kalit" rejimi: {'smena|variant': [1-savol kaliti, ...]} (kalit ruxsatisiz bo'sh keladi). */
     keys: Record<string, string[]>;
     /** Shu rejimda savollarning mavzusi (ixtiyoriy, tahlil uchun) — keys bilan bir xil shakl. */
@@ -719,6 +719,8 @@ export interface ExamSettings {
     ishlatishChegarasi: number | null;
     /** Takroriy savol: 'variant' — matn va variantlar, 'savol' — faqat matn, 'yoq' — tekshirilmaydi. */
     takror: 'yoq' | 'savol' | 'variant';
+    /** So'rovnoma (source 'sorovnoma'): savollar, umumiy shkala, anonim. */
+    sorovnoma: { anonim: boolean; shkala: string[]; savollar: { matn: string; variantlar?: string[] }[] };
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

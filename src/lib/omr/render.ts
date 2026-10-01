@@ -24,6 +24,12 @@ export interface VaraqUmumiy {
   telefon?: string | null;
   /** Fan bandi: "MATEMATIKA — 30 ta savol". */
   fanlar?: string;
+  /** Varaq sarlavhasi (standart — "JAVOBLAR VARAQASI"). */
+  sarlavha?: string;
+  /** Anonim so'rovnoma: universal varaqda ism va ID so'ralmaydi. */
+  anonim?: boolean;
+  /** Anonim nusxa kodi (QR da) — bir nusxaning betlari bitta javob bo'ladi. */
+  anonimKod?: string;
 }
 
 /** Shaxsiy varaq egasi. null — universal (nomsiz) varaq. */
@@ -61,12 +67,13 @@ function matn(x: number, y: number, s: string, o: { size?: number; bold?: boolea
 // 400 kishilik chop etishda hujjat bir necha barobar yengil bo'ladi.
 type Belgilar = Map<string, string>;
 function doira(belgilar: Belgilar, d: Doira, harfOlchami = 2.3): string {
-  const id = `d${String(d.r).replace('.', '_')}_${String(harfOlchami).replace('.', '_')}_${d.v.charCodeAt(0)}`;
+  const yozuv = d.belgi ?? d.v;
+  const id = `d${String(d.r).replace('.', '_')}_${String(harfOlchami).replace('.', '_')}_${[...yozuv].map(c => c.charCodeAt(0)).join('_')}`;
   if (!belgilar.has(id)) {
     const w = d.r + 0.2;
     belgilar.set(id, `<symbol id="${id}" viewBox="${-w} ${-w} ${2 * w} ${2 * w}" width="${f(2 * w)}" height="${f(2 * w)}" overflow="visible">` +
       `<circle r="${d.r}" fill="#fff" stroke="${CHIZIQ}" stroke-width="0.3"/>` +
-      `<text y="${f(harfOlchami * 0.36)}" font-size="${harfOlchami}" font-family="Arial, sans-serif" text-anchor="middle" fill="${HARF}">${esc(d.v === '-' ? '−' : d.v)}</text></symbol>`);
+      `<text y="${f(harfOlchami * 0.36)}" font-size="${harfOlchami}" font-family="Arial, sans-serif" text-anchor="middle" fill="${HARF}">${esc(yozuv === '-' ? '−' : yozuv)}</text></symbol>`);
   }
   const w = d.r + 0.2;
   return `<use href="#${id}" x="${f(d.x - w)}" y="${f(d.y - w)}" width="${f(2 * w)}" height="${f(2 * w)}"/>`;
@@ -139,7 +146,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     q.push(`<rect x="${f(p.x - s / 2)}" y="${f(p.y - s / 2)}" width="${s}" height="${s}" fill="${toliq ? QORA : '#fff'}" stroke="${CHIZIQ}" stroke-width="0.25"/>`);
   });
 
-  const qrText = egasi ? qrMatni({ sheetCode: egasi.sheetCode, page: sahifa.page }) : qrMatni({ examId: u.examId, session: u.session, page: sahifa.page });
+  const qrText = egasi ? qrMatni({ sheetCode: egasi.sheetCode, page: sahifa.page }) : qrMatni({ examId: u.examId, session: u.session, anonimKod: u.anonimKod, page: sahifa.page });
   q.push(qrYol(qrText, sahifa.qr.x, sahifa.qr.y, sahifa.qr.s));
 
   if (birinchi) {
@@ -151,7 +158,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     const markazdir = /markaz/i.test(u.markaz);
     q.push(matn(markazX, markazdir ? 21 : 19, u.markaz, { size: 3.3, bold: true, maxW: 48 - (u.logo ? 13 : 0) }));
     if (!markazdir) q.push(matn(markazX, 23.2, "o'quv markazi", { size: 2.3, rang: '#555' }));
-    q.push(matn(105, 20, 'JAVOBLAR VARAQASI', { size: 6.2, bold: true, anchor: 'middle' }));
+    q.push(matn(105, 20, u.sarlavha || 'JAVOBLAR VARAQASI', { size: 6.2, bold: true, anchor: 'middle', maxW: 80 }));
     q.push(matn(105, 25.6, u.imtihon, { size: 3, anchor: 'middle', rang: '#333', maxW: 76 }));
     q.push(matn(ONG, 18, u.sana, { size: 2.7, anchor: 'end', rang: '#333' }));
     if (u.smena) q.push(matn(ONG, 22, u.smena, { size: 2.5, anchor: 'end', rang: '#333', maxW: 40 }));
@@ -204,6 +211,13 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
       q.push(matn(QR_1.x + QR_1.s / 2, 69.6, egasi.variant || '—', { size: 7, bold: true, anchor: 'middle' }));
       q.push(matn(RASM.x + RASM.w / 2, 62.6, "O'RIN", { size: 2, anchor: 'middle', rang: '#555' }));
       q.push(matn(RASM.x + RASM.w / 2, 69.6, egasi.orin != null ? String(egasi.orin) : '—', { size: 7, bold: true, anchor: 'middle' }));
+    } else if (u.anonim) {
+      // Anonim so'rovnoma: ism ham, ID ham yo'q.
+      blok(q, CHAP, 29, ONG - CHAP, 42.5, 'ESLATMA');
+      ["Har savolga bittadan javob belgilang — shkaladagi raqam doirachasini bo'yang.", "Qora yoki ko'k ruchka; doirachani to'liq bo'yang.", "So'rovnoma anonim: ismingizni yozmang.", "Fikringiz biz uchun muhim — rahmat!"]
+        .forEach((s, i) => q.push(matn(CHAP + 2, 38 + i * 3.8, `${i + 1}. ${s}`, { size: 2.5, rang: '#222', maxW: 120 })));
+      bo_yashNamunasi(q, CHAP + 2, 56);
+      q.push(matn(ONG - 25, 68, `ANONIM · ${u.session}-smena`, { size: 2.6, bold: true, anchor: 'end' }));
     } else {
       // Universal varaq: ism qo'lda yoziladi, ID doirachalardan o'qiladi.
       blok(q, CHAP, 29, 43, 42.5, 'ESLATMA');
@@ -245,10 +259,12 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     }
   }
 
+  // Bezak (so'rovnoma savollari, dizayner yorliqlari) — o'qilmaydi.
+  for (const b of sahifa.bezak || []) q.push(matn(b.x, b.y, b.matn, { size: b.olcham, bold: b.qalin, anchor: b.anchor, maxW: b.maxW, rang: b.rang }));
   // Blok sarlavhalari va yopiq savollar
   for (const s of sahifa.sarlavhalar) q.push(matn(s.x, s.y, s.matn, { size: 2.5, bold: true, rang: '#333', maxW: 34 }));
   for (const sv of sahifa.yopiq) {
-    q.push(matn(sv.raqam.x, sv.raqam.y, String(sv.n), { size: 2.7, bold: true, anchor: 'end' }));
+    if (sv.raqam.x >= 0) q.push(matn(sv.raqam.x, sv.raqam.y, String(sv.n), { size: 2.7, bold: true, anchor: 'end' }));
     for (const d of sv.doiralar) q.push(doira(belgilar, d));
   }
 

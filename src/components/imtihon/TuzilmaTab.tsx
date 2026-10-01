@@ -3,6 +3,7 @@ import { Lock, Unlock, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ArrowRi
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
+import SorovnomaTuzilma from './SorovnomaTuzilma';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
 import KalitOynasi from './KalitOynasi';
@@ -76,6 +77,8 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
 
   const hammasiYetadi = kalitRejimi ? !!kalitlar?.length && kalitlar.every(k => k.tayyor) : bank?.every(b => b.qoidalar.every(q => q.yetadi));
   const smenalar = [...new Set(exam.variantlar.map(v => v.session))];
+
+  if (s.source === 'sorovnoma') return <SorovnomaTuzilma exam={exam} yangila={yangila} />;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -1034,3 +1034,29 @@ eski mantiq testlari o'tdi (bank 32, imtihon 56, ajrat 10).
 Sinov: `scratch/test_saralash.mjs` (16/16), `qr_ikki_til.mjs` (shablon + to'ldirilgan fayl; Word'da
 ochildi), `b3_ui.mjs` (15/15: filtrlar, ikki tilli import — saqlash ushlanadi, Excel mehmonlar ZZ
 imtihonda, saralash kodlari; tiklash va o'chirish bilan).
+
+### 20.4 So'rovnoma (Addmen "Survey Data & Analysis / Feedback & Survey Reports")
+
+- Imtihon infratuzilmasi ustida: `settings.source = 'sorovnoma'`, `settings.sorovnoma`
+  {anonim, shkala (2–6 yorliq; tayyorlari `SOROVNOMA_SHKALALARI`), savollar [{matn, variantlar?}]}.
+  Server bloklarni o'zi yasaydi (`sorovnomaBloklari`: bitta "So'rovnoma" bloki, hammasi yopiq,
+  ball 0), `optionCount` — eng uzun shkala. Qulflash — `sorovnomaVariantlari` (har smenaga A,
+  kalitsiz). `natijaniHisobla` — ball 0, holat 'javob' / 'bosh' / 'ortiqcha'.
+- Muharrir: Imtihonlar → "So'rovnoma" (`/exams/new?tur=sorovnoma`, `SorovnomaMuharriri`):
+  shkala, savollar (ro'yxatdan joylash), har savolga o'z javoblari, anonim. Qulflangach faqat
+  matnlar o'zgaradi (soni va yorliqlar soni bir xil bo'lsa).
+- Varaq (`layout.ts sorovnomaSahifalari`): har qatorda savol matni (2 qatorgacha, bezak) va o'ngda
+  shkala doirachalari (ichida 1…k — `Doira.belgi`, qiymati A…), tepada shkala izohi; sarlavha
+  "SO'ROVNOMA VARAQASI". Anonim: ID siz, har chop etilgan nusxaga QR da noyob kod
+  (`IMT1|A|examId|smena|kod|bet`) — betlari bitta javob, qayta skanerlash sanalmaydi (DUP);
+  server o'rinni `sheetCode = {examId}A{kod}` bilan topadi/yaratadi ("Anonim N").
+- Natijalar (`SorovnomaNatijalari`): savol bo'yicha taqsimot (rangli chiziq, soni va %),
+  o'rtacha, qoniqish indeksi (Ha/Yo'q da ijobiy — boshida), kurs/filial/smena kesimi
+  (anonim bo'lmasa), Excel (savollar + javoblar) va chop etish.
+- Yana: bitta variantli imtihonda varaq varianti doim A (avval o'rinsiz varaqda "Variant
+  aniqlanmadi" chiqardi); universal/anonim varaq boshqa imtihonniki bo'lsa — IVT.
+- `varaqParam.ts`: chop etish, skaner, tekshirish, kalit varag'i bir xil parametrni oladi.
+
+Sinov: `test_sorovnoma_render.mjs` (10/10, bazasiz: chizish → bo'yash → 200 dpi → o'qish),
+`sorovnoma_ui.mjs` (13/13: muharrir → tayyor → chop etish → 7 varaq skaner, 3 respondent → natijalar,
+Excel; ZZ o'chiriladi), `test_varaq_render_oqish.mjs` 37/37 (oddiy varaq buzilmagan).

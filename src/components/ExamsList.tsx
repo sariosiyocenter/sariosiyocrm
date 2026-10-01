@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronRight, ChevronDown, Lock, ScanLine, ClipboardCheck, BarChart3, Printer, History, KeyRound, Check, Settings2, Copy, Trash2, List, Clock } from 'lucide-react';
+import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronRight, ChevronDown, Lock, ScanLine, ClipboardCheck, BarChart3, Printer, History, KeyRound, Check, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -212,6 +212,7 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
           </label>
           <Yorliq rang={HOLAT_RANGI[exam.status] || 'kulrang'}>{exam.lockedAt && exam.status !== "E'lon qilindi" && <Lock size={10} />}{exam.status}</Yorliq>
           {s.source === 'kalit' && <Yorliq><KeyRound size={10} />kalit bilan</Yorliq>}
+          {s.source === 'sorovnoma' && <Yorliq rang="brand"><MessageSquareText size={10} />so'rovnoma{s.sorovnoma?.anonim ? ', anonim' : ''}</Yorliq>}
         </div>
         <p className="text-[12px] text-matn-xira mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <span className="inline-flex items-center gap-1"><Calendar size={12} />{sanaMatni(exam.date)}</span>
@@ -255,6 +256,7 @@ function ImtihonlarRoyxati({ tanlangan, onTanla }: { tanlangan: number | null; o
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
             <input className={`${INPUT} pl-9 py-2`} placeholder="Qidirish" aria-label="Imtihon qidirish" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          {yangi && <Tugma kichik ikonka={<MessageSquareText size={14} />} onClick={() => navigate('/exams/new?tur=sorovnoma')} title="O'quvchi yoki ota-ona fikri — OMR varaq bilan">So'rovnoma</Tugma>}
           {yangi && <Tugma turi="asosiy" kichik ikonka={<Plus size={14} />} onClick={yangi}>Yangi imtihon</Tugma>}
         </>
       }>
@@ -269,13 +271,14 @@ function ImtihonlarRoyxati({ tanlangan, onTanla }: { tanlangan: number | null; o
                 <button onClick={() => onTanla(e.id)} aria-current={e.id === tanlangan ? 'true' : undefined}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer ${e.id === tanlangan ? 'bg-brand-fon/50 dark:bg-brand/10' : 'hover:bg-ichki/60'}`}>
                   <div className="w-10 h-10 rounded-xl bg-brand-fon border border-brand/20 dark:bg-brand/15 flex items-center justify-center text-brand shrink-0">
-                    {e.settings?.source === 'kalit' ? <KeyRound size={18} /> : <FileText size={18} />}
+                    {e.settings?.source === 'kalit' ? <KeyRound size={18} /> : e.settings?.source === 'sorovnoma' ? <MessageSquareText size={18} /> : <FileText size={18} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[13.5px] font-semibold text-matn truncate">{e.name}</span>
                       <Yorliq rang={HOLAT_RANGI[e.status] || 'kulrang'}>{e.lockedAt && e.status !== "E'lon qilindi" && <Lock size={10} />}{e.status}</Yorliq>
                       {e.settings?.source === 'kalit' && <Yorliq>kalit bilan</Yorliq>}
+                      {e.settings?.source === 'sorovnoma' && <Yorliq rang="brand">so'rovnoma</Yorliq>}
                       {(e.branchIds || []).length > 0 && <Yorliq>{[e.schoolId, ...e.branchIds].map(filialNomi).filter(Boolean).join(' + ')}</Yorliq>}
                     </div>
                     <p className="text-[12px] text-matn-xira mt-0.5 flex flex-wrap gap-x-3">

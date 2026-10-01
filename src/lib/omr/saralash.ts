@@ -31,12 +31,12 @@ export function saralashKodi(el: { holat: string; xato?: string; oqish?: IshchiN
     if (/xira|o'qib bo'lmadi|decode|fayl/i.test(x)) return 'UNR';
     if (/kvadrat|marker|tepasi/i.test(x)) return 'IDX';
     if (/qiyshiq|to'liq tushmagan/i.test(x)) return 'SKW';
-    if (/sahifa.*yo'q/i.test(x)) return 'IVT';
+    if (/sahifa.*yo'q|boshqa imtihon/i.test(x)) return 'IVT';
     return o.ok ? 'XAT' : 'UNR';
   }
   if (el.holat === 'aniqlanmadi') {
     if (o?.qr?.turi === 'S' && el.topilmadi) return 'IVT';
-    if (o?.qr?.turi === 'U' || (!o?.qr && o?.idHolat !== undefined)) {
+    if (o?.qr?.turi === 'U' || o?.qr?.turi === 'A' || (!o?.qr && o?.idHolat !== undefined)) {
       if (o?.idHolat === 'kop') return 'DID';
       if (o?.idHolat === 'bosh') return 'BID';
       if (o?.idHolat === 'chala') return 'LID';
