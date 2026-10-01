@@ -949,3 +949,34 @@ Paper" esa undan setlar yasaydi. Bizda ham shunday: andozaning **ta'rifi** bankd
 Sinov: `scratch/chop_shots.mjs` (har hujjat, kun/tun, 390px), `scratch/andozadan_e2e.mjs`
 (ZZ andoza → imtihon → kalit; keyin imtihon, andoza o'chirildi va 8 savolning `usedCount`/
 `lastUsedAt` qaytarildi — qulflash ularni oshiradi).
+
+## 20. Addmen skrinshotlari bilan to'liq solishtirish (2026-10-01)
+
+Foydalanuvchi: "skrinshotlarning hammasini ko'rdingmi? ko'p narsa hali yo'q". 18 ta skrinshot
+qayta, ekranma-ekran solishtirildi; yetishmaganlar to'rt bo'limda qilinadi (foydalanuvchi
+hammasini tanladi): 1) hisobotlar va sozlamalar, 2) savol qog'ozi (Generate Paper),
+3) bank, qatnashchilar, skaner, 4) varaq dizayneri + Matrix va so'rovnoma. Veb CRM'da kerak
+emas: SQL ulanish, Backup, Downloads/Support, ECAS import, til sinxronlash.
+
+### 20.1 Hisobotlar va sozlamalar
+
+- Raqamlar Addmen'dagidek aynan: 1111–1116, 1121, 1211, 1221, 1231 (o'sish grafigi — bir necha
+  imtihon), 2111–2113, 2116 (har fandan TOP-N), 2121 (mavzular), 2211–2214, 2311, 2321, 2331.
+  Bizniki: 1241 savollar tahlili, 1251 kelmaganlar (avval 1231 edi), 1311/2411 birlashtirish.
+  1114/2113 — har fanga U (urinilgan) / T / X / B / ball; 1115/1116 — bet ikki ustunli;
+  1121 — har fan ichida mavzular (to'g'ri soni), ko'p ustunli hisobot yotiq A4 (`@page yotiq`).
+- "Select columns": O'rin, ID, Kurs, Filial, Variant, Ball, Foiz, Persentil, Rasch, Holat
+  (bor bo'lganlari); xulosa qatorlari (o'rtacha / eng yuqori / eng past / o'tganlar).
+  Sozlamalar brauzerda eslab qolinadi (`imt_hisobot_sozlama`).
+- "Multiple PDFs": 1211/1221/1231 — har o'quvchiga alohida PDF, kurs papkalarida, bitta ZIP
+  (`src/lib/htmlPdf.ts` html2canvas + jsPDF, `src/lib/zip.ts` — kutubxonasiz "stored" ZIP).
+- "Export sheets": skanerlangan varaq rasmlari ZIP da (`/hisobot` → `rasmlar`).
+- E'lon qilinmagan imtihonda o'rinlar hisobotda o'zi hisoblanadi (`orinlarniToldir`).
+- Sozlama (Addmen PREFERENCES): `settings.orinUsuli` — 'otkazib' 1,2,2,4 / 'ketma' 1,2,2,3
+  (e'londan keyin o'zgarsa — o'rinlar qayta, `orinlarniQaytaQoy`); `settings.otish`
+  {turi: 'foiz'|'ball', qiymat} — "O'tdi/O'tmadi": hisobotlar, natija xabari `{holat}`
+  (standart matnga qo'shildi; eski standart saqlanganlar ham yangisini oladi), natija sahifasi.
+  Ikkalasi qulflangan imtihonda ham o'zgaradi (variantlarga ta'sir qilmaydi).
+
+Sinov: `scratch/hisobot2_ui.mjs` (30/30, bazaga yozmaydi — o'tish bali `page.route` bilan),
+`scratch/test_orin_otish_api.mjs` (8/8, DEMO 47 nusxasi olinib aynan tiklanadi).

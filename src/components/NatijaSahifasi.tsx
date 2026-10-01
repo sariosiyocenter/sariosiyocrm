@@ -18,6 +18,7 @@ interface Javob {
   ism: string; kurs: string; ball: number; foiz: number;
   bloklar: { subject: string; earned: number; max: number }[];
   rasch: { ball: number; daraja: string | null } | null;
+  otish?: { turi: 'foiz' | 'ball'; qiymat: number; otdi: boolean | null } | null;
   orin: { umumiy: number | null; jami?: number; kurs?: number | null; kursJami?: number } | null;
   savollar: Savol[] | null;
   matnlar: { id: number; title: string | null; text: string; imageUrl: string | null }[];
@@ -85,6 +86,12 @@ export default function NatijaSahifasi() {
             <span className="text-[22px] font-bold text-brand raqam">{vergul(d.foiz)}%</span>
           </div>
           <div className="h-2 rounded-full bg-ichki overflow-hidden mt-3"><div className="h-full bg-brand rounded-full" style={{ width: `${foiz}%` }} /></div>
+          {d.otish && d.otish.otdi != null && (
+            <p className={`mt-3 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-bold ${d.otish.otdi ? 'bg-yaxshi-fon text-yaxshi' : 'bg-xato-fon text-xato'}`}>
+              {d.otish.otdi ? "✓ O'tdi" : "✗ O'tmadi"}
+              <span className="font-normal text-matn-sokin">· o'tish bali {vergul(d.otish.qiymat)}{d.otish.turi === 'foiz' ? '%' : ' ball'}</span>
+            </p>
+          )}
           {d.rasch && (
             <div className="flex items-center justify-between gap-3 mt-4 rounded-xl bg-ichki border border-chiziq px-3 py-2.5">
               <span className="text-[13px] text-matn-sokin">Rasch balli <span className="text-[11.5px] text-matn-xira">(o'rtacha 50)</span></span>

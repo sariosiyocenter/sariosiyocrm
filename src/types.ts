@@ -699,6 +699,10 @@ export interface ExamSettings {
     qoshimcha: { nom: string; max: number }[];
     /** Onlayn test: vaqtlar — O'zbekiston vaqti "YYYY-MM-DDTHH:mm"; daqiqa 0 — imtihon davomiyligi. */
     onlayn: { yoqilgan: boolean; ochiladi: string; yopiladi: string; daqiqa: number };
+    /** O'rin hisoblash: 'otkazib' — 1, 2, 2, 4; 'ketma' — 1, 2, 2, 3. */
+    orinUsuli: 'otkazib' | 'ketma';
+    /** O'tish bali (null — yo'q). */
+    otish: { turi: 'foiz' | 'ball'; qiymat: number } | null;
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

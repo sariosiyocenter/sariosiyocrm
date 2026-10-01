@@ -20,7 +20,7 @@ import {
   HARFLAR, VARIANT_KODLARI, IMTIHON_HOLATLARI, SAVOL_HOLATLARI, YECHIM_HOLATLARI, qiyinlikDarajasi,
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
   kalitdanVariantlar, kalitToplamlari, kalitTuzilmasi, kalitQiymati,
-  bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari,
+  bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
@@ -890,7 +890,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         yangi = sozlamaniTozala({ ...joriy, ...kelgan });
       } else {
         // Qulflangan imtihonda variantlarga ta'sir qilmaydigan sozlamalargina o'zgaradi.
-        const ruxsatli = ['notify', 'ranking', 'topN', 'showQuestionsAfter', 'seatMode', 'sessionFill', 'roomIds', 'variantBubble', 'admit', 'rasch'];
+        const ruxsatli = ['notify', 'ranking', 'topN', 'showQuestionsAfter', 'seatMode', 'sessionFill', 'roomIds', 'variantBubble', 'admit', 'rasch', 'orinUsuli', 'otish'];
         const qism = Object.fromEntries(Object.entries(kelgan).filter(([k]) => ruxsatli.includes(k)));
         if (Array.isArray(kelgan.sessions) && kelgan.sessions.length === joriy.sessions.length) qism.sessions = kelgan.sessions;
         yangi = sozlamaniTozala({ ...joriy, ...qism });
@@ -943,12 +943,25 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const d = await imtihonMalumoti(req, eski);
       if (d.blocks && !d.totalQuestions) return res.status(400).json({ error: "Kamida bitta savol qoidasi kerak" });
       const e = await prisma.exam.update({ where: { id }, data: d });
+      if (eski.publishedAt && sozlamaniTozala(eski.settings).orinUsuli !== sozlamaniTozala(e.settings).orinUsuli) await orinlarniQaytaQoy(e);
       res.json(imtihonJavobi(e, req));
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       next(err);
     }
   });
+
+  // O'rin hisoblash usuli e'londan keyin o'zgarsa — saqlangan ball (yoki Rasch) bo'yicha o'rinlar qayta.
+  async function orinlarniQaytaQoy(e) {
+    const s = sozlamaniTozala(e.settings);
+    const results = await prisma.examResult.findMany({ where: { examId: e.id }, select: { id: true, score: true, raschScore: true, schoolId: true, seat: { select: { groupId: true } } } });
+    const l = results.map(r => ({ ...r, score: s.rasch.enabled && r.raschScore != null ? r.raschScore : r.score }));
+    const umumiy = reytingOrinlari(l, undefined, s.orinUsuli).orin;
+    const filial = reytingOrinlari(l, r => r.schoolId, s.orinUsuli).orin;
+    const kurs = reytingOrinlari(l, r => r.seat?.groupId ?? null, s.orinUsuli).orin;
+    const amallar = results.map(r => prisma.examResult.update({ where: { id: r.id }, data: { rank: umumiy.get(r.id) ?? null, rankBranch: filial.get(r.id) ?? null, rankGroup: kurs.get(r.id) ?? null } }));
+    for (let i = 0; i < amallar.length; i += 100) await prisma.$transaction(amallar.slice(i, i + 100));
+  }
 
   app.delete('/api/exams/:id', authenticate, async (req, res, next) => {
     try {
@@ -1928,7 +1941,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           where: { examId, schoolId: { in: filiallar }, ...kim },
           select: {
             id: true, studentId: true, session: true, variantCode: true, score: true, percentage: true, blockScores: true, detail: true,
-            rank: true, rankGroup: true, rankBranch: true, raschScore: true, grade: true, schoolId: true, reviewStatus: true, seatId: true, extra: true,
+            rank: true, rankGroup: true, rankBranch: true, raschScore: true, grade: true, schoolId: true, reviewStatus: true, seatId: true, extra: true, pages: true,
             student: { select: { name: true, oquvchiKod: { select: { kod: true } } } },
             seat: { select: { guestName: true, groupId: true, roomId: true, row: true, col: true } },
           },
@@ -1975,6 +1988,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           session: r.session, variant: r.variantCode, score: r.score, percentage: r.percentage, blockScores: r.blockScores || [],
           rank: r.rank, rankGroup: r.rankGroup, rankBranch: r.rankBranch, raschScore: r.raschScore, grade: r.grade, reviewStatus: r.reviewStatus,
           extra: r.extra && typeof r.extra === 'object' ? r.extra : {},
+          // Skanerlangan varaq rasmlari (Addmen "Export sheets").
+          rasmlar: Object.entries(r.pages && typeof r.pages === 'object' ? r.pages : {}).map(([sahifa, x]) => ({ sahifa: Number(sahifa), url: x?.url })).filter(x => x.url),
           detail: detail.map(d => ({ n: d.n, javob: typeof d.javob === 'object' && d.javob ? String(d.javob.ball ?? '') : String(d.javob ?? ''), holat: d.holat, ball: d.ball ?? 0 })),
           mavzular: [...mv.values()],
         };
@@ -2073,9 +2088,9 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       // Rasch yoqilgan bo'lsa — T-ball va daraja, reyting ham shu ball bo'yicha.
       const rasch = s.rasch.enabled ? raschNatijalari(results, variants, s.rasch.grades) : new Map();
       const reytingUchun = results.map(r => ({ ...r, score: rasch.get(r.id)?.raschScore ?? r.score }));
-      const umumiy = reytingOrinlari(reytingUchun).orin;
-      const filial = reytingOrinlari(reytingUchun, r => r.schoolId).orin;
-      const kurs = reytingOrinlari(reytingUchun, r => r.seat?.groupId ?? null).orin;
+      const umumiy = reytingOrinlari(reytingUchun, undefined, s.orinUsuli).orin;
+      const filial = reytingOrinlari(reytingUchun, r => r.schoolId, s.orinUsuli).orin;
+      const kurs = reytingOrinlari(reytingUchun, r => r.seat?.groupId ?? null, s.orinUsuli).orin;
       const bosh = { raschTheta: null, raschScore: null, grade: null };
       const amallar = results.map(r => prisma.examResult.update({
         where: { id: r.id },
@@ -2146,6 +2161,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           markaz: markaz?.orgName || '',
           rasch: r.raschScore != null ? vergul(r.raschScore) : '',
           daraja: r.raschScore != null ? r.grade || "yetmadi" : '',
+          holat: { true: "✅ O'tdi", false: "❌ O'tmadi" }[String(otishHolati(s, r.score, r.percentage))] || '',
           havola,
         });
         let natija;
@@ -2502,6 +2518,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         ball: r.score, foiz: r.percentage,
         bloklar: (Array.isArray(r.blockScores) ? r.blockScores : []).map(b => ({ subject: b.subject, earned: b.earned, max: b.max })),
         rasch: r.raschScore != null ? { ball: r.raschScore, daraja: r.grade } : null,
+        otish: s.otish ? { ...s.otish, otdi: otishHolati(s, r.score, r.percentage) } : null,
         orin, savollar, matnlar,
       });
     } catch (err) { next(err); }

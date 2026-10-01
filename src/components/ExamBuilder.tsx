@@ -107,6 +107,7 @@ export default function ExamBuilder() {
     orin: sozlama.ranking === 'yoq' ? '' : sozlama.ranking === 'top' ? "🏆 O'rni: umumiy 7-o'rin" : "🏆 O'rni: kursda 3/25 · umumiy 15/400",
     markaz: 'Sariosiyo', havola: `${window.location.origin}/natija/…`,
     rasch: sozlama.rasch.enabled ? '63,2' : '', daraja: sozlama.rasch.enabled ? 'B+' : '',
+    holat: sozlama.otish ? "✅ O'tdi" : '',
   });
   const ruxsatnomaNamuna = ruxsatnomaMatni(sozlama.admit.template, {
     ism: 'ALIYEV VALI', imtihon: nom || 'Oylik sinov', sana: sanaMatni(sana),
@@ -178,6 +179,20 @@ export default function ExamBuilder() {
                 </label>
               )}
             </div>
+          </Maydon>
+          <Maydon nom="O'tish bali" izoh={sozlama.otish ? `Natijada «O'tdi / O'tmadi» chiqadi: hisobotlarda, ota-onaga xabarda va natija sahifasida` : "Yo'q — natijada o'tdi/o'tmadi ko'rsatilmaydi"}>
+            <div className="flex items-center gap-2">
+              <div className="w-28 shrink-0">
+                <input type="number" min={0} step="0.1" inputMode="decimal" className={INPUT} placeholder="yo'q" aria-label="O'tish bali"
+                  value={sozlama.otish?.qiymat ?? ''}
+                  onChange={e => { const q = Number(e.target.value); s({ otish: e.target.value === '' || !(q > 0) ? null : { turi: sozlama.otish?.turi || 'foiz', qiymat: q } }); }} />
+              </div>
+              <Tanlov qiymat={sozlama.otish?.turi || 'foiz'} onChange={v => sozlama.otish && s({ otish: { ...sozlama.otish, turi: v } })}
+                variantlar={[{ v: 'foiz', nom: '%' }, { v: 'ball', nom: 'ball' }]} />
+            </div>
+          </Maydon>
+          <Maydon nom="O'rin hisoblash" izoh={sozlama.orinUsuli === 'ketma' ? "Teng ball — bir o'rin, keyingisi ketma-ket: 1, 2, 2, 3" : "Teng ball — bir o'rin, keyingisi tashlab: 1, 2, 2, 4 (musobaqa tartibi)"}>
+            <Tanlov qiymat={sozlama.orinUsuli} onChange={v => s({ orinUsuli: v })} variantlar={[{ v: 'otkazib', nom: '1, 2, 2, 4' }, { v: 'ketma', nom: '1, 2, 2, 3' }]} />
           </Maydon>
           {schools.length > 1 && (
             <Maydon nom="Qatnashadigan filiallar" izoh={qulfIzoh || 'Umumiy reyting shu filiallar bo\'yicha'}>
@@ -376,7 +391,7 @@ export default function ExamBuilder() {
               </div>
               {sozlama.notify.channel !== 'NONE' && (
                 <>
-                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {rasch} {daraja} {bloklar} {orin} {markaz} {havola}">
+                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {holat} {rasch} {daraja} {bloklar} {orin} {markaz} {havola}">
                     <textarea rows={5} className={INPUT} value={sozlama.notify.template} onChange={e => s({ notify: { ...sozlama.notify, template: e.target.value } })} />
                   </Maydon>
                   <div className="flex items-center justify-between">
