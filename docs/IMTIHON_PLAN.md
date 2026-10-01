@@ -889,12 +889,24 @@ Sinovlar:
 - `addmen_bank_ui.mjs` (brauzer, yozishlar ushlanadi, 21/21);
 - sinov hujjati — `qr_docx_yasa.py`.
 
-**Keyingisi (Addmen bilan farq):**
-- javob varaqasini markaz varag'iga o'xshatish;
-- Natijalar tabida Addmen hisobot turlari: ball ro'yxati, shaxsiy hisobot, kelmaganlar, R/W/L,
-  PDF/Word;
-- manfiy va bonus ball, "m dan n";
-- skanerlangan varaqdan kalit;
-- ikki qismni birlashtirish;
-- A5 varaq;
-- onlayn test.
+## 18. Addmen bilan qolgan farqlar yopildi (2026-10-01)
+
+Egasining "hammasi" so'ziga ko'ra 17-bo'limdan keyin ketma-ket qilindi:
+
+| # | Nima | Qayerda |
+|---|---|---|
+| 1 | **Javob varaqasi** markaz varag'i kabi: logo, "JAVOBLAR VARAQASI", ESLATMA (bo'yash namunasi, imzo), ABITURIYENT MA'LUMOTI (ism, filial, maktab/sinf, kurs, xona, 5 xonali ID, QR, rasm, katta VARIANT va O'RIN), fan bandi, pastda manzil/telefon va test sanasi. Javoblar ustunda kamida 15 qator | `src/lib/omr/render.ts`, `layout.ts` (QR_1, RASM, ID_Y0, VARIANT_Y, Y0_BIRINCHI) |
+| 2 | **Hisobotlar** (Natijalar → Hisobotlar, Addmen raqamlari): 1111/1112/1113 ball ro'yxatlari (fanlar, T/X/B), 1211 o'quvchi javoblari, 1221 shaxsiy hisobot (persentil, mavzular, dinamika), 1231 kelmaganlar, 1241 savollar tahlili (KR-20), 1311 birlashtirilgan; Excel 2111–2411 | `imtihon/hisobotlar.ts`, `HisobotlarBolimi.tsx`, `GET /api/exams/:id/hisobot` |
+| 3 | **Ball qoidalari**: xato javobga jarima (¼, ⅓, ½, to'liq; ikki belgili ham), fan bali 0 dan past emas; blokda "Hisoblanadi: n" (m tadan n, ortig'i `ortiqcha`); raqamli kalitda oraliq "2..3" | `lib/imtihon.js` (`xatoJarima`, `jarimaNoldan`, `tanlab`, `raqamOraligi`) |
+| 4 | **Kalit varaqdan** ("faqat kalit"): bo'sh varaq chop etish (qulfsiz), to'ldirilgan varaqni o'qish — variant doirachasi bo'yicha kitobcha, ikki doira = "AC" | `imtihon/KalitMuharriri.tsx` |
+| 5 | **Qo'shimcha ball** (og'zaki, yozma ish) Excel'dan — `settings.qoshimcha`, `ExamResult.extra`, ball/foiz/maxScore ga qo'shiladi; **ikki imtihonni birlashtirish** (hisobot) | `QoshimchaBall.tsx`, `POST/DELETE /api/exams/:id/qoshimcha-ball` |
+| 6 | **A5 va "A4 da 2 ta"** varaq (o'qigich markerlar bo'yicha o'lchaydi — A5 200 dpi sinovi o'tdi) | `render.ts` `varaqlarniJoyla`, Chop etish |
+| 7 | **Onlayn test** (CBT): `settings.onlayn`, `/test/:token` (Mini App), taymer, avtosaqlash (jsonb `||`, keepalive, navbat), o'zi yakunlanadi; "faqat kalit" — onlayn javob varaqasi; O'rinlashtirish → Onlayn test kartasi; ruxsatnomada `{test_havola}` va "Testni ochish" tugmasi | `OnlaynTest.tsx`, `imtihon/OnlaynTestKarta.tsx`, `routes/imtihon.js` (`testTokeni`, `/api/public/test/*`, `/api/exams/:id/onlayn*`), `ExamResult.onlayn` |
+
+Sinovlar (scratch/):
+- bazasiz: `test_varaq_render_oqish.mjs` (haqiqiy SVG → 200 dpi → o'qigich, 37/37; `--import ./scratch/ts_kengaytma.mjs`), `test_ball_qoida.mjs`;
+- jonli baza (ZZ yoki DEMO 47 nusxa olinib tiklanadi): `test_qoshimcha_api.mjs` 10/10, `test_onlayn_api.mjs` 20/20;
+- brauzer (bazaga yozmaydi yoki ZZ o'chiriladi): `hisobot_ui.mjs`, `kalit_varaq_ui.mjs`, `birlash_ui.mjs`, `a5_ui.mjs`, `onlayn_ui.mjs`.
+
+Ochiq: haqiqiy Addmen QR Word fayli bilan import sinovi va haqiqiy printer/skanerda 30 varaqlik sinov
+(yangi varaq dizayni bilan) hali egasida.
