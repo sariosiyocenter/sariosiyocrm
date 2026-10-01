@@ -695,6 +695,8 @@ export interface ExamSettings {
     xatoJarima: number;
     /** Jarima bilan ham ball 0 dan pastga tushmaydi. */
     jarimaNoldan: boolean;
+    /** Qo'shimcha ball komponentlari (og'zaki, yozma ish — Excel'dan). */
+    qoshimcha: { nom: string; max: number }[];
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

@@ -5,7 +5,7 @@ import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, INPUT, SELECT, Yuklanmoqda } from './ui';
 import { chopEt } from '../../lib/chopEtish';
 import {
-  HISOBOT_TURLARI, HISOBOT_CSS, ballRoyxatiHtml, javoblarHtml, shaxsiyHisobotHtml, kelmaganlarHtml, savollarTahliliHtml, excelYukla, kr20,
+  HISOBOT_TURLARI, HISOBOT_CSS, ballRoyxatiHtml, javoblarHtml, shaxsiyHisobotHtml, kelmaganlarHtml, savollarTahliliHtml, birlashHtml, excelYukla, kr20,
   type HisobotMalumoti, type HisobotSozlama, type HisobotTuri, type SavolTahlilQatori,
 } from './hisobotlar';
 import type { ImtihonTafsil } from './turlar';
@@ -24,6 +24,9 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
   const [turi, setTuri] = useState<HisobotTuri>('1111');
   const [s, setS] = useState<HisobotSozlama>({ tartib: 'orin', kursOrni: false, kursSahifa: false, foiz: false, persentil: true });
   const [band, setBand] = useState(false);
+  // Birlashtirish uchun ikkinchi imtihon (Addmen "Merge test").
+  const [imtihonlar, setImtihonlar] = useState<{ id: number; name: string; date: string; maxScore: number; natija: number }[] | null>(null);
+  const [ikkinchiId, setIkkinchiId] = useState<number | 0>(0);
 
   useEffect(() => {
     soro<HisobotMalumoti>('GET', `exams/${exam.id}/hisobot`).then(setM).catch(e => showNotification(e.message, 'error'));
@@ -41,6 +44,13 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
   const royxat = useMemo(() => (m?.natijalar || []).filter(mos), [m, kurslar, smena, tanlanganIdlar]); // eslint-disable-line react-hooks/exhaustive-deps
   const kelmaganlar = useMemo(() => (m?.kelmaganlar || []).filter(x => mos({ ...x, session: x.session })), [m, kurslar, smena, tanlanganIdlar]); // eslint-disable-line react-hooks/exhaustive-deps
   const tanlov = HISOBOT_TURLARI.find(x => x.v === turi)!;
+  useEffect(() => {
+    if (!tanlov.birlash || imtihonlar) return;
+    soro<{ id: number; name: string; date: string; maxScore: number; natija: number }[]>('GET', 'exams/history').then(l => setImtihonlar((l || [])
+      .filter(x => x.id !== exam.id && x.natija > 0)
+      .map(x => ({ id: x.id, name: x.name, date: x.date, maxScore: x.maxScore, natija: x.natija }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date))))).catch(e => showNotification(e.message, 'error'));
+  }, [tanlov.birlash]); // eslint-disable-line react-hooks/exhaustive-deps
   const ishonchlilik = useMemo(() => (m ? kr20(m.natijalar, tahlil) : null), [m, tahlil]);
 
   const yarat = async () => {
@@ -48,14 +58,21 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
     if (tanlov.kalit && !m.kalit) return showNotification("Kalitni ko'rish ruxsati yo'q", 'error');
     const kerak = turi === '1231' || turi === '2321' ? kelmaganlar.length : turi === '1241' ? tahlil.length : royxat.length;
     if (!kerak && turi !== '2331') return showNotification("Tanlovga mos yozuv yo'q", 'error');
-    const k = {
-      exam, markaz: settings?.orgName || '', royxat, kelmaganlar, malumot: m, tahlil, s,
-      filialNomi: (id: number) => schools.find(x => x.id === id)?.name || '',
-    };
+    if (tanlov.birlash && !ikkinchiId) return showNotification("Qo'shiladigan imtihonni tanlang", 'error');
     setBand(true);
     try {
+      let ikkinchi = null;
+      if (tanlov.birlash) {
+        const ik = imtihonlar!.find(x => x.id === ikkinchiId)!;
+        const d = await soro<HisobotMalumoti>('GET', `exams/${ikkinchiId}/hisobot`);
+        ikkinchi = { nomi: ik.name, maxScore: ik.maxScore, natijalar: d.natijalar };
+      }
+      const k = {
+        exam, markaz: settings?.orgName || '', royxat, kelmaganlar, malumot: m, tahlil, s, ikkinchi,
+        filialNomi: (id: number) => schools.find(x => x.id === id)?.name || '',
+      };
       if (tanlov.tur === 'excel') { excelYukla(k, turi); return; }
-      const body = turi === '1211' ? javoblarHtml(k) : turi === '1221' ? shaxsiyHisobotHtml(k) : turi === '1231' ? kelmaganlarHtml(k)
+      const body = turi === '1311' ? birlashHtml(k) : turi === '1211' ? javoblarHtml(k) : turi === '1221' ? shaxsiyHisobotHtml(k) : turi === '1231' ? kelmaganlarHtml(k)
         : turi === '1241' ? savollarTahliliHtml(k) : ballRoyxatiHtml(k, turi as '1111' | '1112' | '1113');
       await chopEt({ sarlavha: `${exam.name} — ${tanlov.nom}`, css: HISOBOT_CSS, body });
     } catch (e: any) {
@@ -128,6 +145,15 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
           <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Tanlangan ID lar (vergul bilan)</span>
           <input className={`${INPUT} py-1.5 text-[12.5px]`} value={idlar} placeholder="Hammasi" onChange={e => setIdlar(e.target.value)} />
         </label>
+        {tanlov.birlash && (
+          <label className="block">
+            <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Qo'shiladigan imtihon (2-qism)</span>
+            <select className={`${SELECT} py-1.5 text-[12.5px]`} value={ikkinchiId} onChange={e => setIkkinchiId(Number(e.target.value))} aria-label="Qo'shiladigan imtihon">
+              <option value={0}>{imtihonlar ? 'Tanlang' : 'Yuklanmoqda…'}</option>
+              {(imtihonlar || []).map(x => <option key={x.id} value={x.id}>{x.name} · {x.date} · {x.natija} natija</option>)}
+            </select>
+          </label>
+        )}
         <label className="block">
           <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Tartib</span>
           <select className={`${SELECT} py-1.5 text-[12.5px]`} value={s.tartib} onChange={e => ozgar({ tartib: e.target.value as HisobotSozlama['tartib'] })}>

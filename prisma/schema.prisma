@@ -1277,6 +1277,9 @@ model ExamResult {
   raschTheta   Float?
   raschScore   Float?
   grade        String?
+  // Qo'shimcha ballar (Addmen "manual scores"): og'zaki, yozma ish — Excel'dan {nomi: ball}.
+  // Komponentlar va eng yuqori bali — Exam.settings.qoshimcha.
+  extra        Json?
 
   @@unique([studentId, examId])
   @@index([examId, schoolId])

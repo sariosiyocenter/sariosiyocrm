@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Megaphone, Send, KeyRound, AlertTriangle, CheckCircle2, RefreshCw, Square, Tv } from 'lucide-react';
+import { Download, Megaphone, Send, KeyRound, AlertTriangle, CheckCircle2, RefreshCw, Square, Tv, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
@@ -10,6 +10,7 @@ import StatTile from '../ui/StatTile';
 import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
 import HisobotlarBolimi from './HisobotlarBolimi';
+import QoshimchaBallOynasi from './QoshimchaBall';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
 import type { ImtihonTafsil } from './turlar';
@@ -51,6 +52,8 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const kalitRejimi = exam.settings.source === 'kalit';
   const [band, setBand] = useState<string | null>(null);
   const [yuborish, setYuborish] = useState<{ yuborildi: number; xato: number; qoldi: number } | null>(null);
+  const [qoshimcha, setQoshimcha] = useState(false);
+  const natijaTahrir = ozgartira('imtihonlar.natija');
   const toxtaRef = useRef(false);
   const s = exam.settings;
 
@@ -175,6 +178,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
           {xulosa.published && s.ranking !== 'yoq' && (
             <Tugma kichik ikonka={<Tv size={13} />} onClick={() => navigate(`/exams/${exam.id}/reyting`)} title="Televizor yoki proyektor uchun">Katta ekran</Tugma>
           )}
+          {natijaTahrir && <Tugma kichik ikonka={<Plus size={13} />} onClick={() => setQoshimcha(true)} title="Og'zaki, yozma ish va boshqa tashqi ballar — Excel'dan">Qo'shimcha ball</Tugma>}
           <Tugma kichik ikonka={<Download size={13} />} onClick={excel}>Excel</Tugma>
         </div>
       </div>
@@ -341,6 +345,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
           </Karta>
         </div>
       )}
+      {qoshimcha && <QoshimchaBallOynasi exam={exam} onYop={() => setQoshimcha(false)} onOzgardi={() => { yukla(); yangila(); }} />}
       {kalitSavol !== undefined && !kalitRejimi && <KalitOynasi examId={exam.id} boshSavol={kalitSavol ?? undefined} onYop={ozgardi => { setKalitSavol(undefined); if (ozgardi) { yukla(); yangila(); } }} />}
       {kalitSavol !== undefined && kalitRejimi && (
         <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-4">
