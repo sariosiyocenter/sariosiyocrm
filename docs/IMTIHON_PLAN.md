@@ -980,3 +980,32 @@ emas: SQL ulanish, Backup, Downloads/Support, ECAS import, til sinxronlash.
 
 Sinov: `scratch/hisobot2_ui.mjs` (30/30, bazaga yozmaydi — o'tish bali `page.route` bilan),
 `scratch/test_orin_otish_api.mjs` (8/8, DEMO 47 nusxasi olinib aynan tiklanadi).
+
+### 20.2 Savol qog'ozi (Addmen QPG "Generate Paper")
+
+- **Tanlangan savollar** (Chop etish → Savol qog'ozi): qulflangan imtihonga tushgan savollar
+  1-variant tartibida (fan bo'yicha, javob — faqat kalit huquqi bo'lsa). ↻ — o'sha fan, mavzu,
+  tur va (avval) o'sha qiyinlikdan kam ishlatilgan boshqa savol; # — QID bo'yicha aniq savol.
+  Natija kelgach mumkin emas. `GET /api/exams/:id/tanlangan`, `POST /api/exams/:id/savol-almashtir`
+  (`almashtirishNomzodlari`, `savolniAlmashtir`; variantlar aralashmasi yangidan, eskiga usedCount −1,
+  yangiga +1, eski savolning keyFix/cancelled o'chadi). Matnli (passage) savol almashtirilmaydi.
+- **Use ≤ N**: `settings.ishlatishChegarasi` — bankdan faqat shuncha martagacha ishlatilganlari
+  (qo'lda tanlanganlar — baribir). **Duplicate content**: `settings.takror` 'variant' (standart —
+  matn, rasm va variantlar bir xil) / 'savol' / 'yoq'; `savolIzi`, `tanlovHovuzi` — takrordan kam
+  ishlatilgani qoladi; bankYetarliligi ham shu hovuz bilan, `sabab.chiqarilgan`. Imtihon
+  sozlamalarida va "Andozadan savol qog'ozi" oynasida (u yerda yana: savollar / variantlar aralashsinmi).
+- **Kitobcha ko'rinishi** (Addmen "Output"): 1 yoki 2 ustun, fan sarlavhalari, savol izohlari,
+  ikki tilli — `KitobchaSozlama`, brauzerda eslab qolinadi (`imt_kitobcha`).
+- **Word (.docx)**: `kitobchaWord.ts` + `src/lib/docx.ts` (kutubxonasiz, `zip.ts`) + `src/lib/omml.ts`
+  (KaTeX MathML → Word formulasi OMML: kasr, ildiz, daraja/indeks, ∑∫ (nary), \left( \right),
+  sistema (eqArr), matritsa, urg'u/chiziq). Har variant — muqova (1 ustun) va savollar (1/2 ustun)
+  bo'limi; rasmlar ichida (webp → png). Word'da ochildi: 74 formula, 2 rasm, 4 bo'lim.
+- **Savol maydonlari**: `Question.remark` (Addmen REMARK, 300 belgi) va `Question.tarjima`
+  {til, text, options} (Bilingual) — savol muharririda; "AI bilan to'ldirish" →
+  `POST /api/questions/:id/ai/tarjima-matn` (faqat qaytaradi, bazaga yozmaydi).
+- `Maydon` endi `div` rejimiga ega: ichida tugma bo'lsa <label> uning nomini buzardi
+  (ExamBuilder va Chop etishdagi Tanlov'li maydonlar tuzatildi).
+
+Sinov: `scratch/test_hovuz.mjs` (12/12, bazasiz), `test_almashtir_api.mjs` (15/15, ZZ imtihon,
+usedCount aynan tiklanadi), `qpg_ui.mjs` (13/13, brauzer; docx Word'da `word_ochish.ps1` bilan),
+eski mantiq testlari o'tdi (bank 32, imtihon 56, ajrat 10).

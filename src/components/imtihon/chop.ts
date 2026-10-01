@@ -9,7 +9,7 @@ import type { Exam } from '../../types';
 
 export interface KitobchaMalumoti {
   variants: { session: number; code: string; items: { n: number; q: number; b: number; t: string; p: number; m?: number[]; pa?: number }[] }[];
-  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null }[];
+  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null }[];
   matnlar: { id: number; title?: string | null; text: string; imageUrl?: string | null }[];
 }
 
@@ -61,15 +61,24 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .matn-quti { border: 0.8pt solid #000; padding: 2.4mm 3mm; margin: 0 0 3mm; break-inside: avoid; }
 .matn-quti .sarlavha { font-weight: 700; font-size: 9.5pt; margin-bottom: 1mm; }
 .katex { font-size: 1.04em; }
+.savollar.bir { column-count: 1; }
+.tarjima { color: #444; font-style: italic; margin-top: .6mm; }
+.tj { color: #555; font-style: italic; }
+.remark { margin: .8mm 0 0 7.6mm; font-size: 8.5pt; color: #555; font-style: italic; }
 `;
 
-function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[] }): string {
+/** Kitobcha ko'rinishi (Addmen QPG "Output": ustunlar, bo'lim sarlavhasi, izohlar, ikkinchi til). */
+export interface KitobchaSozlama { ustun: 1 | 2; bolimSarlavha: boolean; izoh: boolean; ikkiTil: boolean }
+export const KITOBCHA_STANDART: KitobchaSozlama = { ustun: 2, bolimSarlavha: true, izoh: false, ikkiTil: false };
+
+function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[] }, o: KitobchaSozlama): string {
   const tartib = it.m && it.m.length ? it.m : q.options.map((_, i) => i);
-  const qisqa = tartib.every(i => oddiyMatn(q.options[i] || '').length <= 28 && !/<img/i.test(q.options[i] || ''));
-  return `<ol class="javoblar${qisqa ? ' ikki' : ''}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}</span></li>`).join('')}</ol>`;
+  const tj = o.ikkiTil ? q.tarjima?.options || [] : [];
+  const qisqa = tartib.every(i => oddiyMatn(q.options[i] || '').length + oddiyMatn(tj[i] || '').length <= 28 && !/<img/i.test(q.options[i] || ''));
+  return `<ol class="javoblar${qisqa ? ' ikki' : ''}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
 }
 
-export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, tanlov: { session: number; code: string }[]): string {
+export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, tanlov: { session: number; code: string }[], o: KitobchaSozlama = KITOBCHA_STANDART): string {
   const savolMap = new Map(d.savollar.map(q => [q.id, q]));
   const matnMap = new Map(d.matnlar.map(p => [p.id, p]));
   const s = exam.settings;
@@ -103,7 +112,7 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
       if (it.b !== joriyBlok) {
         joriyBlok = it.b;
         const b = bloklar[it.b];
-        qismlar.push(`<div class="blok">${esc(b?.nomi || '')} — ${b?.boshi}–${b?.oxiri}-savollar${b?.ball != null ? `, har biri ${b.ball} ball` : ''}</div>`);
+        if (o.bolimSarlavha) qismlar.push(`<div class="blok">${esc(b?.nomi || '')} — ${b?.boshi}–${b?.oxiri}-savollar${b?.ball != null ? `, har biri ${b.ball} ball` : ''}</div>`);
         joriyMatn = null;
       }
       const q = savolMap.get(it.q);
@@ -118,12 +127,14 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
         }
       } else if (!it.pa) joriyMatn = null;
       let pastki = '';
-      if (it.t === 'yopiq') pastki = variantHtml(q, it);
+      if (it.t === 'yopiq') pastki = variantHtml(q, it, o);
       else if (it.t === 'raqamli') pastki = `<div class="izoh">Javobni javob varaqasidagi ${it.n}-katakka yozing va bo'yang.</div>`;
       else pastki = `<div class="izoh">Yechimni javob varaqasidagi ${it.n}-maydonga yozing (${it.p} ball).</div>`;
-      qismlar.push(`<div class="savol"><div class="bosh"><b>${it.n}.</b><div class="matn">${formulaliHtml(q.text)}</div></div>${q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}${pastki}</div>`);
+      const tarjima = o.ikkiTil && q.tarjima?.text?.trim() ? `<div class="tarjima">${formulaliHtml(q.tarjima.text)}</div>` : '';
+      const izoh = o.izoh && q.remark ? `<div class="remark">Izoh: ${esc(q.remark)}</div>` : '';
+      qismlar.push(`<div class="savol"><div class="bosh"><b>${it.n}.</b><div class="matn">${formulaliHtml(q.text)}${tarjima}</div></div>${q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}${pastki}${izoh}</div>`);
     });
-    return `<section class="kitobcha">${muqova}<div class="savollar">${qismlar.join('')}</div></section>`;
+    return `<section class="kitobcha">${muqova}<div class="savollar${o.ustun === 1 ? ' bir' : ''}">${qismlar.join('')}</div></section>`;
   }).join('');
 }
 

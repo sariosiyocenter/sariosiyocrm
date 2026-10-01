@@ -8,6 +8,7 @@
 
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { JWT_SECRET } from '../lib/config.js';
 import { authenticate, allowedSchoolIds, organizationSchoolIds, canAccessSchool, ozKurslari } from '../middleware/auth.js';
@@ -21,6 +22,7 @@ import {
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
   kalitdanVariantlar, kalitToplamlari, kalitTuzilmasi, kalitQiymati,
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
+  almashtirishNomzodlari, savolniAlmashtir,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
@@ -219,6 +221,15 @@ function savolMalumoti(body) {
   if (body.status !== undefined) d.status = SAVOL_HOLATLARI.includes(body.status) ? body.status : 'faol';
   for (const k of ['passageId', 'topicId', 'parentId']) if (body[k] !== undefined) d[k] = parseInt(body[k]) || null;
   if (body.toplam !== undefined) d.toplam = body.toplam ? String(body.toplam).trim().slice(0, 200) : null;
+  if (body.remark !== undefined) d.remark = body.remark ? String(body.remark).trim().slice(0, 300) : null;
+  if (body.tarjima !== undefined) {
+    const t = body.tarjima && typeof body.tarjima === 'object' ? body.tarjima : {};
+    const matn = String(t.text ?? '').slice(0, LAVHA_MAX);
+    const variantlar = Array.isArray(t.options) ? t.options.slice(0, HARFLAR.length).map(x => String(x ?? '').slice(0, 4000)) : [];
+    d.tarjima = matn.trim() || variantlar.some(x => x.trim())
+      ? { til: ['uz', 'ru', 'en'].includes(t.til) ? t.til : 'ru', text: matn, options: variantlar }
+      : Prisma.DbNull;
+  }
   // Belgilar mavjudligi saqlashda tekshirilmaydi: yo'q id filtrda shunchaki uchramaydi.
   if (body.tagIds !== undefined) d.tagIds = [...new Set((Array.isArray(body.tagIds) ? body.tagIds : []).map(x => parseInt(x)).filter(n => n > 0))].slice(0, 50);
   return d;
@@ -1148,7 +1159,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const qids = [...new Set(variants.flatMap(v => v.items.map(it => it.q)))].filter(Number.isInteger);
       const savollar = await prisma.question.findMany({
         where: { id: { in: qids } },
-        select: { id: true, text: true, imageUrl: true, type: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, passageId: true, points: true },
+        select: { id: true, text: true, imageUrl: true, type: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, passageId: true, points: true, remark: true, tarjima: true },
       });
       const pids = [...new Set(savollar.map(q => q.passageId).filter(Boolean))];
       const matnlar = pids.length ? await prisma.passage.findMany({ where: { id: { in: pids } } }) : [];
@@ -1158,9 +1169,98 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           // eslint-disable-next-line no-unused-vars
           items: v.items.map(({ k, j, ...qolgan }) => qolgan),
         })),
-        savollar: savollar.map(q => ({ id: q.id, text: q.text, imageUrl: q.imageUrl, type: q.type, options: savolVariantlari(q), passageId: q.passageId })),
+        savollar: savollar.map(q => ({ id: q.id, text: q.text, imageUrl: q.imageUrl, type: q.type, options: savolVariantlari(q), passageId: q.passageId, remark: q.remark, tarjima: q.tarjima })),
         matnlar,
       });
+    } catch (err) { next(err); }
+  });
+
+  // Addmen QPG "Find questions" jadvali: qulflangan imtihonga tushgan savollar (birinchi
+  // variant tartibida, har smenaning o'zi) va almashtirish mumkinmi.
+  app.get('/api/exams/:id/tanlangan', authenticate, async (req, res, next) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const e = await prisma.exam.findUnique({ where: { id: examId }, select: { lockedAt: true, settings: true } });
+      if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
+      const [variants, natija] = await Promise.all([
+        prisma.examVariant.findMany({ where: { examId }, orderBy: [{ session: 'asc' }, { code: 'asc' }] }),
+        prisma.examResult.count({ where: { examId } }),
+      ]);
+      const birinchi = [...new Map([...variants].reverse().map(v => [v.session, v])).values()].sort((a, b) => a.session - b.session);
+      const qids = [...new Set(variants.flatMap(v => v.items.map(it => it.q)))].filter(Number.isInteger);
+      const qs = await prisma.question.findMany({
+        where: { id: { in: qids } },
+        select: { id: true, text: true, imageUrl: true, type: true, topic: true, subject: true, difficulty: true, usedCount: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, remark: true, passageId: true },
+      });
+      const qmap = new Map(qs.map(q => [q.id, q]));
+      const kalitKorinadi = kor(req, 'imtihonlar.kalit');
+      const korildi = new Set();
+      const savollar = [];
+      for (const v of birinchi) for (const it of v.items) {
+        if (!Number.isInteger(it.q) || korildi.has(it.q)) continue;
+        korildi.add(it.q);
+        const q = qmap.get(it.q);
+        savollar.push({
+          q: it.q, session: v.session, n: it.n, b: it.b, t: it.t, p: it.p, pa: it.pa || null,
+          text: q?.text || '', imageUrl: q?.imageUrl || null, topic: q?.topic || '', difficulty: q?.difficulty ?? 2, usedCount: q?.usedCount ?? 0,
+          // To'g'ri javob — faqat kalitni ko'radiganlarga.
+          options: q ? savolVariantlari(q) : [], correctAnswer: kalitKorinadi ? q?.correctAnswer || '' : null, answers: kalitKorinadi ? q?.answers || null : null, remark: q?.remark || null,
+        });
+      }
+      const s = sozlamaniTozala(e.settings);
+      res.json({ savollar, natijaBor: natija > 0, almashtirsaBoladi: !!e.lockedAt && s.source === 'bank' && natija === 0 });
+    } catch (err) { next(err); }
+  });
+
+  // Bitta savolni almashtirish (Addmen "directly alter grid and select question IDs of
+  // choice"): `yangi` berilsa — o'sha savol, bo'lmasa o'sha mavzu/qiyinlikdan kam
+  // ishlatilgani. Natija bo'lsa — mumkin emas (ball o'zgarib ketadi).
+  app.post('/api/exams/:id/savol-almashtir', authenticate, async (req, res, next) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const eskiId = parseInt(req.body.q);
+      const e = await prisma.exam.findUnique({ where: { id: examId } });
+      if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
+      const s = sozlamaniTozala(e.settings);
+      if (!e.lockedAt) return res.status(409).json({ error: 'Savollar hali tanlanmagan — avval qulflang' });
+      if (s.source !== 'bank') return res.status(400).json({ error: "«Faqat kalit» rejimida savollar bankdan emas" });
+      if (await prisma.examResult.count({ where: { examId } })) return res.status(409).json({ error: "Natijalar bor — savolni almashtirib bo'lmaydi" });
+      const variants = await prisma.examVariant.findMany({ where: { examId } });
+      const element = variants.flatMap(v => v.items).find(it => it.q === eskiId);
+      if (!element) return res.status(404).json({ error: "Bu savol imtihonda yo'q" });
+      if (element.pa) return res.status(400).json({ error: "Matnga bog'langan savol almashtirilmaydi — matn bilan birga tanlanadi" });
+      const orgIds = await organizationSchoolIds(req.user);
+      const bank = await bankniOl(orgIds, { status: 'faol' });
+      const eski = (await bankniOl(orgIds, { id: eskiId }))[0];
+      if (!eski) return res.status(404).json({ error: 'Savol topilmadi' });
+      const imtihonIdlari = [...new Set(variants.flatMap(v => v.items.map(it => it.q)))];
+      const blok = (Array.isArray(e.blocks) ? e.blocks : [])[element.b] || {};
+      let yangi = null;
+      if (req.body.yangi != null && req.body.yangi !== '') {
+        const id = parseInt(req.body.yangi);
+        yangi = bank.find(q => q.id === id) || null;
+        if (!yangi) return res.status(400).json({ error: `#${req.body.yangi} — bankda faol savol topilmadi` });
+        if (imtihonIdlari.includes(id)) return res.status(400).json({ error: `#${id} allaqachon shu imtihonda` });
+        if (turi(yangi.type) !== element.t) return res.status(400).json({ error: `#${id} — boshqa turdagi savol` });
+        if (yangi.passageId) return res.status(400).json({ error: `#${id} matnga bog'langan — alohida qo'yib bo'lmaydi` });
+        const xato = savolXatosi(yangi);
+        if (xato) return res.status(400).json({ error: `#${id}: ${xato}` });
+      } else {
+        yangi = almashtirishNomzodlari({ eski, blok, bank, imtihonIdlari, settings: s })[0] || null;
+        if (!yangi) return res.status(400).json({ error: "Bankda bu mavzu va turdan boshqa mos savol yo'q" });
+      }
+      const yangiVariantlar = savolniAlmashtir({ variants, eski: eskiId, yangi, settings: s, seed: crypto.randomInt(1, 2 ** 31 - 1) });
+      const keyFix = { ...s.keyFix };
+      const cancelled = { ...s.cancelled };
+      delete keyFix[eskiId];
+      delete cancelled[eskiId];
+      await prisma.$transaction([
+        ...yangiVariantlar.map(v => prisma.examVariant.update({ where: { id: v.id }, data: { items: v.items } })),
+        prisma.exam.update({ where: { id: examId }, data: { settings: { ...s, keyFix, cancelled } } }),
+        prisma.question.updateMany({ where: { id: eskiId, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }),
+        prisma.question.update({ where: { id: yangi.id }, data: { usedCount: { increment: 1 }, lastUsedAt: new Date() } }),
+      ]);
+      res.json({ eski: eskiId, yangi: yangi.id, matn: String(yangi.text || '').slice(0, 200) });
     } catch (err) { next(err); }
   });
 

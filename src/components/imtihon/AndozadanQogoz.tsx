@@ -29,6 +29,11 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
   const [davom, setDavom] = useState(90);
   const [variantlar, setVariantlar] = useState(4);
   const [ball, setBall] = useState('1');
+  // Addmen "Use <=", "Duplicate content", "Question / Option shuffled sets".
+  const [chegara, setChegara] = useState('');
+  const [takror, setTakror] = useState<'variant' | 'savol' | 'yoq'>('variant');
+  const [aralashSavol, setAralashSavol] = useState(true);
+  const [aralashVariant, setAralashVariant] = useState(true);
   const [yetadi, setYetadi] = useState<Record<number, boolean | null>>({});
   const [band, setBand] = useState(false);
 
@@ -76,7 +81,10 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
     try {
       const e = await soro<{ id: number }>('POST', 'exams', {
         schoolId: filial, name: nom.trim() || tanlov[0].name, date: sana, duration: davom, scoring: 'blok', blocks,
-        settings: { variantCount: variantlar, shuffleQuestions: true, shuffleOptions: true },
+        settings: {
+          variantCount: variantlar, shuffleQuestions: aralashSavol, shuffleOptions: aralashVariant,
+          ishlatishChegarasi: chegara.trim() === '' ? null : Math.max(0, Math.round(Number(chegara) || 0)), takror,
+        },
       });
       examId = e.id;
       await soro('POST', `exams/${e.id}/lock`, {});
@@ -145,7 +153,27 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
             <Maydon nom="Bir savol bali"><input inputMode="decimal" className={INPUT} value={ball} onChange={e => setBall(e.target.value)} /></Maydon>
             <Maydon nom="Daqiqa"><input type="number" min={10} max={600} className={INPUT} value={davom} onChange={e => setDavom(Number(e.target.value) || 60)} /></Maydon>
           </div>
-          <p className="text-[11.5px] text-matn-xira">Hamma variantda savollar bir xil, tartibi va javoblari aralashtiriladi (A, B, C… kitobchalar). Kurs va o'rinlarni keyin «O'rinlashtirish»da biriktirasiz.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Maydon nom="Ko'p ishlatilganini olmaslik" izoh="Bo'sh — cheklovsiz">
+              <div className="flex items-center gap-2 text-[12.5px] text-matn-sokin">
+                ishlatilgani ≤
+                <div className="w-20"><input inputMode="numeric" className={INPUT} placeholder="∞" aria-label="Ishlatish chegarasi" value={chegara} onChange={e => setChegara(e.target.value.replace(/\D/g, ''))} /></div>
+                marta
+              </div>
+            </Maydon>
+            <Maydon nom="Takroriy savollar">
+              <select className={INPUT} value={takror} onChange={e => setTakror(e.target.value as typeof takror)} aria-label="Takroriy savollar">
+                <option value="variant">Matni va variantlari bir xil — bittasi</option>
+                <option value="savol">Matni bir xil — bittasi</option>
+                <option value="yoq">Tekshirilmasin</option>
+              </select>
+            </Maydon>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] text-matn">
+            <label className="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={aralashSavol} onChange={e => setAralashSavol(e.target.checked)} />Savollar tartibi aralashtirilsin</label>
+            <label className="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={aralashVariant} onChange={e => setAralashVariant(e.target.checked)} />Javob variantlari aralashtirilsin</label>
+          </div>
+          <p className="text-[11.5px] text-matn-xira">Hamma variantda savollar bir xil{aralashSavol || aralashVariant ? `, ${[aralashSavol && 'tartibi', aralashVariant && 'javoblari'].filter(Boolean).join(' va ')} aralashtiriladi` : ''} (A, B, C… kitobchalar). Tushgan savollarni «Chop etish → Tanlangan savollar»da ko'rib, almashtirasiz.</p>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-t border-chiziq">
           <span className="text-[12.5px] text-matn-sokin">{tanlov.length ? <><b className="text-matn raqam">{jami}</b> ta savol · {variantlar} variant</> : 'Andozani tanlang'}</span>

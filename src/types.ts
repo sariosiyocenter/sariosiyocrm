@@ -522,6 +522,10 @@ export interface Question {
     status?: 'qoralama' | 'faol' | 'arxiv';
     passageId?: number | null;
     passage?: { id: number; title?: string | null } | null;
+    /** Izoh (Addmen REMARK). */
+    remark?: string | null;
+    /** Ikkinchi tildagi matn (Addmen "Bilingual"). */
+    tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
     usedCount?: number;
     pCorrect?: number | null;
     discrimination?: number | null;
@@ -703,6 +707,10 @@ export interface ExamSettings {
     orinUsuli: 'otkazib' | 'ketma';
     /** O'tish bali (null — yo'q). */
     otish: { turi: 'foiz' | 'ball'; qiymat: number } | null;
+    /** Bankdan faqat shuncha martagacha ishlatilgan savollar (null — cheklovsiz). */
+    ishlatishChegarasi: number | null;
+    /** Takroriy savol: 'variant' — matn va variantlar, 'savol' — faqat matn, 'yoq' — tekshirilmaydi. */
+    takror: 'yoq' | 'savol' | 'variant';
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

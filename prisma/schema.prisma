@@ -1054,6 +1054,10 @@ model Question {
   // to'plam — savol qaysi fayldan (Word/Excel, Addmen "QR file") kelgani.
   tagIds        Int[]    @default([])
   toplam        String?
+  // Addmen REMARK: savol izohi (masalan "2023 DTM, 1-variant") — filtr va kitobchada (ixtiyoriy).
+  remark        String?
+  // Ikkinchi tildagi matn (Addmen "Bilingual"): {til: 'ru'|'uz'|'en', text, options[]}.
+  tarjima       Json?
 
   @@index([schoolId, subject, topic])
   @@index([passageId])

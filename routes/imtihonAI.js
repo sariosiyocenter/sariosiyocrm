@@ -237,6 +237,21 @@ export function registerImtihonAIRoutes(app) {
     } catch (err) { aiXatosi(err, res, next); }
   });
 
+  // Ikki tilli kitobcha uchun: tarjimani faqat qaytaradi (bazaga yozmaydi) — muharrirdagi
+  // "Ikkinchi til" maydonini to'ldiradi, foydalanuvchi tekshirib saqlaydi.
+  app.post('/api/questions/:id/ai/tarjima-matn', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!tayyormi(res)) return;
+      const til = String(req.body?.til || '');
+      if (!['uz', 'ru', 'en'].includes(til)) return res.status(400).json({ error: 'Tilni tanlang' });
+      const q = await savolniOl(parseInt(req.params.id));
+      if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
+      if ((q.language || 'uz') === til) return res.status(400).json({ error: 'Savol allaqachon shu tilda' });
+      const t = await tarjimaQil(q, savolVariantlari(q), til);
+      res.json({ til, text: t.text, options: t.options || [] });
+    } catch (err) { aiXatosi(err, res, next); }
+  });
+
   // Yozma javobga ball taklifi: rasm — varaqdagi javob katagi (mijoz kesib yuboradi).
   app.post('/api/exam-results/:id/ai/baho', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {

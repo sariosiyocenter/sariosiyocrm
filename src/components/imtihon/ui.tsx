@@ -78,13 +78,18 @@ export function BoshHolat({ ikonka, sarlavha, izoh, children }: { ikonka?: React
   );
 }
 
-export function Maydon({ nom, izoh, children, className = '' }: { nom: React.ReactNode; izoh?: React.ReactNode; children: React.ReactNode; className?: string }) {
+/**
+ * Nomli maydon. Ichida tugmalar (Tanlov, Almashtirgich) bo'lsa — `div`: <label> ichidagi
+ * birinchi tugma label matnini o'z nomi qilib oladi va label bosilganda ishlab ketadi.
+ */
+export function Maydon({ nom, izoh, children, className = '', div }: { nom: React.ReactNode; izoh?: React.ReactNode; children: React.ReactNode; className?: string; div?: boolean }) {
+  const Teg = div ? 'div' : 'label';
   return (
-    <label className={`block ${className}`}>
+    <Teg className={`block ${className}`}>
       <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">{nom}</span>
       {children}
       {izoh && <span className="block text-[11px] text-matn-xira mt-1">{izoh}</span>}
-    </label>
+    </Teg>
   );
 }
 

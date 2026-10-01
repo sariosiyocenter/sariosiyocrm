@@ -20,15 +20,18 @@ import type { Question, Passage, SavolTuri } from '../types';
 // "umumiy" maydonlar "Saqlash va keyingisi" dan keyin ham qoladi — bitta
 // mavzuga 20 ta savol ketma-ket kiritiladi. Formulalar $...$ ichida LaTeX bilan.
 
-type Umumiy = { fanId: number | null; mavzuId: number | null; grade: string; source: string; language: 'uz' | 'ru' | 'en'; difficulty: number; status: 'faol' | 'qoralama' | 'arxiv' };
+type Umumiy = { fanId: number | null; mavzuId: number | null; grade: string; source: string; remark: string; language: 'uz' | 'ru' | 'en'; difficulty: number; status: 'faol' | 'qoralama' | 'arxiv' };
+type Tarjima = { til: 'uz' | 'ru' | 'en'; text: string; options: string[] };
 type Shaxsiy = {
   type: SavolTuri; text: string; imageUrl: string | null; options: string[]; correctAnswer: string; answers: string;
   points: string; lockOptions: boolean; solution: string; solutionStatus: 'yoq' | 'qoralama' | 'tasdiqlangan'; passage: { id: number; title?: string | null } | null;
+  /** Ikkinchi tildagi matn (Addmen "Bilingual") — null: yo'q. */
+  tarjima: Tarjima | null;
 };
 
 const BOSH_SHAXSIY: Shaxsiy = {
   type: 'yopiq', text: '', imageUrl: null, options: ['', '', '', ''], correctAnswer: 'A', answers: '', points: '',
-  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null,
+  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null, tarjima: null,
 };
 
 interface Meta { manbalar: string[] }
@@ -47,7 +50,7 @@ export default function QuestionEditor() {
 
   const [umumiy, setUmumiy] = useState<Umumiy>(() => ({
     fanId: Number(urlParams.get('fan')) || null, mavzuId: Number(urlParams.get('mavzu')) || null,
-    grade: '', source: '', language: 'uz', difficulty: qiyinlikDarajasi(urlParams.get('qiyinlik') || 2), status: 'faol',
+    grade: '', source: '', remark: '', language: 'uz', difficulty: qiyinlikDarajasi(urlParams.get('qiyinlik') || 2), status: 'faol',
   }));
   // Shu yerning o'zida yangi fan yoki mavzu qo'shish.
   const [yangiNom, setYangiNom] = useState<{ tur: 'fan' | 'mavzu'; nom: string } | null>(null);
@@ -76,7 +79,7 @@ export default function QuestionEditor() {
     if (!id) return;
     soro<Question>('GET', `questions/${id}`).then(s => {
       setUmumiy({
-        fanId: null, mavzuId: s.bankTopicId || null, grade: s.grade || '', source: s.source || '',
+        fanId: null, mavzuId: s.bankTopicId || null, grade: s.grade || '', source: s.source || '', remark: s.remark || '',
         language: (s.language as any) || 'uz', difficulty: qiyinlikDarajasi(s.difficulty || 2), status: (s.status as any) || 'faol',
       });
       setQ({
@@ -86,6 +89,7 @@ export default function QuestionEditor() {
         answers: (s.answers || []).join(', '), points: s.points != null ? String(s.points) : '',
         lockOptions: !!s.lockOptions, solution: s.solution || '', solutionStatus: (s.solutionStatus as any) || 'yoq',
         passage: s.passage || (s.passageId ? { id: s.passageId } : null),
+        tarjima: s.tarjima ? { til: s.tarjima.til || 'ru', text: s.tarjima.text || '', options: s.tarjima.options || [] } : null,
       });
       setIshlatilgan(s.usedCount || 0);
       setMuharrirKaliti(k => k + 1);
@@ -119,7 +123,8 @@ export default function QuestionEditor() {
   const yuk = (): Record<string, any> => ({
     bankTopicId: mavzu?.id ?? null, subject: fan?.name || '', topic: mavzu?.name || '',
     difficulty: umumiy.difficulty, status: umumiy.status, language: umumiy.language,
-    grade: umumiy.grade || null, source: umumiy.source || null,
+    grade: umumiy.grade || null, source: umumiy.source || null, remark: umumiy.remark.trim() || null,
+    tarjima: q.tarjima && (q.tarjima.text.trim() || q.tarjima.options.some(x => x.trim())) ? { ...q.tarjima, options: q.type === 'yopiq' ? q.options.map((_, i) => q.tarjima!.options[i] || '') : [] } : null,
     type: q.type, text: q.text, imageUrl: q.imageUrl,
     options: q.type === 'yopiq' ? q.options : null,
     correctAnswer: q.type === 'yozma' ? '' : q.correctAnswer.trim(),
@@ -182,6 +187,15 @@ export default function QuestionEditor() {
     if (r.mos === false) showNotification(`AI boshqa javob chiqardi (${r.aiJavobi}) — kalitni yoki yechimni tekshiring`, 'error');
     else showNotification(r.mos ? `Yechim qoralamasi tayyor — AI javobi kalit bilan mos (${r.aiJavobi})` : 'Yechim qoralamasi tayyor — tekshirib saqlang', 'success');
   });
+  // "Ikkinchi til" maydonini AI tarjimasi bilan to'ldirish (saqlanmaydi — tekshirib saqlaysiz).
+  const aiIkkinchiTil = () => aiIsh('ikkinchi', async () => {
+    const til = q.tarjima?.til || 'ru';
+    const r = await soro<Tarjima>('POST', `questions/${id}/ai/tarjima-matn`, { til });
+    setQ(x => ({ ...x, tarjima: { til: r.til, text: r.text, options: r.options || [] } }));
+    setMuharrirKaliti(k => k + 1);
+    showNotification("Tarjima to'ldirildi — tekshirib, saqlang", 'success');
+  });
+
   const aiTarjima = (til: string) => aiIsh('tarjima', async () => {
     const r = await soro<{ id: number }>('POST', `questions/${id}/ai/tarjima`, { til });
     showNotification("Tarjima qoralama bo'lib saqlandi — tekshirib, faol qiling", 'success');
@@ -294,6 +308,9 @@ export default function QuestionEditor() {
                 <datalist id="manbalar-royxati">{(meta?.manbalar || []).map(m => <option key={m} value={m} />)}</datalist>
               </Maydon>
             </div>
+            <Maydon nom="Izoh" izoh="Masalan: «2023 DTM, 1-variant» — bankda filtr, kitobchada (yoqilsa) savol ostida">
+              <input className={INPUT} value={umumiy.remark} maxLength={300} onChange={e => setUmumiy({ ...umumiy, remark: e.target.value })} placeholder="ixtiyoriy" />
+            </Maydon>
             <div className="grid grid-cols-1 gap-3">
               <Maydon nom="Til">
                 <select className={SELECT} value={umumiy.language} onChange={e => setUmumiy({ ...umumiy, language: e.target.value as any })}>
@@ -368,6 +385,39 @@ export default function QuestionEditor() {
                 </Maydon>
               )}
               {xato && (q.text || q.options.some(Boolean)) && <p className="text-[12px] text-xato">⚠ {xato}</p>}
+            </div>
+          </Karta>
+
+          <Karta sarlavha="Ikkinchi til" izoh="Ikki tilli kitobcha uchun (Chop etish → Kitobchalar → «Ikki tilli»): savol va variantlar tarjimasi"
+            amallar={savolTahrir && ai && q.tarjima && (
+              <Tugma kichik ikonka={<Sparkles size={13} />} disabled={!ai.yoqilgan || !tahrirRejimi}
+                title={!ai.yoqilgan ? AI_SOZLANMAGAN : !tahrirRejimi ? 'Avval savolni saqlang' : 'AI tarjima qiladi — tekshirib, saqlaysiz'}
+                yuklanmoqda={aiBand === 'ikkinchi'} onClick={aiIkkinchiTil}>AI bilan to'ldirish</Tugma>
+            )}>
+            <div className="space-y-3">
+              <Almashtirgich yoqilgan={!!q.tarjima} onChange={v => setQ(x => ({ ...x, tarjima: v ? (x.tarjima || { til: umumiy.language === 'ru' ? 'uz' : 'ru', text: '', options: [] }) : null }))}
+                nom="Tarjima bor" izoh={q.tarjima ? undefined : "O'chiq — kitobchada faqat asl matn"} />
+              {q.tarjima && (
+                <>
+                  <Maydon nom="Tarjima tili" className="max-w-48">
+                    <select className={SELECT} value={q.tarjima.til} onChange={e => setQ(x => ({ ...x, tarjima: { ...x.tarjima!, til: e.target.value as Tarjima['til'] } }))}>
+                      <option value="ru">Ruscha</option><option value="uz">O'zbekcha</option><option value="en">Inglizcha</option>
+                    </select>
+                  </Maydon>
+                  <RichTextEditor key={`tarjima-${muharrirKaliti}`} content={q.tarjima.text} onChange={text => setQ(x => ({ ...x, tarjima: { ...(x.tarjima || { til: 'ru', options: [] }), text } as Tarjima }))} />
+                  {q.type === 'yopiq' && (
+                    <div className="space-y-2">
+                      {q.options.map((o, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-center text-[13px] font-bold text-matn-sokin">{HARFLAR[i]}</span>
+                          <input className={INPUT} value={q.tarjima!.options[i] || ''} placeholder={o ? `${HARFLAR[i]}: ${o.replace(/<[^>]+>/g, '').slice(0, 40)}` : `${HARFLAR[i]} tarjimasi`}
+                            onChange={e => setQ(x => { const opts = [...(x.tarjima?.options || [])]; opts[i] = e.target.value; return { ...x, tarjima: { ...x.tarjima!, options: opts } }; })} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Karta>
 

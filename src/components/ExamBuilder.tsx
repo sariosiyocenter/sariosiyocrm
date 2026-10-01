@@ -152,7 +152,7 @@ export default function ExamBuilder() {
       </div>
 
       <Karta sarlavha="Asosiy">
-        <Maydon nom="Savollar manbasi" className="mb-4" izoh={qulfIzoh || (kalitRejimi
+        <Maydon div nom="Savollar manbasi" className="mb-4" izoh={qulfIzoh || (kalitRejimi
           ? "O'z test kitobchangiz (sotib olingan to'plam yoki ustoz tuzgan test): CRM ga faqat har variantning javob kaliti yoziladi, kitobchani o'zingiz chop etasiz."
           : 'Savollar bankdan olinadi, variantlar va kitobchalarni CRM o\'zi tuzadi va chop etadi.')}>
           <Tanlov qiymat={sozlama.source} onChange={v => !qulf && s({ source: v })}
@@ -164,10 +164,10 @@ export default function ExamBuilder() {
           <Maydon nom="Davomiyligi (daqiqa)"><input type="number" min={10} max={600} className={INPUT} value={davom} onChange={e => setDavom(Number(e.target.value))} /></Maydon>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <Maydon nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
+          <Maydon div nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
             <Tanlov qiymat={scoring} onChange={v => !qulf && setScoring(v)} variantlar={[{ v: 'blok', nom: 'Blok bali (DTM)' }, { v: 'foiz', nom: 'Foiz' }]} />
           </Maydon>
-          <Maydon nom="Xato javob uchun jarima" izoh={qulfIzoh || (sozlama.xatoJarima
+          <Maydon div nom="Xato javob uchun jarima" izoh={qulfIzoh || (sozlama.xatoJarima
             ? `Har xato javobga savol balining ${JARIMALAR.find(j => j.v === sozlama.xatoJarima)?.nom || sozlama.xatoJarima} qismi ayiriladi; bo'sh javobga jarima yo'q`
             : "Yo'q — xato javob 0 ball (manfiy ball yo'q)")}>
             <div className="space-y-2">
@@ -180,7 +180,7 @@ export default function ExamBuilder() {
               )}
             </div>
           </Maydon>
-          <Maydon nom="O'tish bali" izoh={sozlama.otish ? `Natijada «O'tdi / O'tmadi» chiqadi: hisobotlarda, ota-onaga xabarda va natija sahifasida` : "Yo'q — natijada o'tdi/o'tmadi ko'rsatilmaydi"}>
+          <Maydon div nom="O'tish bali" izoh={sozlama.otish ? `Natijada «O'tdi / O'tmadi» chiqadi: hisobotlarda, ota-onaga xabarda va natija sahifasida` : "Yo'q — natijada o'tdi/o'tmadi ko'rsatilmaydi"}>
             <div className="flex items-center gap-2">
               <div className="w-28 shrink-0">
                 <input type="number" min={0} step="0.1" inputMode="decimal" className={INPUT} placeholder="yo'q" aria-label="O'tish bali"
@@ -191,11 +191,11 @@ export default function ExamBuilder() {
                 variantlar={[{ v: 'foiz', nom: '%' }, { v: 'ball', nom: 'ball' }]} />
             </div>
           </Maydon>
-          <Maydon nom="O'rin hisoblash" izoh={sozlama.orinUsuli === 'ketma' ? "Teng ball — bir o'rin, keyingisi ketma-ket: 1, 2, 2, 3" : "Teng ball — bir o'rin, keyingisi tashlab: 1, 2, 2, 4 (musobaqa tartibi)"}>
+          <Maydon div nom="O'rin hisoblash" izoh={sozlama.orinUsuli === 'ketma' ? "Teng ball — bir o'rin, keyingisi ketma-ket: 1, 2, 2, 3" : "Teng ball — bir o'rin, keyingisi tashlab: 1, 2, 2, 4 (musobaqa tartibi)"}>
             <Tanlov qiymat={sozlama.orinUsuli} onChange={v => s({ orinUsuli: v })} variantlar={[{ v: 'otkazib', nom: '1, 2, 2, 4' }, { v: 'ketma', nom: '1, 2, 2, 3' }]} />
           </Maydon>
           {schools.length > 1 && (
-            <Maydon nom="Qatnashadigan filiallar" izoh={qulfIzoh || 'Umumiy reyting shu filiallar bo\'yicha'}>
+            <Maydon div nom="Qatnashadigan filiallar" izoh={qulfIzoh || 'Umumiy reyting shu filiallar bo\'yicha'}>
               <div className="flex flex-wrap gap-1.5">
                 {schools.map(sc => {
                   const bel = filiallar.includes(sc.id);
@@ -215,6 +215,26 @@ export default function ExamBuilder() {
               <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
                 <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
               </select>
+            </Maydon>
+          )}
+          {!kalitRejimi && (
+            <Maydon nom="Ko'p ishlatilganini olmaslik" izoh={qulfIzoh || (sozlama.ishlatishChegarasi == null
+              ? 'Cheklovsiz — kam ishlatilgani baribir birinchi olinadi'
+              : `Bankdan faqat ${sozlama.ishlatishChegarasi} martagacha ishlatilgan savollar olinadi (qo'lda tanlanganlar — baribir)`)}>
+              <div className="flex items-center gap-2 text-[12.5px] text-matn-sokin">
+                ishlatilgani ≤
+                <div className="w-24">
+                  <input type="number" min={0} max={1000} disabled={qulf} className={INPUT} placeholder="∞" aria-label="Ishlatish chegarasi"
+                    value={sozlama.ishlatishChegarasi ?? ''} onChange={e => s({ ishlatishChegarasi: e.target.value === '' ? null : Math.max(0, Math.min(1000, Math.round(Number(e.target.value) || 0))) })} />
+                </div>
+                marta
+              </div>
+            </Maydon>
+          )}
+          {!kalitRejimi && (
+            <Maydon div nom="Takroriy savollar" izoh={qulfIzoh || (sozlama.takror === 'yoq' ? "Tekshirilmaydi — bankdagi bir xil savol ikki marta tushishi mumkin" : sozlama.takror === 'savol' ? "Matni (va rasmi) bir xil savollardan bittasi olinadi" : "Matni va javob variantlari bir xil savollardan bittasi olinadi")}>
+              <Tanlov qiymat={sozlama.takror} onChange={v => !qulf && s({ takror: v })}
+                variantlar={[{ v: 'variant', nom: 'Matn + variantlar' }, { v: 'savol', nom: 'Faqat matn' }, { v: 'yoq', nom: "Yo'q" }]} />
             </Maydon>
           )}
         </div>
@@ -289,7 +309,7 @@ export default function ExamBuilder() {
             ))}
             {!qulf && sozlama.sessions.length < 10 && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => s({ sessions: [...sozlama.sessions, { id: sozlama.sessions.length + 1, name: `${sozlama.sessions.length + 1}-smena`, time: '' }] })}>Smena qo'shish</Tugma>}
             {sozlama.sessions.length > 1 && (
-              <Maydon nom="Smenalarga savollar" izoh={sozlama.sessionQuestions === 'alohida' ? "Keyingi smenaga oldingisidagi savollar tushmaydi — bank ko'proq kerak" : 'Hamma smena bir xil savollarni oladi (tartibi har variantda boshqa)'}>
+              <Maydon div nom="Smenalarga savollar" izoh={sozlama.sessionQuestions === 'alohida' ? "Keyingi smenaga oldingisidagi savollar tushmaydi — bank ko'proq kerak" : 'Hamma smena bir xil savollarni oladi (tartibi har variantda boshqa)'}>
                 <Tanlov qiymat={sozlama.sessionQuestions} onChange={v => !qulf && s({ sessionQuestions: v })} variantlar={[{ v: 'bir', nom: 'Bir xil' }, { v: 'alohida', nom: 'Har smenaga boshqa' }]} />
               </Maydon>
             )}
@@ -319,11 +339,11 @@ export default function ExamBuilder() {
         <div className="space-y-4">
           <Karta sarlavha="O'rinlashtirish">
             <div className="space-y-3">
-              <Maydon nom="O'rinlar" izoh={sozlama.seatMode === 'shaxmat' ? "Har o'rindan keyin bittasi bo'sh (oldida ham, yonida ham) — xonalar ikki barobar ko'p kerak" : "Xonadagi hamma o'rin ishlatiladi"}>
+              <Maydon div nom="O'rinlar" izoh={sozlama.seatMode === 'shaxmat' ? "Har o'rindan keyin bittasi bo'sh (oldida ham, yonida ham) — xonalar ikki barobar ko'p kerak" : "Xonadagi hamma o'rin ishlatiladi"}>
                 <Tanlov qiymat={sozlama.seatMode} onChange={v => s({ seatMode: v })} variantlar={[{ v: 'hammasi', nom: "Har o'rin" }, { v: 'shaxmat', nom: 'Shaxmat tartibi' }]} />
               </Maydon>
               {sozlama.sessions.length > 1 && (
-                <Maydon nom="Smenalarga bo'lish">
+                <Maydon div nom="Smenalarga bo'lish">
                   <Tanlov qiymat={sozlama.sessionFill} onChange={v => s({ sessionFill: v })} variantlar={[{ v: 'teng', nom: 'Teng' }, { v: 'ketma', nom: 'Birinchisi to\'lgach' }, { v: 'kurs', nom: 'Kurs bittada' }]} />
                 </Maydon>
               )}
@@ -351,7 +371,7 @@ export default function ExamBuilder() {
           </Karta>
           <Karta sarlavha="Natija va xabar">
             <div className="space-y-3">
-              <Maydon nom="Reyting">
+              <Maydon div nom="Reyting">
                 <div className="flex flex-wrap items-center gap-2">
                   <Tanlov qiymat={sozlama.ranking} onChange={v => s({ ranking: v })} variantlar={[{ v: 'hammasi', nom: "Hammaga o'rni" }, { v: 'top', nom: 'Faqat eng yaxshilar' }, { v: 'yoq', nom: "O'rin yo'q" }]} />
                   {sozlama.ranking === 'top' && <input type="number" min={1} className={`${INPUT} w-24`} value={sozlama.topN} onChange={e => s({ topN: Number(e.target.value) || 10 })} aria-label="Nechta" />}
