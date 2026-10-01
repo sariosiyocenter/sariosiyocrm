@@ -20,6 +20,7 @@ export interface Orin {
   resultId: number | null; reviewStatus: string | null; score: number | null;
   admitSentAt: string | null; admitStatus: 'yuborildi' | 'yuborilmoqda' | 'xato' | 'aloqa yoq' | 'yangilanadi' | null;
   leadId: number | null;
+  kod?: number | null; maktab?: string | null; sinf?: string | null;
 }
 
 export function useOrinlar(examId: number) {

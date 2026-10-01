@@ -19,7 +19,7 @@ import QulfKerak from './QulfKerak';
 // eshik ro'yxati va nazoratchi vedomosti.
 
 export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
-  const { settings, showNotification } = useCRM();
+  const { settings, schools, showNotification } = useCRM();
   const { soro } = useImtihonApi();
   const { data } = useOrinlar(exam.id);
   const s = exam.settings;
@@ -40,7 +40,17 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
   }), [exam, s]);
   const smenaNomi = (id: number) => { const x = s.sessions.find(y => y.id === id); return x ? `${x.name}${x.time ? ` (${x.time})` : ''}` : `${id}-smena`; };
-  const umumiy = { markaz, imtihon: exam.name, sana: exam.date, examId: exam.id, session: smena, smena: smenaNomi(smena) };
+  // Fan bandi: har blok — nomi va savollar soni (markaz varag'idagi "MATEMATIKA — 30 ta savol").
+  const fanlar = useMemo(() => {
+    const t = varaqTuzilmasi(exam.blocks, exam.scoring) as any;
+    return (t.bloklar || []).map((b: any) => `${String(b.nomi || '').toUpperCase()} — ${b.yopiq + b.raqamli + b.yozma} ta savol`).join('   ·   ');
+  }, [exam]);
+  const telefon = [settings?.adminPhone, settings?.adminPhone2].filter(Boolean).join(', ');
+  const umumiy = {
+    markaz, imtihon: exam.name, sana: exam.date, examId: exam.id, session: smena, smena: smenaNomi(smena),
+    logo: settings?.logo || null, manzil: settings?.address || null, telefon: telefon ? `Tel: ${telefon}` : null, fanlar,
+  };
+  const filialNomi = (id: number) => schools.find(x => x.id === id)?.name || null;
 
   // Kitobcha nusxalari: har variantga nechta (5% zaxira bilan).
   const nusxalar = useMemo(() => {
@@ -66,6 +76,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     const body = tanlanganlar.map(o => sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, {
       ism: o.name, kurs: o.groupName, xona: o.roomName, qator: o.row != null ? o.row + 1 : null, orin: o.col != null ? o.col + 1 : null,
       variant: o.variant, sheetCode: o.sheetCode, rasm: rasmli ? o.photo : null, mehmon: o.mehmon,
+      filial: filialNomi(o.schoolId), maktab: o.maktab, sinf: o.sinf, kod: o.kod,
     })}</div>`).join('')).join('');
     await chopEt({ sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, css: VARAQ_CSS, body, kutish: 45000 });
   });

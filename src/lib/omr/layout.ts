@@ -31,11 +31,11 @@ export const ONG = 190;
 const KENGLIK = ONG - CHAP;
 
 /** QR joyi: 1-sahifada katta, keyingilarida kichik. */
-export const QR_1 = { x: 146, y: 24, s: 24 };
+export const QR_1 = { x: 148, y: 36.5, s: 21 };
 export const QR_KEYINGI = { x: 170, y: 16, s: 20 };
-export const RASM = { x: 173, y: 24, w: 19, h: 24 };
+export const RASM = { x: 172.5, y: 36.5, w: 17.5, h: 21 };
 
-const Y0_BIRINCHI = 80;
+const Y0_BIRINCHI = 88;
 const Y0_KEYINGI = 42;
 const Y1 = 278;
 
@@ -58,13 +58,13 @@ const KATAK_BALANDLIK = 4 + KATAK_YOZUV + 1 + RAQAM_BELGILARI.length * KATAK_QAD
 const YOZMA_BALANDLIK = 40;
 
 // Variant va o'quvchi ID doirachalari (1-sahifa)
-export const VARIANT_Y = 67.5;
+export const VARIANT_Y = 75;
 export const VARIANT_X0 = 60;
 export const VARIANT_R = 2.1;
 export const ID_USTUNLARI = 6;
 export const ID_X0 = 70;
 export const ID_QADAM_X = 5;
-export const ID_Y0 = 29;
+export const ID_Y0 = 35.5;
 export const ID_QADAM_Y = 3.7;
 export const ID_R = 1.6;
 
@@ -161,7 +161,8 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
     const qatorlarMax = Math.floor((Y1 - y0) / QATOR);
     const sigim = ustunSoni * qatorlarMax;
     const olinadi = Math.min(kataklar.length - i, sigim);
-    const qatorlar = Math.ceil(olinadi / ustunSoni);
+    // Ustunda kamida 15 qator (Addmen varag'idagidek: 30 savol — 2 ustun × 15).
+    const qatorlar = Math.min(qatorlarMax, Math.max(Math.ceil(olinadi / ustunSoni), Math.min(15, olinadi)));
     for (let j = 0; j < olinadi; j++) {
       const kt = kataklar[i + j];
       const ustun = Math.floor(j / qatorlar);

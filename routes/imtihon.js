@@ -1271,7 +1271,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const seats = await prisma.examSeat.findMany({
         where,
         include: {
-          student: { select: { id: true, name: true, photo: true, phone: true } },
+          student: { select: { id: true, name: true, photo: true, phone: true, studentSchool: true, grade: true, oquvchiKod: { select: { kod: true } } } },
           results: { select: { id: true, reviewStatus: true, score: true } },
         },
         orderBy: [{ session: 'asc' }, { roomId: 'asc' }, { row: 'asc' }, { col: 'asc' }, { id: 'asc' }],
@@ -1288,6 +1288,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         seats: seats.map(s => ({
           id: s.id, studentId: s.studentId, name: s.student?.name || s.guestName || '', photo: s.student?.photo || null,
           phone: s.student?.phone || s.guestPhone || null, mehmon: !s.studentId, schoolId: s.schoolId,
+          // Javob varaqasidagi abituriyent ma'lumoti (markaz varag'idagidek): ID, maktab, sinf.
+          kod: s.student?.oquvchiKod?.kod ?? null, maktab: s.student?.studentSchool || null, sinf: s.student?.grade || null,
           groupId: s.groupId, groupName: s.groupId ? groupMap.get(s.groupId) || '' : '',
           session: s.session, roomId: s.roomId, roomName: s.roomId ? roomMap.get(s.roomId)?.name || '' : '',
           row: s.row, col: s.col, variant: s.variant, sheetCode: s.sheetCode, status: s.status,
