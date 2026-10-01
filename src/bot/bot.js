@@ -57,13 +57,13 @@ export const getStudentMenu = () => Markup.keyboard([
     ['📝 Imtihonlar', '🆔 ID raqam'],
     ['✍️ Shikoyat va takliflar', '👤 Profil'],
     ['🚪 Chiqish']
-]).resize();
+]).resize().persistent();
 
 const getTeacherMenu = () => Markup.keyboard([
     ['🎒 Davomat qilish', '📅 Mening Jadvalim'],
     ['💰 Oylik va Bonuslar', '👤 Profil'],
     ['🚪 Chiqish']
-]).resize();
+]).resize().persistent();
 
 // Botdagi xodim menyusi ham lavozim ruxsatiga bo'ysunadi (Sozlamalar → Ruxsatlar).
 // Ilgari haydovchidan boshqa har qanday xodim — resepshn, texnik xodim ham —
@@ -72,7 +72,7 @@ const getAdminMenu = (ruxsat) => {
     const q1 = [yetadimi(ruxsat, 'lidlar.royxat', 1) && '📢 Yangi Lidlar', yetadimi(ruxsat, 'bosh.korsatkich', 1) && '📊 Kunlik Hisobot'].filter(Boolean);
     // "⚙️ Sozlamalar" tugmasi bor edi, lekin uning ishlovchisi yo'q edi — bosilsa hech narsa bo'lmasdi.
     const q2 = [yetadimi(ruxsat, 'xabarlar.yuborish', 2) && '📧 Ommaviy xabar'].filter(Boolean);
-    return Markup.keyboard([q1, q2, ['🚪 Chiqish']].filter(q => q.length)).resize();
+    return Markup.keyboard([q1, q2, ['🚪 Chiqish']].filter(q => q.length)).resize().persistent();
 };
 
 /** Xodimning (User) amaldagi ruxsati — CRM dagi bilan bir xil. */
@@ -89,7 +89,7 @@ const getDriverMenu = () => Markup.keyboard([
     ['🚌 Bugungi reyslar'],
     [Markup.button.locationRequest('📍 Joylashuvni yuborish'), '🚍 Mening Transportim'],
     ['👤 Profil', '🚪 Chiqish']
-]).resize();
+]).resize().persistent();
 
 /** HTML rejimidagi xabar uchun: ism yoki manzilda "<" yoki "&" bo'lsa xabar yuborilmay qolardi. */
 const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -220,10 +220,12 @@ export async function rejaBekorXabari({ schoolId, telegramId, nomi }) {
     await botInstance.telegram.sendMessage(telegramId, `❌ «${nomi}» rejasi bekor qilindi.`).catch(() => {});
 }
 
+const buyruqlarQoyildi = new WeakSet();
+
 const getGuestMenu = () => Markup.keyboard([
     ['ℹ️ Markaz haqida', '📍 Geolokatsiya'],
     ['📝 Sinov darsiga yozilish', '📞 Kontaktlar']
-]).resize();
+]).resize().persistent();
 
 /**
  * Markaz sozlamalari (nom, logotip, manzil, telefon) — bir necha marta so'ralgani
@@ -552,7 +554,17 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         ]).resize());
     };
 
+    // /menu — doimiy menyuni qayta chiqaradi (eski chatlarda klaviatura yig'ilib qolgan bo'lsa).
+    botInstance.command('menu', async (ctx) => {
+        const schoolId = await filial(ctx);
+        const user = await findUser(ctx.from.id, schoolId);
+        return ctx.reply(user ? '📋 Asosiy menyu' : "📋 Menyu — ro'yxatdan o'tish uchun /start ni bosing", await menyu(user));
+    });
     botInstance.command('logout', logoutHandler);
+    if (!buyruqlarQoyildi.has(botInstance)) {
+        buyruqlarQoyildi.add(botInstance);
+        botInstance.telegram.setMyCommands([{ command: 'menu', description: '📋 Asosiy menyu' }, { command: 'start', description: '🏠 Boshidan boshlash' }]).catch(() => {});
+    }
     botInstance.hears('🚪 Chiqish', logoutHandler);
 
     botInstance.on('contact', async (ctx) => {
