@@ -932,8 +932,19 @@ Paper" esa undan setlar yasaydi. Bizda ham shunday: andozaning **ta'rifi** bankd
   `andozadanQoidalar`) → `POST /lock` → Chop etish shu imtihonda ochiladi. Bank yetmasa imtihon
   qoladi va "Imtihonlar"da ochiladi. Kirish: Chop etish ro'yxati pastida, qulflanmagan holatda
   ham, va Andoza muharririda "Savol qog'ozi" tugmasi.
-- **Bank**: savollar ro'yxati o'z ichida suriladi (sarlavha yopishqoq, sahifalash doim
-  ko'rinadi), filtr ustunlari balandligi mazmuniga qarab (`max-h-44`).
+- **Bank** qayta qurildi (foydalanuvchi: "o'ng panel tushunarsiz, tiqilinch, eski dasturdek" →
+  "filtr paneli + kartochkalar" tanlandi). Addmen'ning 3 ustuni (filtr qutilari to'ri, jadval,
+  o'ng amallar paneli) o'rniga: chapda yig'iladigan **filtr paneli** (fan; mavzular bo'limlari
+  bilan — bo'lim belgisi hamma mavzusini tanlaydi, 8 tadan ko'p bo'lsa qidiruv; qiyinlik va tur
+  tugmachalari; manba; foydalanuvchi filtrlari ⚙; to'plam; holat; QID oralig'i; "Filtr
+  qo'shish"); o'ngda qidiruv, tartib, **To'liq / Ixcham** ko'rinish, faol filtr yorliqlari (✕),
+  **savol kartochkalari** — matn formulalar bilan, rasm, A–D variantlar, to'g'ri javob yashil ✓,
+  raqamli javob, mavzu, qiyinlik, tur, filtr qiymatlari, necha marta ishlatilgani. Savol
+  belgilansa pastda **amallar paneli** chiqadi: Ko'rish (1 ta), O'zgartirish (avval "Belgilash"),
+  Filtr qiymatini olish (faqat chapda filtr qiymati belgilansa), Ishlatilishini nolga,
+  O'chirish. "Hammasi/Filtr bo'yicha" rejimi olib tashlandi (filtrni tozalash — shu). `GET
+  /api/bank/royxat` endi variantlar va javobni ham beradi. `FiltrUstuni.tsx` o'chirildi.
+  Sinov: `scratch/bank_ui2.mjs` (8/8, bazaga yozmaydi).
 
 Sinov: `scratch/chop_shots.mjs` (har hujjat, kun/tun, 390px), `scratch/andozadan_e2e.mjs`
 (ZZ andoza → imtihon → kalit; keyin imtihon, andoza o'chirildi va 8 savolning `usedCount`/

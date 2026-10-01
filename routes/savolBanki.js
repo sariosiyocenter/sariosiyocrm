@@ -6,7 +6,7 @@
 
 import prisma from '../lib/prisma.js';
 import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
-import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI } from '../lib/imtihon.js';
+import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI, savolVariantlari } from '../lib/imtihon.js';
 
 const nomi = (v, max = 200) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const kalit = v => nomi(v).toLowerCase();
@@ -541,11 +541,19 @@ export function registerSavolBankiRoutes(app) {
           select: {
             id: true, text: true, type: true, difficulty: true, status: true, toplam: true, source: true, tagIds: true,
             topic: true, bankTopicId: true, usedCount: true, createdAt: true, imageUrl: true,
+            options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, points: true, pCorrect: true,
           },
         }),
         prisma.question.count({ where }),
       ]);
-      res.json({ items: items.map(q => ({ ...q, text: String(q.text || '').slice(0, 400) })), total, sahifa, soni });
+      // Kartochkada savol to'liq ko'rinadi: matn, variantlar va to'g'ri javob.
+      res.json({
+        items: items.map(({ optionA, optionB, optionC, optionD, ...q }) => ({
+          ...q, text: String(q.text || '').slice(0, 2000),
+          options: savolVariantlari({ options: q.options, optionA, optionB, optionC, optionD }).map(o => o.slice(0, 500)),
+        })),
+        total, sahifa, soni,
+      });
     } catch (err) { xato(res, next)(err); }
   });
 

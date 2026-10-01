@@ -201,7 +201,7 @@ export function BelgilashOynasi({ ids, filtr, boshi, onYop, onSaqlandi }: {
 
   const bolimlar = [...new Set(filtr.mavzular.map(m => m.bolim))];
   return (
-    <Oyna sarlavha={`Belgilash — ${ids.length} ta savol`} izoh="Tanlangan maydonlar hamma tanlangan savolga qo'yiladi. «O'zgarmasin» — tegilmaydi." onYop={onYop} kenglik="max-w-xl"
+    <Oyna sarlavha={`O'zgartirish — ${ids.length} ta savol`} izoh="Tanlangan maydonlar hamma tanlangan savolga qo'yiladi. «O'zgarmasin» — tegilmaydi." onYop={onYop} kenglik="max-w-xl"
       pastki={<><Tugma onClick={onYop}>Bekor qilish</Tugma><Tugma turi="asosiy" yuklanmoqda={band} onClick={saqla}>Saqlash</Tugma></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Maydon nom="Mavzu">

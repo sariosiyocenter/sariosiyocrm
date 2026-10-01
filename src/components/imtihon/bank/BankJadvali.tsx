@@ -1,31 +1,36 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Eraser, ChevronLeft, ChevronRight, Loader2, Search, X, ArrowUpDown, CheckSquare } from 'lucide-react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, Check, SlidersHorizontal, Settings2, LayoutList, Rows3 } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
-import { Tugma, INPUT, Yuklanmoqda, BoshHolat } from '../ui';
-import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
-import FiltrUstuni, { type FiltrQiymati } from './FiltrUstuni';
+import { Tugma, Yorliq, Tanlov, Yuklanmoqda, BoshHolat } from '../ui';
+import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
+import { HARFLAR } from '../../../../lib/imtihon.js';
 import { FiltrSozlash, BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
-import { QIYINLIK, qiyinlikDaraja } from './qiyinlik';
-import type { BankDaraxt, BankFiltrMalumoti, BelgiGuruhi, Question } from '../../../types';
+import { QIYINLIK, QiyinlikYorligi } from './qiyinlik';
+import type { BankDaraxt, BankFiltrMalumoti, BelgiGuruhi, Question, SavolTuri } from '../../../types';
 
-// Savollar banki — Addmen "QUESTION BANK" ekrani tartibida (markaz shunga
-// o'rgangan): chapda filtr ustunlari (bo'lim, mavzu, foydalanuvchi filtrlari,
-// manba, qiyinlik), o'rtada savollar ro'yxati (QID, savol, to'plam, sana), o'ngda
-// amallar paneli (QID oralig'i, hisoblagichlar, belgilash, o'chirish...).
+// Savollar banki. Chapda filtr paneli (Addmen filtr ustunlari: mavzu bo'limlari
+// bilan, qiyinlik, tur, manba, foydalanuvchi filtrlari, to'plam, holat, QID
+// oralig'i), o'ngda savollar kartochka bo'lib — matn, variantlar va to'g'ri
+// javob ochmasdan ko'rinadi. Belgilansa pastda amallar paneli chiqadi.
 
-const SAHIFA = 100;
+type Korinish = 'karta' | 'ixcham';
+const SAHIFA: Record<Korinish, number> = { karta: 40, ixcham: 100 };
 type Holat = '' | 'faol' | 'qoralama' | 'arxiv';
-interface Tanlov {
-  bolimlar: string[]; mavzular: number[]; qiyinlik: number[]; manbalar: string[];
-  belgilar: Record<number, number[]>; toplam: string | null; holat: Holat; tur: string; qidiruv: string;
+interface FiltrTanlovi {
+  mavzular: number[]; qiyinlik: number[]; manbalar: string[]; belgilar: Record<number, number[]>;
+  toplam: string | null; holat: Holat; tur: '' | SavolTuri; qidiruv: string; qidDan: string; qidGacha: string;
 }
-const BOSH: Tanlov = { bolimlar: [], mavzular: [], qiyinlik: [], manbalar: [], belgilar: {}, toplam: null, holat: '', tur: '', qidiruv: '' };
+const BOSH: FiltrTanlovi = { mavzular: [], qiyinlik: [], manbalar: [], belgilar: {}, toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', yozma: 'Yozma' };
+const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 const sana = (s?: string) => (s ? new Date(s).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '.') : '');
+const almashtirRoyxat = <K,>(l: K[], k: K) => (l.includes(k) ? l.filter(x => x !== k) : [...l, k]);
+const TABLETKA = (faol: boolean) => `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust border-brand' : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn hover:border-chiziq-kuchli'}`;
 
-type Qator = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl'>;
+type Qator = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points'>;
 
 export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, onTuzilma, savolTahrir }: {
   daraxt: BankDaraxt; fanId: number | null; onFan: (id: number) => void; yangilaDaraxt: () => void;
@@ -38,11 +43,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const fan = daraxt.fanlar.find(f => f.id === fanId) || daraxt.fanlar[0] || null;
 
   const [filtr, setFiltr] = useState<BankFiltrMalumoti | null>(null);
-  const [t, setT] = useState<Tanlov>(BOSH);
-  const [qid, setQid] = useState({ dan: '', gacha: '' });
-  // Addmen: ALL — ustun filtrlarisiz (faqat fan va QID oralig'i), FILTERED — filtr bo'yicha.
-  const [rejim, setRejim] = useState<'hammasi' | 'filtr'>('filtr');
+  const [t, setT] = useState<FiltrTanlovi>(BOSH);
   const [tartib, setTartib] = useState<'asc' | 'desc'>('asc');
+  const [korinish, setKorinishHolat] = useState<Korinish>(() => { try { return localStorage.getItem('bank_korinish') === 'ixcham' ? 'ixcham' : 'karta'; } catch { return 'karta'; } });
+  const setKorinish = (k: Korinish) => { setKorinishHolat(k); try { localStorage.setItem('bank_korinish', k); } catch { /* eslab qolinmaydi */ } };
   const [sahifa, setSahifa] = useState(1);
   const [royxat, setRoyxat] = useState<{ items: Qator[]; total: number } | null>(null);
   const [yuklanmoqda, setYuklanmoqda] = useState(false);
@@ -52,9 +56,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const [belgilash, setBelgilash] = useState(false);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   const [band, setBand] = useState<string | null>(null);
+  // Telefonda filtr paneli tugma bilan ochiladi.
+  const [filtrOchiq, setFiltrOchiq] = useState(false);
+  const soni = SAHIFA[korinish];
 
   // Fan almashsa — filtr va tanlov boshidan.
-  useEffect(() => { setT(BOSH); setTanlangan(new Set()); setSahifa(1); setQid({ dan: '', gacha: '' }); }, [fan?.id]);
+  useEffect(() => { setT(BOSH); setTanlangan(new Set()); setSahifa(1); }, [fan?.id]);
 
   const filtrniYukla = useCallback(async () => {
     if (!fan) return;
@@ -62,57 +69,52 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   }, [fan?.id, soro]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { filtrniYukla(); }, [filtrniYukla, qayta]);
 
-  const sorov = useMemo(() => {
-    const f: Record<string, unknown> = { fanId: fan?.id, qidDan: qid.dan || undefined, qidGacha: qid.gacha || undefined, holat: t.holat || undefined };
-    if (rejim === 'filtr') {
-      Object.assign(f, {
-        bolimlar: t.bolimlar, mavzular: t.mavzular, qiyinlik: t.qiyinlik, manbalar: t.manbalar, belgilar: t.belgilar,
-        toplam: t.toplam ?? undefined, tur: t.tur || undefined, qidiruv: t.qidiruv.trim() || undefined,
-      });
-    }
-    return encodeURIComponent(JSON.stringify(f));
-  }, [fan?.id, t, qid, rejim]);
+  const sorov = useMemo(() => encodeURIComponent(JSON.stringify({
+    fanId: fan?.id, qidDan: t.qidDan || undefined, qidGacha: t.qidGacha || undefined, holat: t.holat || undefined,
+    mavzular: t.mavzular, qiyinlik: t.qiyinlik, manbalar: t.manbalar, belgilar: t.belgilar,
+    toplam: t.toplam ?? undefined, tur: t.tur || undefined, qidiruv: t.qidiruv.trim() || undefined,
+  })), [fan?.id, t]);
 
-  useEffect(() => { setSahifa(1); }, [sorov, tartib]);
+  useEffect(() => { setSahifa(1); }, [sorov, tartib, korinish]);
   useEffect(() => {
     if (!fan) return;
     let bekor = false;
     setYuklanmoqda(true);
     const kut = setTimeout(() => {
-      soro<{ items: Qator[]; total: number }>('GET', `bank/royxat?f=${sorov}&sahifa=${sahifa}&soni=${SAHIFA}&tartib=${tartib}`)
+      soro<{ items: Qator[]; total: number }>('GET', `bank/royxat?f=${sorov}&sahifa=${sahifa}&soni=${soni}&tartib=${tartib}`)
         .then(r => { if (!bekor) setRoyxat(r); })
         .catch(e => { if (!bekor) showNotification(e.message, 'error'); })
         .finally(() => { if (!bekor) setYuklanmoqda(false); });
     }, 250);
     return () => { bekor = true; clearTimeout(kut); };
-  }, [sorov, sahifa, tartib, qayta, fan?.id, soro]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sorov, sahifa, soni, tartib, qayta, fan?.id, soro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ozgardi = () => { setQayta(n => n + 1); yangilaDaraxt(); };
 
-  // --- Filtr ustunlari ------------------------------------------------------
-  const ustunlar = useMemo(() => {
-    if (!filtr) return null;
-    const bolimlar: FiltrQiymati<string>[] = filtr.bolimlar.map(b => ({ k: b.nom, nom: b.nom || <i className="text-matn-xira">Bo'limsiz</i>, soni: b.soni }));
-    const mavzular: FiltrQiymati<number>[] = filtr.mavzular
-      .filter(m => !t.bolimlar.length || t.bolimlar.includes(m.bolim))
-      .map(m => ({ k: m.id, nom: m.nom, soni: m.soni, izoh: m.bolim || undefined }));
-    const manbalar: FiltrQiymati<string>[] = filtr.manbalar.map(m => ({ k: m.nom, nom: m.nom || <i className="text-matn-xira">Manbasiz</i>, soni: m.soni }));
-    const qiyinlik: FiltrQiymati<number>[] = QIYINLIK.map((q, i) => ({
-      k: q.d, soni: filtr.qiyinlik[i], nom: <span className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{q.nom}</span>,
-    }));
-    const guruh = (g: BelgiGuruhi): FiltrQiymati<number>[] => g.tags.map(x => ({ k: x.id, nom: x.name, soni: filtr.belgilar[x.id] || 0 }));
-    return { bolimlar, mavzular, manbalar, qiyinlik, guruh };
-  }, [filtr, t.bolimlar]);
+  const mavzuNomi = useMemo(() => new Map((filtr?.mavzular || []).map(m => [m.id, m.nom])), [filtr]);
+  const belgiNomi = useMemo(() => new Map((filtr?.guruhlar || []).flatMap(g => g.tags.map(x => [x.id, x.name] as const))), [filtr]);
 
-  const belgiUstuni = (g: BelgiGuruhi) => ustunlar && (
-    <FiltrUstuni key={`g${g.id}`} sarlavha={g.name} qiymatlar={ustunlar.guruh(g)} tanlangan={t.belgilar[g.id] || []} bosh="Qiymat yo'q — ⚙ orqali qo'shing"
-      onChange={v => setT(x => ({ ...x, belgilar: { ...x.belgilar, [g.id]: v } }))} onSozla={savolTahrir ? () => setSozlash(g) : undefined} />
-  );
+  // Faol filtrlar — ro'yxat ustida olib tashlanadigan yorliqlar.
+  const yorliqlar = useMemo(() => {
+    const l: { k: string; nom: string; ol: () => void }[] = [];
+    for (const id of t.mavzular) l.push({ k: `m${id}`, nom: mavzuNomi.get(id) || `#${id}`, ol: () => setT(x => ({ ...x, mavzular: x.mavzular.filter(y => y !== id) })) });
+    for (const d of t.qiyinlik) l.push({ k: `q${d}`, nom: QIYINLIK[d - 1]?.nom || String(d), ol: () => setT(x => ({ ...x, qiyinlik: x.qiyinlik.filter(y => y !== d) })) });
+    if (t.tur) l.push({ k: 'tur', nom: TUR_NOMI[t.tur], ol: () => setT(x => ({ ...x, tur: '' })) });
+    for (const m of t.manbalar) l.push({ k: `s${m}`, nom: m || 'Manbasiz', ol: () => setT(x => ({ ...x, manbalar: x.manbalar.filter(y => y !== m) })) });
+    for (const [g, ids] of Object.entries(t.belgilar)) for (const id of ids) {
+      l.push({ k: `b${id}`, nom: belgiNomi.get(id) || `#${id}`, ol: () => setT(x => ({ ...x, belgilar: { ...x.belgilar, [g]: (x.belgilar[Number(g)] || []).filter(y => y !== id) } })) });
+    }
+    if (t.toplam !== null) l.push({ k: 'toplam', nom: `Fayl: ${t.toplam || "to'plamsiz"}`, ol: () => setT(x => ({ ...x, toplam: null })) });
+    if (t.holat) l.push({ k: 'holat', nom: HOLAT_NOMI[t.holat], ol: () => setT(x => ({ ...x, holat: '' })) });
+    if (t.qidDan || t.qidGacha) l.push({ k: 'qid', nom: `QID ${t.qidDan || '…'}–${t.qidGacha || '…'}`, ol: () => setT(x => ({ ...x, qidDan: '', qidGacha: '' })) });
+    return l;
+  }, [t, mavzuNomi, belgiNomi]);
+  const tozala = () => setT(x => ({ ...BOSH, qidiruv: x.qidiruv }));
 
   // --- Tanlash ---------------------------------------------------------------
   const sahifadagi = royxat?.items.map(q => q.id) || [];
   const sahifaTanlangan = sahifadagi.length > 0 && sahifadagi.every(id => tanlangan.has(id));
-  const almashtir = (id: number) => setTanlangan(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const almashtir = useCallback((id: number) => setTanlangan(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
   const sahifaniTanla = () => setTanlangan(s => {
     const n = new Set(s);
     if (sahifaTanlangan) sahifadagi.forEach(id => n.delete(id)); else sahifadagi.forEach(id => n.add(id));
@@ -132,13 +134,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     try { await f(); } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(null); }
   };
 
-  const korish = (id?: number) => ish('korish', async () => {
-    const q = id ?? ids[0];
-    if (!q) throw new Error("Ko'rish uchun savolni belgilang");
-    setOchiq(await soro<Question>('GET', `questions/${q}`));
-  });
+  const korish = useCallback((id: number) => {
+    setBand('korish');
+    soro<Question>('GET', `questions/${id}`).then(setOchiq).catch(e => showNotification(e.message, 'error')).finally(() => setBand(null));
+  }, [soro]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Belgilash oynasi — ustunlarda bittadan tanlangan qiymat oldindan qo'yiladi (Addmen SAVE).
+  // O'zgartirish oynasi — filtrda bittadan tanlangan qiymat oldindan qo'yiladi (Addmen SAVE).
   const belgilashBoshi = (): BelgilashBoshi => {
     const b: BelgilashBoshi = { guruhlar: {} };
     if (t.mavzular.length === 1) b.mavzuId = t.mavzular[0];
@@ -148,20 +149,17 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     return b;
   };
 
-  // Addmen REMOVE FILTER: ustunlarda belgilangan qiymatlar tanlangan savollardan olinadi.
+  // Addmen REMOVE FILTER: filtrda belgilangan qiymatlar tanlangan savollardan olinadi.
+  const tagOl = Object.values(t.belgilar).flat();
   const belgiOl = () => ish('ol', async () => {
-    const tagOl = Object.values(t.belgilar).flat();
-    if (!ids.length) throw new Error('Savollarni belgilang');
-    if (!tagOl.length) throw new Error("Olib tashlanadigan qiymatni filtr ustunida belgilang");
-    const nomlar = (filtr?.guruhlar || []).flatMap(g => g.tags).filter(x => tagOl.includes(x.id)).map(x => x.name);
+    const nomlar = tagOl.map(id => belgiNomi.get(id)).filter(Boolean);
     if (!(await confirm({ message: `${ids.length} ta savoldan «${nomlar.join('», «')}» olib tashlansinmi?`, danger: false }))) return;
     await soro('PUT', 'questions/bulk', { ids, tagOl });
-    showNotification('Belgilar olib tashlandi', 'success');
+    showNotification('Filtr qiymati olib tashlandi', 'success');
     ozgardi();
   });
 
   const ishlatilishNol = () => ish('nol', async () => {
-    if (!ids.length) throw new Error('Savollarni belgilang');
     if (!(await confirm({ message: `${ids.length} ta savolning «necha marta ishlatilgan» hisobi nolga tushirilsinmi? Imtihon tuzishda ular yana birinchi navbatda olinadi.`, danger: false }))) return;
     await soro('PUT', 'questions/bulk', { ids, ishlatilishNol: true });
     showNotification('Ishlatilish hisobi nolga tushirildi', 'success');
@@ -169,15 +167,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   });
 
   const ochir = () => ish('ochir', async () => {
-    if (!ids.length) throw new Error('Savollarni belgilang');
     if (!(await confirm(`${ids.length} ta savol o'chirilsinmi? Imtihonda ishlatilganlari o'chirilmaydi — arxivga (yashirin) o'tadi.`))) return;
     const r = await soro<{ ochirildi: number; arxivlandi: number }>('POST', 'questions/bulk-ochir', { ids });
     showNotification(`${r.ochirildi} ta o'chirildi${r.arxivlandi ? `, ${r.arxivlandi} tasi arxivga o'tdi` : ''}`, 'info');
     setTanlangan(new Set());
     ozgardi();
   });
-
-  const filtrBor = t !== BOSH && JSON.stringify(t) !== JSON.stringify(BOSH);
 
   if (!fan) {
     return (
@@ -190,157 +185,191 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     );
   }
 
-  const jamiSahifa = royxat ? Math.max(1, Math.ceil(royxat.total / SAHIFA)) : 1;
+  const jamiSahifa = royxat ? Math.max(1, Math.ceil(royxat.total / soni)) : 1;
+  const sahifalash = royxat && royxat.total > soni && (
+    <span className="inline-flex items-center gap-1 text-[12px] text-matn-sokin">
+      <button aria-label="Oldingi sahifa" disabled={sahifa <= 1} onClick={() => setSahifa(s => s - 1)} className="p-1 rounded-lg hover:bg-ichki disabled:opacity-30 cursor-pointer"><ChevronLeft size={15} /></button>
+      <span className="raqam">{sahifa} / {jamiSahifa}</span>
+      <button aria-label="Keyingi sahifa" disabled={sahifa >= jamiSahifa} onClick={() => setSahifa(s => s + 1)} className="p-1 rounded-lg hover:bg-ichki disabled:opacity-30 cursor-pointer"><ChevronRight size={15} /></button>
+    </span>
+  );
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_200px] gap-3 items-start">
-        {/* Filtr ustunlari — Addmen'dagidek 3 ustunli to'r */}
-        <div className="space-y-3 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-matn-sokin">
-              Fan
-              <select className="px-2.5 py-1.5 bg-sirt border border-chiziq rounded-lg text-[13px] font-bold text-matn outline-none focus:border-brand cursor-pointer" value={fan.id} onChange={e => onFan(Number(e.target.value))} aria-label="Fan">
-                {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name} ({f.jami - f.arxiv})</option>)}
-              </select>
-            </label>
-            {filtrBor && <Tugma kichik turi="oddiy" ikonka={<Eraser size={13} />} onClick={() => setT(BOSH)}>Filtrni tozalash</Tugma>}
-            {rejim === 'hammasi' && <span className="text-[11.5px] font-semibold text-ogoh">«Hammasi» rejimi — ustun filtrlari hisobga olinmaydi</span>}
+    <div className="grid grid-cols-1 lg:grid-cols-[264px_minmax(0,1fr)] gap-4 items-start">
+      {/* ---------------- Filtr paneli ---------------- */}
+      <aside aria-label="Filtrlar"
+        className={`${filtrOchiq ? 'block' : 'hidden'} lg:block lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto bg-sirt border border-chiziq rounded-2xl`}>
+        <div className="p-3 space-y-2.5 border-b border-chiziq">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="flex items-center gap-1.5 text-[13px] font-bold text-matn"><SlidersHorizontal size={14} className="text-brand" /> Filtrlar</h3>
+            {yorliqlar.length > 0 && <button onClick={tozala} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer">Tozalash</button>}
           </div>
-          {!ustunlar ? <Yuklanmoqda /> : (
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-2.5 ${rejim === 'hammasi' ? 'opacity-50' : ''}`}>
-              <FiltrUstuni sarlavha="Bo'limlar" qiymatlar={ustunlar.bolimlar} tanlangan={t.bolimlar}
-                onChange={v => setT(x => ({ ...x, bolimlar: v, mavzular: x.mavzular.filter(id => !v.length || v.includes(filtr!.mavzular.find(m => m.id === id)?.bolim ?? '')) }))}
-                onSozla={savolTahrir ? onTuzilma : undefined} />
-              <FiltrUstuni sarlavha="Bo'limlarning mavzulari" qiymatlar={ustunlar.mavzular} tanlangan={t.mavzular} bosh="Mavzu yo'q"
-                onChange={v => setT(x => ({ ...x, mavzular: v }))} onSozla={savolTahrir ? onTuzilma : undefined} />
-              {filtr!.guruhlar[0] && belgiUstuni(filtr!.guruhlar[0])}
-              <FiltrUstuni sarlavha="Manbasi" qiymatlar={ustunlar.manbalar} tanlangan={t.manbalar} onChange={v => setT(x => ({ ...x, manbalar: v }))} />
-              <FiltrUstuni sarlavha="Qiyinlik" qiymatlar={ustunlar.qiyinlik} tanlangan={t.qiyinlik} balandlik="h-auto" onChange={v => setT(x => ({ ...x, qiyinlik: v }))} />
-              {filtr!.guruhlar.slice(1).map(belgiUstuni)}
-              {savolTahrir && (
+          <select className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[13px] font-semibold text-matn outline-none focus:border-brand cursor-pointer" value={fan.id} onChange={e => onFan(Number(e.target.value))} aria-label="Fan">
+            {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name} ({f.jami - f.arxiv})</option>)}
+          </select>
+        </div>
+        {!filtr ? <Yuklanmoqda /> : (
+          <>
+            <Bolim nom="Mavzular" tanlangan={t.mavzular.length} boshOchiq onSozla={savolTahrir ? onTuzilma : undefined} sozlashIzoh="Bo'lim va mavzular — Tuzilma">
+              <MavzuRoyxati filtr={filtr} tanlangan={t.mavzular} onChange={v => setT(x => ({ ...x, mavzular: v }))} />
+            </Bolim>
+            <Bolim nom="Qiyinlik" tanlangan={t.qiyinlik.length} boshOchiq>
+              <div className="flex flex-wrap gap-1.5">
+                {QIYINLIK.map((q, i) => {
+                  const faol = t.qiyinlik.includes(q.d);
+                  return (
+                    <button key={q.d} type="button" aria-pressed={faol} onClick={() => setT(x => ({ ...x, qiyinlik: almashtirRoyxat(x.qiyinlik, q.d) }))}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer transition-colors ${faol ? `${q.fon} ${q.matn} ${q.chiziq}` : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn'}`}>
+                      <span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{q.nom}<span className="raqam text-[11px] opacity-70">{filtr.qiyinlik[i]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Bolim>
+            <Bolim nom="Savol turi" tanlangan={t.tur ? 1 : 0} boshOchiq>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(TUR_NOMI) as SavolTuri[]).filter(k => filtr.turlar[k] || t.tur === k).map(k => (
+                  <button key={k} type="button" aria-pressed={t.tur === k} onClick={() => setT(x => ({ ...x, tur: x.tur === k ? '' : k }))} className={TABLETKA(t.tur === k)}>
+                    {TUR_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.turlar[k]}</span>
+                  </button>
+                ))}
+              </div>
+            </Bolim>
+            {filtr.manbalar.length > 0 && (
+              <Bolim nom="Manba" tanlangan={t.manbalar.length} boshOchiq={filtr.manbalar.length > 1}>
+                <Belgilar qiymatlar={filtr.manbalar.map(m => ({ k: m.nom, nom: m.nom || <i className="text-matn-xira">Manbasiz</i>, soni: m.soni }))}
+                  tanlangan={t.manbalar} onChange={v => setT(x => ({ ...x, manbalar: v }))} />
+              </Bolim>
+            )}
+            {filtr.guruhlar.map(g => (
+              <Bolim key={g.id} nom={g.name} tanlangan={(t.belgilar[g.id] || []).length} boshOchiq onSozla={savolTahrir ? () => setSozlash(g) : undefined} sozlashIzoh="Qiymatlarni qo'shish, nomini o'zgartirish">
+                {g.tags.length ? (
+                  <Belgilar qiymatlar={g.tags.map(x => ({ k: x.id, nom: x.name, soni: filtr.belgilar[x.id] || 0 }))}
+                    tanlangan={t.belgilar[g.id] || []} onChange={v => setT(x => ({ ...x, belgilar: { ...x.belgilar, [g.id]: v } }))} />
+                ) : <p className="text-[12px] text-matn-xira">Qiymat yo'q — ⚙ orqali qo'shing</p>}
+              </Bolim>
+            ))}
+            {filtr.toplamlar.length > 0 && (
+              <Bolim nom="To'plam (fayl)" tanlangan={t.toplam !== null ? 1 : 0}>
+                <Belgilar qiymatlar={filtr.toplamlar.map(x => ({ k: x.nom, nom: x.nom || <i className="text-matn-xira">To'plamsiz</i>, soni: x.soni }))}
+                  tanlangan={t.toplam !== null ? [t.toplam] : []} onChange={v => setT(x => ({ ...x, toplam: v.length ? v[v.length - 1] : null }))} />
+              </Bolim>
+            )}
+            <Bolim nom="Holati" tanlangan={t.holat ? 1 : 0}>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(HOLAT_NOMI) as Exclude<Holat, ''>[]).map(k => (
+                  <button key={k} type="button" aria-pressed={t.holat === k} onClick={() => setT(x => ({ ...x, holat: x.holat === k ? '' : k }))} className={TABLETKA(t.holat === k)}>
+                    {HOLAT_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.holat[k]}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-matn-xira">Tanlanmasa — faol va qoralama (arxiv yashirin)</p>
+            </Bolim>
+            <Bolim nom="QID oralig'i" tanlangan={t.qidDan || t.qidGacha ? 1 : 0}>
+              <div className="flex items-center gap-2">
+                <input className="w-full min-w-0 px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] raqam outline-none focus:border-brand" inputMode="numeric" placeholder="dan" aria-label="QID dan"
+                  value={t.qidDan} onChange={e => setT(x => ({ ...x, qidDan: e.target.value.replace(/\D/g, '') }))} />
+                <span className="text-matn-xira">–</span>
+                <input className="w-full min-w-0 px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] raqam outline-none focus:border-brand" inputMode="numeric" placeholder="gacha" aria-label="QID gacha"
+                  value={t.qidGacha} onChange={e => setT(x => ({ ...x, qidGacha: e.target.value.replace(/\D/g, '') }))} />
+              </div>
+            </Bolim>
+            {savolTahrir && (
+              <div className="p-3">
                 <button type="button" onClick={() => setSozlash('yangi')}
-                  className="rounded-xl border-2 border-dashed border-chiziq-kuchli min-h-24 flex flex-col items-center justify-center gap-1 text-[12px] font-semibold text-matn-sokin hover:text-brand hover:border-brand cursor-pointer">
-                  <Plus size={16} /> Filtr qo'shish
-                  <span className="text-[11px] font-normal text-matn-xira px-3 text-center">Masalan: «Milliy sertifikat savollari», «Test turi»</span>
+                  className="w-full rounded-xl border border-dashed border-chiziq-kuchli px-3 py-2.5 flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-matn-sokin hover:text-brand hover:border-brand cursor-pointer"
+                  title="Masalan: «Milliy sertifikat savollari», «Test turi»">
+                  <Plus size={14} /> Filtr qo'shish
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </>
+        )}
+      </aside>
+
+      {/* ---------------- Savollar ---------------- */}
+      <div className="min-w-0 space-y-3">
+        <div className="bg-sirt border border-chiziq rounded-2xl p-2.5 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setFiltrOchiq(o => !o)} aria-expanded={filtrOchiq}
+            className={`lg:hidden ${TABLETKA(filtrOchiq)} py-2`}><SlidersHorizontal size={14} /> Filtrlar{yorliqlar.length > 0 && <span className="raqam">({yorliqlar.length})</span>}</button>
+          <div className="relative flex-1 min-w-48">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
+            <input className="w-full pl-9 pr-8 py-2 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand placeholder:text-matn-xira"
+              placeholder="Savol matnidan qidirish" aria-label="Savol matnidan qidirish" value={t.qidiruv} onChange={e => setT(x => ({ ...x, qidiruv: e.target.value }))} />
+            {t.qidiruv && <button aria-label="Qidiruvni tozalash" onClick={() => setT(x => ({ ...x, qidiruv: '' }))} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-matn-xira hover:text-matn cursor-pointer"><X size={14} /></button>}
+          </div>
+          <select className="px-2.5 py-2 bg-ichki border border-chiziq rounded-xl text-[12.5px] text-matn outline-none cursor-pointer" value={tartib} onChange={e => setTartib(e.target.value as 'asc' | 'desc')} aria-label="Tartib">
+            <option value="asc">QID bo'yicha</option>
+            <option value="desc">Yangilari avval</option>
+          </select>
+          <Tanlov kichik qiymat={korinish} onChange={setKorinish} variantlar={[
+            { v: 'karta', nom: <span className="inline-flex items-center gap-1.5" title="Savol, variantlar va javob"><LayoutList size={14} /> To'liq</span> },
+            { v: 'ixcham', nom: <span className="inline-flex items-center gap-1.5" title="Bir qatordan"><Rows3 size={14} /> Ixcham</span> },
+          ]} />
         </div>
 
-        {/* Savollar ro'yxati */}
-        <section className="bg-sirt border border-chiziq rounded-xl min-w-0 flex flex-col" aria-label="Savollar">
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-chiziq">
-            <div className="relative flex-1 min-w-40">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-matn-xira" />
-              <input className={`${INPUT} py-1.5 pl-8 text-[12.5px]`} placeholder="Savol matnidan qidirish" aria-label="Savol matnidan qidirish" value={t.qidiruv} onChange={e => setT(x => ({ ...x, qidiruv: e.target.value }))} />
-              {t.qidiruv && <button aria-label="Tozalash" onClick={() => setT(x => ({ ...x, qidiruv: '' }))} className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-matn-xira hover:text-matn cursor-pointer"><X size={13} /></button>}
-            </div>
-            <select className="px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none cursor-pointer max-w-44" value={t.toplam ?? '__hammasi'} aria-label="To'plam (fayl)"
-              onChange={e => setT(x => ({ ...x, toplam: e.target.value === '__hammasi' ? null : e.target.value }))}>
-              <option value="__hammasi">Hamma to'plamlar</option>
-              {(filtr?.toplamlar || []).map(x => <option key={x.nom || '_'} value={x.nom}>{x.nom || "To'plamsiz"} ({x.soni})</option>)}
-            </select>
-            <select className="px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none cursor-pointer" value={t.holat} aria-label="Holati"
-              onChange={e => setT(x => ({ ...x, holat: e.target.value as Holat }))}>
-              <option value="">Faol va qoralama</option>
-              <option value="faol">Faol ({filtr?.holat.faol ?? 0})</option>
-              <option value="qoralama">Qoralama ({filtr?.holat.qoralama ?? 0})</option>
-              <option value="arxiv">Yashirin — arxiv ({filtr?.holat.arxiv ?? 0})</option>
-            </select>
-            <select className="px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none cursor-pointer" value={t.tur} aria-label="Savol turi"
-              onChange={e => setT(x => ({ ...x, tur: e.target.value }))}>
-              <option value="">Hamma turlar</option>
-              <option value="yopiq">Variantli</option>
-              <option value="raqamli">Raqamli javob</option>
-              <option value="yozma">Yozma</option>
-            </select>
-          </div>
-          {/* Ro'yxat o'z ichida suriladi: qidiruv, sarlavha va sahifalash doim ko'rinib turadi. */}
-          <div className="overflow-auto xl:max-h-[calc(100vh-370px)] xl:min-h-[420px] min-h-0">
-            <table className="w-full text-[12.5px]">
-              <thead className="bg-ichki text-matn-sokin text-[11.5px] sticky top-0 z-[1] shadow-[0_1px_0_var(--color-chiziq)]">
-                <tr>
-                  <th className="w-8 px-2 py-2"><input type="checkbox" aria-label="Sahifadagi hammasini tanlash" className="w-3.5 h-3.5 accent-[var(--color-brand)] cursor-pointer" checked={sahifaTanlangan} onChange={sahifaniTanla} /></th>
-                  <th className="px-1 py-2 text-left font-semibold w-16">
-                    <button className="inline-flex items-center gap-1 cursor-pointer hover:text-matn" onClick={() => setTartib(x => (x === 'asc' ? 'desc' : 'asc'))} title="Tartib">QID <ArrowUpDown size={11} /></button>
-                  </th>
-                  <th className="px-2 py-2 text-left font-semibold">Savol</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">To'plam</th>
-                  <th className="px-2 py-2 text-left font-semibold w-[68px]">Sana</th>
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-chiziq">
-                {royxat?.items.map(q => <SavolQatori key={q.id} q={q} tanlangan={tanlangan.has(q.id)} onTanla={almashtir} onKor={korish} />)}
-              </tbody>
-            </table>
-            {royxat && !royxat.items.length && !yuklanmoqda && (
-              <p className="px-4 py-10 text-center text-[12.5px] text-matn-xira">
-                {filtrBor ? 'Filtrga mos savol yo\'q' : 'Bu fanda hali savol yo\'q'}
-              </p>
+        <div className="flex flex-wrap items-center gap-1.5 px-1 min-h-7">
+          <span className="text-[13px] text-matn-sokin mr-1">
+            {royxat ? <><b className="text-matn raqam">{royxat.total}</b> ta savol</> : '…'}
+            {yuklanmoqda && <Loader2 size={13} className="inline ml-1.5 animate-spin text-matn-xira" />}
+          </span>
+          {yorliqlar.map(y => (
+            <button key={y.k} onClick={y.ol} title="Olib tashlash"
+              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-brand-fon text-brand-dark border border-brand/20 dark:bg-brand/20 dark:text-brand-accent text-[11.5px] font-semibold cursor-pointer hover:border-brand/50">
+              {y.nom}<X size={12} />
+            </button>
+          ))}
+          {yorliqlar.length > 1 && <button onClick={tozala} className="text-[12px] font-semibold text-matn-xira hover:text-brand cursor-pointer ml-1">hammasini tozalash</button>}
+        </div>
+
+        <section className="bg-sirt border border-chiziq rounded-2xl overflow-hidden" aria-label="Savollar">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-chiziq bg-ichki/50">
+            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-matn-sokin cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)] cursor-pointer" checked={sahifaTanlangan} onChange={sahifaniTanla} disabled={!sahifadagi.length} />
+              Sahifadagi hammasi
+            </label>
+            {!!royxat?.total && royxat.total > sahifadagi.length && (
+              <button onClick={hammasiniTanla} disabled={band === 'tanla'} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer disabled:opacity-50">
+                {band === 'tanla' ? <Loader2 size={12} className="inline animate-spin" /> : null} Filtrdagi {royxat.total} tasini tanlash
+              </button>
             )}
-            {!royxat && <Yuklanmoqda />}
+            <span className="ml-auto">{sahifalash}</span>
           </div>
-          <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-chiziq text-[12px] text-matn-sokin mt-auto">
-            <span className="inline-flex items-center gap-1.5">
-              {yuklanmoqda && <Loader2 size={12} className="animate-spin" />}
-              {royxat ? <>{royxat.total ? `${(sahifa - 1) * SAHIFA + 1}–${Math.min(sahifa * SAHIFA, royxat.total)}` : 0} / <b className="text-matn raqam">{royxat.total}</b></> : '…'}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <button aria-label="Oldingi sahifa" disabled={sahifa <= 1} onClick={() => setSahifa(s => s - 1)} className="p-1 rounded-lg hover:bg-ichki disabled:opacity-30 cursor-pointer"><ChevronLeft size={15} /></button>
-              <span className="raqam">{sahifa} / {jamiSahifa}</span>
-              <button aria-label="Keyingi sahifa" disabled={sahifa >= jamiSahifa} onClick={() => setSahifa(s => s + 1)} className="p-1 rounded-lg hover:bg-ichki disabled:opacity-30 cursor-pointer"><ChevronRight size={15} /></button>
-            </span>
-          </div>
+
+          {!royxat ? <Yuklanmoqda /> : !royxat.items.length ? (
+            <BoshHolat ikonka={<Search size={20} />} sarlavha={yorliqlar.length || t.qidiruv ? "Filtrga mos savol yo'q" : "Bu fanda hali savol yo'q"}
+              izoh={yorliqlar.length || t.qidiruv ? "Filtrni yumshating yoki qidiruvni o'zgartiring" : "Savol qo'shish — Word (Addmen QR jadvali), Excel, PDF, rasm yoki matndan"}>
+              {(yorliqlar.length > 0 || !!t.qidiruv) && <Tugma kichik ikonka={<Eraser size={13} />} onClick={() => setT(BOSH)}>Filtrni tozalash</Tugma>}
+              {!yorliqlar.length && !t.qidiruv && onQosh && <Tugma kichik turi="asosiy" ikonka={<Plus size={13} />} onClick={onQosh}>Savol qo'shish</Tugma>}
+            </BoshHolat>
+          ) : (
+            <ul className={`divide-y divide-chiziq transition-opacity ${yuklanmoqda ? 'opacity-60' : ''}`}>
+              {royxat.items.map(q => (
+                <SavolKartochka key={q.id} q={q} ixcham={korinish === 'ixcham'} tanlangan={tanlangan.has(q.id)} onTanla={almashtir} onKor={korish}
+                  mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''}
+                  belgilar={(q.tagIds || []).map(id => belgiNomi.get(id)).filter(Boolean) as string[]} />
+              ))}
+            </ul>
+          )}
+          {sahifalash && <div className="flex justify-end px-4 py-2 border-t border-chiziq">{sahifalash}</div>}
         </section>
 
-        {/* Amallar paneli — Addmen'ning o'ng ustuni */}
-        <aside className="bg-sirt border border-chiziq rounded-xl p-3 space-y-3 xl:sticky xl:top-3" aria-label="Amallar">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="block text-[11px] font-semibold text-matn-sokin mb-1">QID dan</span>
-              <input className={`${INPUT} py-1.5 text-[12.5px] raqam`} inputMode="numeric" value={qid.dan} onChange={e => setQid(x => ({ ...x, dan: e.target.value.replace(/\D/g, '') }))} />
-            </label>
-            <label className="block">
-              <span className="block text-[11px] font-semibold text-matn-sokin mb-1">QID gacha</span>
-              <input className={`${INPUT} py-1.5 text-[12.5px] raqam`} inputMode="numeric" value={qid.gacha} onChange={e => setQid(x => ({ ...x, gacha: e.target.value.replace(/\D/g, '') }))} />
-            </label>
-          </div>
-          <div className="flex gap-3 text-[12px] text-matn" role="radiogroup" aria-label="Ro'yxat rejimi">
-            {([['hammasi', 'Hammasi'], ['filtr', 'Filtr bo\'yicha']] as const).map(([v, nom]) => (
-              <label key={v} className="inline-flex items-center gap-1.5 cursor-pointer">
-                <input type="radio" name="bank-rejim" className="accent-[var(--color-brand)]" checked={rejim === v} onChange={() => setRejim(v)} />{nom}
-              </label>
-            ))}
-          </div>
-          <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[12px] rounded-lg bg-ichki px-2.5 py-2">
-            <dt className="text-matn-sokin">Jami</dt><dd className="font-bold text-matn raqam">{filtr?.jami ?? '…'}</dd>
-            <dt className="text-matn-sokin">Yashirin (arxiv)</dt><dd className="font-semibold text-matn-sokin raqam">{filtr?.yashirin ?? '…'}</dd>
-            <dt className="text-matn-sokin">Ro'yxatda</dt><dd className="font-bold text-brand raqam">{royxat?.total ?? '…'}</dd>
-            <dt className="text-matn-sokin">Tanlangan</dt><dd className="font-bold text-matn raqam">{tanlangan.size}</dd>
-          </dl>
-          <div className="grid grid-cols-2 xl:grid-cols-1 gap-1.5">
-            <Tugma kichik ikonka={<CheckSquare size={13} />} yuklanmoqda={band === 'tanla'} disabled={!royxat?.total} onClick={hammasiniTanla}>Hammasini tanlash</Tugma>
-            {tanlangan.size > 0 && <Tugma kichik turi="oddiy" ikonka={<X size={13} />} onClick={() => setTanlangan(new Set())}>Tanlovni bekor qilish</Tugma>}
-            <Tugma kichik ikonka={<Eye size={13} />} yuklanmoqda={band === 'korish'} disabled={!tanlangan.size} onClick={() => korish()}>Savolni ko'rish</Tugma>
-            {savolTahrir && <>
-              <Tugma kichik turi="asosiy" ikonka={<Tags size={13} />} disabled={!tanlangan.size || !filtr} onClick={() => setBelgilash(true)}>Belgilash…</Tugma>
-              <Tugma kichik ikonka={<Eraser size={13} />} yuklanmoqda={band === 'ol'} disabled={!tanlangan.size} onClick={belgiOl}
-                title="Filtr ustunlarida belgilangan qiymatlar tanlangan savollardan olib tashlanadi">Belgini olib tashlash</Tugma>
-              <Tugma kichik ikonka={<RotateCcw size={13} />} yuklanmoqda={band === 'nol'} disabled={!tanlangan.size} onClick={ishlatilishNol}
-                title="Imtihonlarda necha marta ishlatilgani nolga tushadi">Ishlatilishini nolga</Tugma>
-            </>}
-            {ochiradi && <Tugma kichik turi="xavfli" ikonka={<Trash2 size={13} />} yuklanmoqda={band === 'ochir'} disabled={!tanlangan.size} onClick={ochir}>O'chirish</Tugma>}
-          </div>
-          {onQosh && (
-            <div className="pt-2 border-t border-chiziq">
-              <Tugma kichik turi="asosiy" className="w-full" ikonka={<Plus size={13} />} onClick={onQosh}>Savol qo'shish</Tugma>
-              <p className="mt-1.5 text-[11px] text-matn-xira">Word (Addmen QR jadvali), Excel, PDF, rasm yoki matn</p>
+        {/* Belgilanganlar bilan amallar — faqat tanlanganda chiqadi. */}
+        {tanlangan.size > 0 && (
+          <div className="sticky bottom-3 z-20 flex justify-center pointer-events-none">
+            <div role="toolbar" aria-label="Tanlanganlar bilan amallar"
+              className="pointer-events-auto flex flex-wrap items-center gap-0.5 rounded-2xl bg-matn text-sirt shadow-2xl px-2 py-1.5 max-w-full">
+              <span className="px-2.5 text-[12.5px] font-bold whitespace-nowrap"><span className="raqam">{tanlangan.size}</span> ta tanlandi</span>
+              <span className="w-px h-5 bg-sirt/20 mx-1" />
+              {tanlangan.size === 1 && <AmalTugma ikonka={<Eye size={14} />} band={band === 'korish'} onClick={() => korish(ids[0])}>Ko'rish</AmalTugma>}
+              {savolTahrir && <AmalTugma ikonka={<Tags size={14} />} onClick={() => setBelgilash(true)} title="Mavzu, qiyinlik, manba va filtr qiymatlarini hammasiga birdan berish">O'zgartirish</AmalTugma>}
+              {savolTahrir && tagOl.length > 0 && <AmalTugma ikonka={<Eraser size={14} />} band={band === 'ol'} onClick={belgiOl} title="Chapda belgilangan filtr qiymatlari tanlangan savollardan olib tashlanadi">Filtr qiymatini olish</AmalTugma>}
+              {savolTahrir && <AmalTugma ikonka={<RotateCcw size={14} />} band={band === 'nol'} onClick={ishlatilishNol} title="Imtihonlarda necha marta ishlatilgani nolga tushadi — yana birinchi navbatda tanlanadi">Ishlatilishini nolga</AmalTugma>}
+              {ochiradi && <AmalTugma ikonka={<Trash2 size={14} />} band={band === 'ochir'} onClick={ochir} xavfli>O'chirish</AmalTugma>}
+              <button aria-label="Tanlovni bekor qilish" title="Tanlovni bekor qilish" onClick={() => setTanlangan(new Set())} className="ml-1 p-1.5 rounded-lg hover:bg-sirt/15 cursor-pointer"><X size={15} /></button>
             </div>
-          )}
-        </aside>
+          </div>
+        )}
       </div>
 
       {sozlash && <FiltrSozlash guruh={sozlash === 'yangi' ? null : sozlash} onYop={() => setSozlash(null)} onOzgardi={() => setQayta(n => n + 1)} />}
@@ -350,30 +379,181 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   );
 }
 
-const SavolQatori = memo(function SavolQatori({ q, tanlangan, onTanla, onKor }: { q: Qator; tanlangan: boolean; onTanla: (id: number) => void; onKor: (id: number) => void }) {
-  const d = qiyinlikDaraja(q.difficulty);
-  const html = useMemo(() => formulaliHtml(q.text || ''), [q.text]);
+function AmalTugma({ ikonka, band, xavfli, children, ...qolgan }: React.ButtonHTMLAttributes<HTMLButtonElement> & { ikonka: React.ReactNode; band?: boolean; xavfli?: boolean }) {
   return (
-    <tr className={`cursor-pointer ${tanlangan ? 'bg-brand-fon/70 dark:bg-brand/10' : 'hover:bg-ichki/70'} ${q.status === 'arxiv' ? 'opacity-60' : ''}`}
-      onClick={() => onTanla(q.id)} onDoubleClick={() => onKor(q.id)}>
-      <td className="px-2 py-1.5 text-center" onClick={e => e.stopPropagation()}>
-        <input type="checkbox" aria-label={`#${q.id} savolni tanlash`} className="w-3.5 h-3.5 accent-[var(--color-brand)] cursor-pointer" checked={tanlangan} onChange={() => onTanla(q.id)} />
-      </td>
-      <td className="px-1 py-1.5 raqam text-matn-sokin whitespace-nowrap">
-        <span className="inline-flex items-center gap-1.5"><span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.nuqta}`} title={d.nom} />{q.id}</span>
-      </td>
-      <td className="px-2 py-1.5 max-w-0 w-full">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {q.status === 'qoralama' && <span className="shrink-0 rounded px-1 text-[10px] font-semibold bg-ogoh-fon text-ogoh">qoralama</span>}
-          {q.imageUrl && <span className="shrink-0 text-[10px] text-matn-xira">[rasm]</span>}
-          <span className={`${SAVOL_MATNI} min-w-0 truncate text-matn [&_p]:inline [&_p]:my-0 [&_br]:hidden`} dangerouslySetInnerHTML={{ __html: html }} />
+    <button type="button" {...qolgan} disabled={band || qolgan.disabled}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer hover:bg-sirt/15 disabled:opacity-60 ${xavfli ? 'text-red-300 dark:text-xato' : ''}`}>
+      {band ? <Loader2 size={14} className="animate-spin" /> : ikonka}{children}
+    </button>
+  );
+}
+
+/** Filtr paneli bo'limi: sarlavha bosilsa yig'iladi; tanlanganlar soni va ⚙ sozlash. */
+function Bolim({ nom, tanlangan = 0, boshOchiq = false, onSozla, sozlashIzoh, children }: {
+  nom: string; tanlangan?: number; boshOchiq?: boolean; onSozla?: () => void; sozlashIzoh?: string; children: React.ReactNode;
+}) {
+  const [ochiq, setOchiq] = useState(boshOchiq || tanlangan > 0);
+  return (
+    <section className="border-b border-chiziq last:border-b-0">
+      <div className="flex items-center gap-1 pl-3 pr-2">
+        <button type="button" onClick={() => setOchiq(o => !o)} aria-expanded={ochiq} className="flex-1 min-w-0 flex items-center gap-2 py-2.5 text-left cursor-pointer">
+          <ChevronDown size={14} className={`shrink-0 text-matn-xira transition-transform ${ochiq ? '' : '-rotate-90'}`} />
+          <span className="flex-1 min-w-0 truncate text-[12.5px] font-semibold text-matn">{nom}</span>
+          {tanlangan > 0 && <span className="raqam text-[11px] font-bold min-w-5 text-center px-1.5 rounded-md bg-brand text-brand-ust">{tanlangan}</span>}
+        </button>
+        {onSozla && (
+          <button type="button" onClick={onSozla} aria-label={`${nom} — sozlash`} title={sozlashIzoh}
+            className="p-1.5 rounded-md text-matn-xira hover:text-brand hover:bg-ichki cursor-pointer"><Settings2 size={13} /></button>
+        )}
+      </div>
+      {ochiq && <div className="px-3 pb-3">{children}</div>}
+    </section>
+  );
+}
+
+/** Belgilash ro'yxati: har qatorda qiymat va nechta savol. */
+function Belgilar<K extends string | number>({ qiymatlar, tanlangan, onChange }: {
+  qiymatlar: { k: K; nom: React.ReactNode; soni?: number; izoh?: string }[]; tanlangan: K[]; onChange: (v: K[]) => void;
+}) {
+  return (
+    <ul className="max-h-60 overflow-y-auto -mx-1.5">
+      {qiymatlar.map(q => {
+        const b = tanlangan.includes(q.k);
+        return (
+          <li key={String(q.k)}>
+            <label className={`flex items-center gap-2 px-1.5 py-1 rounded-lg text-[12.5px] cursor-pointer select-none ${b ? 'bg-brand-fon/70 dark:bg-brand/10' : 'hover:bg-ichki'}`} title={q.izoh}>
+              <input type="checkbox" className="w-3.5 h-3.5 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={b} onChange={() => onChange(almashtirRoyxat(tanlangan, q.k))} />
+              <span className={`flex-1 min-w-0 truncate ${b ? 'font-semibold text-matn' : 'text-matn'}`}>{q.nom}</span>
+              {q.soni !== undefined && <span className={`shrink-0 raqam text-[11px] ${q.soni ? 'text-matn-xira' : 'text-matn-xira/50'}`}>{q.soni}</span>}
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Mavzular bo'limlari bilan: bo'lim belgisi uning hamma mavzusini tanlaydi; ko'p bo'lsa qidiruv. */
+function MavzuRoyxati({ filtr, tanlangan, onChange }: { filtr: BankFiltrMalumoti; tanlangan: number[]; onChange: (v: number[]) => void }) {
+  const [q, setQ] = useState('');
+  const mavzular = q.trim() ? filtr.mavzular.filter(m => m.nom.toLowerCase().includes(q.trim().toLowerCase())) : filtr.mavzular;
+  const bolimli = filtr.mavzular.some(m => m.bolim);
+  const guruhlar = useMemo(() => {
+    const m = new Map<string, typeof mavzular>();
+    for (const x of mavzular) { if (!m.has(x.bolim)) m.set(x.bolim, []); m.get(x.bolim)!.push(x); }
+    return [...m.entries()];
+  }, [mavzular]);
+  if (!filtr.mavzular.length) return <p className="text-[12px] text-matn-xira">Mavzu yo'q — ⚙ Tuzilma orqali qo'shing</p>;
+  const qator = (m: (typeof mavzular)[number], ichki: boolean) => {
+    const b = tanlangan.includes(m.id);
+    return (
+      <li key={m.id}>
+        <label className={`flex items-center gap-2 ${ichki ? 'pl-5' : 'pl-1.5'} pr-1.5 py-1 rounded-lg text-[12.5px] cursor-pointer select-none ${b ? 'bg-brand-fon/70 dark:bg-brand/10' : 'hover:bg-ichki'}`}>
+          <input type="checkbox" className="w-3.5 h-3.5 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={b} onChange={() => onChange(almashtirRoyxat(tanlangan, m.id))} />
+          <span className={`flex-1 min-w-0 truncate ${b ? 'font-semibold text-matn' : 'text-matn'}`}>{m.nom}</span>
+          <span className={`shrink-0 raqam text-[11px] ${m.soni ? 'text-matn-xira' : 'text-matn-xira/50'}`}>{m.soni}</span>
+        </label>
+      </li>
+    );
+  };
+  return (
+    <>
+      {filtr.mavzular.length > 8 && (
+        <div className="relative mb-1.5">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-matn-xira" />
+          <input className="w-full pl-7 pr-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none focus:border-brand placeholder:text-matn-xira"
+            placeholder="Mavzu qidirish" aria-label="Mavzu qidirish" value={q} onChange={e => setQ(e.target.value)} />
         </div>
-      </td>
-      <td className="px-2 py-1.5 text-matn-xira truncate max-w-40 hidden md:table-cell" title={q.toplam || ''}>{q.toplam || '—'}</td>
-      <td className="px-2 py-1.5 text-matn-xira raqam whitespace-nowrap">{sana(q.createdAt)}</td>
-      <td className="pr-2 py-1.5" onClick={e => e.stopPropagation()}>
-        <button aria-label={`#${q.id} savolni ko'rish`} onClick={() => onKor(q.id)} className="p-1 rounded text-matn-xira hover:text-brand cursor-pointer"><Eye size={13} /></button>
-      </td>
-    </tr>
+      )}
+      <ul className="max-h-72 overflow-y-auto -mx-1.5">
+        {!bolimli ? mavzular.map(m => qator(m, false)) : guruhlar.map(([bolim, l]) => {
+          const idlar = l.map(m => m.id);
+          const hammasi = idlar.every(id => tanlangan.includes(id));
+          const qisman = !hammasi && idlar.some(id => tanlangan.includes(id));
+          return (
+            <li key={bolim || '_'}>
+              <label className="flex items-center gap-2 px-1.5 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-matn-xira cursor-pointer select-none">
+                <input type="checkbox" className="w-3.5 h-3.5 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={hammasi} ref={el => { if (el) el.indeterminate = qisman; }}
+                  onChange={() => onChange(hammasi || qisman ? tanlangan.filter(id => !idlar.includes(id)) : [...new Set([...tanlangan, ...idlar])])} />
+                <span className="truncate">{bolim || "Bo'limsiz"}</span>
+              </label>
+              <ul>{l.map(m => qator(m, true))}</ul>
+            </li>
+          );
+        })}
+        {!mavzular.length && <li className="px-1.5 py-1 text-[12px] text-matn-xira">Topilmadi</li>}
+      </ul>
+    </>
+  );
+}
+
+/** Savol kartochkasi: matn formulalar bilan, variantlar va to'g'ri javob ochmasdan ko'rinadi. */
+const SavolKartochka = memo(function SavolKartochka({ q, ixcham, tanlangan, mavzu, belgilar, onTanla, onKor }: {
+  q: Qator; ixcham: boolean; tanlangan: boolean; mavzu: string; belgilar: string[]; onTanla: (id: number) => void; onKor: (id: number) => void;
+}) {
+  const html = useMemo(() => formulaliHtml(q.text || ''), [q.text]);
+  const variantlar = useMemo(() => (ixcham ? [] : (q.options || []).map(o => formulaliHtml(o))), [q.options, ixcham]);
+  const qisqa = useMemo(() => (q.options || []).every(o => oddiyMatn(o).length <= 22 && !/<img/i.test(o)), [q.options]);
+  const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
+  const raqamliJavob = q.type === 'raqamli' ? [...new Set([q.correctAnswer, ...(q.answers || [])].filter(Boolean))].join(' · ') : '';
+  const javobQisqa = q.type === 'yopiq' ? (togri >= 0 ? HARFLAR[togri] : '') : raqamliJavob;
+
+  return (
+    <li className={`flex gap-3 px-4 ${ixcham ? 'py-2' : 'py-3.5'} cursor-pointer transition-colors ${tanlangan ? 'bg-brand-fon/60 dark:bg-brand/10' : 'hover:bg-ichki/60'} ${q.status === 'arxiv' ? 'opacity-60' : ''}`}
+      onClick={() => onTanla(q.id)} onDoubleClick={() => onKor(q.id)}>
+      <input type="checkbox" aria-label={`#${q.id} savolni tanlash`} className={`${ixcham ? 'mt-0.5' : 'mt-1'} w-4 h-4 shrink-0 accent-[var(--color-brand)] cursor-pointer`}
+        checked={tanlangan} onChange={() => onTanla(q.id)} onClick={e => e.stopPropagation()} />
+      <div className="min-w-0 flex-1">
+        {ixcham ? (
+          <div className="flex items-center gap-2 min-w-0 text-[12.5px]">
+            <span className="raqam text-[11.5px] font-bold text-matn-xira w-12 shrink-0">#{q.id}</span>
+            <span className={`w-2 h-2 rounded-full shrink-0 ${QIYINLIK[Math.min(3, Math.max(1, q.difficulty)) - 1].nuqta}`} title={QIYINLIK[Math.min(3, Math.max(1, q.difficulty)) - 1].nom} />
+            {q.status === 'qoralama' && <Yorliq rang="ogoh">Qoralama</Yorliq>}
+            <span className={`${SAVOL_MATNI} flex-1 min-w-0 truncate text-matn [&_p]:inline [&_p]:my-0 [&_br]:hidden [&_img]:hidden`} dangerouslySetInnerHTML={{ __html: html }} />
+            <span className="hidden md:block shrink-0 max-w-40 truncate text-[11.5px] text-matn-xira">{mavzu}</span>
+            {javobQisqa && <span className="shrink-0 raqam text-[11.5px] font-bold text-yaxshi max-w-24 truncate" title="To'g'ri javob">✓ {javobQisqa}</span>}
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5 text-[11.5px]">
+              <span className="raqam font-bold text-matn-xira">#{q.id}</span>
+              {mavzu && <span className="font-semibold text-matn-sokin truncate max-w-64">{mavzu}</span>}
+              <QiyinlikYorligi d={q.difficulty} />
+              {q.type !== 'yopiq' && <Yorliq rang="brand">{TUR_NOMI[q.type]}</Yorliq>}
+              {q.status === 'qoralama' && <Yorliq rang="ogoh">Qoralama</Yorliq>}
+              {q.status === 'arxiv' && <Yorliq>Arxiv</Yorliq>}
+              {belgilar.map(n => <Yorliq key={n}>{n}</Yorliq>)}
+              <span className="ml-auto flex items-center gap-2.5 text-matn-xira">
+                {!!q.usedCount && <span>{q.usedCount} marta ishlatilgan</span>}
+                <span className="raqam">{sana(q.createdAt)}</span>
+              </span>
+            </div>
+            <div className={`${SAVOL_MATNI} text-[13.5px] text-matn [&_p]:my-0.5`} dangerouslySetInnerHTML={{ __html: html || '<p>—</p>' }} />
+            {q.imageUrl && <img src={q.imageUrl} alt="" loading="lazy" className="mt-2 max-h-40 rounded-lg border border-chiziq bg-white" />}
+            {q.type === 'yopiq' && variantlar.length > 0 && (
+              <ol className={`mt-2 grid gap-1.5 ${qisqa ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                {variantlar.map((h, i) => (
+                  <li key={i} className={`flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] border ${i === togri ? 'bg-yaxshi-fon border-yaxshi/40 text-matn' : 'bg-ichki border-chiziq text-matn'}`}>
+                    <b className={`shrink-0 ${i === togri ? 'text-yaxshi' : 'text-matn-xira'}`}>{HARFLAR[i]})</b>
+                    <span className={`${SAVOL_MATNI} min-w-0 flex-1 [&_p]:my-0 [&_img]:max-h-24`} dangerouslySetInnerHTML={{ __html: h }} />
+                    {i === togri && <Check size={14} strokeWidth={3} className="shrink-0 mt-0.5 text-yaxshi" aria-label="to'g'ri javob" />}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {q.type === 'yopiq' && togri < 0 && <p className="mt-1.5 text-[11.5px] font-semibold text-xato">To'g'ri javob belgilanmagan</p>}
+            {q.type === 'raqamli' && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-yaxshi-fon ring-1 ring-yaxshi/35 px-2.5 py-1 text-[12.5px]">
+                <span className="text-matn-sokin">Javob:</span><b className="text-yaxshi raqam">{raqamliJavob || '—'}</b>
+              </p>
+            )}
+            {q.type === 'yozma' && <p className="mt-2 text-[12px] text-matn-xira">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}</p>}
+            {(q.source || q.toplam) && <p className="mt-1.5 text-[11px] text-matn-xira">{[q.source, q.toplam && `fayl: ${q.toplam}`].filter(Boolean).join(' · ')}</p>}
+          </>
+        )}
+      </div>
+      <button type="button" aria-label={`#${q.id} savolni ochish`} title="Ochish va tahrirlash" onClick={e => { e.stopPropagation(); onKor(q.id); }}
+        className="self-start shrink-0 p-1.5 -mr-1.5 rounded-lg text-matn-xira hover:text-brand hover:bg-sirt cursor-pointer"><Eye size={15} /></button>
+    </li>
   );
 });
