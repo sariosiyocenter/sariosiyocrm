@@ -27,11 +27,13 @@ type Shaxsiy = {
   points: string; lockOptions: boolean; solution: string; solutionStatus: 'yoq' | 'qoralama' | 'tasdiqlangan'; passage: { id: number; title?: string | null } | null;
   /** Ikkinchi tildagi matn (Addmen "Bilingual") — null: yo'q. */
   tarjima: Tarjima | null;
+  /** Variantlar kitobchada nechta ustunda (Addmen DISPLAY CHOICES): 0 — o'zi. */
+  joylashuv: 0 | 1 | 2 | 4;
 };
 
 const BOSH_SHAXSIY: Shaxsiy = {
   type: 'yopiq', text: '', imageUrl: null, options: ['', '', '', ''], correctAnswer: 'A', answers: '', points: '',
-  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null, tarjima: null,
+  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null, tarjima: null, joylashuv: 0,
 };
 
 interface Meta { manbalar: string[] }
@@ -90,6 +92,7 @@ export default function QuestionEditor() {
         lockOptions: !!s.lockOptions, solution: s.solution || '', solutionStatus: (s.solutionStatus as any) || 'yoq',
         passage: s.passage || (s.passageId ? { id: s.passageId } : null),
         tarjima: s.tarjima ? { til: s.tarjima.til || 'ru', text: s.tarjima.text || '', options: s.tarjima.options || [] } : null,
+        joylashuv: s.joylashuv || 0,
       });
       setIshlatilgan(s.usedCount || 0);
       setMuharrirKaliti(k => k + 1);
@@ -125,7 +128,7 @@ export default function QuestionEditor() {
     difficulty: umumiy.difficulty, status: umumiy.status, language: umumiy.language,
     grade: umumiy.grade || null, source: umumiy.source || null, remark: umumiy.remark.trim() || null,
     tarjima: q.tarjima && (q.tarjima.text.trim() || q.tarjima.options.some(x => x.trim())) ? { ...q.tarjima, options: q.type === 'yopiq' ? q.options.map((_, i) => q.tarjima!.options[i] || '') : [] } : null,
-    type: q.type, text: q.text, imageUrl: q.imageUrl,
+    type: q.type, text: q.text, imageUrl: q.imageUrl, joylashuv: q.type === 'yopiq' && q.joylashuv ? q.joylashuv : null,
     options: q.type === 'yopiq' ? q.options : null,
     correctAnswer: q.type === 'yozma' ? '' : q.correctAnswer.trim(),
     answers: q.type === 'raqamli' ? q.answers.split(/;\s*|\s+/).map(x => x.trim()).filter(Boolean) : null,
@@ -367,6 +370,11 @@ export default function QuestionEditor() {
                   ))}
                   {q.options.length < HARFLAR.length && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={variantQosh}>Variant qo'shish ({q.options.length}/{HARFLAR.length})</Tugma>}
                   <Almashtirgich yoqilgan={q.lockOptions} onChange={v => setQ({ ...q, lockOptions: v })} nom="Javoblar tartibi aralashtirilmasin" izoh={'"A va B to\'g\'ri", "Hammasi to\'g\'ri" kabi variantlar bo\'lsa'} />
+                  <div>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Kitobchada variantlar</span>
+                    <Tanlov kichik qiymat={q.joylashuv} onChange={v => setQ({ ...q, joylashuv: v })} variantlar={[{ v: 0, nom: 'Avtomatik' }, { v: 1, nom: '1 ustun' }, { v: 2, nom: '2 ustun' }, { v: 4, nom: '4 ustun' }]} />
+                    <span className="block text-[11px] text-matn-xira mt-1">Uzun yoki rasmli variantlar uchun — 1 ustun</span>
+                  </div>
                 </div>
               )}
               {q.type === 'raqamli' && (

@@ -9,7 +9,7 @@ import type { Exam } from '../../types';
 
 export interface KitobchaMalumoti {
   variants: { session: number; code: string; items: { n: number; q: number; b: number; t: string; p: number; m?: number[]; pa?: number }[] }[];
-  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null }[];
+  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null; joylashuv?: number | null }[];
   matnlar: { id: number; title?: string | null; text: string; imageUrl?: string | null }[];
 }
 
@@ -56,6 +56,7 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .javoblar { list-style: none; padding: 0; margin: 1.2mm 0 0 7.6mm; }
 .javoblar li { margin: 0.6mm 0; display: flex; gap: 1.4mm; }
 .javoblar.ikki { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; }
+.javoblar.tort { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 3mm; }
 .javoblar p { margin: 0; }
 .izoh { margin: 1mm 0 0 7.6mm; font-size: 9pt; font-style: italic; color: #333; }
 .matn-quti { border: 0.8pt solid #000; padding: 2.4mm 3mm; margin: 0 0 3mm; break-inside: avoid; }
@@ -75,7 +76,9 @@ function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[]
   const tartib = it.m && it.m.length ? it.m : q.options.map((_, i) => i);
   const tj = o.ikkiTil ? q.tarjima?.options || [] : [];
   const qisqa = tartib.every(i => oddiyMatn(q.options[i] || '').length + oddiyMatn(tj[i] || '').length <= 28 && !/<img/i.test(q.options[i] || ''));
-  return `<ol class="javoblar${qisqa ? ' ikki' : ''}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
+  // Savolda belgilangan joylashuv (Addmen DISPLAY CHOICES) ustun turadi.
+  const sinf = q.joylashuv === 1 ? '' : q.joylashuv === 2 ? ' ikki' : q.joylashuv === 4 ? ' tort' : qisqa ? ' ikki' : '';
+  return `<ol class="javoblar${sinf}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
 }
 
 export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, tanlov: { session: number; code: string }[], o: KitobchaSozlama = KITOBCHA_STANDART): string {

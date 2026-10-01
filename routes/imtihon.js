@@ -222,6 +222,7 @@ function savolMalumoti(body) {
   for (const k of ['passageId', 'topicId', 'parentId']) if (body[k] !== undefined) d[k] = parseInt(body[k]) || null;
   if (body.toplam !== undefined) d.toplam = body.toplam ? String(body.toplam).trim().slice(0, 200) : null;
   if (body.remark !== undefined) d.remark = body.remark ? String(body.remark).trim().slice(0, 300) : null;
+  if (body.joylashuv !== undefined) d.joylashuv = [1, 2, 4].includes(Number(body.joylashuv)) ? Number(body.joylashuv) : null;
   if (body.tarjima !== undefined) {
     const t = body.tarjima && typeof body.tarjima === 'object' ? body.tarjima : {};
     const matn = String(t.text ?? '').slice(0, LAVHA_MAX);
@@ -1159,7 +1160,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const qids = [...new Set(variants.flatMap(v => v.items.map(it => it.q)))].filter(Number.isInteger);
       const savollar = await prisma.question.findMany({
         where: { id: { in: qids } },
-        select: { id: true, text: true, imageUrl: true, type: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, passageId: true, points: true, remark: true, tarjima: true },
+        select: { id: true, text: true, imageUrl: true, type: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, passageId: true, points: true, remark: true, tarjima: true, joylashuv: true },
       });
       const pids = [...new Set(savollar.map(q => q.passageId).filter(Boolean))];
       const matnlar = pids.length ? await prisma.passage.findMany({ where: { id: { in: pids } } }) : [];
@@ -1169,7 +1170,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           // eslint-disable-next-line no-unused-vars
           items: v.items.map(({ k, j, ...qolgan }) => qolgan),
         })),
-        savollar: savollar.map(q => ({ id: q.id, text: q.text, imageUrl: q.imageUrl, type: q.type, options: savolVariantlari(q), passageId: q.passageId, remark: q.remark, tarjima: q.tarjima })),
+        savollar: savollar.map(q => ({ id: q.id, text: q.text, imageUrl: q.imageUrl, type: q.type, options: savolVariantlari(q), passageId: q.passageId, remark: q.remark, tarjima: q.tarjima, joylashuv: q.joylashuv })),
         matnlar,
       });
     } catch (err) { next(err); }
@@ -1452,7 +1453,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           id: s.id, studentId: s.studentId, name: s.student?.name || s.guestName || '', photo: s.student?.photo || null,
           phone: s.student?.phone || s.guestPhone || null, mehmon: !s.studentId, schoolId: s.schoolId,
           // Javob varaqasidagi abituriyent ma'lumoti (markaz varag'idagidek): ID, maktab, sinf.
-          kod: s.student?.oquvchiKod?.kod ?? null, maktab: s.student?.studentSchool || null, sinf: s.student?.grade || null,
+          kod: s.student?.oquvchiKod?.kod ?? null, maktab: s.student?.studentSchool || s.guestSchool || null, sinf: s.student?.grade || s.guestGrade || null,
           groupId: s.groupId, groupName: s.groupId ? groupMap.get(s.groupId) || '' : '',
           session: s.session, roomId: s.roomId, roomName: s.roomId ? roomMap.get(s.roomId)?.name || '' : '',
           row: s.row, col: s.col, variant: s.variant, sheetCode: s.sheetCode, status: s.status,
@@ -1480,7 +1481,11 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         if (!filiallar.includes(schoolId) || !(await canAccessSchool(req.user, schoolId))) {
           return res.status(403).json({ error: "Bu filialga qatnashchi qo'sha olmaysiz" });
         }
-        data.push({ examId, schoolId, guestName: name, guestPhone: g?.phone ? String(g.phone).slice(0, 30) : null, sheetCode: varaqKodi(), status: 'rejada' });
+        data.push({
+          examId, schoolId, guestName: name, guestPhone: g?.phone ? String(g.phone).slice(0, 30) : null,
+          guestSchool: g?.maktab ? String(g.maktab).trim().slice(0, 120) : null, guestGrade: g?.sinf ? String(g.sinf).trim().slice(0, 30) : null,
+          sheetCode: varaqKodi(), status: 'rejada',
+        });
       }
       if (!data.length) return res.status(400).json({ error: 'Qatnashchi ismini kiriting' });
       await prisma.examSeat.createMany({ data });
@@ -1720,7 +1725,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           ? prisma.exam.update({ where: { id: examId }, data: { status: IMTIHON_HOLATLARI.TEKSHIRILMOQDA } })
           : null,
       ]);
-      res.json({ ...natija, name: seat.student?.name || seat.guestName || '', sheetCode: seat.sheetCode, shubhalar: halQilinmagan(flags, manual).length });
+      // takror — shu varaq (sahifa) oldin ham skanerlangan edi (Addmen DUP).
+      res.json({ ...natija, name: seat.student?.name || seat.guestName || '', sheetCode: seat.sheetCode, shubhalar: halQilinmagan(flags, manual).length, takror: !!(oldingi?.pages && oldingi.pages[page]) });
     } catch (err) { next(err); }
   });
 

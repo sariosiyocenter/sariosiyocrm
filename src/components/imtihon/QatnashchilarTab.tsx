@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users, UserPlus, Trash2, LayoutGrid, Shuffle, Search, CheckCircle2, XCircle, AlertTriangle, DoorOpen, ArrowLeftRight, X, Send, Square } from 'lucide-react';
+import { Users, UserPlus, Trash2, LayoutGrid, Shuffle, Search, CheckCircle2, XCircle, AlertTriangle, DoorOpen, ArrowLeftRight, X, Send, Square, FileSpreadsheet } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
 import { useImtihonApi } from './useImtihonApi';
@@ -9,6 +9,7 @@ import { xonaOrinlari } from '../../../lib/imtihon.js';
 import { toDateStr } from '../../../lib/lessons.js';
 import type { ImtihonTafsil } from './turlar';
 import OnlaynTestKarta from './OnlaynTestKarta';
+import { mehmonlarniOqi, mehmonShabloni } from './mehmonExcel';
 import type { Room } from '../../types';
 
 // 2-bo'lim: kim qatnashadi (kurslar + tashqi qatnashchilar), qaysi xonalarda,
@@ -105,6 +106,29 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
     try {
       await soro('POST', `exams/${exam.id}/guests`, mehmon);
       setMehmon({ name: '', phone: '', schoolId: mehmon.schoolId });
+      await Promise.all([yukla(), qatnashchilarniYukla()]);
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      setBand(null);
+    }
+  };
+
+  // Addmen "Import candidate names from Excel": ro'yxat bir yo'la (500 tadan bo'lib).
+  const mehmonExcel = async (fayl: File | undefined) => {
+    if (!fayl) return;
+    try {
+      const l = await mehmonlarniOqi(fayl);
+      if (!l.length) return showNotification("Faylda ism topilmadi — 1-ustun F.I.Sh bo'lsin (shablonni ko'ring)", 'error');
+      const namuna = l.slice(0, 3).map(x => x.name).join(', ');
+      if (!(await confirm({ message: `${l.length} ta tashqi qatnashchi qo'shilsinmi? (${namuna}${l.length > 3 ? ', …' : ''})`, danger: false }))) return;
+      setBand('excel');
+      let qoshildi = 0;
+      for (let i = 0; i < l.length; i += 500) {
+        const r = await soro<{ qoshildi: number }>('POST', `exams/${exam.id}/guests`, { guests: l.slice(i, i + 500).map(x => ({ ...x, schoolId: mehmon.schoolId })) });
+        qoshildi += r.qoshildi;
+      }
+      showNotification(`${qoshildi} ta tashqi qatnashchi qo'shildi`, 'success');
       await Promise.all([yukla(), qatnashchilarniYukla()]);
     } catch (e: any) {
       showNotification(e.message, 'error');
@@ -370,6 +394,13 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
                 )}
               </div>
               <Tugma className="w-full" ikonka={<UserPlus size={14} />} yuklanmoqda={band === 'mehmon'} onClick={mehmonQosh}>Qo'shish</Tugma>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <label className={`inline-flex items-center gap-1.5 text-[12.5px] font-semibold cursor-pointer ${band === 'excel' ? 'text-matn-xira' : 'text-brand hover:underline'}`}>
+                  <FileSpreadsheet size={14} /> {band === 'excel' ? 'Yuklanmoqda…' : "Excel'dan ro'yxat"}
+                  <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={band === 'excel'} onChange={e => { mehmonExcel(e.target.files?.[0]); e.target.value = ''; }} />
+                </label>
+                <button type="button" onClick={mehmonShabloni} className="text-[11.5px] text-matn-xira hover:text-brand cursor-pointer">shablon</button>
+              </div>
             </div>
           )}
           {mehmonlar.length ? (
@@ -378,7 +409,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
                 <li key={m.id} className="flex items-center justify-between gap-2 py-2 text-[12.5px]">
                   <span className="min-w-0">
                     <span className="block truncate text-matn">{m.name}{m.leadId && <Yorliq rang="brand" className="ml-1.5">lid</Yorliq>}</span>
-                    <span className="text-matn-xira">{m.phone || "telefon yo'q"}</span>
+                    <span className="text-matn-xira">{[m.phone || "telefon yo'q", m.maktab, m.sinf && `${m.sinf}-sinf`].filter(Boolean).join(' · ')}</span>
                   </span>
                   {tahrir && !m.resultId && <button aria-label="Olib tashlash" onClick={() => orinOchir(m)} className="p-1.5 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
                 </li>

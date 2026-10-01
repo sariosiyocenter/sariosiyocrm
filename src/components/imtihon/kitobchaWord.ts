@@ -99,7 +99,8 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
         const tj = o.ikkiTil ? q.tarjima?.options || [] : [];
         const uzunlik = Math.max(...tartib.map(i => oddiyMatn(q.options[i] || '').length + (tj[i] ? oddiyMatn(tj[i]).length + 3 : 0)));
         const rasmli = tartib.some(i => /<img/i.test(q.options[i] || ''));
-        const qatorda = rasmli ? 2 : uzunlik <= 11 && tartib.length <= 4 ? 4 : uzunlik <= 30 ? 2 : 1;
+        // Savolda belgilangan joylashuv (Addmen DISPLAY CHOICES) ustun turadi.
+        const qatorda = q.joylashuv === 1 || q.joylashuv === 2 || q.joylashuv === 4 ? q.joylashuv : rasmli ? 2 : uzunlik <= 11 && tartib.length <= 4 ? 4 : uzunlik <= 30 ? 2 : 1;
         const qadam = (ustunW - CHEKINISH) / qatorda;
         const tabs = qatorda > 1 ? `<w:tabs>${Array.from({ length: qatorda - 1 }, (_, k) => `<w:tab w:val="left" w:pos="${Math.round(CHEKINISH + qadam * (k + 1))}"/>`).join('')}</w:tabs>` : '';
         const variant = (asl: number, i: number) => `${matnRun(`${HARFLAR[i]})`, { b: true })}${matnRun(' ')}${htmlRunlar(q.options[asl] || '', rasmlar, Math.min(qadam / TWIP_SM - 0.8, 6))}`

@@ -524,6 +524,8 @@ export interface Question {
     passage?: { id: number; title?: string | null } | null;
     /** Izoh (Addmen REMARK). */
     remark?: string | null;
+    /** Javob variantlari kitobchada nechta ustunda (Addmen DISPLAY CHOICES; null — o'zi). */
+    joylashuv?: 1 | 2 | 4 | null;
     /** Ikkinchi tildagi matn (Addmen "Bilingual"). */
     tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
     usedCount?: number;
@@ -557,6 +559,12 @@ export interface BankFiltrMalumoti {
     mavzular: { id: number; nom: string; bolim: string; soni: number }[];
     manbalar: { nom: string; soni: number }[];
     toplamlar: { nom: string; soni: number }[];
+    /** Addmen REMARK qiymatlari. */
+    izohlar: { nom: string; soni: number }[];
+    /** Matnga bog'langan (passage) va bog'lanmagan savollar soni. */
+    matnli: { bor: number; yoq: number };
+    /** Variantlar joylashuvi: 0 — avtomatik, 1/2/4 ustun. */
+    joylashuv: Record<'0' | '1' | '2' | '4', number>;
     /** belgi id → savollar soni */
     belgilar: Record<number, number>;
     guruhlar: BelgiGuruhi[];

@@ -1009,3 +1009,28 @@ Sinov: `scratch/hisobot2_ui.mjs` (30/30, bazaga yozmaydi — o'tish bali `page.r
 Sinov: `scratch/test_hovuz.mjs` (12/12, bazasiz), `test_almashtir_api.mjs` (15/15, ZZ imtihon,
 usedCount aynan tiklanadi), `qpg_ui.mjs` (13/13, brauzer; docx Word'da `word_ochish.ps1` bilan),
 eski mantiq testlari o'tdi (bank 32, imtihon 56, ajrat 10).
+
+### 20.3 Bank, qatnashchilar, skaner
+
+- **Word QR shablon** (Addmen "CREATE QR FILE → BLANK QPG QR"): «Savol qo'shish» oynasida —
+  savollar soni, 4/5 variant, ikki tilli (har savol ostida "N (ru)" qatori), fayl nomi
+  (`bank/qrShablon.ts`, yotiq A4 jadval). To'ldirilgan fayl AI siz o'qiladi: word.ts
+  "N (ru)" qatorini oldingi savolning `tarjima` si qiladi; bo'sh shablon qatorlari va tarjima
+  qatorlari "QR jadvalimi" hisobiga kirmaydi.
+- **Bank filtrlari**: Izoh (remark), Matnli savollar (passage: bog'langan / matnsiz), Variantlar
+  joylashuvi (Addmen DISPLAY CHOICES; `Question.joylashuv` 1/2/4, null — avto) — `bank/filtr`
+  (`izohlar`, `matnli`, `joylashuv`) va `royxatSharti`. Kartochkada izoh, "matnli", joylashuv.
+  «O'zgartirish» (ommaviy) — izoh va joylashuv ham. Savol muharririda "Kitobchada variantlar";
+  kitobcha (HTML, `.tort` — 4 ustun) va Word shu qiymatga bo'ysunadi.
+- **Tashqi qatnashchilar Excel'dan** (Addmen "Import candidate names from Excel"):
+  O'rinlashtirish → Tashqi qatnashchilar → "Excel'dan ro'yxat" (+ shablon). Ustunlar nomidan:
+  F.I.Sh, Telefon, Maktab, Sinf (`mehmonExcel.ts`); 500 tadan. `ExamSeat.guestSchool/guestGrade`
+  — javob varaqasida maktab/sinf.
+- **Skaner "Sort codes"** (`src/lib/omr/saralash.ts`): UNR, IDX, SKW, BLT, IVT, BID, DID, LID,
+  IID, DUP, MUL, THR, XAT — "O'qilgan varaqlar" ustida kod tugmachalari (sanoq, bosilsa — shu kod
+  bo'yicha ro'yxat), har qatorda kod, "Kodlar" izohi. O'qigich `idHolat` (bo'sh / bir ustunda
+  ko'p / chala), server `/scans` → `takror` (shu sahifa oldin skanerlangan).
+
+Sinov: `scratch/test_saralash.mjs` (16/16), `qr_ikki_til.mjs` (shablon + to'ldirilgan fayl; Word'da
+ochildi), `b3_ui.mjs` (15/15: filtrlar, ikki tilli import — saqlash ushlanadi, Excel mehmonlar ZZ
+imtihonda, saralash kodlari; tiklash va o'chirish bilan).

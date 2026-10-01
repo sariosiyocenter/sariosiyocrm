@@ -537,6 +537,8 @@ export interface JadvalSavol {
   correctAnswer: string;
   /** Bo'lsa — savol qoralama bo'lib tushadi. */
   xato: string | null;
+  /** Ikki tilli QR: "N (ru)" qatoridagi tarjima. */
+  tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
 }
 export interface JadvalNatija { savollar: JadvalSavol[]; formulaSoni: number; oqilmagan: number; rasmSoni: number }
 
@@ -550,6 +552,8 @@ function javobHarfi(s: string): string | null {
   return null;
 }
 const RAQAM_KATAK = /^\s*\d{1,6}\s*[.)]?\s*$/;
+/** Ikki tilli QR shablonidagi tarjima qatori: "12 (ru)". */
+const TARJIMA_KATAK = /^\s*\d{1,6}\s*\((uz|ru|en)\)\s*$/i;
 const html = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
@@ -559,14 +563,19 @@ const html = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 export async function wordJadvalSavollari(fayl: File, rasmYukla: (dataUrl: string, nom: string) => Promise<string>): Promise<JadvalNatija | null> {
   const h = await hujjatniOqi(fayl, 5000);
   const katakMatni = (k: Paragraf[] | undefined) => (k || []).map(p => matnniYig(p.bolaklar, false)).join('\n').replace(/ /g, ' ').trim();
-  const qatorlar: { kataklar: Paragraf[][]; seriya: boolean }[] = [];
+  const qatorlar: { kataklar: Paragraf[][]; seriya: boolean; til?: 'uz' | 'ru' | 'en' }[] = [];
   for (const j of h.jadvallar) {
     const toliq = j.filter(q => q.length >= 6);
     if (!toliq.length) continue;
     const javobli = toliq.filter(q => javobHarfi(katakMatni(q[q.length - 1])));
-    // QR jadvali: ≥6 ustunli qatorlarning yarmidan ko'pida oxirgi katak — javob harfi.
-    if (!javobli.length || javobli.length * 2 < toliq.length) continue;
+    // QR jadvali: ≥6 ustunli qatorlarning yarmidan ko'pida oxirgi katak — javob harfi
+    // (ikki tilli shablonning "N (ru)" tarjima qatorlari sanalmaydi — ularda javob yo'q).
+    // To'ldirilmagan shablon qatorlari (faqat raqam) ham sanalmaydi.
+    const savolQatorlari = toliq.filter(q => !TARJIMA_KATAK.test(katakMatni(q[0])) && q.slice(1).some(k => katakMatni(k)));
+    if (!javobli.length || javobli.length * 2 < savolQatorlari.length) continue;
     for (const q of toliq) {
+      const tarjima = TARJIMA_KATAK.exec(katakMatni(q[0]));
+      if (tarjima) { qatorlar.push({ kataklar: q, seriya: true, til: tarjima[1].toLowerCase() as 'uz' | 'ru' | 'en' }); continue; }
       // Sarlavha qatori ("№ | Savol | A | … | Javob") — javob harfi ham, raqami ham yo'q.
       const seriya = RAQAM_KATAK.test(katakMatni(q[0]));
       if (!seriya && !javobHarfi(katakMatni(q[q.length - 1]))) continue;
@@ -601,8 +610,17 @@ export async function wordJadvalSavollari(fayl: File, rasmYukla: (dataUrl: strin
   };
 
   const savollar: JadvalSavol[] = [];
-  for (const { kataklar, seriya } of qatorlar) {
+  for (const { kataklar, seriya, til } of qatorlar) {
     const n = kataklar.length;
+    if (til) {
+      // Tarjima qatori — oldingi savolga (javob ustuni hisobga olinmaydi).
+      const oldingi = savollar[savollar.length - 1];
+      const matn = await katakHtml(kataklar[1]);
+      const variantlar = await Promise.all(kataklar.slice(2, n - 1).map(katakHtml));
+      while (variantlar.length && !variantlar[variantlar.length - 1]) variantlar.pop();
+      if (oldingi && (matn || variantlar.some(Boolean))) oldingi.tarjima = { til, text: matn, options: variantlar };
+      continue;
+    }
     const savolKatak = kataklar[seriya ? 1 : 0];
     const variantlar = kataklar.slice(seriya ? 2 : 1, n - 1);
     // Addmen 4 yoki 5 variantli: bo'sh oxirgi ustunlar tashlanadi.

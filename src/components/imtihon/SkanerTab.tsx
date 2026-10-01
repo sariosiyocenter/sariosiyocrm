@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX } from 'lucide-react';
+import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX, Info } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, INPUT, SELECT, Maydon, BoshHolat, Yuklanmoqda } from './ui';
@@ -9,6 +9,7 @@ import { varaqSahifalari, type VaraqParametrlari } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, RAQAM_USTUNLARI } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
+import { SARALASH, saralashKodi } from '../../lib/omr/saralash';
 
 // 4-bo'lim: javob varaqalarini o'qish. Asosiy yo'l — ADF skanerdan PDF yoki
 // rasmlar (brauzerning o'zi o'qiydi, serverga faqat javoblar va kichik rasm
@@ -22,8 +23,11 @@ interface Element {
   oqish?: IshchiNatija['natija'];
   rasm?: string | null;
   xato?: string;
-  natija?: { name: string; score: number; shubhalar: number; sheetCode?: string };
+  natija?: { name: string; score: number; shubhalar: number; sheetCode?: string; takror?: boolean };
+  /** Server 404 qaytargan (varaq kodi yoki o'quvchi topilmadi). */
+  topilmadi?: boolean;
 }
+
 
 export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; onTekshirish?: () => void }) {
   const { ozgartira, showNotification, students } = useCRM();
@@ -78,9 +82,9 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     yangilaEl(el.id, { holat: 'saqlanmoqda', xato: undefined });
     try {
       const r = await soro<any>('POST', `exams/${exam.id}/scans`, body);
-      yangilaEl(el.id, { holat: 'tayyor', natija: { name: r.name, score: r.score, shubhalar: r.shubhalar, sheetCode: r.sheetCode } });
+      yangilaEl(el.id, { holat: 'tayyor', natija: { name: r.name, score: r.score, shubhalar: r.shubhalar, sheetCode: r.sheetCode, takror: !!r.takror } });
     } catch (e: any) {
-      yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message });
+      yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message, topilmadi: e.status === 404 });
     }
   }, [exam.id, sahifalar, soro, idniTop]);
 
@@ -114,6 +118,16 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       yangila();
     }
   };
+
+  // Addmen SORT: kodlar bo'yicha sanoq va tanlangan kod bo'yicha ro'yxat.
+  const [kodFiltr, setKodFiltr] = useState<string | null>(null);
+  const [kodIzoh, setKodIzoh] = useState(false);
+  const kodlar = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of navbat) { const k = saralashKodi(e); if (k) m.set(k, (m.get(k) || 0) + 1); }
+    return Object.keys(SARALASH).filter(k => m.has(k)).map(k => ({ k, soni: m.get(k)! }));
+  }, [navbat]);
+  const korinadigan = kodFiltr ? navbat.filter(e => saralashKodi(e) === kodFiltr) : navbat;
 
   const hisob = {
     jami: navbat.length,
@@ -175,9 +189,31 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       {rejim === 'qolda' && <QoldaKiritish key={qoldaOrin?.id ?? 0} exam={exam} orinlar={orinData?.seats || []} boshlangich={qoldaOrin} onSaqlandi={() => { setQoldaOrin(null); orinlarniYukla(); yangila(); }} />}
 
       {navbat.length > 0 && (
-        <Karta sarlavha="O'qilgan varaqlar" ichki="p-0">
-          <ul className="divide-y divide-chiziq">
-            {navbat.map(el => <NavbatQatori key={el.id} el={el} orinlar={orinData?.seats || []} onYubor={(q) => yubor(el, q, el.nom === 'Kamera' ? 'kamera' : 'skaner')} />)}
+        <Karta sarlavha="O'qilgan varaqlar" ichki="p-0"
+          amallar={kodlar.length > 0 && (
+            <button type="button" onClick={() => setKodIzoh(v => !v)} className="inline-flex items-center gap-1 text-[12px] text-matn-xira hover:text-brand cursor-pointer" aria-expanded={kodIzoh}><Info size={13} /> Kodlar</button>
+          )}>
+          {kodlar.length > 0 && (
+            <div className="px-4 pb-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Saralash kodlari">
+                <span className="text-[11.5px] font-semibold text-matn-sokin mr-1">Saralash:</span>
+                {kodlar.map(({ k, soni }) => (
+                  <button key={k} type="button" aria-pressed={kodFiltr === k} title={SARALASH[k]} onClick={() => setKodFiltr(f => (f === k ? null : k))}
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11.5px] font-bold font-mono cursor-pointer ${kodFiltr === k ? 'bg-brand text-brand-ust border-brand' : ['MUL', 'THR', 'DUP'].includes(k) ? 'bg-ogoh-fon text-ogoh border-ogoh/30' : 'bg-xato-fon text-xato border-xato-chiziq'}`}>
+                    {k}<span className="font-sans raqam">{soni}</span>
+                  </button>
+                ))}
+                {kodFiltr && <button type="button" onClick={() => setKodFiltr(null)} className="text-[11.5px] text-matn-xira hover:text-brand cursor-pointer ml-1">hammasi</button>}
+              </div>
+              {kodIzoh && (
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-lg bg-ichki px-3 py-2 text-[11.5px]">
+                  {Object.entries(SARALASH).map(([k, v]) => <React.Fragment key={k}><dt className="font-mono font-bold text-matn">{k}</dt><dd className="text-matn-sokin">{v}</dd></React.Fragment>)}
+                </dl>
+              )}
+            </div>
+          )}
+          <ul className="divide-y divide-chiziq border-t border-chiziq">
+            {korinadigan.map(el => <NavbatQatori key={el.id} el={el} orinlar={orinData?.seats || []} onYubor={(q) => yubor(el, q, el.nom === 'Kamera' ? 'kamera' : 'skaner')} />)}
           </ul>
         </Karta>
       )}
@@ -304,6 +340,7 @@ function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; 
         <span className="mt-0.5">{ikonka}</span>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
+            {saralashKodi(el) && <span className="px-1.5 rounded bg-ichki border border-chiziq text-[10.5px] font-bold font-mono text-matn-sokin" title={SARALASH[saralashKodi(el)!]}>{saralashKodi(el)}</span>}
             <span className="font-semibold text-matn">{el.natija?.name || el.nom}</span>
             {el.natija && <span className="text-matn-sokin">{el.natija.score} ball{el.natija.shubhalar ? ` · ${el.natija.shubhalar} ta shubhali javob` : ''}</span>}
             {el.oqish?.page ? <span className="text-matn-xira text-[12px]">{el.oqish.page}-sahifa</span> : null}

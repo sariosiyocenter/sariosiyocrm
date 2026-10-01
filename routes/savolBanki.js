@@ -337,6 +337,8 @@ export function registerSavolBankiRoutes(app) {
         Object.assign(d, { bankTopicId: t.id, topic: t.name, subject: t.subject.name });
       }
       if (req.body.source !== undefined) d.source = nomi(req.body.source) || null;
+      if (req.body.remark !== undefined) d.remark = nomi(req.body.remark) || null;
+      if (req.body.joylashuv !== undefined) d.joylashuv = [1, 2, 4].includes(Number(req.body.joylashuv)) ? Number(req.body.joylashuv) : null;
       if (req.body.ishlatilishNol === true) d.usedCount = 0;
       const qosh = idlarRoyxati(req.body.tagQosh, 50);
       const ol = idlarRoyxati(req.body.tagOl, 500);
@@ -489,9 +491,11 @@ export function registerSavolBankiRoutes(app) {
       const mavzular = [...fan.topics].sort((a, b) => a.order - b.order || a.id - b.id);
       const savollar = await prisma.question.findMany({
         where: { schoolId: { in: orgIds }, bankTopicId: { in: mavzular.map(t => t.id) } },
-        select: { bankTopicId: true, difficulty: true, source: true, tagIds: true, toplam: true, status: true, type: true },
+        select: { bankTopicId: true, difficulty: true, source: true, tagIds: true, toplam: true, status: true, type: true, remark: true, passageId: true, joylashuv: true },
       });
-      const mavzuSoni = new Map(), bolimSoni = new Map(), manba = new Map(), toplam = new Map(), belgi = {};
+      const mavzuSoni = new Map(), bolimSoni = new Map(), manba = new Map(), toplam = new Map(), izoh = new Map(), belgi = {};
+      const matnli = { bor: 0, yoq: 0 };
+      const joylashuv = { 0: 0, 1: 0, 2: 0, 4: 0 };
       const qiyinlik = [0, 0, 0];
       const holat = { faol: 0, qoralama: 0, arxiv: 0 };
       const turlar = { yopiq: 0, raqamli: 0, yozma: 0 };
@@ -504,6 +508,9 @@ export function registerSavolBankiRoutes(app) {
         oshir(bolimSoni, bolimi.get(q.bankTopicId) || '');
         oshir(manba, q.source || '');
         oshir(toplam, q.toplam || '');
+        oshir(izoh, q.remark || '');
+        matnli[q.passageId ? 'bor' : 'yoq']++;
+        joylashuv[[1, 2, 4].includes(q.joylashuv) ? q.joylashuv : 0]++;
         qiyinlik[qiyinlikDarajasi(q.difficulty) - 1]++;
         turlar[turi(q.type)]++;
         for (const t of q.tagIds || []) belgi[t] = (belgi[t] || 0) + 1;
@@ -515,7 +522,7 @@ export function registerSavolBankiRoutes(app) {
         jami: savollar.length - holat.arxiv, yashirin: holat.arxiv, holat, turlar, qiyinlik,
         bolimlar,
         mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
-        manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), belgilar: belgi,
+        manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi,
         guruhlar: await belgiGuruhlari(orgIds),
       });
     } catch (err) { xato(res, next)(err); }
@@ -542,6 +549,7 @@ export function registerSavolBankiRoutes(app) {
             id: true, text: true, type: true, difficulty: true, status: true, toplam: true, source: true, tagIds: true,
             topic: true, bankTopicId: true, usedCount: true, createdAt: true, imageUrl: true,
             options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, points: true, pCorrect: true,
+            remark: true, passageId: true, joylashuv: true,
           },
         }),
         prisma.question.count({ where }),
@@ -718,6 +726,19 @@ async function royxatSharti(f, orgIds) {
   if (SAVOL_HOLATLARI.includes(f.holat)) and.push({ status: f.holat });
   else and.push({ status: { not: 'arxiv' } });
   if (['yopiq', 'raqamli', 'yozma'].includes(f.tur)) and.push({ type: f.tur });
+  // Addmen REMARK, PASSAGE, DISPLAY CHOICES filtrlari.
+  const izohlar = matnlar(f.izohlar);
+  if (izohlar.length) {
+    const bor = izohlar.filter(Boolean);
+    and.push({ OR: [...(bor.length ? [{ remark: { in: bor } }] : []), ...(izohlar.includes('') ? [{ remark: null }, { remark: '' }] : [])] });
+  }
+  if (f.matnli === 'bor') and.push({ passageId: { not: null } });
+  else if (f.matnli === 'yoq') and.push({ passageId: null });
+  const joylar = (Array.isArray(f.joylashuv) ? f.joylashuv : []).map(Number).filter(n => [0, 1, 2, 4].includes(n));
+  if (joylar.length) {
+    const bor = joylar.filter(Boolean);
+    and.push({ OR: [...(bor.length ? [{ joylashuv: { in: bor } }] : []), ...(joylar.includes(0) ? [{ joylashuv: null }] : [])] });
+  }
   if (String(f.qidiruv || '').trim()) and.push({ text: { contains: String(f.qidiruv).trim().slice(0, 200), mode: 'insensitive' } });
   return { AND: and };
 }

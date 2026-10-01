@@ -10,6 +10,7 @@ import { QiyinlikTanlov } from './qiyinlik';
 import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
 import { exceldanSavollar, shablonniYukla, type ExcelSavol } from './excel';
+import QrShablonTugma from './QrShablonTugma';
 import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
 import { compressAndUpload } from '../../../lib/image';
 import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
@@ -39,6 +40,7 @@ interface Natija extends AiSavol {
   manba: 'ai' | 'excel' | 'jadval';
   /** To'plam — qaysi fayldan (Addmen "QR file name"). */
   toplam?: string | null;
+  tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
   raqam?: string | null;
   javobManbasi?: 'material' | 'ai' | null;
   /** Javob boshqa sahifadagi kalitdan olindi. */
@@ -256,7 +258,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           yig.push({
             kalit: keyingi++, manba: 'jadval', tanlangan: !bor, subject: fan!.name, topic: qatiyMavzu || ARALASH, raqam: q.raqam,
             type: 'yopiq', text: q.text, options: q.options, correctAnswer: q.correctAnswer, difficulty: 2,
-            language: 'uz', solution: null, solutionStatus: 'yoq', xato: q.xato, toplam,
+            language: 'uz', solution: null, solutionStatus: 'yoq', xato: q.xato, toplam, tarjima: q.tarjima || null,
           });
         }
       }
@@ -367,6 +369,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         return {
           ...asos,
           toplam: n.toplam || null,
+          ...(n.tarjima ? { tarjima: n.tarjima } : {}),
           subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? null,
           type: n.type, text: n.text, options: n.type === 'yopiq' ? n.options : null,
           correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, difficulty: n.difficulty, language: n.language || 'uz',
@@ -572,7 +575,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             )}
 
             <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <button type="button" onClick={shablonniYukla} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-matn-sokin hover:text-brand cursor-pointer w-fit"><Download size={13} /> Excel shablon</button>
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <button type="button" onClick={shablonniYukla} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-matn-sokin hover:text-brand cursor-pointer w-fit"><Download size={13} /> Excel shablon</button>
+                <QrShablonTugma />
+              </span>
               <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !aiSiz}
                 onClick={ajrat}>
                 {sahifalar.length ? `Savollarni ajratish (${sahifalar.length} sahifa)` : aiSiz && !aiKerak ? `${aiSiz} ta savolni ko'rish` : 'Savollarni ajratish'}

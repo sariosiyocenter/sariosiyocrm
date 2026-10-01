@@ -261,6 +261,8 @@ export interface OqishNatijasi {
   toliqlik: Record<number, number[]>;
   variant: string | null;
   idRaqam: string | null;
+  /** Universal varaqdagi ID ustunlari: bo'sh (Addmen BID), bir ustunda bir nechta belgi (DID), chala (LID). */
+  idHolat?: 'bosh' | 'kop' | 'chala' | null;
   /** To'g'rilangan varaq (px/mm = `masshtab`) — saqlash va kesib ko'rsatish uchun. */
   tasvir: Kulrang | null;
   masshtab: number;
@@ -526,6 +528,7 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
       else if (toliqlar.length > 1) buzuq = true;
     }
     natija.idRaqam = !buzuq && raqam ? raqam : null;
+    natija.idHolat = buzuq ? 'kop' : !raqam ? 'bosh' : raqam.length < sahifa.idUstunlari.length ? 'chala' : null;
   }
   return natija;
 }

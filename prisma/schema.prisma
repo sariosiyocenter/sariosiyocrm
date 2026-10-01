@@ -1058,6 +1058,8 @@ model Question {
   remark        String?
   // Ikkinchi tildagi matn (Addmen "Bilingual"): {til: 'ru'|'uz'|'en', text, options[]}.
   tarjima       Json?
+  // Addmen DISPLAY CHOICES: javob variantlari kitobchada nechta ustunda (1, 2, 4; null — o'zi tanlaydi).
+  joylashuv     Int?
 
   @@index([schoolId, subject, topic])
   @@index([passageId])
@@ -1209,6 +1211,9 @@ model ExamSeat {
   student    Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
   guestName  String?
   guestPhone String?
+  // Tashqi qatnashchining maktabi va sinfi (Excel'dan import, javob varaqasida chiqadi).
+  guestSchool String?
+  guestGrade  String?
   groupId    Int?     // qaysi kurs orqali qatnashadi (kurs ichidagi o'rin shu bo'yicha)
   session    Int      @default(1)
   roomId     Int?

@@ -154,6 +154,7 @@ export interface BelgilashBoshi {
   mavzuId?: number | null;
   qiyinlik?: number | null;
   manba?: string | null;
+  izoh?: string | null;
   guruhlar?: Record<number, number[]>;
 }
 
@@ -171,6 +172,8 @@ export function BelgilashOynasi({ ids, filtr, boshi, onYop, onSaqlandi }: {
   const [mavzu, setMavzu] = useState<string>(boshi.mavzuId ? String(boshi.mavzuId) : OZGARMAYDI);
   const [qiyinlik, setQiyinlik] = useState<string>(boshi.qiyinlik ? String(boshi.qiyinlik) : OZGARMAYDI);
   const [manba, setManba] = useState<string | null>(boshi.manba !== undefined ? boshi.manba : null);
+  const [izoh, setIzoh] = useState<string | null>(boshi.izoh !== undefined ? boshi.izoh : null);
+  const [joylashuv, setJoylashuv] = useState<string>(OZGARMAYDI);
   const [holat, setHolat] = useState<string>(OZGARMAYDI);
   // Guruh: undefined — o'zgarmasin, [] — tozalansin, [..] — shu qiymatlar.
   const [guruhlar, setGuruhlar] = useState<Record<number, number[] | undefined>>(() => ({ ...(boshi.guruhlar || {}) }));
@@ -182,6 +185,8 @@ export function BelgilashOynasi({ ids, filtr, boshi, onYop, onSaqlandi }: {
     if (mavzu !== OZGARMAYDI) body.bankTopicId = Number(mavzu);
     if (qiyinlik !== OZGARMAYDI) body.difficulty = Number(qiyinlik);
     if (manba !== null) body.source = manba;
+    if (izoh !== null) body.remark = izoh;
+    if (joylashuv !== OZGARMAYDI) body.joylashuv = Number(joylashuv) || null;
     if (holat !== OZGARMAYDI) body.status = holat;
     const g = Object.entries(guruhlar).filter(([, v]) => v !== undefined).map(([k, v]) => ({ groupId: Number(k), tagIds: v }));
     if (g.length) body.guruhlar = g;
@@ -227,6 +232,22 @@ export function BelgilashOynasi({ ids, filtr, boshi, onYop, onSaqlandi }: {
             {manba !== null && <Tugma kichik turi="oddiy" aria-label="O'zgarmasin" title="O'zgarmasin" onClick={() => setManba(null)} ikonka={<X size={13} />} />}
           </div>
           <datalist id="bank-manbalar">{manbalar.map(m => <option key={m} value={m} />)}</datalist>
+        </Maydon>
+        <Maydon nom="Izoh (remark)" izoh={izoh === '' ? "Izoh olib tashlanadi" : undefined}>
+          <div className="flex gap-1.5">
+            <input className={INPUT} list="bank-izohlar" value={izoh ?? ''} placeholder={izoh === null ? "O'zgarmasin" : 'Izoh'} onChange={e => setIzoh(e.target.value)} />
+            {izoh !== null && <Tugma kichik turi="oddiy" aria-label="O'zgarmasin" title="O'zgarmasin" onClick={() => setIzoh(null)} ikonka={<X size={13} />} />}
+          </div>
+          <datalist id="bank-izohlar">{(filtr.izohlar || []).map(m => m.nom).filter(Boolean).map(m => <option key={m} value={m} />)}</datalist>
+        </Maydon>
+        <Maydon nom="Variantlar joylashuvi">
+          <select className={SELECT} value={joylashuv} onChange={e => setJoylashuv(e.target.value)}>
+            <option value={OZGARMAYDI}>O'zgarmasin</option>
+            <option value="0">Avtomatik</option>
+            <option value="1">1 ustun</option>
+            <option value="2">2 ustun</option>
+            <option value="4">4 ustun</option>
+          </select>
         </Maydon>
         <Maydon nom="Holati">
           <select className={SELECT} value={holat} onChange={e => setHolat(e.target.value)}>

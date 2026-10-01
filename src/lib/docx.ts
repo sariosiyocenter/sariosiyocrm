@@ -42,7 +42,8 @@ export class Rasmlar {
   private royxat: { rid: string; nom: string; r: YuklanganRasm }[] = [];
   private idlar = new Map<string, string>();
   private n = 0;
-  constructor(private yuklangan: Map<string, YuklanganRasm>) {}
+  private yuklangan: Map<string, YuklanganRasm>;
+  constructor(yuklangan: Map<string, YuklanganRasm>) { this.yuklangan = yuklangan; }
 
   drawing(url: string, maxKenglikSm: number, maxBalandlikSm = 7): string {
     const r = this.yuklangan.get(url);
