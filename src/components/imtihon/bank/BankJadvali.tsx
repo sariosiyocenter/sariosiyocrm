@@ -8,6 +8,7 @@ import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { HARFLAR } from '../../../../lib/imtihon.js';
 import { FiltrSozlash, BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
+import MoslashJadvali from './MoslashJadvali';
 import { QIYINLIK, QiyinlikYorligi } from './qiyinlik';
 import type { BankDaraxt, BankFiltrMalumoti, BelgiGuruhi, Question, SavolTuri } from '../../../types';
 
@@ -27,7 +28,7 @@ interface FiltrTanlovi {
 }
 const BOSH: FiltrTanlovi = { mavzular: [], qiyinlik: [], manbalar: [], belgilar: {}, toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '', izohlar: [], matnli: '', joylashuv: [] };
 const JOYLASHUV_NOMI: Record<number, string> = { 0: 'Avtomatik', 1: '1 ustun', 2: '2 ustun', 4: '4 ustun' };
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma' };
 const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 const sana = (s?: string) => (s ? new Date(s).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '.') : '');
 const almashtirRoyxat = <K,>(l: K[], k: K) => (l.includes(k) ? l.filter(x => x !== k) : [...l, k]);
@@ -532,7 +533,7 @@ const SavolKartochka = memo(function SavolKartochka({ q, ixcham, tanlangan, mavz
   const qisqa = useMemo(() => (q.options || []).every(o => oddiyMatn(o).length <= 22 && !/<img/i.test(o)), [q.options]);
   const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
   const raqamliJavob = q.type === 'raqamli' ? [...new Set([q.correctAnswer, ...(q.answers || [])].filter(Boolean))].join(' · ') : '';
-  const javobQisqa = q.type === 'yopiq' ? (togri >= 0 ? HARFLAR[togri] : '') : raqamliJavob;
+  const javobQisqa = q.type === 'yopiq' ? (togri >= 0 ? HARFLAR[togri] : '') : q.type === 'moslash' ? String(q.correctAnswer || '') : raqamliJavob;
 
   return (
     <li className={`flex gap-3 px-4 ${ixcham ? 'py-2' : 'py-3.5'} cursor-pointer transition-colors ${tanlangan ? 'bg-brand-fon/60 dark:bg-brand/10' : 'hover:bg-ichki/60'} ${q.status === 'arxiv' ? 'opacity-60' : ''}`}
@@ -584,6 +585,7 @@ const SavolKartochka = memo(function SavolKartochka({ q, ixcham, tanlangan, mavz
                 <span className="text-matn-sokin">Javob:</span><b className="text-yaxshi raqam">{raqamliJavob || '—'}</b>
               </p>
             )}
+            {q.type === 'moslash' && <div className="mt-2"><MoslashJadvali ixcham chap={q.options || []} ong={q.answers || []} kalit={q.correctAnswer || ''} /></div>}
             {q.type === 'yozma' && <p className="mt-2 text-[12px] text-matn-xira">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}</p>}
             {(q.source || q.toplam || q.remark || q.joylashuv) && <p className="mt-1.5 text-[11px] text-matn-xira">{[q.source, q.toplam && `fayl: ${q.toplam}`, q.remark && `izoh: ${q.remark}`, q.joylashuv && `variantlar ${q.joylashuv} ustunda`].filter(Boolean).join(' · ')}</p>}
           </>

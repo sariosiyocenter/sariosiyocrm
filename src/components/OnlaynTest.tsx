@@ -11,7 +11,7 @@ import { sanaMatni } from './imtihon/format';
  * yakunlanadi. "Faqat kalit" imtihonida — onlayn javob varaqasi (savollar kitobchada).
  */
 
-interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean }
+interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean; ong?: string[]; r?: number; c?: number }
 interface Holat {
   markaz: { nomi: string; logo: string | null };
   imtihon: { nomi: string; sana: string; daqiqa: number; savolSoni: number; ochiladi: string | null; yopiladi: string | null };
@@ -214,6 +214,8 @@ export default function OnlaynTest() {
                               className={`w-10 h-10 rounded-full border-2 text-[14px] font-bold cursor-pointer ${tanlangan ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq-kuchli text-matn-sokin bg-sirt'}`}>{h}</button>;
                           })}
                         </div>
+                      ) : x.t === 'moslash' ? (
+                        <MoslashJavob r={x.r || 4} c={x.c || 5} qiymat={javoblar[x.n] || ''} onChange={v => javobQoy(x.n, v)} />
                       ) : (
                         <input inputMode="decimal" className="w-32 px-3 py-2 rounded-xl border border-chiziq bg-ichki text-[14px] text-matn outline-none focus:border-brand" value={javoblar[x.n] || ''} placeholder="javob"
                           aria-label={`${x.n}-savol javobi`} onChange={e => javobQoy(x.n, e.target.value.slice(0, 12))} />
@@ -249,6 +251,22 @@ export default function OnlaynTest() {
                     </button>
                   );
                 })}
+              </div>
+            ) : s.t === 'moslash' ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[{ l: s.variantlar, h: 'ABCD' }, { l: s.ong || [], h: 'PQRST' }].map((u, ui) => (
+                    <ol key={ui} className="space-y-1.5">
+                      {u.l.map((v, i) => (
+                        <li key={i} className="flex gap-2 rounded-xl bg-ichki px-3 py-2 text-[14px] text-matn">
+                          <b className="shrink-0">{u.h[i]})</b><span className={`${SAVOL_MATNI} min-w-0 break-words`} dangerouslySetInnerHTML={{ __html: formulaliHtml(v) }} />
+                        </li>
+                      ))}
+                    </ol>
+                  ))}
+                </div>
+                <p className="text-[12.5px] text-matn-sokin">Har qatorga mos keladiganlarini belgilang (bir nechta bo'lishi mumkin):</p>
+                <MoslashJavob katta r={s.r || s.variantlar.length || 4} c={s.c || (s.ong || []).length || 5} qiymat={javoblar[s.n] || ''} onChange={v => javobQoy(s.n, v)} />
               </div>
             ) : (
               <label className="block">
@@ -303,6 +321,31 @@ function Ekran({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-fon flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-sirt rounded-2xl border border-chiziq p-6 text-center">{children}</div>
+    </div>
+  );
+}
+
+/** Moslashtirish javobi: qatorlar (A–D) × ustunlar (P–T), qatorda bir nechta belgi — "PQ|R||T". */
+function MoslashJavob({ r, c, qiymat, onChange, katta }: { r: number; c: number; qiymat: string; onChange: (v: string) => void; katta?: boolean }) {
+  const qatorlar = Array.from({ length: r }, (_, i) => (qiymat.split('|')[i] || ''));
+  const bos = (i: number, h: string) => {
+    const k = [...qatorlar];
+    k[i] = (k[i].includes(h) ? k[i].replace(h, '') : k[i] + h).split('').sort().join('');
+    onChange(k.some(Boolean) ? k.join('|') : '');
+  };
+  const o = katta ? 'w-11 h-11 text-[14px]' : 'w-9 h-9 text-[12.5px]';
+  return (
+    <div className="space-y-1.5">
+      {qatorlar.map((q, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <span className="w-6 text-center text-[13px] font-bold text-matn-sokin">{'ABCD'[i]}</span>
+          {'PQRST'.slice(0, c).split('').map(h => {
+            const on = q.includes(h);
+            return <button key={h} onClick={() => bos(i, h)} aria-pressed={on} aria-label={`${'ABCD'[i]}–${h}`}
+              className={`${o} rounded-full border-2 font-bold cursor-pointer ${on ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq-kuchli text-matn-sokin bg-sirt'}`}>{h}</button>;
+          })}
+        </div>
+      ))}
     </div>
   );
 }

@@ -280,6 +280,18 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     });
   }
 
+  // Moslashtirish to'rlari
+  for (const sv of sahifa.moslash || []) {
+    const { quti } = sv;
+    q.push(`<rect x="${f(quti.x)}" y="${f(quti.y)}" width="${f(quti.w)}" height="${f(quti.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.3"/>`);
+    q.push(matn(quti.x + 1.5, quti.y + 3.2, `${sv.n}-savol (moslash)`, { size: 2.5, bold: true, maxW: quti.w - 3 }));
+    sv.qatorlar[0].forEach(d => q.push(matn(d.x, quti.y + 8, d.v, { size: 2.4, bold: true, anchor: 'middle', rang: '#333' })));
+    sv.qatorlar.forEach((qator, r) => {
+      q.push(matn(quti.x + 3.5, qator[0].y + 0.9, 'ABCD'[r], { size: 2.6, bold: true, anchor: 'middle' }));
+      for (const d of qator) q.push(doira(belgilar, d, 1.9));
+    });
+  }
+
   // Yozma maydonlar
   for (const sv of sahifa.yozma) {
     const { quti } = sv;

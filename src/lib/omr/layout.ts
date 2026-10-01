@@ -54,6 +54,13 @@ const KATAK_YOZUV = 6.5;
 const KATAK_KENGLIK = RAQAM_USTUNLARI * KATAK_QADAM_X + 3;
 const KATAK_BALANDLIK = 4 + KATAK_YOZUV + 1 + RAQAM_BELGILARI.length * KATAK_QADAM_Y + 1.5;
 
+// Moslashtirish to'ri: sarlavha, ustun harflari (P–T), 4 qator (A–D).
+const MOSLASH_QADAM_X = 5.4;
+const MOSLASH_QADAM_Y = 4.7;
+const MOSLASH_R = 1.85;
+const MOSLASH_KENGLIK = 7 + 5 * MOSLASH_QADAM_X + 2;
+const MOSLASH_BALANDLIK = 9.5 + 4 * MOSLASH_QADAM_Y + 1.5;
+
 // Yozma javob maydoni
 const YOZMA_BALANDLIK = 40;
 
@@ -77,6 +84,8 @@ export interface Quti { x: number; y: number; w: number; h: number }
 export interface YopiqSavol { n: number; raqam: { x: number; y: number }; doiralar: Doira[] }
 export interface RaqamliSavol { n: number; quti: Quti; yozuv: Quti; ustunlar: Doira[][] }
 export interface YozmaSavol { n: number; quti: Quti; ball: number | null }
+/** Moslashtirish (matritsa): qatorlar A–D, har qatorda P–T doirachalari. */
+export interface MoslashSavol { n: number; quti: Quti; qatorlar: Doira[][] }
 export interface BlokSarlavha { matn: string; x: number; y: number }
 
 export interface Sahifa {
@@ -85,6 +94,7 @@ export interface Sahifa {
   yopiq: YopiqSavol[];
   raqamli: RaqamliSavol[];
   yozma: YozmaSavol[];
+  moslash?: MoslashSavol[];
   sarlavhalar: BlokSarlavha[];
   /** 1-sahifada (sozlamada yoqilgan bo'lsa) — kitobcha varianti. */
   variantlar: Doira[];
@@ -95,8 +105,8 @@ export interface Sahifa {
 }
 
 export interface Tuzilma {
-  bloklar: { nomi: string; boshi: number; oxiri: number; yopiq: number; raqamli: number; yozma: number }[];
-  savollar: { n: number; blok: number; tur: 'yopiq' | 'raqamli' | 'yozma' }[];
+  bloklar: { nomi: string; boshi: number; oxiri: number; yopiq: number; raqamli: number; moslash?: number; yozma: number }[];
+  savollar: { n: number; blok: number; tur: 'yopiq' | 'raqamli' | 'moslash' | 'yozma' }[];
   jami: number;
 }
 
@@ -188,7 +198,7 @@ const HARF = 'ABCDEF';
 
 function yangiSahifa(page: number): Sahifa {
   return {
-    page, pages: 0, yopiq: [], raqamli: [], yozma: [], sarlavhalar: [], variantlar: [], idUstunlari: [],
+    page, pages: 0, yopiq: [], raqamli: [], yozma: [], moslash: [], sarlavhalar: [], variantlar: [], idUstunlari: [],
     qr: page === 1 ? QR_1 : QR_KEYINGI,
   };
 }
@@ -297,6 +307,26 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
       s.raqamli.push({ n, quti: { x: bx, y: by, w: KATAK_KENGLIK, h: KATAK_BALANDLIK }, yozuv, ustunlar });
     });
     joriyY += KATAK_BALANDLIK + 3;
+  }
+
+  // Moslashtirish to'rlari: 4 × 5, qatorda bir nechta.
+  const moslashlar = p.tuzilma.savollar.filter(x => x.tur === 'moslash').map(x => x.n);
+  const qatordaMoslash = Math.max(1, Math.floor((KENGLIK + 4) / (MOSLASH_KENGLIK + 4)));
+  const moslashQadam = qatordaMoslash > 1 ? (KENGLIK - MOSLASH_KENGLIK) / (qatordaMoslash - 1) : 0;
+  for (let i = 0; i < moslashlar.length; i += qatordaMoslash) {
+    joy(MOSLASH_BALANDLIK);
+    moslashlar.slice(i, i + qatordaMoslash).forEach((n, j) => {
+      const bx = CHAP + j * moslashQadam;
+      const by = joriyY;
+      const qatorlar: Doira[][] = [];
+      for (let r = 0; r < 4; r++) {
+        const qator: Doira[] = [];
+        for (let c = 0; c < 5; c++) qator.push({ x: bx + 7 + c * MOSLASH_QADAM_X + MOSLASH_QADAM_X / 2, y: by + 9.5 + r * MOSLASH_QADAM_Y + MOSLASH_QADAM_Y / 2, r: MOSLASH_R, v: 'PQRST'[c] });
+        qatorlar.push(qator);
+      }
+      (s.moslash ||= []).push({ n, quti: { x: bx, y: by, w: MOSLASH_KENGLIK, h: MOSLASH_BALANDLIK }, qatorlar });
+    });
+    joriyY += MOSLASH_BALANDLIK + 3;
   }
 
   const yozmalar = p.tuzilma.savollar.filter(x => x.tur === 'yozma').map(x => x.n);

@@ -495,7 +495,7 @@ export interface CRMState {
 
 // --- Imtihon moduli (docs/IMTIHON_PLAN.md, mantiq — lib/imtihon.js) ---
 
-export type SavolTuri = 'yopiq' | 'raqamli' | 'yozma';
+export type SavolTuri = 'yopiq' | 'raqamli' | 'moslash' | 'yozma';
 
 export interface Question {
     id: number;
@@ -659,6 +659,8 @@ export interface BlokTaqsimot {
     /** Tanlangan mavzular id lari. */
     mavzular: number[];
     raqamli: number;
+    /** Moslashtirish (matritsa) savollari soni. */
+    moslash?: number;
     yozma: number;
     yozmaBal?: number | null;
 }

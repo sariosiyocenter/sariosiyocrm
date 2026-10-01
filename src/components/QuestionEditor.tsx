@@ -12,7 +12,7 @@ import SavolKorinishi from './imtihon/bank/SavolKorinishi';
 import { QiyinlikTanlov } from './imtihon/bank/qiyinlik';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
-import { HARFLAR, RAQAM_USTUNLARI, savolXatosi, qiyinlikDarajasi } from '../../lib/imtihon.js';
+import { HARFLAR, RAQAM_USTUNLARI, MOSLASH_QATOR, MOSLASH_USTUN, savolXatosi, qiyinlikDarajasi, moslashQatorlari } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri } from '../types';
 
 // Savol qo'shish va tahrirlash. Fan va mavzu bank tuzilmasidan tanlanadi (shu
@@ -29,14 +29,22 @@ type Shaxsiy = {
   tarjima: Tarjima | null;
   /** Variantlar kitobchada nechta ustunda (Addmen DISPLAY CHOICES): 0 — o'zi. */
   joylashuv: 0 | 1 | 2 | 4;
+  /** Moslashtirish: o'ng ustun bandlari (P–T); chap ustun — `options`. */
+  ong: string[];
 };
 
 const BOSH_SHAXSIY: Shaxsiy = {
   type: 'yopiq', text: '', imageUrl: null, options: ['', '', '', ''], correctAnswer: 'A', answers: '', points: '',
-  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null, tarjima: null, joylashuv: 0,
+  lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null, tarjima: null, joylashuv: 0, ong: ['', '', '', ''],
 };
 
 interface Meta { manbalar: string[] }
+
+/** Kalit qatorlari — chap ustundagi har qatorga bittadan (bo'shi ham). */
+function moslashKaliti(q: Pick<Shaxsiy, 'correctAnswer' | 'options'>): string[] {
+  const k = moslashQatorlari(q.correctAnswer) as string[];
+  return q.options.map((_, i) => k[i] || '');
+}
 
 export default function QuestionEditor() {
   const { id } = useParams();
@@ -88,11 +96,12 @@ export default function QuestionEditor() {
         type: s.type, text: s.text || '', imageUrl: s.imageUrl || null,
         options: s.options?.length ? s.options : ['', '', '', ''],
         correctAnswer: s.correctAnswer || (s.type === 'yopiq' ? 'A' : ''),
-        answers: (s.answers || []).join(', '), points: s.points != null ? String(s.points) : '',
+        answers: s.type === 'moslash' ? '' : (s.answers || []).join(', '), points: s.points != null ? String(s.points) : '',
         lockOptions: !!s.lockOptions, solution: s.solution || '', solutionStatus: (s.solutionStatus as any) || 'yoq',
         passage: s.passage || (s.passageId ? { id: s.passageId } : null),
         tarjima: s.tarjima ? { til: s.tarjima.til || 'ru', text: s.tarjima.text || '', options: s.tarjima.options || [] } : null,
         joylashuv: s.joylashuv || 0,
+        ong: s.type === 'moslash' && s.answers?.length ? s.answers : ['', '', '', ''],
       });
       setIshlatilgan(s.usedCount || 0);
       setMuharrirKaliti(k => k + 1);
@@ -129,9 +138,9 @@ export default function QuestionEditor() {
     grade: umumiy.grade || null, source: umumiy.source || null, remark: umumiy.remark.trim() || null,
     tarjima: q.tarjima && (q.tarjima.text.trim() || q.tarjima.options.some(x => x.trim())) ? { ...q.tarjima, options: q.type === 'yopiq' ? q.options.map((_, i) => q.tarjima!.options[i] || '') : [] } : null,
     type: q.type, text: q.text, imageUrl: q.imageUrl, joylashuv: q.type === 'yopiq' && q.joylashuv ? q.joylashuv : null,
-    options: q.type === 'yopiq' ? q.options : null,
-    correctAnswer: q.type === 'yozma' ? '' : q.correctAnswer.trim(),
-    answers: q.type === 'raqamli' ? q.answers.split(/;\s*|\s+/).map(x => x.trim()).filter(Boolean) : null,
+    options: q.type === 'yopiq' || q.type === 'moslash' ? q.options : null,
+    correctAnswer: q.type === 'yozma' ? '' : q.type === 'moslash' ? moslashKaliti(q).join('|') : q.correctAnswer.trim(),
+    answers: q.type === 'raqamli' ? q.answers.split(/;\s*|\s+/).map(x => x.trim()).filter(Boolean) : q.type === 'moslash' ? q.ong : null,
     points: q.type === 'yozma' && q.points ? Number(q.points.replace(',', '.')) : null,
     lockOptions: q.lockOptions,
     solution: q.solution || null,
@@ -160,7 +169,7 @@ export default function QuestionEditor() {
         await soro('POST', 'questions', { ...yuk(), schoolId });
         setQoshildi(n => n + 1);
         if (davom) {
-          setQ({ ...BOSH_SHAXSIY, options: Array(q.type === 'yopiq' ? q.options.length : 4).fill(''), type: q.type, passage: q.passage });
+          setQ({ ...BOSH_SHAXSIY, options: Array(q.type === 'yopiq' || q.type === 'moslash' ? q.options.length : 4).fill(''), ong: Array(q.ong.length).fill(''), type: q.type, passage: q.passage });
           setMuharrirKaliti(k => k + 1);
           showNotification("Savol qo'shildi — keyingisini kiriting", 'success');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -233,6 +242,25 @@ export default function QuestionEditor() {
     const k = HARFLAR.indexOf(s.correctAnswer);
     const correctAnswer = k === i ? '' : k > i ? HARFLAR[k - 1] : s.correctAnswer;
     return { ...s, options, correctAnswer };
+  });
+
+  // Moslashtirish: chap qator qo'shish/o'chirish va kalit to'rida belgilash.
+  const qatorOchir = (i: number) => setQ(s => {
+    if (s.options.length <= 2) return s;
+    const k = moslashKaliti(s).filter((_, j) => j !== i);
+    return { ...s, options: s.options.filter((_, j) => j !== i), correctAnswer: k.join('|') };
+  });
+  const ongOchir = (i: number) => setQ(s => {
+    if (s.ong.length <= 2) return s;
+    // O'chirilgan ustun harfi kalitdan chiqadi, keyingilari bitta chapga suriladi.
+    const sur = (x: string) => [...x].filter(h => MOSLASH_USTUN.indexOf(h) !== i).map(h => { const c = MOSLASH_USTUN.indexOf(h); return c > i ? MOSLASH_USTUN[c - 1] : h; }).join('');
+    return { ...s, ong: s.ong.filter((_, j) => j !== i), correctAnswer: moslashKaliti(s).map(sur).join('|') };
+  });
+  const katakBelgila = (r: number, c: number) => setQ(s => {
+    const k = moslashKaliti(s);
+    const h = MOSLASH_USTUN[c];
+    k[r] = (k[r].includes(h) ? k[r].replace(h, '') : k[r] + h).split('').sort().join('');
+    return { ...s, correctAnswer: k.join('|') };
   });
 
   if (yuklanmoqda) return <Yuklanmoqda />;
@@ -344,8 +372,11 @@ export default function QuestionEditor() {
         <div className="xl:col-span-2 space-y-4">
           <Karta sarlavha="Savol" izoh="Formula: $x^2+1$, kasr: $\frac{1}{2}$, ildiz: $\sqrt{x}$">
             <div className="space-y-4">
-              <Tanlov qiymat={q.type} onChange={v => setQ({ ...q, type: v, correctAnswer: v === 'yopiq' ? 'A' : '' })} variantlar={[
-                { v: 'yopiq', nom: 'Yopiq (variantli)' }, { v: 'raqamli', nom: 'Raqamli javob' }, { v: 'yozma', nom: 'Yozma (ustoz baholaydi)' },
+              <Tanlov qiymat={q.type} onChange={v => setQ({
+                ...q, type: v, correctAnswer: v === 'yopiq' ? 'A' : '',
+                options: v === 'moslash' ? q.options.slice(0, MOSLASH_QATOR.length).concat(['', '']).slice(0, Math.max(2, Math.min(q.options.length, MOSLASH_QATOR.length))) : q.options,
+              })} variantlar={[
+                { v: 'yopiq', nom: 'Yopiq (variantli)' }, { v: 'raqamli', nom: 'Raqamli javob' }, { v: 'moslash', nom: 'Moslashtirish' }, { v: 'yozma', nom: 'Yozma (ustoz baholaydi)' },
               ]} />
               <RichTextEditor key={`matn-${muharrirKaliti}`} content={q.text} onChange={text => setQ(s => ({ ...s, text }))} />
               <div className="flex flex-wrap items-center gap-3">
@@ -385,6 +416,61 @@ export default function QuestionEditor() {
                   <Maydon nom="Yana qabul qilinadigan javoblar" izoh="Bo'sh joy yoki ; bilan: 1/2; 0,5">
                     <input className={INPUT} value={q.answers} onChange={e => setQ({ ...q, answers: e.target.value })} placeholder="0,5; 1/2" />
                   </Maydon>
+                </div>
+              )}
+              {q.type === 'moslash' && (
+                <div className="space-y-3">
+                  <p className="text-[12px] text-matn-sokin">Chap ustundagi har bandga o'ng ustundan mos keladiganlarini belgilang (bir nechta bo'lishi mumkin). Varaqda o'quvchi har qatorda doirachalarni bo'yaydi; qisman to'g'ri — qatorlar ulushida ball.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-[12px] font-semibold text-matn-sokin">Chap ustun ({MOSLASH_QATOR.slice(0, q.options.length).split('').join(', ')})</p>
+                      {q.options.map((o, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-7 shrink-0 text-center text-[13px] font-bold text-matn-sokin">{MOSLASH_QATOR[i]}</span>
+                          <input className={INPUT} value={o} onChange={e => variantQoy(i, e.target.value)} placeholder={`${MOSLASH_QATOR[i]} band`} aria-label={`Chap ${MOSLASH_QATOR[i]}`} />
+                          {q.options.length > 2 && <button aria-label={`${MOSLASH_QATOR[i]} qatorini o'chirish`} onClick={() => qatorOchir(i)} className="p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><X size={15} /></button>}
+                        </div>
+                      ))}
+                      {q.options.length < MOSLASH_QATOR.length && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => setQ(s => ({ ...s, options: [...s.options, ''] }))}>Qator qo'shish ({q.options.length}/{MOSLASH_QATOR.length})</Tugma>}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[12px] font-semibold text-matn-sokin">O'ng ustun ({MOSLASH_USTUN.slice(0, q.ong.length).split('').join(', ')})</p>
+                      {q.ong.map((o, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-7 shrink-0 text-center text-[13px] font-bold text-matn-sokin">{MOSLASH_USTUN[i]}</span>
+                          <input className={INPUT} value={o} onChange={e => setQ(s => ({ ...s, ong: s.ong.map((x, j) => (j === i ? e.target.value : x)) }))} placeholder={`${MOSLASH_USTUN[i]} band`} aria-label={`O'ng ${MOSLASH_USTUN[i]}`} />
+                          {q.ong.length > 2 && <button aria-label={`${MOSLASH_USTUN[i]} ustunini o'chirish`} onClick={() => ongOchir(i)} className="p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><X size={15} /></button>}
+                        </div>
+                      ))}
+                      {q.ong.length < MOSLASH_USTUN.length && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => setQ(s => ({ ...s, ong: [...s.ong, ''] }))}>Ustun qo'shish ({q.ong.length}/{MOSLASH_USTUN.length})</Tugma>}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">To'g'ri javob</p>
+                    <table className="border-collapse">
+                      <thead><tr><th className="w-8" />{q.ong.map((_, c) => <th key={c} className="w-9 text-center text-[12px] font-bold text-matn-sokin">{MOSLASH_USTUN[c]}</th>)}</tr></thead>
+                      <tbody>
+                        {q.options.map((_, r) => {
+                          const k = moslashKaliti(q)[r];
+                          return (
+                            <tr key={r}>
+                              <th className="text-center text-[12px] font-bold text-matn-sokin">{MOSLASH_QATOR[r]}</th>
+                              {q.ong.map((_, c) => {
+                                const on = k.includes(MOSLASH_USTUN[c]);
+                                return (
+                                  <td key={c} className="p-0.5 text-center">
+                                    <button type="button" onClick={() => katakBelgila(r, c)} aria-pressed={on} aria-label={`${MOSLASH_QATOR[r]}–${MOSLASH_USTUN[c]}`}
+                                      className={`w-8 h-8 rounded-full border-2 text-[11px] font-bold cursor-pointer ${on ? 'bg-yaxshi border-yaxshi text-white' : 'border-chiziq-kuchli text-matn-xira hover:border-yaxshi'}`}>{MOSLASH_USTUN[c]}</button>
+                                  </td>
+                                );
+                              })}
+                              <td className="pl-2 text-[12px] text-matn-sokin raqam">{k || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
               {q.type === 'yozma' && (

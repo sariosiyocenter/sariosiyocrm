@@ -2,6 +2,7 @@ import React from 'react';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { HARFLAR, SAVOL_TURI_NOMI } from '../../../../lib/imtihon.js';
 import { QiyinlikYorligi } from './qiyinlik';
+import MoslashJadvali from './MoslashJadvali';
 import type { Question } from '../../../types';
 
 /** Savolning to'liq ko'rinishi: formulalar, variantlar, to'g'ri javob, yechim. */
@@ -21,6 +22,7 @@ export default function SavolKorinishi({ q }: { q: Question }) {
         </ol>
       )}
       {q.type === 'raqamli' && q.correctAnswer !== undefined && <p className="text-[13px]"><b>Javob:</b> {[q.correctAnswer, ...(q.answers || [])].filter(Boolean).join(' · ')}</p>}
+      {q.type === 'moslash' && <MoslashJadvali chap={q.options || []} ong={q.answers || []} kalit={q.correctAnswer || ''} />}
       {q.type === 'yozma' && <p className="text-[13px] text-matn-sokin">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}.</p>}
       {q.solution && (
         <div className="rounded-lg border border-chiziq bg-sirt p-3">

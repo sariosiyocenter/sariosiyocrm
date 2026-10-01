@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Trophy, XCircle, CheckCircle2, MinusCircle, ChevronDown } from 'lucide-react';
 import { formulaliHtml, SAVOL_MATNI } from '../lib/matn';
 import { vergul, sanaMatni } from './imtihon/format';
+import MoslashJadvali from './imtihon/bank/MoslashJadvali';
 
 /**
  * Imtihon natijasi (/natija/:token) — ota-onaga xabardagi imzolangan havola,
@@ -11,7 +12,7 @@ import { vergul, sanaMatni } from './imtihon/format';
  * ustoz tasdiqlagan yechim.
  */
 
-interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'yozma'; p: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; javob: any; togri: string[] | null; holat: string | null; ball: number; yechim: string | null }
+interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; ong?: string[]; p: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; javob: any; togri: string[] | null; holat: string | null; ball: number; yechim: string | null }
 interface Javob {
   markaz: string;
   imtihon: { name: string; date: string; maxScore: number; scoring: string };
@@ -176,6 +177,12 @@ export default function NatijaSahifasi() {
                     )}
                     {s.t === 'raqamli' && (
                       <p className="mt-3 text-[13.5px] text-matn">Sizning javobingiz: <b>{s.javob ? vergul(s.javob) : '—'}</b> · To'g'ri javob: <b className="text-yaxshi">{(s.togri || []).map(vergul).join(' yoki ')}</b></p>
+                    )}
+                    {s.t === 'moslash' && (
+                      <div className="mt-3 space-y-2">
+                        <MoslashJadvali chap={s.variantlar.length ? s.variantlar : Array(Math.max(2, String((s.togri || [])[0] || '').split('|').length)).fill('')} ong={s.ong?.length ? s.ong : Array(5).fill('')} kalit={(s.togri || [])[0] || ''} javob={String(s.javob || '')} />
+                        <p className="text-[12.5px] text-matn-sokin">Yashil — to'g'ri belgilagan, qizil — xato, yashil halqa — belgilanmagan to'g'ri javob · Ball: <b className="text-matn">{vergul(s.ball)}</b> / {s.p}</p>
+                      </div>
                     )}
                     {s.t === 'yozma' && <p className="mt-3 text-[13.5px] text-matn">Ball: <b>{s.ball}</b> / {s.p}</p>}
                     {s.yechim && (

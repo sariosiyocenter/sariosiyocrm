@@ -3,21 +3,22 @@ import { HARFLAR, savolXatosi, qiyinlikDarajasi } from '../../../../lib/imtihon.
 
 // Excel orqali savollar: shablon va o'qish. Ustunlar (shablon ham shu tartibda):
 // Fan, Mavzu, Bo'lim, Tur, Savol, A–F, Javob, Qo'shimcha javoblar, Ball,
-// Qiyinlik, Manba, Sinf, Til, Yechim, Holat.
+// Qiyinlik, Manba, Sinf, Til, Yechim, Holat. Moslashtirish: A–D — chap ustun,
+// "Qo'shimcha javoblar" — o'ng ustun (; bilan), Javob — "PQ|R|S|T".
 
 export const USTUNLAR = ['Fan', 'Mavzu', "Bo'lim", 'Tur', 'Savol', 'A', 'B', 'C', 'D', 'E', 'F', 'Javob', "Qo'shimcha javoblar", 'Ball', 'Qiyinlik', 'Manba', 'Sinf', 'Til', 'Yechim', 'Holat'];
 
 export function qatordanSavol(r: Record<string, any>, qator: number) {
   const s = (k: string) => String(r[k] ?? '').trim();
   const turMatni = s('Tur').toLowerCase();
-  const type = turMatni.startsWith('raq') ? 'raqamli' : turMatni.startsWith('yoz') ? 'yozma' : 'yopiq';
+  const type = turMatni.startsWith('raq') ? 'raqamli' : turMatni.startsWith('yoz') ? 'yozma' : turMatni.startsWith('mos') || turMatni.startsWith('mat') ? 'moslash' : 'yopiq';
   const options = HARFLAR.map(h => s(h)).filter(Boolean);
   return {
     qator,
-    subject: s('Fan'), topic: s('Mavzu'), section: s("Bo'lim") || null, type: type as 'yopiq' | 'raqamli' | 'yozma',
+    subject: s('Fan'), topic: s('Mavzu'), section: s("Bo'lim") || null, type: type as 'yopiq' | 'raqamli' | 'moslash' | 'yozma',
     text: s('Savol'),
-    options: type === 'yopiq' ? options : null,
-    correctAnswer: type === 'yopiq' ? s('Javob').toUpperCase() : s('Javob'),
+    options: type === 'yopiq' || type === 'moslash' ? options : null,
+    correctAnswer: type === 'yopiq' || type === 'moslash' ? s('Javob').toUpperCase().replace(/\s+/g, '') : s('Javob'),
     answers: s("Qo'shimcha javoblar") ? s("Qo'shimcha javoblar").split(/[;|]/).map(x => x.trim()).filter(Boolean) : null,
     points: s('Ball') ? Number(s('Ball').replace(',', '.')) : null,
     difficulty: qiyinlikDarajasi(s('Qiyinlik') || 2),
@@ -54,6 +55,7 @@ export function shablonniYukla() {
   const namuna = [
     { Fan: 'Matematika', Mavzu: 'Kvadrat tenglamalar', "Bo'lim": 'Algebra', Tur: 'yopiq', Savol: '$x^2-5x+6=0$ tenglamaning ildizlari yig\'indisini toping', A: '5', B: '6', C: '-5', D: '1', Javob: 'A', Qiyinlik: "o'rta", Manba: 'DTM 2025', Til: 'uz', Yechim: "Viyet teoremasi: $x_1+x_2=5$" },
     { Fan: 'Matematika', Mavzu: 'Oddiy kasrlar', "Bo'lim": 'Arifmetika', Tur: 'raqamli', Savol: '$\\frac{3}{4}-\\frac{1}{4}$ ni hisoblang', Javob: '1/2', "Qo'shimcha javoblar": '0,5', Qiyinlik: 'oson', Til: 'uz' },
+    { Fan: 'Matematika', Mavzu: 'Geometriya', Tur: 'moslash', Savol: "Shakllarni xossalari bilan moslang", A: 'Kvadrat', B: 'Romb', C: "To'g'ri to'rtburchak", D: 'Parallelogramm', "Qo'shimcha javoblar": "Diagonallari teng; Diagonallari perpendikulyar; Qarama-qarshi tomonlari parallel; Hamma burchaklari to'g'ri", Javob: 'PQRS|QR|PRS|R', Qiyinlik: "o'rta", Til: 'uz' },
     { Fan: 'Matematika', Mavzu: 'Matnli masalalar', Tur: 'yozma', Savol: 'Masalani yeching va yechimini yozing: ...', Ball: 5, Qiyinlik: 'qiyin', Til: 'uz' },
   ];
   const ws = XLSX.utils.json_to_sheet(namuna, { header: USTUNLAR });

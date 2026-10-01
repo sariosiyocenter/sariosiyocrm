@@ -116,7 +116,7 @@ export function registerSavolBankiRoutes(app) {
                  ("imageUrl" IS NOT NULL) AS "rasmBor", (btrim(text) <> '') AS "matnBor"
           FROM "Question" WHERE "schoolId" = ANY(${orgIds})`,
       ]);
-      const bosh = () => ({ jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, yozma: 0 }, natijaYig: 0, natijaSoni: 0, moslash: 0, yaroqli: [] });
+      const bosh = () => ({ jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 }, natijaYig: 0, natijaSoni: 0, moslash: 0, yaroqli: [] });
       const mv = new Map();
       for (const q of savollar) {
         if (!q.bankTopicId) continue;
@@ -141,7 +141,7 @@ export function registerSavolBankiRoutes(app) {
       const yaxlit = x => Math.round(x * 1000) / 10;
       let jami = 0;
       const out = fanlar.map(f => {
-        const fan = { id: f.id, name: f.name, order: f.order, jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, yozma: 0 }, natija: null, moslash: 0, mavzular: [] };
+        const fan = { id: f.id, name: f.name, order: f.order, jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 }, natija: null, moslash: 0, mavzular: [] };
         let yig = 0, soni = 0;
         fan.mavzular = [...f.topics].sort((a, b) => a.order - b.order || a.id - b.id).map(t => {
           const s = mv.get(t.id) || bosh();
@@ -498,7 +498,7 @@ export function registerSavolBankiRoutes(app) {
       const joylashuv = { 0: 0, 1: 0, 2: 0, 4: 0 };
       const qiyinlik = [0, 0, 0];
       const holat = { faol: 0, qoralama: 0, arxiv: 0 };
-      const turlar = { yopiq: 0, raqamli: 0, yozma: 0 };
+      const turlar = { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 };
       const bolimi = new Map(mavzular.map(t => [t.id, t.section || '']));
       const oshir = (m, k) => m.set(k, (m.get(k) || 0) + 1);
       for (const q of savollar) {
@@ -725,7 +725,7 @@ async function royxatSharti(f, orgIds) {
   if (dan || gacha) and.push({ id: { ...(dan ? { gte: dan } : {}), ...(gacha ? { lte: gacha } : {}) } });
   if (SAVOL_HOLATLARI.includes(f.holat)) and.push({ status: f.holat });
   else and.push({ status: { not: 'arxiv' } });
-  if (['yopiq', 'raqamli', 'yozma'].includes(f.tur)) and.push({ type: f.tur });
+  if (['yopiq', 'raqamli', 'moslash', 'yozma'].includes(f.tur)) and.push({ type: f.tur });
   // Addmen REMARK, PASSAGE, DISPLAY CHOICES filtrlari.
   const izohlar = matnlar(f.izohlar);
   if (izohlar.length) {

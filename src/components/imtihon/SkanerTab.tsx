@@ -69,7 +69,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       return;
     }
     const sahifa = sahifalar.find(x => x.page === o.page);
-    const pageItems = sahifa ? [...sahifa.yopiq.map(q => q.n), ...sahifa.raqamli.map(q => q.n), ...sahifa.yozma.map(q => q.n)] : [];
+    const pageItems = sahifa ? [...sahifa.yopiq.map(q => q.n), ...sahifa.raqamli.map(q => q.n), ...(sahifa.moslash || []).map(q => q.n), ...sahifa.yozma.map(q => q.n)] : [];
     const body: any = {
       page: o.page, answers: o.javoblar, flags: o.shubhalar.filter(f => f.n > 0), pageItems,
       variant: o.variant, image: el.rasm, source,

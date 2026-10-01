@@ -1060,3 +1060,28 @@ imtihonda, saralash kodlari; tiklash va o'chirish bilan).
 Sinov: `test_sorovnoma_render.mjs` (10/10, bazasiz: chizish → bo'yash → 200 dpi → o'qish),
 `sorovnoma_ui.mjs` (13/13: muharrir → tayyor → chop etish → 7 varaq skaner, 3 respondent → natijalar,
 Excel; ZZ o'chiriladi), `test_varaq_render_oqish.mjs` 37/37 (oddiy varaq buzilmagan).
+
+### 20.5 Moslashtirish savoli (Addmen "Matrix")
+
+- Yangi tur `moslash` (`SAVOL_TURLARI`): chap ustun A–D — savol `options` (2–4), o'ng ustun P–T —
+  `answers` (2–5; moslashda bo'shi ham o'z o'rnida saqlanadi, harflar siljimasin), kalit
+  `correctAnswer` = "PQ|R|PRS|T" (har qatorga bir nechta harf). `savolXatosi` qatorlar sonini va
+  o'ng ustunda yo'q harfni tekshiradi; `moslashQatorlari` — tartiblaydi, takrorni olib tashlaydi.
+- Variant elementi: `r`, `c`, `mk` (qator kalitlari); qatorlar/ustunlar aralashtirilmaydi.
+  Ball: `p × to'g'ri qatorlar / r` (qatordagi to'plam aynan mos bo'lsa), holat togri / qisman /
+  xato / bosh; manfiy ball faqat to'liq xatoga. `keyFix[q] = ["PQ|R|S|T"]` — kalit tuzatish.
+  "Faqat kalit" rejimida `kalitQiymati('moslash', 'PQ|R|S')` (2–4 qator).
+- Varaq: raqamli kataklardan keyin 4 × 5 to'r (sarlavha "N-savol (moslash)", ustunda P–T, qatorda
+  A–D), qatorda bir nechtasi; o'qish — "PQ|R||T", noaniq belgi — shubha. Tekshirishda kesim + to'r
+  bilan qo'lda tuzatish (`review` moslashni tozalab saqlaydi).
+- Interfeys: savol muharriri (turini "Moslashtirish" ga o'tkazish, ikki ustun, kalit to'ri — yangi
+  savol baribir fayldan kiradi, 16-bo'lim), Excel (Tur "moslash": A–D chap, "Qo'shimcha javoblar"
+  o'ng ustun ; bilan, Javob "PQ|R|S"), bank kartochkasi/filtr, blok taqsimotida "Moslashtirish"
+  soni, kitobcha (HTML va Word: ikki ustun + ko'rsatma), onlayn test (to'r), natija sahifasi
+  (to'g'ri / xato / belgilanmagan), kalit oynasi.
+- Kalit sirligi: kitobcha API `k, j, ka, mk` ni bermaydi (avval `ka` ham ketardi); kalitsiz
+  foydalanuvchiga moslashning o'ng ustuni ko'rinadi (bu savol matni).
+
+Sinov: `test_moslash_mantiq.mjs` 14/14, `test_moslash_varaq.mjs` 9/9 (bazasiz), `moslash_ui.mjs`
+25/25 (Excel qatori → bank → muharrir → blok → kitobcha/varaq → 2 varaq skaner, qisman ball,
+noaniq belgi → tekshirish), `moslash_onlayn.mjs` 10/10 (telefon: onlayn test → e'lon → natija).

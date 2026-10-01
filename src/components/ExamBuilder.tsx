@@ -27,7 +27,7 @@ const DTM_ANDOZA: ExamBlock[] = [
   { id: yangiId(), subject: '2-asosiy fan', pointsPerQuestion: 2.1, topicRules: [{ topic: '', count: 30, type: 'yopiq' }] },
 ];
 
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', yozma: 'Yozma' };
 // Manfiy ball: xato javob uchun savol balining qancha qismi ayiriladi (Addmen "negative marking").
 const JARIMALAR: { v: number; nom: string }[] = [
   { v: 0, nom: "Yo'q" }, { v: 0.25, nom: '¼' }, { v: 1 / 3, nom: '⅓' }, { v: 0.5, nom: '½' }, { v: 1, nom: "To'liq" },
@@ -278,7 +278,7 @@ export default function ExamBuilder() {
                   {b.topicRules.map((r, ri) => (
                     <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
                       <select className={`${SELECT} col-span-6 sm:col-span-4`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
-                        {(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                        {(['yopiq', 'raqamli', 'moslash', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
                       </select>
                       <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" title="Savollar soni" />
                       <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder="Ball" title="Shu qatordagi har bir savol bali (bo'sh — blokning «bir savol bali»)" />
@@ -296,7 +296,7 @@ export default function ExamBuilder() {
             ? { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }
             : { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }])}>Fan (blok) qo'shish</Tugma>}
           <div className="flex flex-wrap gap-2 pt-1 text-[12px] text-matn-sokin">
-            <Yorliq>{tuzilma.yopiq} ta yopiq</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta raqamli</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta yozma</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
+            <Yorliq>{tuzilma.yopiq} ta yopiq</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta raqamli</Yorliq>}{(tuzilma.moslash || 0) > 0 && <Yorliq>{tuzilma.moslash} ta moslash</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta yozma</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
           </div>
         </div>
       </Karta>

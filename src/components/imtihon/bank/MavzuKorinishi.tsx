@@ -128,7 +128,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onQ
           {turlar.length > 1 && (
             <Tanlov kichik qiymat={tur} onChange={setTur} variantlar={[
               { v: 'hammasi', nom: 'Hammasi' },
-              ...(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).filter(t => turlar.includes(t)).map(t => ({ v: t, nom: { yopiq: 'Yopiq', raqamli: 'Raqamli', yozma: 'Yozma' }[t] })),
+              ...(['yopiq', 'raqamli', 'moslash', 'yozma'] as SavolTuri[]).filter(t => turlar.includes(t)).map(t => ({ v: t, nom: { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', yozma: 'Yozma' }[t] })),
             ]} />
           )}
           <div className="relative flex-1 min-w-48 max-w-sm">

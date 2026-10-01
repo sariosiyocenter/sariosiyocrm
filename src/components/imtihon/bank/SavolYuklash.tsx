@@ -371,7 +371,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           toplam: n.toplam || null,
           ...(n.tarjima ? { tarjima: n.tarjima } : {}),
           subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? null,
-          type: n.type, text: n.text, options: n.type === 'yopiq' ? n.options : null,
+          type: n.type, text: n.text, options: n.type === 'yopiq' || n.type === 'moslash' ? n.options : null,
           correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, difficulty: n.difficulty, language: n.language || 'uz',
           solution: n.solution || null,
           solutionStatus: n.manba === 'excel' ? n.excel?.solutionStatus : n.solution ? 'qoralama' : 'yoq',

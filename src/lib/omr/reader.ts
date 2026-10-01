@@ -513,6 +513,22 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
     else if (matn && !/^-?(\d+([.,]\d+)?|[.,]\d+)(\/-?\d+([.,]\d+)?)?$/.test(matn)) natija.shubhalar.push({ n: q.n, sabab: `Javob son emas: ${matn}` });
   }
 
+  // Moslashtirish: har qatorda bo'yalgan ustunlar (bir nechta bo'lishi mumkin) — "PQ|R||T".
+  for (const q of sahifa.moslash || []) {
+    const qismlar: string[] = [];
+    const barchasi: number[] = [];
+    let noaniq = 0;
+    for (const qator of q.qatorlar) {
+      const f = oqish(qator).map(moslash);
+      barchasi.push(...f.map(yaxlit));
+      qismlar.push(qator.filter((_, j) => f[j] >= CHEGARA.TOLIQ).map(d => d.v).join(''));
+      noaniq += f.filter(x => x >= CHEGARA.BOSH && x < CHEGARA.TOLIQ).length;
+    }
+    natija.toliqlik[q.n] = barchasi;
+    natija.javoblar[q.n] = qismlar.some(Boolean) ? qismlar.join('|') : '';
+    if (noaniq) natija.shubhalar.push({ n: q.n, sabab: 'Noaniq belgi', f: barchasi });
+  }
+
   if (sahifa.variantlar.length) {
     const f = oqish(sahifa.variantlar).map(moslash);
     const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CHEGARA.TOLIQ);

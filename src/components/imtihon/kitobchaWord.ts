@@ -1,7 +1,7 @@
 import { HARFLAR } from '../../../lib/imtihon.js';
 import { oddiyMatn } from '../../lib/matn';
 import { Rasmlar, rasmlarniYukla, htmlParagraflar, htmlRunlar, matnRun, docxYasa, TWIP_SM } from '../../lib/docx';
-import type { KitobchaMalumoti, KitobchaSozlama } from './chop';
+import { MOSLASH_KORSATMA, type KitobchaMalumoti, type KitobchaSozlama } from './chop';
 import type { Exam } from '../../types';
 
 // Kitobcha Word (.docx) da (Addmen QPG "Format: DOC"): har variant — muqova
@@ -54,6 +54,7 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
       'Javoblarni faqat javob varaqasiga belgilang: doirachani qora yoki ko\'k ruchka bilan to\'liq bo\'yang.',
       `Javob varaqasida kitobcha variantini (${code}) ham bo'yang. Kitobchaga yozish mumkin — u tekshirilmaydi.`,
       ...(v.items.some(it => it.t === 'raqamli') ? ["Raqamli javobni katak tepasiga yozing va har belgini ostidagi ustunda bo'yang (minus, vergul, kasr chizig'i ham)."] : []),
+      ...(v.items.some(it => it.t === 'moslash') ? [MOSLASH_KORSATMA] : []),
     ];
     qoidalar.forEach((q, i) => qismlar.push(p(matnRun(`• ${q}`, { sz: 18 }), `<w:ind w:left="227" w:hanging="227"/>${i === 0 ? '<w:spacing w:before="120"/>' : ''}`)));
     qismlar.push(p('', sectPr(1, 'nextPage')));
@@ -109,6 +110,16 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
           const bolak = tartib.slice(i, i + qatorda).map((asl, k) => variant(asl, i + k)).join('<w:r><w:tab/></w:r>');
           const oxirgi = i + qatorda >= tartib.length;
           qismlar.push(p(bolak, `${oxirgi ? '' : '<w:keepNext/>'}<w:ind w:left="${CHEKINISH}"/>${tabs}`));
+        }
+      } else if (it.t === 'moslash') {
+        // Chap (A–D) va o'ng (P–T) ustun — bitta qatorda tab bilan, ikki ustun.
+        const ong = q.ong || [];
+        const yarim = Math.round(CHEKINISH + (ustunW - CHEKINISH) / 2);
+        const qatorlar = Math.max(q.options.length, ong.length);
+        const band = (x: string | undefined, h: string) => (x == null ? '' : `${matnRun(`${h})`, { b: true })}${matnRun(' ')}${htmlRunlar(x, rasmlar, Math.min((ustunW - CHEKINISH) / 2 / TWIP_SM - 0.8, 5))}`);
+        for (let i = 0; i < qatorlar; i++) {
+          qismlar.push(p(`${band(q.options[i], 'ABCD'[i])}<w:r><w:tab/></w:r>${band(ong[i], 'PQRST'[i])}`,
+            `${i < qatorlar - 1 ? '<w:keepNext/>' : ''}<w:ind w:left="${CHEKINISH}"/><w:tabs><w:tab w:val="left" w:pos="${yarim}"/></w:tabs>`));
         }
       } else if (it.t === 'raqamli') {
         qismlar.push(p(matnRun(`Javobni javob varaqasidagi ${it.n}-katakka yozing va bo'yang.`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));

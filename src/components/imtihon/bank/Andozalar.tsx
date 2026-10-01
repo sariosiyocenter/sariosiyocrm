@@ -13,7 +13,7 @@ import type { Andoza, AndozaQatori, BankDaraxt, BankFiltrMalumoti, SavolTuri } f
 // — filtr (bo'lim, mavzu, qiyinlik, manba, foydalanuvchi filtrlari, tur) va nechta
 // savol. Imtihon tuzishda fan blokiga "Andozadan" tanlanadi — qatorlar qoida bo'ladi.
 
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli', moslash: 'Moslashtirish', yozma: 'Yozma' };
 const YANGI_QATOR: AndozaQatori = { bolim: null, mavzuId: null, qiyinlik: 0, manba: null, tagIds: [], tur: 'yopiq', soni: 5 };
 const KICHIK = 'w-full min-w-0 px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none focus:border-brand cursor-pointer';
 

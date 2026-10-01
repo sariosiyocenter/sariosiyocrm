@@ -35,7 +35,7 @@ function taqsimotQoidalardan(blok: ExamBlock, fan: BankFan | null): BlokTaqsimot
   }
   const sum = (t: SavolTuri) => tasodifiy.filter(r => (r.type || 'yopiq') === t).reduce((a, r) => a + (Number(r.count) || 0), 0);
   return {
-    jami: sum('yopiq'), aralash: 'qolda', mavzular: [...mavzular], raqamli: sum('raqamli'), yozma: sum('yozma'),
+    jami: sum('yopiq'), aralash: 'qolda', mavzular: [...mavzular], raqamli: sum('raqamli'), moslash: sum('moslash'), yozma: sum('yozma'),
     yozmaBal: tasodifiy.find(r => r.type === 'yozma' && r.points != null)?.points ?? null,
   };
 }
@@ -91,8 +91,8 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
         if (n > 0) rules.push({ topic: q.nom, ...(q.mavzuId ? { mavzuId: q.mavzuId } : {}), type: 'yopiq', count: n, ...(i < 3 ? { difficulty: i + 1 } : {}) });
       });
     }
-    for (const tur of ['raqamli', 'yozma'] as const) {
-      const kerak = yangiT[tur];
+    for (const tur of ['raqamli', 'moslash', 'yozma'] as const) {
+      const kerak = yangiT[tur] || 0;
       if (!kerak) continue;
       const yoy = tengYoy(kerak, mavzular.map(m => ({ id: m.id, bor: yig(m.bor[tur]) })));
       const points = tur === 'yozma' && yangiT.yozmaBal != null ? { points: yangiT.yozmaBal } : {};
@@ -106,7 +106,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   const fanTanla = (id: number) => {
     const f = daraxt.fanlar.find(x => x.id === id);
     if (!f) return;
-    const yangiT: BlokTaqsimot = { jami: t.jami || 10, aralash: 'muvozanat', mavzular: f.mavzular.filter(m => yig(m.bor.yopiq) > 0).map(m => m.id), raqamli: 0, yozma: 0, yozmaBal: null };
+    const yangiT: BlokTaqsimot = { jami: t.jami || 10, aralash: 'muvozanat', mavzular: f.mavzular.filter(m => yig(m.bor.yopiq) > 0).map(m => m.id), raqamli: 0, moslash: 0, yozma: 0, yozmaBal: null };
     const mavzular = f.mavzular.filter(m => yangiT.mavzular.includes(m.id));
     const r = taqsimla({ jami: yangiT.jami, ulush: QIYINLIK_ARALASHMASI.muvozanat, mavzular: mavzular.map(m => ({ id: m.id, bor: m.bor.yopiq })) });
     const rules: TopicRule[] = [];
@@ -151,18 +151,22 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   const tasodifiyYopiq = yig(ustunJami);
   const raqamliBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.raqamli), 0);
   const yozmaBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.yozma), 0);
+  const moslashBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.moslash || [0]), 0);
+  const tMoslash = t.moslash || 0;
   const fandaRaqamli = (fan?.mavzular || []).some(m => yig(m.bor.raqamli) > 0) || t.raqamli > 0;
   const fandaYozma = (fan?.mavzular || []).some(m => yig(m.bor.yozma) > 0) || t.yozma > 0;
+  const fandaMoslash = (fan?.mavzular || []).some(m => yig(m.bor.moslash || [0]) > 0) || tMoslash > 0;
   const jamiSavol = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
   const jamiBall = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) * qoidaBali(r, blok, scoring), 0);
   const kamchilik = qatorlar.some(q => q.sonlar.some((n, i) => n > 0 && n * kopaytma > q.bor[i]))
-    || (t.raqamli > 0 && t.raqamli * kopaytma > raqamliBor) || (t.yozma > 0 && t.yozma * kopaytma > yozmaBor);
+    || (t.raqamli > 0 && t.raqamli * kopaytma > raqamliBor) || (t.yozma > 0 && t.yozma * kopaytma > yozmaBor)
+    || (tMoslash > 0 && tMoslash * kopaytma > moslashBor);
 
   const qoldaTanlandi = (ids: number[], turlar: Record<number, SavolTuri>) => {
     // Turi: tanlash oynasida yuklanganidan, bo'lmasa oldingi qoidadan.
     const eskiTur = new Map<number, SavolTuri>();
     for (const r of qolda) for (const id of tanlanganSavollar(r) as number[]) eskiTur.set(id, (r.type || 'yopiq') as SavolTuri);
-    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], yozma: [] };
+    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], yozma: [] };
     for (const id of ids) guruh[turlar[id] || eskiTur.get(id) || 'yopiq'].push(id);
     const yangi: TopicRule[] = (Object.keys(guruh) as SavolTuri[]).filter(k => guruh[k].length).map(k => ({
       topic: '', type: k, count: guruh[k].length, questionIds: guruh[k], ...(k === 'yozma' && t.yozmaBal != null ? { points: t.yozmaBal } : {}),
@@ -240,7 +244,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             </div>
             <div className="flex flex-wrap gap-1.5">
               {fan.mavzular.map(m => {
-                const bor = yig(m.bor.yopiq) + yig(m.bor.raqamli) + yig(m.bor.yozma);
+                const bor = yig(m.bor.yopiq) + yig(m.bor.raqamli) + yig(m.bor.moslash || [0]) + yig(m.bor.yozma);
                 const tanlangan = t.mavzular.includes(m.id);
                 return (
                   <button key={m.id} type="button" disabled={qulf || (!bor && !tanlangan)} onClick={() => mavzuAlmashtir(m.id)} aria-pressed={tanlangan}
@@ -315,7 +319,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             </table>
           </div>
 
-          {(fandaRaqamli || fandaYozma) && (
+          {(fandaRaqamli || fandaMoslash || fandaYozma) && (
             <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
               {fandaRaqamli && (
                 <label className="flex items-end gap-2">
@@ -325,6 +329,16 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                       onChange={e => qayta({ ...t, raqamli: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
                   </span>
                   <span className={`pb-2.5 text-[11.5px] ${t.raqamli * kopaytma > raqamliBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>tanlangan mavzularda {raqamliBor}</span>
+                </label>
+              )}
+              {fandaMoslash && (
+                <label className="flex items-end gap-2">
+                  <span>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Moslashtirish</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tMoslash} aria-label="Moslashtirish savollari soni"
+                      onChange={e => qayta({ ...t, moslash: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </span>
+                  <span className={`pb-2.5 text-[11.5px] ${tMoslash * kopaytma > moslashBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {moslashBor}</span>
                 </label>
               )}
               {fandaYozma && (
@@ -451,7 +465,7 @@ function AndozaBloki({ blok, fan, kopaytma, scoring, qulf, onChiqish }: {
               return (
                 <tr key={i}>
                   <td className="px-3 py-1.5 text-matn">{r.label || r.topic || 'Istalgan'}</td>
-                  <td className="px-2 py-1.5 text-matn-sokin">{r.type === 'raqamli' ? 'Raqamli' : r.type === 'yozma' ? 'Yozma' : 'Variantli'}</td>
+                  <td className="px-2 py-1.5 text-matn-sokin">{r.type === 'raqamli' ? 'Raqamli' : r.type === 'moslash' ? 'Moslashtirish' : r.type === 'yozma' ? 'Yozma' : 'Variantli'}</td>
                   <td className="px-2 py-1.5 text-center font-bold raqam">{r.count}</td>
                   <td className={`px-2 py-1.5 text-center raqam ${kam ? 'text-xato font-bold' : 'text-matn-sokin'}`}>
                     {hisob ? hisob[i]?.boshQolgan ?? 0 : <Loader2 size={12} className="inline animate-spin" />}

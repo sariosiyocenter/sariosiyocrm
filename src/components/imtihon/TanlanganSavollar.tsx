@@ -13,7 +13,7 @@ import type { ImtihonTafsil } from './turlar';
 // avtomatik (o'sha mavzu va qiyinlikdan kam ishlatilgani) yoki QID bilan.
 
 interface Qator {
-  q: number; session: number; n: number; b: number; t: 'yopiq' | 'raqamli' | 'yozma'; p: number; pa: number | null;
+  q: number; session: number; n: number; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number; pa: number | null;
   text: string; imageUrl: string | null; topic: string; difficulty: number; usedCount: number;
   options: string[]; correctAnswer: string | null; answers: string[] | null; remark: string | null;
 }
@@ -52,7 +52,7 @@ export default function TanlanganSavollar({ exam, onOzgardi }: { exam: ImtihonTa
   if (!d.savollar.length) return <Karta><BoshHolat sarlavha="Savollar yo'q" izoh="«Faqat kalit» rejimida savollar bankdan olinmaydi." /></Karta>;
   const smenalar = [...new Set(d.savollar.map(x => x.session))];
   const javob = (x: Qator) => (x.correctAnswer == null ? null
-    : x.t === 'yopiq' ? x.correctAnswer.toUpperCase()
+    : x.t === 'yopiq' || x.t === 'moslash' ? x.correctAnswer.toUpperCase()
       : x.t === 'raqamli' ? [...new Set([x.correctAnswer, ...(x.answers || [])].filter(Boolean))].join('; ') : 'yozma');
   const ochiq = tahrir && d.almashtirsaBoladi;
 

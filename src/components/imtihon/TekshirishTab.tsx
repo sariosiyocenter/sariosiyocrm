@@ -87,6 +87,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
         m.set(q.n, { page: sh.page, turi: 'yopiq', quti: { x: d0.x - 10.5, y: d0.y - 3.4, w: d1.x - d0.x + 13.5, h: 6.8 } });
       }
       for (const q of sh.raqamli) m.set(q.n, { page: sh.page, turi: 'raqamli', quti: { x: q.quti.x - 1, y: q.quti.y - 1, w: q.quti.w + 2, h: q.quti.h + 2 } });
+      for (const q of sh.moslash || []) m.set(q.n, { page: sh.page, turi: 'moslash', quti: { x: q.quti.x - 1, y: q.quti.y - 1, w: q.quti.w + 2, h: q.quti.h + 2 } });
       for (const q of sh.yozma) m.set(q.n, { page: sh.page, turi: 'yozma', quti: { x: q.quti.x - 1, y: q.quti.y - 5, w: q.quti.w + 2, h: q.quti.h + 6 } });
     }
     return m;
@@ -221,11 +222,13 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                     <div key={f.n} className="rounded-xl border border-chiziq p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <p className="text-[13px] font-semibold text-matn">{f.n}-savol <span className="font-normal text-matn-sokin">· {f.sabab}</span></p>
-                        {f.f && <p className="text-[11px] text-matn-xira raqam">to'lganlik: {f.f.map((x, i) => `${harflar[i] || i + 1} ${Math.round(x * 100)}%`).join(' · ')}</p>}
+                        {f.f && it?.t !== 'moslash' && <p className="text-[11px] text-matn-xira raqam">to'lganlik: {f.f.map((x, i) => `${harflar[i] || i + 1} ${Math.round(x * 100)}%`).join(' · ')}</p>}
                       </div>
-                      {j && <Kesim url={rasm(j.page)} quti={j.quti} pxMm={j.turi === 'raqamli' ? 4 : 6} />}
+                      {j && <Kesim url={rasm(j.page)} quti={j.quti} pxMm={j.turi === 'raqamli' ? 4 : j.turi === 'moslash' ? 5 : 6} />}
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        {it?.t === 'raqamli' ? (
+                        {it?.t === 'moslash' ? (
+                          <MoslashTanlov qiymat={tanlov} tahrir={tahrir} onChange={v => setQaror(q => ({ ...q, [f.n]: v }))} />
+                        ) : it?.t === 'raqamli' ? (
                           <input className={`${INPUT} w-32 py-1.5`} value={tanlov} onChange={e => setQaror(q => ({ ...q, [f.n]: e.target.value }))} placeholder="Javob" />
                         ) : (
                           <>
@@ -294,5 +297,32 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
         )}
       </div>
     </div>
+  );
+}
+
+/** Moslashtirish javobini qo'lda tuzatish: 4 qator (A–D) × 5 ustun (P–T), har qatorda bir nechta. */
+function MoslashTanlov({ qiymat, tahrir, onChange }: { qiymat: string; tahrir: boolean; onChange: (v: string) => void }) {
+  const qatorlar = [0, 1, 2, 3].map(r => (String(qiymat || '').toUpperCase().split('|')[r] || '').replace(/[^PQRST]/g, ''));
+  const bos = (r: number, h: string) => {
+    const k = [...qatorlar];
+    k[r] = (k[r].includes(h) ? k[r].replace(h, '') : k[r] + h).split('').sort().join('');
+    onChange(k.some(Boolean) ? k.join('|') : '');
+  };
+  return (
+    <table className="border-collapse" aria-label="Moslashtirish javobi">
+      <tbody>
+        {qatorlar.map((q, r) => (
+          <tr key={r}>
+            <th className="w-6 text-[12px] font-bold text-matn-sokin">{'ABCD'[r]}</th>
+            {'PQRST'.split('').map(h => (
+              <td key={h} className="p-0.5">
+                <button disabled={!tahrir} onClick={() => bos(r, h)} aria-pressed={q.includes(h)} aria-label={`${'ABCD'[r]}–${h}`}
+                  className={`w-8 h-8 rounded-full border text-[11px] font-bold cursor-pointer ${q.includes(h) ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

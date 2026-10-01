@@ -9,7 +9,7 @@ import type { Exam } from '../../types';
 
 export interface KitobchaMalumoti {
   variants: { session: number; code: string; items: { n: number; q: number; b: number; t: string; p: number; m?: number[]; pa?: number }[] }[];
-  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null; joylashuv?: number | null }[];
+  savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null; joylashuv?: number | null; ong?: string[] }[];
   matnlar: { id: number; title?: string | null; text: string; imageUrl?: string | null }[];
 }
 
@@ -66,6 +66,10 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .tarjima { color: #444; font-style: italic; margin-top: .6mm; }
 .tj { color: #555; font-style: italic; }
 .remark { margin: .8mm 0 0 7.6mm; font-size: 8.5pt; color: #555; font-style: italic; }
+.moslash { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; margin: 1.2mm 0 0 7.6mm; }
+.moslash ol { list-style: none; padding: 0; margin: 0; }
+.moslash li { margin: 0.6mm 0; display: flex; gap: 1.4mm; }
+.moslash p { margin: 0; }
 `;
 
 /** Kitobcha ko'rinishi (Addmen QPG "Output": ustunlar, bo'lim sarlavhasi, izohlar, ikkinchi til). */
@@ -80,6 +84,14 @@ function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[]
   const sinf = q.joylashuv === 1 ? '' : q.joylashuv === 2 ? ' ikki' : q.joylashuv === 4 ? ' tort' : qisqa ? ' ikki' : '';
   return `<ol class="javoblar${sinf}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
 }
+
+/** Moslashtirish: chap ustun A–D va o'ng ustun P–T yonma-yon. */
+function moslashHtml(q: KitobchaMalumoti['savollar'][number]): string {
+  const ustun = (l: string[], h: string) => `<ol>${l.map((x, i) => `<li><b>${h[i]})</b><span>${formulaliHtml(x || '')}</span></li>`).join('')}</ol>`;
+  return `<div class="moslash">${ustun(q.options, 'ABCD')}${ustun(q.ong || [], 'PQRST')}</div>`;
+}
+
+export const MOSLASH_KORSATMA = "Moslashtirish savollarida chap ustundagi har band (A–D) qatoriga o'ng ustundan mos keladiganlarini (P–T) bo'yang — bir nechta bo'lishi mumkin.";
 
 export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, tanlov: { session: number; code: string }[], o: KitobchaSozlama = KITOBCHA_STANDART): string {
   const savolMap = new Map(d.savollar.map(q => [q.id, q]));
@@ -106,6 +118,7 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
           <li>Javoblarni faqat javob varaqasiga belgilang: doirachani qora yoki ko'k ruchka bilan to'liq bo'yang.</li>
           <li>Javob varaqasida kitobcha variantini (<b>${esc(code)}</b>) ham bo'yang. Kitobchaga yozish mumkin — u tekshirilmaydi.</li>
           ${v.items.some(it => it.t === 'raqamli') ? "<li>Raqamli javobni katak tepasiga yozing va har belgini ostidagi ustunda bo'yang (minus, vergul, kasr chizig'i ham).</li>" : ''}
+          ${v.items.some(it => it.t === 'moslash') ? `<li>${MOSLASH_KORSATMA}</li>` : ''}
         </ul>
       </div>`;
     let joriyBlok = -1;
@@ -132,6 +145,7 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
       let pastki = '';
       if (it.t === 'yopiq') pastki = variantHtml(q, it, o);
       else if (it.t === 'raqamli') pastki = `<div class="izoh">Javobni javob varaqasidagi ${it.n}-katakka yozing va bo'yang.</div>`;
+      else if (it.t === 'moslash') pastki = moslashHtml(q);
       else pastki = `<div class="izoh">Yechimni javob varaqasidagi ${it.n}-maydonga yozing (${it.p} ball).</div>`;
       const tarjima = o.ikkiTil && q.tarjima?.text?.trim() ? `<div class="tarjima">${formulaliHtml(q.tarjima.text)}</div>` : '';
       const izoh = o.izoh && q.remark ? `<div class="remark">Izoh: ${esc(q.remark)}</div>` : '';

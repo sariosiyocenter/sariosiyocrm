@@ -15,7 +15,7 @@ import type { BankDaraxt, Question } from '../../../types';
 // Mavzu ichidagi savol kartasi (formulalar bilan) va savol oynasi: to'liq
 // ko'rinish, qiyinlik, mavzu va holatni shu yerning o'zida o'zgartirish.
 
-const TUR_QISQA: Record<string, string> = { raqamli: 'Raqamli javob', yozma: 'Yozma' };
+const TUR_QISQA: Record<string, string> = { raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma' };
 const HOLAT_NOMI: Record<string, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 
 export function SavolKartasi({ q, onOch, tanlash, tanlangan, onTanla, sudrash }: {

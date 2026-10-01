@@ -20,7 +20,7 @@ import type { ImtihonTafsil } from './turlar';
 // Kalitni varaqdan ham olsa bo'ladi (Addmen kabi): ustoz bo'sh varaqqa to'g'ri
 // javoblarni bo'yaydi, skanerlaydi — kalit o'zi to'ladi, keyin tekshirib saqlanadi.
 
-type Savol = { n: number; b: number; t: 'yopiq' | 'raqamli' | 'yozma'; p: number };
+type Savol = { n: number; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number };
 const MAXSUS: Record<string, { belgi: string; nom: string; cls: string }> = {
   '*': { belgi: '✱', nom: 'Bekor — hammaga ball', cls: 'text-ogoh border-ogoh/40 bg-ogoh-fon' },
   '-': { belgi: '✕', nom: 'Hisobdan chiqarilgan', cls: 'text-xato border-xato-chiziq bg-xato-fon' },
@@ -311,6 +311,8 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
                             className={`w-7 h-7 rounded-full border text-[12px] font-bold cursor-pointer ${v.includes(h) ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand bg-sirt'}`}>{h}</button>
                         ))}
                       </span>
+                    ) : q.t === 'moslash' ? (
+                      <input aria-label={`${q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0 uppercase`} value={v} placeholder="PQ|R|S|T — har qatorga" title="Moslashtirish: har qator (A–D) uchun o'ng ustun harflari (P–T), qatorlar | bilan" onChange={e => qoy(q.n, e.target.value.toUpperCase())} />
                     ) : q.t === 'raqamli' ? (
                       <input aria-label={`${q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0`} value={v} placeholder="0,5 yoki 0,5;1/2" onChange={e => qoy(q.n, e.target.value)} />
                     ) : <span className="flex-1 text-[12px] text-matn-xira">yozma — ustoz baholaydi ({q.p} ball)</span>}

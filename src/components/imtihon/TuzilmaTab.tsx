@@ -18,7 +18,7 @@ interface Qoida {
   sabab?: { qoralama?: number; xatoli?: number; boshqaQiyinlik?: number; boshqaTil?: number; boshqaQoida?: number; fandaJami?: number; yoq?: number; faolEmas?: number };
 }
 interface KalitHolat { kalit: string; session: number; code: string; jami: number; toldirilgan: number; tayyor: boolean }
-const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', yozma: 'yozma' };
+const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', moslash: 'moslash', yozma: 'yozma' };
 const QIYIN: Record<number, string> = { 1: 'oson', 2: "o'rta", 3: 'qiyin' };
 const qoidaNomi = (q: { mavzu: string; tur: string; qiyinlik: number; tanlangan?: boolean }) =>
   q.tanlangan ? `Tanlangan savollar · ${TUR[q.tur]}` : `${q.mavzu || 'Istalgan mavzu'} · ${TUR[q.tur]}${q.qiyinlik ? ` · ${QIYIN[q.qiyinlik]}` : ''}`;

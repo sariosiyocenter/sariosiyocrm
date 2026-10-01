@@ -6,6 +6,7 @@ import { useImtihonApi } from './useImtihonApi';
 import { Tugma, Tanlov, Yorliq, Yuklanmoqda } from './ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { HARFLAR } from '../../../lib/imtihon.js';
+import MoslashJadvali from './bank/MoslashJadvali';
 
 // Kalit: har variantning to'g'ri javoblari (qo'lda tekshirish uchun) va
 // tuzatish — savolni bekor qilish yoki to'g'ri javobni o'zgartirish. Har
@@ -125,7 +126,7 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                 if (!s) return null;
                 const bekorQilingan = k.cancelled[q];
                 const tuzatish = k.keyFix[q];
-                const asl = t === 'yopiq' ? s.correctAnswer : [s.correctAnswer, ...(s.answers || [])].filter(Boolean).join(' | ');
+                const asl = t === 'yopiq' || t === 'moslash' ? s.correctAnswer : [s.correctAnswer, ...(s.answers || [])].filter(Boolean).join(' | ');
                 return (
                   <li key={q} className={`rounded-xl border p-3 ${boshSavol === q ? 'border-brand ring-2 ring-brand/15' : 'border-chiziq'}`}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -159,6 +160,7 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                           </div>
                         )}
                         {t === 'raqamli' && <p className="text-[12px] text-matn-sokin mt-1">To'g'ri javob: <b className="text-matn">{tuzatish ? tuzatish.join(' | ') : asl}</b></p>}
+                        {t === 'moslash' && <div className="mt-2"><MoslashJadvali ixcham chap={s.options || []} ong={s.answers || []} kalit={tuzatish?.[0] || asl} /></div>}
                       </div>
                       {tuzatadi && t !== 'yozma' && (
                         <div className="flex flex-col gap-1.5 shrink-0">
@@ -169,6 +171,14 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                               <Tugma kichik ikonka={<Ban size={13} />} yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'hammaga')}>Bekor: hammaga ball</Tugma>
                               <Tugma kichik turi="oddiy" yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'chiqarish')}>Hisobdan chiqarish</Tugma>
                             </>
+                          )}
+                          {t === 'moslash' && (
+                            <Tugma kichik turi="oddiy" onClick={() => {
+                              const v = window.prompt("To'g'ri javob: har qatorga (A, B, …) o'ng ustun harflari, qatorlar | bilan — masalan PQ|R|S|T. Bo'sh qoldirilsa — asl kalit.", tuzatish?.[0] || asl);
+                              if (v === null) return;
+                              const k = v.toUpperCase().split('|').map(x => [...new Set(x.replace(/[^PQRST]/g, '').split(''))].sort().join(''));
+                              kalitniOzgartir(q, k.some(Boolean) && k.join('|') !== asl ? [k.join('|')] : null);
+                            }}>Javobni o'zgartirish</Tugma>
                           )}
                           {t === 'raqamli' && (
                             <Tugma kichik turi="oddiy" onClick={async () => {
