@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from 'react';
-import { Save, ClipboardPaste, CheckCircle2, AlertTriangle, KeyRound, Tags, Copy } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Save, ClipboardPaste, CheckCircle2, AlertTriangle, KeyRound, Tags, Copy, ScanLine, Printer } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Tugma, Yorliq, INPUT, Tanlov } from './ui';
-import { HARFLAR, kalitTuzilmasi, kalitToplamlari, kalitQiymati, kalitMatnidan } from '../../../lib/imtihon.js';
+import { HARFLAR, kalitTuzilmasi, kalitToplamlari, kalitQiymati, kalitMatnidan, varaqTuzilmasi } from '../../../lib/imtihon.js';
+import { OmrIshchi, faylSahifalari } from '../../lib/omr/skaner';
+import { varaqSahifalari, type VaraqParametrlari } from '../../lib/omr/layout';
+import { varaqSvg, VARAQ_CSS } from '../../lib/omr/render';
+import { chopEt } from '../../lib/chopEtish';
 import type { ImtihonTafsil } from './turlar';
 
 // "Faqat kalit" rejimida kitobcha variantlarining javob kaliti. Markaz o'z
@@ -12,6 +16,8 @@ import type { ImtihonTafsil } from './turlar';
 // variantning (A, B, ...) kaliti shu yerda yoziladi. Qulflangan imtihonda
 // saqlansa — hamma natija yangi kalit bilan qayta hisoblanadi. Savollarning
 // mavzusi ixtiyoriy: yozilsa, tahlilda ustoz qaysi mavzu zaif ekanini ko'radi.
+// Kalitni varaqdan ham olsa bo'ladi (Addmen kabi): ustoz bo'sh varaqqa to'g'ri
+// javoblarni bo'yaydi, skanerlaydi — kalit o'zi to'ladi, keyin tekshirib saqlanadi.
 
 type Savol = { n: number; b: number; t: 'yopiq' | 'raqamli' | 'yozma'; p: number };
 const MAXSUS: Record<string, { belgi: string; nom: string; cls: string }> = {
@@ -35,6 +41,12 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
   const [mavzuMatni, setMavzuMatni] = useState('');
   const [ozgargan, setOzgargan] = useState(false);
   const [band, setBand] = useState(false);
+  const [oqilmoqda, setOqilmoqda] = useState(false);
+  const faylRef = useRef<HTMLInputElement>(null);
+  const params: VaraqParametrlari = useMemo(() => ({
+    tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
+    optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
+  }), [exam, s]);
   const harflar = HARFLAR.slice(0, s.optionCount);
   const kopSmena = toplamlar.some(t => t.session !== 1);
   // Mavzu takliflari: o'quv rejadagi mavzular va shu imtihonda yozilganlar.
@@ -113,6 +125,71 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
     setOzgargan(true);
     setMatn('');
     showNotification(`${soni} ta savolga kalit qo'yildi — tekshirib, saqlang`, 'success');
+  };
+
+  /** Kalit uchun bo'sh (universal) varaq — qulflashdan oldin ham chiqadi. */
+  const boshVaraq = async () => {
+    const sahifalar = varaqSahifalari(params);
+    const smena = Number(faol.split('|')[0]) || 1;
+    const umumiy = { markaz: 'KALIT', imtihon: `${exam.name} — kalit varag'i`, sana: exam.date, examId: exam.id, session: smena, smena: `${faol.split('|')[1]} kitobcha kaliti` };
+    await chopEt({ sarlavha: `${exam.name} — kalit varag'i`, css: VARAQ_CSS, body: sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, null)}</div>`).join('') });
+  };
+
+  /**
+   * Ustoz to'ldirgan varaqdan kalit: har sahifa o'qiladi; variant doirachasi bo'yalgan
+   * bo'lsa — o'sha kitobcha, bo'lmasa ochiq turgani. Ikki doira bo'yalsa — "AC".
+   */
+  const varaqdanOqi = async (fayllar: File[]) => {
+    if (!fayllar.length) return;
+    setOqilmoqda(true);
+    const ishchi = new OmrIshchi();
+    try {
+      const sahifalar = varaqSahifalari(params);
+      const javoblar: Record<number, string> = {};
+      let variant: string | null = null;
+      let oqildi = 0;
+      const xatolar: string[] = [];
+      for (const f of fayllar) {
+        for await (const { bitmap, nom } of faylSahifalari(f)) {
+          const { natija } = await ishchi.oqi(bitmap, params);
+          if (!natija.ok) { xatolar.push(`${nom}: ${natija.xato || "o'qilmadi"}`); continue; }
+          oqildi++;
+          if (natija.variant) variant = natija.variant;
+          const sahifa = sahifalar.find(x => x.page === natija.page);
+          for (const sv of sahifa?.yopiq || []) {
+            const v = natija.javoblar[sv.n];
+            if (v && v !== '*') javoblar[sv.n] = v;
+            else {
+              // Bir nechta (yoki noaniq) belgi: to'liq bo'yalgan doirachalar — bir nechta to'g'ri javob.
+              const f2 = natija.toliqlik[sv.n] || [];
+              const harf = f2.map((x, i) => (x >= 0.45 ? sv.doiralar[i]?.v : '')).filter(Boolean).join('');
+              if (harf) javoblar[sv.n] = harf;
+            }
+          }
+          for (const sv of sahifa?.raqamli || []) if (natija.javoblar[sv.n]) javoblar[sv.n] = natija.javoblar[sv.n];
+        }
+      }
+      if (!oqildi) throw new Error(xatolar[0] || "Varaq o'qilmadi");
+      const smena = faol.split('|')[0];
+      const nishon = variant && toplamlar.some(t => t.kalit === `${smena}|${variant}`) ? `${smena}|${variant}` : faol;
+      const soni = Object.keys(javoblar).length;
+      setKeys(k => {
+        const arr = [...(k[nishon] || [])];
+        while (arr.length < tuz.length) arr.push('');
+        for (const [n, v] of Object.entries(javoblar)) arr[Number(n) - 1] = v;
+        return { ...k, [nishon]: arr };
+      });
+      setFaol(nishon);
+      setOzgargan(true);
+      const bosh = tuz.filter(q => q.t !== 'yozma' && !javoblar[q.n]).length;
+      showNotification(`${nishon.split('|')[1]} kitobcha: ${soni} ta savol kaliti varaqdan olindi${bosh ? `, ${bosh} tasi bo'sh — to'ldiring` : ''}. Tekshirib, saqlang.`, bosh ? 'info' : 'success');
+      if (xatolar.length) showNotification(`${xatolar.length} ta sahifa o'qilmadi: ${xatolar[0]}`, 'error');
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      ishchi.yop();
+      setOqilmoqda(false);
+    }
   };
 
   const saqla = async () => {
@@ -203,6 +280,17 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11.5px] text-matn-xira">Raqamli javoblarni har qatorga bittadan yozsa ham bo'ladi. Bir nechta to'g'ri javob — «AC» yoki harfni Shift bilan bosing.</p>
           <Tugma kichik onClick={matndanQoy} disabled={!matn.trim()}>Kalitga qo'yish</Tugma>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-chiziq">
+          <p className="text-[11.5px] text-matn-xira max-w-xl">
+            <b className="text-matn-sokin">Varaqdan:</b> bo'sh varaqqa to'g'ri javoblarni bo'yang (variant doirachasini ham), suratga oling yoki skanerlang — kalit o'zi to'ladi.
+          </p>
+          <span className="flex flex-wrap gap-2">
+            <Tugma kichik turi="oddiy" ikonka={<Printer size={13} />} onClick={boshVaraq}>Bo'sh varaq</Tugma>
+            <Tugma kichik ikonka={<ScanLine size={13} />} yuklanmoqda={oqilmoqda} onClick={() => faylRef.current?.click()}>Varaqdan o'qish</Tugma>
+          </span>
+          <input ref={faylRef} type="file" multiple accept="image/*,application/pdf,.pdf" className="hidden" aria-label="Kalit varag'i"
+            onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; varaqdanOqi(f); }} />
         </div>
       </div>}
 
