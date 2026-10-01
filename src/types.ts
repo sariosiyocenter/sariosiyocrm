@@ -723,6 +723,19 @@ export interface ExamSettings {
     takror: 'yoq' | 'savol' | 'variant';
     /** So'rovnoma (source 'sorovnoma'): savollar, umumiy shkala, anonim. */
     sorovnoma: { anonim: boolean; shkala: string[]; savollar: { matn: string; variantlar?: string[] }[] };
+    /** Erkin javob varaqasi (dizayner andozasining nusxasi); null — standart varaq. */
+    varaqAndoza?: import('./lib/omr/layout').VaraqAndoza | null;
+}
+
+/** Saqlangan varaq andozasi (dizayner). */
+export interface VaraqAndozaYozuvi {
+    id: number;
+    name: string;
+    sahifalar: number;
+    bloklar: import('./lib/omr/layout').AndozaBlok[];
+    schoolId: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";

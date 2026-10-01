@@ -24,6 +24,7 @@ import {
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
   almashtirishNomzodlari, savolniAlmashtir, sorovnomaBloklari, sorovnomaVariantlari, sorovnomaYorliqlari,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala, moslashQatorlari,
+  varaqAndozaTozala,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
 
@@ -909,6 +910,14 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         const ruxsatli = ['notify', 'ranking', 'topN', 'showQuestionsAfter', 'seatMode', 'sessionFill', 'roomIds', 'variantBubble', 'admit', 'rasch', 'orinUsuli', 'otish'];
         const qism = Object.fromEntries(Object.entries(kelgan).filter(([k]) => ruxsatli.includes(k)));
         if (Array.isArray(kelgan.sessions) && kelgan.sessions.length === joriy.sessions.length) qism.sessions = kelgan.sessions;
+        // Varaq dizayni qulfdan keyin ham (varaqlar odatda shundan keyin chop etiladi), lekin
+        // birorta varaq skanerlanmagan bo'lsa — aks holda chop etilgan varaq o'qilmay qoladi.
+        if (kelgan.varaqAndoza !== undefined && JSON.stringify(varaqAndozaTozala(kelgan.varaqAndoza)) !== JSON.stringify(joriy.varaqAndoza)) {
+          if (await prisma.examResult.count({ where: { examId: eski.id } })) {
+            throw Object.assign(new Error("Varaqlar skanerlangan — varaq dizaynini endi o'zgartirib bo'lmaydi (chop etilgan varaqlar o'qilmay qoladi)"), { status: 409 });
+          }
+          qism.varaqAndoza = kelgan.varaqAndoza;
+        }
         // So'rovnoma qulflangach: savollar soni va har savolning yorliqlari soni o'zgarmasa — matnlar tahrirlanadi.
         if (joriy.source === 'sorovnoma' && kelgan.sorovnoma) {
           const t = sozlamaniTozala({ ...joriy, sorovnoma: kelgan.sorovnoma }).sorovnoma;
@@ -1210,6 +1219,60 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         matnlar,
       });
     } catch (err) { next(err); }
+  });
+
+  // --- Erkin varaq andozalari (Addmen "OMR Designer") — butun tashkilotga umumiy ---
+
+  const andozaYuki = (b, eski) => {
+    const t = varaqAndozaTozala({ sahifalar: b.sahifalar ?? eski?.sahifalar, bloklar: Array.isArray(b.bloklar) ? b.bloklar : eski?.bloklar || [] });
+    const d = { sahifalar: t.sahifalar, bloklar: t.bloklar };
+    if (b.name !== undefined || !eski) d.name = String(b.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    return d;
+  };
+  const varaqAndozasiniOl = async (req, id) => {
+    const orgIds = await organizationSchoolIds(req.user);
+    const a = await prisma.varaqAndoza.findUnique({ where: { id } });
+    if (!a || !orgIds.includes(a.schoolId)) throw Object.assign(new Error('Andoza topilmadi'), { status: 404 });
+    return a;
+  };
+
+  app.get('/api/varaq-andozalar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      res.json(await prisma.varaqAndoza.findMany({ where: { schoolId: { in: orgIds } }, orderBy: { updatedAt: 'desc' } }));
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/varaq-andozalar', authenticate, async (req, res, next) => {
+    try {
+      const d = andozaYuki(req.body || {});
+      if (!d.name) return res.status(400).json({ error: 'Andoza nomini kiriting' });
+      const orgIds = await organizationSchoolIds(req.user);
+      res.status(201).json(await prisma.varaqAndoza.create({ data: { ...d, schoolId: req.user.schoolId || orgIds[0] } }));
+    } catch (err) { next(err); }
+  });
+
+  app.put('/api/varaq-andozalar/:id', authenticate, async (req, res, next) => {
+    try {
+      const a = await varaqAndozasiniOl(req, parseInt(req.params.id));
+      const d = andozaYuki(req.body || {}, a);
+      if (d.name !== undefined && !d.name) return res.status(400).json({ error: 'Andoza nomini kiriting' });
+      res.json(await prisma.varaqAndoza.update({ where: { id: a.id }, data: d }));
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      next(err);
+    }
+  });
+
+  app.delete('/api/varaq-andozalar/:id', authenticate, async (req, res, next) => {
+    try {
+      const a = await varaqAndozasiniOl(req, parseInt(req.params.id));
+      await prisma.varaqAndoza.delete({ where: { id: a.id } });
+      res.json({ success: true, name: a.name });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      next(err);
+    }
   });
 
   // Addmen QPG "Find questions" jadvali: qulflangan imtihonga tushgan savollar (birinchi

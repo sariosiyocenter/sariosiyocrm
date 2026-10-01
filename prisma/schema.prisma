@@ -1104,6 +1104,21 @@ model QuestionBlueprint {
   @@index([schoolId])
 }
 
+// Erkin javob varaqasi (Addmen "OMR Designer"): sahifalarga joylangan bloklar —
+// yopiq/raqamli/moslash/yozma savollar, yozuv va rasm. Imtihonga nusxasi
+// (settings.varaqAndoza) qo'yiladi: andoza keyin o'zgarsa ham chop etilgan varaq o'qiladi.
+model VaraqAndoza {
+  id        Int      @id @default(autoincrement())
+  name      String
+  sahifalar Int      @default(1)
+  bloklar   Json     // [{id, tur, sahifa, x, y, boshi?, soni?, ustunlar?, sarlavha?, w?, h?, matn?, olcham?, qalin?, tekis?, src?}]
+  schoolId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+}
+
 // Savollar banki tuzilmasi: fan → mavzu (butun tashkilotga umumiy; schoolId —
 // yaratgan filial). Savolning subject/topic matnlari shu nomlarning nusxasi:
 // eski imtihon qoidalari nom bo'yicha ishlaydi, nom o'zgarsa savollarda ham

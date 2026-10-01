@@ -102,6 +102,8 @@ export interface Sahifa {
   idUstunlari: Doira[][];
   qr: { x: number; y: number; s: number };
   bezak?: Bezak[];
+  /** Dizayner rasmlari (logo, chizma) — o'qilmaydi. */
+  rasmlar?: (Quti & { src: string })[];
 }
 
 export interface Tuzilma {
@@ -120,6 +122,8 @@ export interface VaraqParametrlari {
   yozmaBallari?: Record<number, number>;
   /** So'rovnoma: har qatorda savol matni va o'ng tomonda shkala doirachalari. */
   sorovnoma?: { savollar: { matn: string; variantlar?: string[] }[]; shkala: string[]; anonim?: boolean } | null;
+  /** Erkin varaq (dizayner andozasi) — bo'lsa, savollar shu bloklarga joylanadi. */
+  andoza?: VaraqAndoza | null;
 }
 
 /** Matnni taxminiy kenglik bo'yicha qatorlarga bo'lish (Arial, mm). */
@@ -203,19 +207,8 @@ function yangiSahifa(page: number): Sahifa {
   };
 }
 
-/**
- * Varaq sahifalari. Yopiq savollar ustunma-ustun (yuqoridan pastga, keyin
- * o'ngga), har blok boshida uning nomi. Keyin raqamli kataklar qatorlari,
- * keyin yozma maydonlar. Joy tugasa — keyingi sahifa.
- */
-export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
-  if (p.sorovnoma?.savollar.length) return sorovnomaSahifalari(p);
-  const k = Math.min(6, Math.max(2, p.optionCount || 4));
-  const sahifalar: Sahifa[] = [];
-  let s = yangiSahifa(1);
-  sahifalar.push(s);
-
-  // 1-sahifa: variant va ID doirachalari.
+/** 1-sahifa: kitobcha varianti va (universal varaqda) o'quvchi ID doirachalari. */
+function birinchiSahifaDoiralari(s: Sahifa, p: VaraqParametrlari) {
   if (p.variantBubble) {
     const soni = Math.max(1, Math.min(26, p.variantCount || 1));
     for (let i = 0; i < soni; i++) s.variantlar.push({ x: VARIANT_X0 + i * DOIRA_QADAM, y: VARIANT_Y, r: VARIANT_R, v: String.fromCharCode(65 + i) });
@@ -225,6 +218,55 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
     for (let d = 0; d < 10; d++) ustun.push({ x: ID_X0 + c * ID_QADAM_X, y: ID_Y0 + d * ID_QADAM_Y, r: ID_R, v: String(d) });
     s.idUstunlari.push(ustun);
   }
+}
+
+/** Yopiq savol qatori: raqam va k ta doiracha (x — qator boshi, y — qator tepasi). */
+function yopiqQator(n: number, x: number, y: number, k: number): YopiqSavol {
+  const cy = y + QATOR / 2;
+  const doiralar: Doira[] = [];
+  for (let d = 0; d < k; d++) doiralar.push({ x: x + RAQAM_JOYI + DOIRA_QADAM / 2 + d * DOIRA_QADAM, y: cy, r: DOIRA_R, v: HARF[d] });
+  return { n, raqam: { x: x + RAQAM_JOYI - 1.2, y: cy + 1.05 }, doiralar };
+}
+
+/** Raqamli javob katagi (bx, by — chap yuqori burchak). */
+function raqamliKatak(n: number, bx: number, by: number): RaqamliSavol {
+  const yozuv = { x: bx + 1.5, y: by + 4, w: RAQAM_USTUNLARI * KATAK_QADAM_X, h: KATAK_YOZUV };
+  const ustunlar: Doira[][] = [];
+  for (let c = 0; c < RAQAM_USTUNLARI; c++) {
+    const col: Doira[] = [];
+    RAQAM_BELGILARI.forEach((v: string, si: number) => {
+      col.push({ x: yozuv.x + c * KATAK_QADAM_X + KATAK_QADAM_X / 2, y: by + 4 + KATAK_YOZUV + 1 + si * KATAK_QADAM_Y + KATAK_QADAM_Y / 2, r: KATAK_R, v });
+    });
+    ustunlar.push(col);
+  }
+  return { n, quti: { x: bx, y: by, w: KATAK_KENGLIK, h: KATAK_BALANDLIK }, yozuv, ustunlar };
+}
+
+/** Moslashtirish to'ri 4 × 5 (bx, by — chap yuqori burchak). */
+function moslashTori(n: number, bx: number, by: number): MoslashSavol {
+  const qatorlar: Doira[][] = [];
+  for (let r = 0; r < 4; r++) {
+    const qator: Doira[] = [];
+    for (let c = 0; c < 5; c++) qator.push({ x: bx + 7 + c * MOSLASH_QADAM_X + MOSLASH_QADAM_X / 2, y: by + 9.5 + r * MOSLASH_QADAM_Y + MOSLASH_QADAM_Y / 2, r: MOSLASH_R, v: 'PQRST'[c] });
+    qatorlar.push(qator);
+  }
+  return { n, quti: { x: bx, y: by, w: MOSLASH_KENGLIK, h: MOSLASH_BALANDLIK }, qatorlar };
+}
+
+/**
+ * Varaq sahifalari. Yopiq savollar ustunma-ustun (yuqoridan pastga, keyin
+ * o'ngga), har blok boshida uning nomi. Keyin raqamli kataklar qatorlari,
+ * keyin yozma maydonlar. Joy tugasa — keyingi sahifa. Dizayner andozasi
+ * bo'lsa — savollar uning bloklariga joylanadi (andozaSahifalari).
+ */
+export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
+  if (p.sorovnoma?.savollar.length) return sorovnomaSahifalari(p);
+  if (p.andoza?.bloklar?.length) return andozaSahifalari(p);
+  const k = Math.min(6, Math.max(2, p.optionCount || 4));
+  const sahifalar: Sahifa[] = [];
+  let s = yangiSahifa(1);
+  sahifalar.push(s);
+  birinchiSahifaDoiralari(s, p);
 
   // --- Yopiq savollar ---
   const ustunKeng = RAQAM_JOYI + k * DOIRA_QADAM;
@@ -261,10 +303,7 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
       if (kt.tur === 'sarlavha') {
         s.sarlavhalar.push({ matn: kt.matn, x, y: y + QATOR * 0.72 });
       } else {
-        const cy = y + QATOR / 2;
-        const doiralar: Doira[] = [];
-        for (let d = 0; d < k; d++) doiralar.push({ x: x + RAQAM_JOYI + DOIRA_QADAM / 2 + d * DOIRA_QADAM, y: cy, r: DOIRA_R, v: HARF[d] });
-        s.yopiq.push({ n: kt.n, raqam: { x: x + RAQAM_JOYI - 1.2, y: cy + 1.05 }, doiralar });
+        s.yopiq.push(yopiqQator(kt.n, x, y, k));
       }
     }
     i += olinadi;
@@ -292,20 +331,7 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
   const katakQadam = qatordaKatak > 1 ? (KENGLIK - KATAK_KENGLIK) / (qatordaKatak - 1) : 0;
   for (let i = 0; i < raqamlilar.length; i += qatordaKatak) {
     joy(KATAK_BALANDLIK);
-    raqamlilar.slice(i, i + qatordaKatak).forEach((n, j) => {
-      const bx = CHAP + j * katakQadam;
-      const by = joriyY;
-      const yozuv = { x: bx + 1.5, y: by + 4, w: RAQAM_USTUNLARI * KATAK_QADAM_X, h: KATAK_YOZUV };
-      const ustunlar: Doira[][] = [];
-      for (let c = 0; c < RAQAM_USTUNLARI; c++) {
-        const col: Doira[] = [];
-        RAQAM_BELGILARI.forEach((v: string, si: number) => {
-          col.push({ x: yozuv.x + c * KATAK_QADAM_X + KATAK_QADAM_X / 2, y: by + 4 + KATAK_YOZUV + 1 + si * KATAK_QADAM_Y + KATAK_QADAM_Y / 2, r: KATAK_R, v });
-        });
-        ustunlar.push(col);
-      }
-      s.raqamli.push({ n, quti: { x: bx, y: by, w: KATAK_KENGLIK, h: KATAK_BALANDLIK }, yozuv, ustunlar });
-    });
+    raqamlilar.slice(i, i + qatordaKatak).forEach((n, j) => s.raqamli.push(raqamliKatak(n, CHAP + j * katakQadam, joriyY)));
     joriyY += KATAK_BALANDLIK + 3;
   }
 
@@ -315,17 +341,7 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
   const moslashQadam = qatordaMoslash > 1 ? (KENGLIK - MOSLASH_KENGLIK) / (qatordaMoslash - 1) : 0;
   for (let i = 0; i < moslashlar.length; i += qatordaMoslash) {
     joy(MOSLASH_BALANDLIK);
-    moslashlar.slice(i, i + qatordaMoslash).forEach((n, j) => {
-      const bx = CHAP + j * moslashQadam;
-      const by = joriyY;
-      const qatorlar: Doira[][] = [];
-      for (let r = 0; r < 4; r++) {
-        const qator: Doira[] = [];
-        for (let c = 0; c < 5; c++) qator.push({ x: bx + 7 + c * MOSLASH_QADAM_X + MOSLASH_QADAM_X / 2, y: by + 9.5 + r * MOSLASH_QADAM_Y + MOSLASH_QADAM_Y / 2, r: MOSLASH_R, v: 'PQRST'[c] });
-        qatorlar.push(qator);
-      }
-      (s.moslash ||= []).push({ n, quti: { x: bx, y: by, w: MOSLASH_KENGLIK, h: MOSLASH_BALANDLIK }, qatorlar });
-    });
+    moslashlar.slice(i, i + qatordaMoslash).forEach((n, j) => (s.moslash ||= []).push(moslashTori(n, CHAP + j * moslashQadam, joriyY)));
     joriyY += MOSLASH_BALANDLIK + 3;
   }
 
@@ -338,6 +354,212 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
 
   for (const sh of sahifalar) sh.pages = sahifalar.length;
   return sahifalar;
+}
+
+// --- Erkin varaq (Addmen "OMR Designer") ------------------------------------
+//
+// Andoza — sahifalarga joylangan bloklar. Savol bloklarining o'lchami savollar
+// soni va ustunlardan kelib chiqadi (qo'lda cho'zilmaydi — doirachalar oralig'i
+// doim o'qigichga mos); yozma, yozuv va rasm bloklari kengligi/balandligi erkin.
+// Sarlavha (markerlar, QR, ID, variant) standart varaqdagidek qoladi.
+
+export type AndozaTuri = 'yopiq' | 'raqamli' | 'moslash' | 'yozma' | 'matn' | 'rasm';
+export interface AndozaBlok {
+  id: string;
+  tur: AndozaTuri;
+  sahifa: number;
+  /** Chap yuqori burchak, mm. */
+  x: number;
+  y: number;
+  /** Savol bloklari: birinchi savol raqami, soni va ustunlar (raqamli/moslash — qatordagi kataklar). */
+  boshi?: number;
+  soni?: number;
+  ustunlar?: number;
+  sarlavha?: string;
+  /** Yozma, yozuv, rasm: kenglik (va balandlik), mm. */
+  w?: number;
+  h?: number;
+  matn?: string;
+  olcham?: number;
+  qalin?: boolean;
+  tekis?: 'start' | 'middle' | 'end';
+  src?: string;
+}
+export interface VaraqAndoza { id?: number | null; nomi?: string; sahifalar: number; bloklar: AndozaBlok[]; yangilangan?: string }
+
+/** Bloklar turadigan maydon: sarlavha, markerlar va sahifa belgilaridan tashqari. */
+export const ANDOZA_MAYDONI = { x0: CHAP, x1: ONG, y0: (page: number) => (page === 1 ? 86 : 40), y1: Y1 + 1 };
+const BLOK_SARLAVHA = 5;
+export const SAVOL_BLOKLARI: AndozaTuri[] = ['yopiq', 'raqamli', 'moslash', 'yozma'];
+
+/** Yozuv blokining qatorlari (\n — yangi qator, uzunlari kenglikka bo'linadi). */
+export function yozuvQatorlari(b: AndozaBlok): string[] {
+  const o = b.olcham || 3;
+  return String(b.matn || '').split('\n').flatMap(q => (q.trim() ? qatorlarga(q.trim(), o, b.w || 60, 12) : [''])).slice(0, 20);
+}
+
+/** Blok o'lchami, mm. */
+export function blokOlchami(b: AndozaBlok, optionCount = 4): { w: number; h: number } {
+  const sh = b.sarlavha && SAVOL_BLOKLARI.includes(b.tur) ? BLOK_SARLAVHA : 0;
+  const soni = Math.max(1, b.soni || 1);
+  const c = Math.min(Math.max(1, b.ustunlar || 1), soni);
+  if (b.tur === 'yopiq') {
+    const uk = RAQAM_JOYI + Math.min(6, Math.max(2, optionCount)) * DOIRA_QADAM;
+    return { w: c * uk + (c - 1) * USTUN_ORALIQ, h: sh + Math.ceil(soni / c) * QATOR };
+  }
+  if (b.tur === 'raqamli' || b.tur === 'moslash') {
+    const [kw, kh, ora] = b.tur === 'raqamli' ? [KATAK_KENGLIK, KATAK_BALANDLIK, 3] : [MOSLASH_KENGLIK, MOSLASH_BALANDLIK, 4];
+    const qatorlar = Math.ceil(soni / c);
+    return { w: c * kw + (c - 1) * ora, h: sh + qatorlar * kh + (qatorlar - 1) * 3 };
+  }
+  if (b.tur === 'yozma') return { w: b.w || KENGLIK, h: sh + 4 + (b.h || YOZMA_BALANDLIK) };
+  if (b.tur === 'matn') return { w: b.w || 60, h: Math.max(1, yozuvQatorlari(b).length) * (b.olcham || 3) * 1.3 + 0.8 };
+  return { w: b.w || 30, h: b.h || 20 };
+}
+
+/** Blok nomi (xato xabarlari va dizayner uchun): "Yopiq 1–30", "Yozuv". */
+export function blokNomi(b: AndozaBlok): string {
+  const oraliq = (b.soni || 1) > 1 ? `${b.boshi}–${(b.boshi || 1) + (b.soni || 1) - 1}` : String(b.boshi || 1);
+  return b.tur === 'yopiq' ? `Yopiq ${oraliq}` : b.tur === 'raqamli' ? `Raqamli ${oraliq}` : b.tur === 'moslash' ? `Moslash ${oraliq}`
+    : b.tur === 'yozma' ? `Yozma ${b.boshi}` : b.tur === 'matn' ? 'Yozuv' : 'Rasm';
+}
+
+export function andozaSahifalari(p: VaraqParametrlari): Sahifa[] {
+  const a = p.andoza!;
+  const k = Math.min(6, Math.max(2, p.optionCount || 4));
+  const soni = Math.min(4, Math.max(1, a.sahifalar || 1));
+  const sahifalar = Array.from({ length: soni }, (_, i) => ({ ...yangiSahifa(i + 1), bezak: [] as Bezak[], rasmlar: [] as (Quti & { src: string })[] }));
+  birinchiSahifaDoiralari(sahifalar[0], p);
+  for (const b of a.bloklar) {
+    const s = sahifalar[(b.sahifa || 1) - 1];
+    if (!s) continue;
+    const { w } = blokOlchami(b, k);
+    let y = b.y;
+    if (b.sarlavha && SAVOL_BLOKLARI.includes(b.tur)) {
+      s.bezak.push({ x: b.x, y: b.y + 3.4, matn: b.sarlavha, olcham: 2.7, qalin: true, maxW: w });
+      y += BLOK_SARLAVHA;
+    }
+    const n0 = b.boshi || 1;
+    const jami = Math.max(1, b.soni || 1);
+    const c = Math.min(Math.max(1, b.ustunlar || 1), jami);
+    if (b.tur === 'yopiq') {
+      const qatorlar = Math.ceil(jami / c);
+      const uk = RAQAM_JOYI + k * DOIRA_QADAM;
+      for (let j = 0; j < jami; j++) s.yopiq.push(yopiqQator(n0 + j, b.x + Math.floor(j / qatorlar) * (uk + USTUN_ORALIQ), y + (j % qatorlar) * QATOR, k));
+    } else if (b.tur === 'raqamli') {
+      for (let j = 0; j < jami; j++) s.raqamli.push(raqamliKatak(n0 + j, b.x + (j % c) * (KATAK_KENGLIK + 3), y + Math.floor(j / c) * (KATAK_BALANDLIK + 3)));
+    } else if (b.tur === 'moslash') {
+      for (let j = 0; j < jami; j++) s.moslash!.push(moslashTori(n0 + j, b.x + (j % c) * (MOSLASH_KENGLIK + 4), y + Math.floor(j / c) * (MOSLASH_BALANDLIK + 3)));
+    } else if (b.tur === 'yozma') {
+      s.yozma.push({ n: n0, quti: { x: b.x, y: y + 4, w: b.w || KENGLIK, h: b.h || YOZMA_BALANDLIK }, ball: p.yozmaBallari?.[n0] ?? null });
+    } else if (b.tur === 'matn') {
+      const o = b.olcham || 3;
+      const bw = b.w || 60;
+      const x = b.tekis === 'middle' ? b.x + bw / 2 : b.tekis === 'end' ? b.x + bw : b.x;
+      yozuvQatorlari(b).forEach((t, i) => { if (t) s.bezak.push({ x, y: b.y + (i + 1) * o * 1.3 - o * 0.35, matn: t, olcham: o, qalin: b.qalin, anchor: b.tekis || 'start', maxW: bw }); });
+    } else if (b.tur === 'rasm' && b.src) {
+      s.rasmlar.push({ x: b.x, y: b.y, w: b.w || 30, h: b.h || 20, src: b.src });
+    }
+  }
+  for (const sh of sahifalar) sh.pages = soni;
+  return sahifalar;
+}
+
+/**
+ * Imtihon tuzilmasidan boshlang'ich andoza: har fanning yopiq savollari — o'z
+ * sarlavhali bloki (15 qatordan ustunlar), keyin raqamli, moslash va yozma.
+ * Sig'masa — keyingi sahifa (yopiq blok bo'linadi). Dizaynerda shundan boshlanadi.
+ */
+export function tuzilmadanAndoza(p: VaraqParametrlari): VaraqAndoza {
+  const k = Math.min(6, Math.max(2, p.optionCount || 4));
+  const uk = RAQAM_JOYI + k * DOIRA_QADAM;
+  const maxUstun = Math.max(1, Math.floor((KENGLIK + USTUN_ORALIQ) / (uk + USTUN_ORALIQ)));
+  const bloklar: AndozaBlok[] = [];
+  let sahifa = 1;
+  let y = ANDOZA_MAYDONI.y0(1);
+  let id = 0;
+  const qosh = (b: Omit<AndozaBlok, 'id' | 'sahifa' | 'x' | 'y'>) => {
+    let { h } = blokOlchami(b as AndozaBlok, k);
+    if (y + h > ANDOZA_MAYDONI.y1 && sahifa < 4) {
+      // Yopiq blok bo'linadi: sig'ganicha shu sahifada, qolgani keyingisida.
+      const sh = b.sarlavha ? BLOK_SARLAVHA : 0;
+      const sigadi = Math.floor((ANDOZA_MAYDONI.y1 - y - sh) / QATOR) * (b.ustunlar || 1);
+      if (b.tur === 'yopiq' && sigadi >= (b.ustunlar || 1) * 5 && sigadi < (b.soni || 1)) {
+        bloklar.push({ ...b, id: `b${++id}`, sahifa, x: CHAP, y, soni: sigadi });
+        b = { ...b, boshi: (b.boshi || 1) + sigadi, soni: (b.soni || 1) - sigadi, sarlavha: undefined };
+      }
+      sahifa++;
+      y = ANDOZA_MAYDONI.y0(sahifa);
+      h = blokOlchami(b as AndozaBlok, k).h;
+    }
+    bloklar.push({ ...b, id: `b${++id}`, sahifa, x: CHAP, y });
+    y += h + 4;
+  };
+  const fanlar = p.tuzilma.bloklar.filter(b => b.yopiq > 0).length;
+  for (const b of p.tuzilma.bloklar) {
+    if (!b.yopiq) continue;
+    const ustunlar = Math.min(maxUstun, Math.max(1, Math.ceil(b.yopiq / 15)));
+    qosh({ tur: 'yopiq', boshi: b.boshi, soni: b.yopiq, ustunlar, ...(fanlar > 1 ? { sarlavha: b.nomi } : {}) });
+  }
+  // Raqamli va moslash: ketma-ket raqamlar bitta blok.
+  for (const tur of ['raqamli', 'moslash'] as const) {
+    const ns = p.tuzilma.savollar.filter(x => x.tur === tur).map(x => x.n);
+    const kw = tur === 'raqamli' ? KATAK_KENGLIK + 3 : MOSLASH_KENGLIK + 4;
+    const qatorda = Math.max(1, Math.floor((KENGLIK + (tur === 'raqamli' ? 3 : 4)) / kw));
+    for (let i = 0; i < ns.length;) {
+      let j = i;
+      while (j + 1 < ns.length && ns[j + 1] === ns[j] + 1) j++;
+      qosh({ tur, boshi: ns[i], soni: j - i + 1, ustunlar: Math.min(qatorda, j - i + 1) });
+      i = j + 1;
+    }
+  }
+  for (const x of p.tuzilma.savollar.filter(q => q.tur === 'yozma')) qosh({ tur: 'yozma', boshi: x.n, soni: 1, w: KENGLIK, h: YOZMA_BALANDLIK });
+  return { sahifalar: sahifa, bloklar };
+}
+
+/** Andoza tekshiruvi: xatolar (chop etib bo'lmaydi) va ogohlantirishlar. */
+export function andozaXatolari(a: VaraqAndoza, p: { tuzilma: Tuzilma | null; optionCount: number }): { xatolar: string[]; ogohlar: string[] } {
+  const xatolar: string[] = [];
+  const ogohlar: string[] = [];
+  const k = p.optionCount || 4;
+  const qutilar = a.bloklar.map(b => ({ b, ...blokOlchami(b, k) }));
+  for (const q of qutilar) {
+    if (q.b.sahifa > a.sahifalar) { xatolar.push(`${blokNomi(q.b)}: ${q.b.sahifa}-sahifa yo'q`); continue; }
+    const m = ANDOZA_MAYDONI;
+    if (q.b.x < m.x0 - 0.05 || q.b.x + q.w > m.x1 + 0.05 || q.b.y < m.y0(q.b.sahifa) - 0.05 || q.b.y + q.h > m.y1 + 0.05) xatolar.push(`${blokNomi(q.b)} (${q.b.sahifa}-sahifa) varaq maydonidan chiqqan`);
+  }
+  for (let i = 0; i < qutilar.length; i++) for (let j = i + 1; j < qutilar.length; j++) {
+    const u = qutilar[i], v = qutilar[j];
+    if (u.b.sahifa !== v.b.sahifa) continue;
+    const kesish = Math.min(u.b.x + u.w, v.b.x + v.w) - Math.max(u.b.x, v.b.x) > 0.5 && Math.min(u.b.y + u.h, v.b.y + v.h) - Math.max(u.b.y, v.b.y) > 0.5;
+    if (kesish) xatolar.push(`${blokNomi(u.b)} va ${blokNomi(v.b)} ustma-ust (${u.b.sahifa}-sahifa)`);
+  }
+  if (!p.tuzilma) return { xatolar, ogohlar };
+  // Har savol varaqda bir marta va o'z turidagi blokda.
+  const joyi = new Map<number, AndozaTuri[]>();
+  for (const b of a.bloklar) {
+    if (!SAVOL_BLOKLARI.includes(b.tur)) continue;
+    for (let n = b.boshi || 1; n < (b.boshi || 1) + (b.soni || 1); n++) joyi.set(n, [...(joyi.get(n) || []), b.tur]);
+  }
+  const oraliqlar = (l: number[]) => {
+    const out: string[] = [];
+    for (let i = 0; i < l.length;) { let j = i; while (j + 1 < l.length && l[j + 1] === l[j] + 1) j++; out.push(i === j ? `${l[i]}` : `${l[i]}–${l[j]}`); i = j + 1; }
+    return out.join(', ');
+  };
+  const yoq: number[] = [], ikki: number[] = [], boshqaTur: string[] = [];
+  const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', moslash: 'moslash', yozma: 'yozma' };
+  for (const sv of p.tuzilma.savollar) {
+    const l = joyi.get(sv.n) || [];
+    if (!l.length) yoq.push(sv.n);
+    else if (l.length > 1) ikki.push(sv.n);
+    else if (l[0] !== sv.tur) boshqaTur.push(`${sv.n}-savol ${TUR[sv.tur]}, blokda — ${TUR[l[0]]}`);
+  }
+  if (yoq.length) xatolar.push(`Varaqda yo'q savollar: ${oraliqlar(yoq)}`);
+  if (ikki.length) xatolar.push(`Ikki joyda turgan savollar: ${oraliqlar(ikki)}`);
+  xatolar.push(...boshqaTur.slice(0, 5));
+  const ortiqcha = [...joyi.keys()].filter(n => n > p.tuzilma.jami).sort((x, y) => x - y);
+  if (ortiqcha.length) ogohlar.push(`Imtihonda yo'q savollar ham varaqda: ${oraliqlar(ortiqcha)} (o'qilmaydi)`);
+  return { xatolar, ogohlar };
 }
 
 /** QR matni. Shaxsiy varaq: varaq kodi; universal: imtihon va smena. */

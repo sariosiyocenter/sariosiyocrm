@@ -10,5 +10,6 @@ export function varaqParametrlari(exam: Pick<Exam, 'blocks' | 'scoring' | 'setti
     tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as VaraqParametrlari['tuzilma'],
     optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
     sorovnoma: s.source === 'sorovnoma' && s.sorovnoma ? { savollar: s.sorovnoma.savollar, shkala: s.sorovnoma.shkala, anonim: s.sorovnoma.anonim } : null,
+    andoza: s.source !== 'sorovnoma' && s.varaqAndoza?.bloklar?.length ? s.varaqAndoza : null,
   };
 }

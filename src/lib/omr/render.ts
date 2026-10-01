@@ -259,7 +259,8 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     }
   }
 
-  // Bezak (so'rovnoma savollari, dizayner yorliqlari) — o'qilmaydi.
+  // Dizayner rasmlari va yozuvlari, so'rovnoma savollari — o'qilmaydi.
+  for (const r of sahifa.rasmlar || []) q.push(`<image href="${esc(r.src)}" x="${f(r.x)}" y="${f(r.y)}" width="${f(r.w)}" height="${f(r.h)}" preserveAspectRatio="xMidYMid meet"/>`);
   for (const b of sahifa.bezak || []) q.push(matn(b.x, b.y, b.matn, { size: b.olcham, bold: b.qalin, anchor: b.anchor, maxW: b.maxW, rang: b.rang }));
   // Blok sarlavhalari va yopiq savollar
   for (const s of sahifa.sarlavhalar) q.push(matn(s.x, s.y, s.matn, { size: 2.5, bold: true, rang: '#333', maxW: 34 }));

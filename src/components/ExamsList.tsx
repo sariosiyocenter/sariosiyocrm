@@ -158,7 +158,7 @@ export default function ExamsList() {
                   )}
                   {tab === 'imtihonlar' && <TuzilmaTab exam={exam} yangila={yangila} otish={tabga} />}
                   {tab === 'orin' && <QatnashchilarTab exam={exam} yangila={yangila} />}
-                  {tab === 'chop' && <ChopEtishTab exam={exam} />}
+                  {tab === 'chop' && <ChopEtishTab exam={exam} yangila={yangila} />}
                   {tab === 'skaner' && (k === 'tekshirish' ? <TekshirishTab exam={exam} yangila={yangila} /> : <SkanerTab exam={exam} yangila={yangila} onTekshirish={() => ozgartir({ k: 'tekshirish' })} />)}
                   {tab === 'natija' && !tarix && <NatijalarTab exam={exam} yangila={yangila} />}
                 </>

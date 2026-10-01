@@ -1085,3 +1085,36 @@ Excel; ZZ o'chiriladi), `test_varaq_render_oqish.mjs` 37/37 (oddiy varaq buzilma
 Sinov: `test_moslash_mantiq.mjs` 14/14, `test_moslash_varaq.mjs` 9/9 (bazasiz), `moslash_ui.mjs`
 25/25 (Excel qatori → bank → muharrir → blok → kitobcha/varaq → 2 varaq skaner, qisman ball,
 noaniq belgi → tekshirish), `moslash_onlayn.mjs` 10/10 (telefon: onlayn test → e'lon → natija).
+
+### 20.6 Erkin varaq dizayneri (Addmen "OMR Designer")
+
+- Andoza (`VaraqAndoza` modeli: name, sahifalar 1–4, bloklar Json, schoolId; butun tashkilotga umumiy;
+  API `/api/varaq-andozalar` — ko'rish IMTIHON_KORISH, yasash/tahrir/o'chirish `imtihonlar.imtihon`;
+  jurnalda "Varaq andozasi"). Blok: `{id, tur, sahifa, x, y}` (mm) + savol bloklarida `boshi, soni,
+  ustunlar, sarlavha?`, yozma — `w, h`, yozuv — `matn, olcham, qalin, tekis, w`, rasm — `src` (faqat
+  png/jpeg/webp/gif data URL, bittasi 400 KB, jami 1,2 MB), `w, h`. Server tozalovi —
+  `varaqAndozaTozala` (lib/imtihon.js).
+- Imtihonga nusxasi qo'yiladi: `settings.varaqAndoza = {id, nomi, sahifalar, bloklar, yangilangan}`.
+  Andoza keyin o'zgarsa — "Yangilash". Qulfdan keyin ham o'zgaradi, lekin birorta varaq
+  skanerlangan bo'lsa — 409 (chop etilgan varaq o'qilmay qolmasin).
+- Geometriya (`layout.ts`): `blokOlchami` — savol bloklarida o'lcham savollar soni va ustunlardan
+  (doirachalar oralig'i standartdagidek, qo'lda cho'zilmaydi); `andozaSahifalari` — bloklardan
+  `Sahifa` (yopiq/raqamli/moslash/yozma + bezak yozuvlar + `rasmlar`), shuning uchun chizish
+  (`render.ts`), skaner (`reader.ts`, worker) va tekshirish o'zgarmasdan ishlaydi. Sarlavha (markerlar,
+  QR, ID, variant, fan bandi) standart; bloklar maydoni x 20–190, y 86 (1-bet) / 40 (keyingi) – 279.
+  `tuzilmadanAndoza` — boshlang'ich joylashuv (fan sarlavhali yopiq bloklar, 15 qatordan ustunlar,
+  keyin raqamli, moslash, yozma; sig'masa keyingi bet). `andozaXatolari` — maydondan chiqqan,
+  ustma-ust bloklar, varaqda yo'q / ikki joyda / boshqa turdagi blokda turgan savollar (xato),
+  imtihonda yo'q savollar (ogohlantirish).
+- Interfeys: Chop etish → "Varaq dizayni" (`dizayner/VaraqDizayni.tsx`): hozirgi varaq (kichik
+  ko'rinish, tekshiruv), Yangi dizayn / Tahrirlash / Standart varaq, saqlangan andozalar (mos /
+  mos emas, Qo'llash). Dizayner (`dizayner/VaraqDizayner.tsx`, to'liq ekran): blok palitrasi
+  (Variantli, Raqamli, Moslashtirish, Yozma, Yozuv, Rasm), varaq ustida sudrash (0,5 mm qadam,
+  maydondan chiqmaydi), strelkalar / Shift / Delete, xususiyatlar paneli, sahifalar (+/−),
+  "Tuzilmadan yasash", jonli tekshiruv. Andozada xato bo'lsa javob va universal varaqlar chop
+  etilmaydi.
+
+Sinov: `test_andoza_varaq.mjs` 19/19 (bazasiz: tuzilmadan → tekshiruv → yozuv/rasm → xato holatlari
+→ chizish → bo'yash → 2 bet o'qish), `dizayner_ui.mjs` 22/22 (brauzer: dizayner → sudrash, yozuv,
+logo, ustma-ust va yo'q savol xatolari → saqlash va qo'llash → universal varaq → 2 varaq skaner,
+ball → 409; ZZ o'chiriladi), regressiya: `test_varaq_render_oqish` 37/37.

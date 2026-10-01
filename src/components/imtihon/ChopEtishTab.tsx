@@ -1,12 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, LayoutList, Eye, Loader2, ListChecks, FileDown } from 'lucide-react';
+import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, LayoutList, Eye, Loader2, ListChecks, FileDown, PenTool, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, Tanlov } from './ui';
 import { useOrinlar } from './QatnashchilarTab';
 import { chopEt, type ChopParam } from '../../lib/chopEtish';
-import { varaqSahifalari } from '../../lib/omr/layout';
+import { varaqSahifalari, andozaXatolari } from '../../lib/omr/layout';
 import { varaqSvg, varaqlarniJoyla, type Qogoz } from '../../lib/omr/render';
 import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS, kalitVaragiHtml, KALIT_CSS, KORINISH_CSS, KITOBCHA_STANDART } from './chop';
 import type { KitobchaMalumoti, KalitMalumoti, KitobchaSozlama } from './chop';
@@ -17,6 +17,7 @@ import QulfKerak from './QulfKerak';
 import AndozadanQogoz from './AndozadanQogoz';
 import { varaqParametrlari } from './varaqParam';
 import TanlanganSavollar from './TanlanganSavollar';
+import VaraqDizayni from './dizayner/VaraqDizayni';
 
 // 3-bo'lim. Chapda — chop etiladigan hujjatlar (Addmen QPG kabi ikki guruh:
 // savol qog'ozi va imtihon kuni), o'ngda — tanlangan hujjat qanday
@@ -24,9 +25,9 @@ import TanlanganSavollar from './TanlanganSavollar';
 // qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). "Andozadan
 // savol qog'ozi" — andoza(lar)dan variantli imtihonni bir qadamda yasaydi.
 
-type Hujjat = 'savollar' | 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost';
+type Hujjat = 'savollar' | 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
 
-export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
+export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => void }) {
   const { settings, schools, showNotification, kora, ozgartira } = useCRM();
   const navigate = useNavigate();
   const { soro } = useImtihonApi();
@@ -59,6 +60,11 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
     .sort((a, b) => (a.roomName || '').localeCompare(b.roomName || '') || (a.roomId! - b.roomId!) || (a.row ?? 0) - (b.row ?? 0) || (a.col ?? 0) - (b.col ?? 0)), [data, smena, xona]);
   const xonalar = useMemo(() => [...new Map((data?.seats || []).filter(o => o.session === smena && o.roomId).map(o => [o.roomId!, o.roomName])).entries()], [data, smena]);
   const sahifalar = useMemo(() => varaqSahifalari(varaqParametrlari(exam)), [exam]);
+  // Dizayner andozasi xato bo'lsa (savol varaqda yo'q, ustma-ust) — varaq chop etilmaydi.
+  const andozaXato = useMemo(() => {
+    const p = varaqParametrlari(exam);
+    return p.andoza ? andozaXatolari(p.andoza, { tuzilma: p.tuzilma, optionCount: p.optionCount }).xatolar : [];
+  }, [exam]);
   const smenaNomi = (id: number) => { const x = s.sessions.find(y => y.id === id); return x ? `${x.name}${x.time ? ` (${x.time})` : ''}` : `${id}-smena`; };
   // Fan bandi: har blok — nomi va savollar soni (markaz varag'idagi "MATEMATIKA — 30 ta savol").
   const fanlar = useMemo(() => {
@@ -171,7 +177,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   // Jonli ko'rinish: hujjat yoki sozlama o'zgarsa qayta chiziladi.
   const [korinish, setKorinish] = useState<{ html: string } | { xato: string } | null>(null);
   useEffect(() => {
-    if (!exam.lockedAt || !data || hujjat === 'savollar') return;
+    if (!exam.lockedAt || !data || hujjat === 'savollar' || hujjat === 'dizayn') return;
     let bekor = false;
     setKorinish(null);
     const t = setTimeout(() => {
@@ -219,6 +225,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
         { id: 'universal', nom: anonim ? "So'rovnoma varaqlari (anonim)" : 'Universal varaqlar', izoh: anonim ? 'ism va ID siz · nechta kerak bo\'lsa' : "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
         { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: !anonim },
         { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: !anonim },
+        { id: 'dizayn', nom: 'Varaq dizayni', izoh: s.varaqAndoza?.bloklar?.length ? `andoza: ${s.varaqAndoza.nomi || 'nomsiz'}` : "standart · bloklarni o'zingiz joylang", ikonka: <PenTool size={16} />, ochiq: !sorovnoma },
       ],
     },
   ];
@@ -230,6 +237,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
       : hujjat === 'varaq' ? `${yakka ? 1 : orinlar.length} ta varaq${sahifalar.length > 1 ? ` × ${sahifalar.length} bet` : ''}`
         : hujjat === 'universal' ? `${universalSoni} ta varaq` : `${xonalar.filter(([id]) => !xona || id === xona).length} xona`;
   const boshMi = (hujjat === 'varaq' || hujjat === 'eshik' || hujjat === 'vedomost') && !orinlar.length;
+  const varaqXato = varaqTuri && andozaXato.length > 0;
 
   return (
     <div className="space-y-4">
@@ -306,6 +314,14 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
                   )}
                 </>
               )}
+              {hujjat === 'dizayn' && <p className="text-[12px] text-matn-sokin">Javob varag'ining savollar qismi: standart (o'zi joylanadi) yoki o'zingiz chizgan andoza — variantli savollar ustunlari, raqamli kataklar, moslash to'rlari, yozma maydon, yozuv va logo. Varaq skanerlangach o'zgarmaydi.</p>}
+              {varaqXato && (
+                <div className="rounded-xl border border-xato-chiziq bg-xato-fon p-2.5 space-y-1">
+                  <p className="flex gap-1.5 text-[12px] font-semibold text-xato"><AlertTriangle size={13} className="shrink-0 mt-0.5" />Varaq dizaynida xato — chop etilmaydi</p>
+                  {andozaXato.slice(0, 3).map((x, i) => <p key={i} className="text-[11.5px] text-xato">{x}</p>)}
+                  <button onClick={() => setHujjat('dizayn')} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer">Varaq dizaynini ochish</button>
+                </div>
+              )}
               {hujjat === 'kalit' && <p className="text-[12px] text-matn-sokin">Har variantning to'g'ri javoblari — kalit tuzatishlari va bekor qilingan savollar bilan. Skaner kalitni o'zi biladi: bu bet tekshiruvchilar uchun.</p>}
               {xonaKerak && (
                 <Maydon nom="Xona">
@@ -338,14 +354,14 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
                   <Tanlov qiymat={qogoz} onChange={setQogoz} variantlar={[{ v: 'A4', nom: 'A4' }, { v: 'A5', nom: 'A5' }, { v: 'A4x2', nom: 'A4 da 2 ta' }]} />
                 </Maydon>
               )}
-              <p className="text-[11.5px] text-matn-xira flex gap-1.5"><Info size={13} className="shrink-0 mt-px" />
+              {hujjat !== 'dizayn' && <p className="text-[11.5px] text-matn-xira flex gap-1.5"><Info size={13} className="shrink-0 mt-px" />
                 <span>{varaqTuri ? `${qogoz === 'A4x2' ? "Har A4 da ikkita varaq (yotiq) — o'rtadan kesiladi. " : ''}Chop etish oynasida «Masshtab: 100%» va «Chetlar: yo'q» tanlang.${hujjat === 'varaq' ? " Tartib: xona → qator → o'rin." : ''}` : "Chop etish oynasida «PDF sifatida saqlash» ham bor."}</span>
-              </p>
+              </p>}
             </div>
           </Karta>
         </div>
 
-        {hujjat === 'savollar' ? <TanlanganSavollar exam={exam} onOzgardi={savolOzgardi} /> : (
+        {hujjat === 'dizayn' ? <VaraqDizayni exam={exam} yangila={yangila} umumiy={umumiy} /> : hujjat === 'savollar' ? <TanlanganSavollar exam={exam} onOzgardi={savolOzgardi} /> : (
           <Korinish holat={korinish} kenglik={varaqTuri && qogoz === 'A4x2' ? 1123 : varaqTuri && qogoz === 'A5' ? 560 : 794}
             izoh={hujjat === 'kalit' ? 'hamma variant' : hujjat === 'universal' ? 'namuna' : 'birinchi beti — chop etishda hammasi'}
             tugma={
@@ -353,7 +369,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
                 {hujjat === 'kitobcha' && (
                   <Tugma ikonka={<FileDown size={15} />} yuklanmoqda={band === 'word'} disabled={!!band || !variantlar.length} onClick={wordYukla} title="Word'da tahrirlab chop etish uchun (formulalar — Word formulasi)">Word (.docx)</Tugma>
                 )}
-                <Tugma turi="asosiy" ikonka={<Printer size={15} />} yuklanmoqda={band === 'chop'} disabled={!!band || boshMi || (hujjat === 'kitobcha' && !variantlar.length)} onClick={chopEtish}>
+                <Tugma turi="asosiy" ikonka={<Printer size={15} />} yuklanmoqda={band === 'chop'} disabled={!!band || boshMi || varaqXato || (hujjat === 'kitobcha' && !variantlar.length)} onClick={chopEtish}>
                   Chop etish · {sanoq}
                 </Tugma>
               </span>
