@@ -1195,6 +1195,14 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <span className="text-[10px] font-bold text-brand block">Tanlangan o'quvchi</span>
                                                 <h4 className="text-xs font-bold text-matn mt-0.5">{selectedStudent.name}</h4>
                                                 {selectedStudent.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{selectedStudent.phone}</p>}
+                                                {/* Ota-ona raqami: to'lovni so'rash/tasdiqlash uchun qo'ng'iroq qilinadi. */}
+                                                {([['Otasi', selectedStudent.fatherName, selectedStudent.fatherPhone], ['Onasi', selectedStudent.motherName, selectedStudent.motherPhone]] as const)
+                                                    .filter(([, , tel]) => !!tel)
+                                                    .map(([kim, ism, tel]) => (
+                                                        <p key={kim} className="text-[11px] text-matn-xira mt-0.5">
+                                                            <span className="font-bold">{kim}:</span> <span className="font-bold tabular-nums">{tel}</span>{ism ? ` · ${ism}` : ''}
+                                                        </p>
+                                                    ))}
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-chiziq/50">
                                                 <div>
