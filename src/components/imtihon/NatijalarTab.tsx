@@ -9,6 +9,7 @@ import { Karta, Tugma, Tanlov, Yorliq, SELECT, Yuklanmoqda, BoshHolat } from './
 import StatTile from '../ui/StatTile';
 import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
+import HisobotlarBolimi from './HisobotlarBolimi';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
 import type { ImtihonTafsil } from './turlar';
@@ -41,7 +42,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const [bolim, setBolim] = useState<'reyting' | 'savollar' | 'mavzular' | 'elon'>('reyting');
+  const [bolim, setBolim] = useState<'reyting' | 'hisobot' | 'savollar' | 'mavzular' | 'elon'>('reyting');
   const [natijalar, setNatijalar] = useState<Natija[] | null>(null);
   const [tahlil, setTahlil] = useState<Tahlil | null>(null);
   const [xulosa, setXulosa] = useState<Xulosa | null>(null);
@@ -164,6 +165,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tanlov qiymat={bolim} onChange={setBolim} variantlar={[
           { v: 'reyting', nom: 'Reyting' },
+          { v: 'hisobot', nom: 'Hisobotlar' },
           { v: 'savollar', nom: <>Savollar tahlili{shubhaliSavollar.length > 0 && <span className="ml-1 text-xato">({shubhaliSavollar.length})</span>}</> },
           { v: 'mavzular', nom: 'Mavzular' },
           { v: 'elon', nom: <>E'lon{xulosa.published && <CheckCircle2 size={13} className="inline ml-1 text-yaxshi" />}</> },
@@ -225,6 +227,8 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
           </div>
         </Karta>
       )}
+
+      {bolim === 'hisobot' && <HisobotlarBolimi exam={exam} tahlil={savollar} />}
 
       {bolim === 'savollar' && (
         <Karta ichki="p-0" sarlavha="Savollar tahlili" izoh="Eng qiyinidan boshlab. «Shubhali» — kuchli o'quvchilar kuchsizlardan ko'p xato qilgan yoki deyarli hech kim topmagan savol: kalitni tekshiring."

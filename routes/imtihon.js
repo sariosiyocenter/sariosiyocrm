@@ -1783,6 +1783,114 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
     } catch (err) { next(err); }
   });
 
+  // ============================ Hisobotlar (Addmen "Test Results") ============================
+
+  // Bitta so'rovda hamma hisobot uchun ma'lumot: natijalar (har savol javobi, mavzular
+  // bo'yicha, o'quvchi ID si), kelmaganlar, oldingi imtihonlar dinamikasi va — kalit
+  // ruxsati bo'lsa — har variantning varaqdagi kaliti.
+  app.get('/api/exams/:id/hisobot', authenticate, async (req, res, next) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const e = await prisma.exam.findUnique({ where: { id: examId } });
+      if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
+      const s = sozlamaniTozala(e.settings);
+      const filiallar = await allowedSchoolIds(req.user);
+      const oz = req.ruxsat?.faqatOz ? [...(await ozKurslari(req.user)).studentIds] : null;
+      const kim = oz ? { studentId: { in: oz } } : {};
+      const [results, seats, variants] = await Promise.all([
+        prisma.examResult.findMany({
+          where: { examId, schoolId: { in: filiallar }, ...kim },
+          select: {
+            id: true, studentId: true, session: true, variantCode: true, score: true, percentage: true, blockScores: true, detail: true,
+            rank: true, rankGroup: true, rankBranch: true, raschScore: true, grade: true, schoolId: true, reviewStatus: true, seatId: true,
+            student: { select: { name: true, oquvchiKod: { select: { kod: true } } } },
+            seat: { select: { guestName: true, groupId: true, roomId: true, row: true, col: true } },
+          },
+        }),
+        prisma.examSeat.findMany({
+          where: { examId, schoolId: { in: filiallar }, ...kim },
+          select: { id: true, status: true, session: true, groupId: true, roomId: true, row: true, col: true, guestName: true, guestPhone: true, schoolId: true, student: { select: { name: true, phone: true, oquvchiKod: { select: { kod: true } } } } },
+        }),
+        prisma.examVariant.findMany({ where: { examId } }),
+      ]);
+      const groupIds = [...new Set([...results.map(r => r.seat?.groupId), ...seats.map(x => x.groupId)].filter(Boolean))];
+      const roomIds = [...new Set(seats.map(x => x.roomId).filter(Boolean))];
+      const [groups, rooms] = await Promise.all([
+        prisma.group.findMany({ where: { id: { in: groupIds } }, select: { id: true, name: true } }),
+        prisma.room.findMany({ where: { id: { in: roomIds } }, select: { id: true, name: true } }),
+      ]);
+      const gmap = new Map(groups.map(g => [g.id, g.name]));
+      const rmap = new Map(rooms.map(r => [r.id, r.name]));
+
+      // Har savolning fani va mavzusi (variant elementi → bank savoli; "faqat kalit" — mv).
+      const qids = [...new Set(variants.flatMap(v => v.items.map(it => it.q)).filter(Number.isInteger))];
+      const savollar = qids.length ? await prisma.question.findMany({ where: { id: { in: qids } }, select: { id: true, subject: true, topic: true, correctAnswer: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true } }) : [];
+      const smap = new Map(savollar.map(q => [q.id, q]));
+      const vmap = new Map(variants.map(v => [`${v.session}|${v.code}`, new Map(v.items.map(it => [it.n, it]))]));
+
+      const natijalar = results.map(r => {
+        const detail = Array.isArray(r.detail) ? r.detail : [];
+        const imap = vmap.get(`${r.session}|${r.variantCode}`);
+        const mv = new Map();
+        for (const d of detail) {
+          if (d.holat === 'bekor' || d.holat === 'baholanmagan') continue;
+          const it = imap?.get(d.n);
+          const q = it ? smap.get(it.q) : null;
+          const fan = q ? q.subject : e.blocks?.[it?.b]?.subject || '';
+          const mavzu = q ? q.topic : it?.mv || '';
+          const k = `${fan}|${mavzu}`;
+          if (!mv.has(k)) mv.set(k, { fan, mavzu, jami: 0, togri: 0 });
+          mv.get(k).jami++;
+          if (d.holat === 'togri') mv.get(k).togri++;
+        }
+        return {
+          id: r.id, studentId: r.studentId, name: r.student?.name || r.seat?.guestName || '', kod: r.student?.oquvchiKod?.kod ?? null,
+          groupId: r.seat?.groupId ?? null, groupName: r.seat?.groupId ? gmap.get(r.seat.groupId) || '' : '', schoolId: r.schoolId,
+          session: r.session, variant: r.variantCode, score: r.score, percentage: r.percentage, blockScores: r.blockScores || [],
+          rank: r.rank, rankGroup: r.rankGroup, rankBranch: r.rankBranch, raschScore: r.raschScore, grade: r.grade, reviewStatus: r.reviewStatus,
+          detail: detail.map(d => ({ n: d.n, javob: typeof d.javob === 'object' && d.javob ? String(d.javob.ball ?? '') : String(d.javob ?? ''), holat: d.holat, ball: d.ball ?? 0 })),
+          mavzular: [...mv.values()],
+        };
+      });
+
+      const natijali = new Set(results.map(r => r.seatId));
+      const kelmaganlar = seats.filter(x => x.status === 'kelmadi' || !natijali.has(x.id)).map(x => ({
+        name: x.student?.name || x.guestName || '', kod: x.student?.oquvchiKod?.kod ?? null, phone: x.student?.phone || x.guestPhone || null,
+        groupName: x.groupId ? gmap.get(x.groupId) || '' : '', roomName: x.roomId ? rmap.get(x.roomId) || '' : '', schoolId: x.schoolId,
+        row: x.row, col: x.col, session: x.session, status: x.status === 'kelmadi' ? 'kelmadi' : 'skanerlanmagan',
+      }));
+
+      // Oldingi imtihonlar (e'lon qilingan) — shaxsiy hisobotdagi dinamika uchun, oxirgi 8 tasi.
+      const sids = [...new Set(results.map(r => r.studentId).filter(Boolean))];
+      const tarixRows = sids.length ? await prisma.examResult.findMany({
+        where: { studentId: { in: sids }, exam: { publishedAt: { not: null } } },
+        select: { studentId: true, examId: true, percentage: true, exam: { select: { name: true, date: true } } },
+      }) : [];
+      const tarix = {};
+      for (const t of tarixRows) (tarix[t.studentId] ||= []).push({ examId: t.examId, nomi: t.exam.name, sana: t.exam.date, foiz: t.percentage });
+      for (const k of Object.keys(tarix)) tarix[k] = tarix[k].sort((a, b) => String(a.sana).localeCompare(String(b.sana))).slice(-8);
+
+      // Kalit — varaqdagi harflarda (aralashtirilgan tartib va kalit tuzatishlari bilan).
+      let kalit = null;
+      if (kor(req, 'imtihonlar.kalit')) {
+        kalit = {};
+        for (const v of variants) {
+          const k = {};
+          for (const it of v.items) {
+            if (it.t === 'yopiq') {
+              const q = smap.get(it.q);
+              const tartib = it.m || savolVariantlari(q || {}).map((_, i) => i);
+              const tuz = it.q != null ? s.keyFix[it.q] : null;
+              k[it.n] = (tuz ? tuz.map(h => HARFLAR[tartib.indexOf(HARFLAR.indexOf(h))]).filter(Boolean) : it.ka ? it.ka : [HARFLAR[it.k]]).join('');
+            } else if (it.t === 'raqamli') k[it.n] = (s.keyFix[it.q] || it.j || []).join('; ');
+          }
+          kalit[`${v.session}|${v.code}`] = k;
+        }
+      }
+      res.json({ natijalar, kelmaganlar, tarix, kalit });
+    } catch (err) { next(err); }
+  });
+
   // ============================ E'lon ============================
 
   async function elonXulosasi(e) {

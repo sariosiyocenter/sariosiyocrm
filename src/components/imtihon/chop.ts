@@ -129,7 +129,7 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
 
 // --- Ro'yxatlar ---------------------------------------------------------------
 
-export interface RoyxatOrni { name: string; groupName: string; row: number | null; col: number | null; variant: string | null; sheetCode: string; mehmon: boolean; studentId?: number | null }
+export interface RoyxatOrni { name: string; groupName: string; row: number | null; col: number | null; variant: string | null; sheetCode: string; mehmon: boolean; studentId?: number | null; kod?: number | null }
 
 export const ROYXAT_CSS = `
 @page { size: A4; margin: 12mm; }
@@ -165,7 +165,7 @@ export function vedomostHtml(p: { exam: Exam; smena: string; xona: string; orinl
     <h1 style="font-size:15pt">Nazoratchi vedomosti — ${esc(p.xona)}</h1>
     <h2>${esc(p.exam.name)} · ${esc(p.exam.date)} · ${esc(p.smena)} · ${tartib.length} kishi</h2>
     <table><tr><th class="m">№</th><th class="m">Joyi</th><th>Familiya va ism</th><th>Kurs</th><th class="m">ID</th><th class="m">Varaq kodi</th><th class="m">Var.</th><th class="m bosh-katak">Keldi</th><th style="width:28mm">Imzo</th></tr>
-      ${tartib.map((o, i) => `<tr><td class="m">${i + 1}</td><td class="m">${o.row != null ? `${o.row + 1}-${(o.col ?? 0) + 1}` : ''}</td><td>${esc(o.name)}</td><td>${esc(o.groupName || (o.mehmon ? 'tashqi' : ''))}</td><td class="m">${o.studentId ?? ''}</td><td class="m" style="font-family:monospace">${esc(o.sheetCode)}</td><td class="m"><b>${esc(o.variant || '')}</b></td><td></td><td></td></tr>`).join('')}
+      ${tartib.map((o, i) => `<tr><td class="m">${i + 1}</td><td class="m">${o.row != null ? `${o.row + 1}-${(o.col ?? 0) + 1}` : ''}</td><td>${esc(o.name)}</td><td>${esc(o.groupName || (o.mehmon ? 'tashqi' : ''))}</td><td class="m">${o.kod ?? ''}</td><td class="m" style="font-family:monospace">${esc(o.sheetCode)}</td><td class="m"><b>${esc(o.variant || '')}</b></td><td></td><td></td></tr>`).join('')}
     </table>
     <div class="imzo"><span>Keldi: ____ · Kelmadi: ____ · Qaytarilgan varaq: ____</span><span>Nazoratchi: ______________________ Imzo: __________</span></div>
   </section>`;
