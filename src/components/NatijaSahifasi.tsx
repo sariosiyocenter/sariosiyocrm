@@ -31,6 +31,7 @@ const HOLAT: Record<string, { nom: string; cls: string; Ikonka: any }> = {
   bosh: { nom: "Javob yo'q", cls: 'text-matn-sokin bg-ichki border-chiziq', Ikonka: MinusCircle },
   bekor: { nom: 'Bekor qilingan', cls: 'text-matn-sokin bg-ichki border-chiziq', Ikonka: MinusCircle },
   baholanmagan: { nom: 'Baholanmagan', cls: 'text-matn-sokin bg-ichki border-chiziq', Ikonka: MinusCircle },
+  ortiqcha: { nom: 'Hisobga olinmadi (ortiqcha)', cls: 'text-matn-sokin bg-ichki border-chiziq', Ikonka: MinusCircle },
 };
 
 export default function NatijaSahifasi() {

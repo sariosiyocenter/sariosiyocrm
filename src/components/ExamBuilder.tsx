@@ -27,6 +27,10 @@ const DTM_ANDOZA: ExamBlock[] = [
 ];
 
 const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', yozma: 'Yozma' };
+// Manfiy ball: xato javob uchun savol balining qancha qismi ayiriladi (Addmen "negative marking").
+const JARIMALAR: { v: number; nom: string }[] = [
+  { v: 0, nom: "Yo'q" }, { v: 0.25, nom: '¼' }, { v: 1 / 3, nom: '⅓' }, { v: 0.5, nom: '½' }, { v: 1, nom: "To'liq" },
+];
 
 export default function ExamBuilder() {
   const { id } = useParams();
@@ -162,6 +166,19 @@ export default function ExamBuilder() {
           <Maydon nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
             <Tanlov qiymat={scoring} onChange={v => !qulf && setScoring(v)} variantlar={[{ v: 'blok', nom: 'Blok bali (DTM)' }, { v: 'foiz', nom: 'Foiz' }]} />
           </Maydon>
+          <Maydon nom="Xato javob uchun jarima" izoh={qulfIzoh || (sozlama.xatoJarima
+            ? `Har xato javobga savol balining ${JARIMALAR.find(j => j.v === sozlama.xatoJarima)?.nom || sozlama.xatoJarima} qismi ayiriladi; bo'sh javobga jarima yo'q`
+            : "Yo'q — xato javob 0 ball (manfiy ball yo'q)")}>
+            <div className="space-y-2">
+              <Tanlov qiymat={sozlama.xatoJarima} onChange={v => !qulf && s({ xatoJarima: v })} variantlar={JARIMALAR} />
+              {sozlama.xatoJarima > 0 && (
+                <label className="flex items-center gap-2 text-[12.5px] text-matn cursor-pointer">
+                  <input type="checkbox" disabled={qulf} className="w-3.5 h-3.5 accent-[var(--color-brand)]" checked={sozlama.jarimaNoldan} onChange={e => s({ jarimaNoldan: e.target.checked })} />
+                  Har fan bali 0 dan pastga tushmasin
+                </label>
+              )}
+            </div>
+          </Maydon>
           {schools.length > 1 && (
             <Maydon nom="Qatnashadigan filiallar" izoh={qulfIzoh || 'Umumiy reyting shu filiallar bo\'yicha'}>
               <div className="flex flex-wrap gap-1.5">
@@ -211,6 +228,10 @@ export default function ExamBuilder() {
                       <input className={INPUT} disabled={qulf} inputMode="decimal" value={b.pointsPerQuestion} onChange={e => blokQoy(bi, { pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
                     </Maydon>
                   )}
+                  <Maydon nom="Hisoblanadi" className="w-32">
+                    <input className={INPUT} disabled={qulf} inputMode="numeric" value={b.tanlab ?? ''} placeholder="hammasi" title="«m tadan n tasini yeching»: o'quvchi istalgan n tasini yechadi, birinchi n ta javob hisoblanadi"
+                      onChange={e => blokQoy(bi, { tanlab: parseInt(e.target.value.replace(/\D/g, '')) || null })} />
+                  </Maydon>
                   <div className="pb-2.5 text-[12px] text-matn-xira whitespace-nowrap">{blokSavollar} ta savol</div>
                   {!qulf && bloklar.length > 1 && <button aria-label="Blokni o'chirish" onClick={() => setBloklar(x => x.filter((_, i) => i !== bi))} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
                 </div>

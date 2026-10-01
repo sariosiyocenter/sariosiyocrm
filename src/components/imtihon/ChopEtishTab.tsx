@@ -43,7 +43,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   // Fan bandi: har blok — nomi va savollar soni (markaz varag'idagi "MATEMATIKA — 30 ta savol").
   const fanlar = useMemo(() => {
     const t = varaqTuzilmasi(exam.blocks, exam.scoring) as any;
-    return (t.bloklar || []).map((b: any) => `${String(b.nomi || '').toUpperCase()} — ${b.yopiq + b.raqamli + b.yozma} ta savol`).join('   ·   ');
+    return (t.bloklar || []).map((b: any) => `${String(b.nomi || '').toUpperCase()} — ${b.yopiq + b.raqamli + b.yozma} ta savol${b.tanlab ? ` (istalgan ${b.tanlab} tasini yeching)` : ''}`).join('   ·   ');
   }, [exam]);
   const telefon = [settings?.adminPhone, settings?.adminPhone2].filter(Boolean).join(', ');
   const umumiy = {

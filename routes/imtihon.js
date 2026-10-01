@@ -147,6 +147,9 @@ function blokniTozala(blocks) {
     };
     const fanId = musbatId(b?.fanId);
     if (fanId) blok.fanId = fanId;
+    // "m tadan n tasini yeching": blokda faqat birinchi n ta javob hisoblanadi.
+    const tanlab = parseInt(b?.tanlab);
+    if (tanlab > 0 && tanlab < 300) blok.tanlab = tanlab;
     const andozaId = musbatId(b?.andoza?.id);
     if (andozaId) blok.andoza = { id: andozaId, nomi: String(b.andoza.nomi || '').trim().slice(0, 120) };
     const t = taqsimotniTozala(b?.taqsimot);

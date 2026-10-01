@@ -154,7 +154,7 @@ export function ballRoyxatiHtml(k: HisobotKirish, turi: '1111' | '1112' | '1113'
 /** 1211 — har o'quvchi: har savolga javobi, natija belgisi va (ruxsat bo'lsa) kalit. */
 export function javoblarHtml(k: HisobotKirish): string {
   const tuz = varaqTuzilmasi(k.exam.blocks, k.exam.scoring) as { bloklar: { nomi: string; boshi: number; oxiri: number }[] };
-  const belgi = (h: string) => (h === 'togri' ? '✓' : h === 'bosh' ? '–' : h === 'bekor' ? '∗' : h === 'qisman' ? '½' : '✗');
+  const belgi = (h: string) => (h === 'togri' ? '✓' : h === 'bosh' ? '–' : h === 'bekor' ? '∗' : h === 'qisman' ? '½' : h === 'ortiqcha' ? '○' : '✗');
   return guruhlar(k).map(g => g.l.map(r => {
     const kalit = k.malumot.kalit?.[`${r.session ?? 1}|${r.variant}`];
     const dmap = new Map(r.detail.map(d => [d.n, d]));
@@ -171,7 +171,7 @@ export function javoblarHtml(k: HisobotKirish): string {
     return `<section class="bet kichik-bet">${sarlavha(k, "O'quvchi javoblari")}
       <div class="egasi"><b>${esc(r.name)}</b><span>ID ${r.kod ?? '—'}</span><span>${esc(r.groupName)}</span><span>Variant ${esc(r.variant || '—')}</span>
       <span>Ball <b>${v(r.score)}</b> (${v(r.percentage)}%)</span><span>O'rin ${r.rank ?? '—'}</span></div>
-      <p class="belgilar">✓ to'g'ri · ✗ xato · – bo'sh · ∗ bekor qilingan${kalit ? ' · kichik harf — kalit' : ''}</p>${bloklar}</section>`;
+      <p class="belgilar">✓ to'g'ri · ✗ xato · – bo'sh · ∗ bekor qilingan · ○ ortiqcha (hisobga olinmadi)${kalit ? ' · kichik harf — kalit' : ''}</p>${bloklar}</section>`;
   }).join('')).join('');
 }
 

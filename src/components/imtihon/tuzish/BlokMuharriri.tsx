@@ -186,6 +186,12 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
               onChange={e => onChange({ ...blok, pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
           </label>
         )}
+        <label className="w-28">
+          <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Hisoblanadi</span>
+          <input className={INPUT} disabled={qulf} inputMode="numeric" value={blok.tanlab ?? ''} placeholder="hammasi" aria-label="Nechta javob hisoblanadi"
+            title="«m tadan n tasini yeching»: o'quvchi istalgan n tasini yechadi, birinchi n ta javob hisoblanadi"
+            onChange={e => onChange({ ...blok, tanlab: parseInt(e.target.value.replace(/\D/g, '')) || null })} />
+        </label>
         {!qulf && onOchir && <button aria-label="Blokni o'chirish" onClick={onOchir} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
       </div>
 

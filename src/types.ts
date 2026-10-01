@@ -661,6 +661,8 @@ export interface ExamBlock {
     taqsimot?: BlokTaqsimot;
     /** Blok andozadan olingan (qoidalar — andoza qatorlarining nusxasi). */
     andoza?: { id: number; nomi: string } | null;
+    /** "m tadan n tasini yeching": blokda faqat birinchi n ta javob hisoblanadi. */
+    tanlab?: number | null;
 }
 
 export interface ExamSettings {
@@ -689,6 +691,10 @@ export interface ExamSettings {
     /** Shu rejimda savollarning mavzusi (ixtiyoriy, tahlil uchun) — keys bilan bir xil shakl. */
     keyTopics: Record<string, string[]>;
     optionCount: number;
+    /** Manfiy ball: xato javob uchun savol balining shu ulushi ayiriladi (0 — yo'q). */
+    xatoJarima: number;
+    /** Jarima bilan ham ball 0 dan pastga tushmaydi. */
+    jarimaNoldan: boolean;
 }
 
 export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";
