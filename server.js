@@ -7,6 +7,7 @@ import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stri
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { registerZukkoRoutes } from './routes/zukko.js';
+import { registerHisobotRoutes } from './routes/hisobot.js';
 import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHisoboti } from './routes/imtihon.js';
 import { auditMiddleware } from './lib/audit.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
@@ -1443,25 +1444,16 @@ app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
-  try {
-    const { userId, month } = req.query;
-    if (!userId || !month) return res.status(400).json({ error: 'userId and month required' });
-    const filialXatosi = await xodimFilialiXatosi(req, userId);
-    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
-
-    const employee = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      select: { id: true, name: true, schoolId: true, kpiPercent: true }
-    });
-    if (!employee) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+/** Xodim (ustoz) oyligining KPI qismi: kurslar kesimida. /api/kpi-calculation va hisobotlar uchun. */
+async function kpiHisobla(employee, month) {
+    if (!employee) return { groups: [], totalPayments: 0, kpiAmount: 0 };
     // Filialsiz xodimni ustoz yozuvi bilan bog'lab bo'lmaydi: bog'lash
     // aynan filial bo'yicha qidiriladi. Bu tekshiruvsiz Prisma
     // `schoolId: null` ni rad etib, 500 qaytarardi.
-    if (employee.schoolId == null) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+    if (employee.schoolId == null) return { groups: [], totalPayments: 0, kpiAmount: 0 };
 
     const teacher = await ustozniTop(employee);
-    if (!teacher) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+    if (!teacher) return { groups: [], totalPayments: 0, kpiAmount: 0 };
 
     // Ustozning guruhlari. Ilgari bu yerda har guruh uchun o'quvchining
     // BARCHA to'lovlari qo'shilardi — bir nechta guruhda o'qiydigan o'quvchining
@@ -1558,7 +1550,21 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     });
     const kpiAmount = groupBreakdown.reduce((s, g) => s + g.pay, 0);
 
-    res.json({ groups: groupBreakdown, totalPayments, totalCharged, kpiPercent, kpiAmount, totalLessons });
+    return { groups: groupBreakdown, totalPayments, totalCharged, kpiPercent, kpiAmount, totalLessons };
+}
+
+app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
+  try {
+    const { userId, month } = req.query;
+    if (!userId || !month) return res.status(400).json({ error: 'userId and month required' });
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
+
+    const employee = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { id: true, name: true, schoolId: true, kpiPercent: true }
+    });
+    res.json(await kpiHisobla(employee, month));
   } catch (error) { next(error); }
 });
 
@@ -8559,6 +8565,7 @@ registerPaymeRoutes(app);
 registerAuditRoutes(app);
 // Zukko — o'ng paneldagi AI yordamchi (routes/zukko.js).
 registerZukkoRoutes(app);
+registerHisobotRoutes(app, { kpiHisobla, filialXodimlariWhere });
 // Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
 registerImtihonRoutes(app, {
   sendToOne,

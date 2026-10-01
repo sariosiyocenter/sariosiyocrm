@@ -3,7 +3,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
     AlertCircle, CreditCard, ArrowUpRight, Calendar,
-    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote, Pencil, Lock
+    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote, Pencil, Lock, FileSpreadsheet
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -17,6 +17,7 @@ import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome, newestFirst } from '../lib/money';
 import KassaPanel from './KassaPanel';
+import MoliyaVaraqlari from './MoliyaVaraqlari';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import { TolovXabarQatori } from './TolovXabari';
@@ -105,7 +106,7 @@ export default function Finance() {
     // Bir qarashda o'qish uchun aniq so'm kerak emas, kattalik kerak.
     const mln = (n: number) => (n / 1000000).toFixed(1).replace('.', ',');
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses' | 'kassa'>(
+    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses' | 'kassa' | 'varaq'>(
         () => (Object.keys(TAB_RUXSATI) as (keyof typeof TAB_RUXSATI)[]).find(k => kora(TAB_RUXSATI[k])) || 'reports'
     );
 
@@ -549,9 +550,19 @@ export default function Finance() {
                             <span>Kassa</span>
                         </button>
                         )}
+                        {(kora('moliya.kassa') || kora('moliya.hisobot') || kora('xodimlar.maosh')) && (
+                        <button onClick={() => setActiveTab('varaq')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'varaq'
+                                ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <FileSpreadsheet size={12} className="shrink-0" />
+                            <span>Hisobot varag'i</span>
+                        </button>
+                        )}
                     </div>
 
-                    {activeTab !== 'billing' && activeTab !== 'kassa' && (
+                    {activeTab !== 'billing' && activeTab !== 'kassa' && activeTab !== 'varaq' && (
                         <div className="flex flex-wrap items-center gap-3 min-w-0 max-w-full">
                             {/* Presets. Telefonda qator sig'maydi — sahifa yon tomonga
                                 toshmasin, tugmalar o'zi suriladi. */}
@@ -872,6 +883,7 @@ export default function Finance() {
                 })()}
 
                 {activeTab === 'kassa' && kora('moliya.kassa') && <KassaPanel />}
+                {activeTab === 'varaq' && <MoliyaVaraqlari />}
 
                 {/* Usul tugmalari (Naqd, Karta, Klik, Payme …) — soni bilan. */}
                 {activeTab === 'payments' && (
