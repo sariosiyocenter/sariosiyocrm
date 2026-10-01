@@ -750,6 +750,12 @@ model User {
   phone2      String?
   telegramId2 String?
 
+  // Menejerlik huquqi (egasi, 2026-10-01: "ba'zi o'qituvchilarga menejerlik huquqi
+  // berilsin, ular kirib boshqa kurslarni o'zgartira olsin"). Faqat TEACHER va
+  // SUPPORT_TEACHER uchun: ruxsati o'z lavozimi va Menejer ruxsatining kattasi,
+  // 'faqat o'z kurslari' cheklovi olinadi. Faqat ADMIN beradi.
+  menejerHuquqi Boolean @default(false)
+
   // Faol | Arxiv. Davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi
   // (ikkala bog'lanish ham Restrict), shuning uchun uni arxivga olamiz:
   // ro'yxatdan yo'qoladi, tarix esa buzilmaydi.

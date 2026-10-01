@@ -13,7 +13,7 @@ import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi, kirishTokeni } from './middleware/auth.js';
-import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI } from './lib/ruxsatlar.js';
+import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI, toliqRuxsatli } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
@@ -348,7 +348,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       token,
       user: {
         id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId,
-        ruxsat: rolRuxsati(await tashkilotSozlamasi(user.school?.organization?.id), user.role),
+        ruxsat: rolRuxsati(await tashkilotSozlamasi(user.school?.organization?.id), user.role, !!user.menejerHuquqi),
       }
     });
   } catch (error) { next(error); }
@@ -651,7 +651,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
       select: {
         id: true, email: true, name: true, phone: true, photo: true, position: true,
         salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true,
-        schoolId: true, status: true, telegramId: true, phone2: true, telegramId2: true,
+        schoolId: true, status: true, telegramId: true, phone2: true, telegramId2: true, menejerHuquqi: true,
         teacherProfile: { select: { id: true } },
         branches: { select: { id: true } },
         // Haydovchining mashinasi xodim kartasida tahrirlanadi (Avtopark yo'q):
@@ -949,6 +949,13 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (role !== undefined) data.role = role;
     if (workDays !== undefined) data.workDays = workDays;
     if (kpiPercent !== undefined) data.kpiPercent = parseInt(kpiPercent) || 0;
+    // Menejerlik huquqini faqat administrator beradi/oladi; faqat ustozlarga.
+    if (req.body.menejerHuquqi !== undefined) {
+      if (!toliqRuxsatli(req.user.role)) return res.status(403).json({ error: 'Menejerlik huquqini faqat administrator beradi' });
+      const yangiRol = role !== undefined ? role : target.role;
+      if (req.body.menejerHuquqi && !USTOZ_ROLLAR.includes(yangiRol)) return res.status(400).json({ error: "Menejerlik huquqi faqat o'qituvchilarga beriladi" });
+      data.menejerHuquqi = !!req.body.menejerHuquqi && USTOZ_ROLLAR.includes(yangiRol);
+    } else if (role !== undefined && !USTOZ_ROLLAR.includes(role)) data.menejerHuquqi = false;
     // Arxivga olish: davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi,
     // shuning uchun uni ro'yxatdan olib qo'yamiz.
     if (status !== undefined) {
@@ -982,7 +989,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       user = await prisma.user.update({
         where: { id: parseInt(id) },
         data,
-        select: { id: true, email: true, name: true, phone: true, phone2: true, telegramId2: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true, branches: { select: { id: true } } }
+        select: { id: true, email: true, name: true, phone: true, phone2: true, telegramId2: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true, menejerHuquqi: true, branches: { select: { id: true } } }
       });
     } catch (updateErr) {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });

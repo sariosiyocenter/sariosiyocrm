@@ -113,7 +113,7 @@ async function freshUser(payload) {
     row = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
-        role: true, schoolId: true, status: true, name: true, passwordVersion: true, branches: { select: { id: true } },
+        role: true, schoolId: true, status: true, name: true, passwordVersion: true, menejerHuquqi: true, branches: { select: { id: true } },
         school: { select: { organizationId: true } },
       }
     });
@@ -125,6 +125,7 @@ async function freshUser(payload) {
     branchIds: (row.branches || []).map(b => b.id),
     organizationId: row.school?.organizationId ?? null,
     passwordVersion: row.passwordVersion ?? 0,
+    menejerHuquqi: !!row.menejerHuquqi,
   };
 }
 
@@ -175,7 +176,7 @@ export async function tashkilotSozlamasi(organizationId) {
 /** Xodimning amaldagi ruxsati: { daraja, faqatOz, toliq }. */
 export async function foydalanuvchiRuxsati(user) {
   if (toliqRuxsatli(user?.role)) return rolRuxsati(null, user.role);
-  return rolRuxsati(await tashkilotSozlamasi(user?.organizationId), user?.role);
+  return rolRuxsati(await tashkilotSozlamasi(user?.organizationId), user?.role, !!user?.menejerHuquqi);
 }
 
 /** So'rovga ruxsat yetmasa — sababi, yetsa null. */

@@ -205,6 +205,7 @@ export default function StaffDetails() {
     const davomatTahrir = ozgartira('xodimlar.davomat');
     // Filiallarni (ikki filialda ishlash) faqat ADMIN belgilaydi — HR ro'yxatidagi
     // oynada ham, shu profil oynasida ham.
+    const adminmi = currentUser?.role === 'ADMIN';
     const multiBranch = currentUser?.role === 'ADMIN' && (schools || []).length > 1;
     const staffBranchIds = (u: any): number[] =>
         [u?.schoolId, ...(u?.branchIds || [])].filter((id, i, arr) => id && arr.indexOf(id) === i);
@@ -499,6 +500,7 @@ export default function StaffDetails() {
             name: editData.name, phone: editData.phone, phone2: editData.phone2 || '',
             photo: editData.photo, position: editData.position,
             ...(maoshTahrir ? { salary: editData.salary } : {}),
+            ...(adminmi && (staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') ? { menejerHuquqi: !!editData.menejerHuquqi } : {}),
         };
         if (editData.password) body.password = editData.password;
         // Email — tizimga kirish logini. Avtomatik (…@internal.local) manzil
@@ -1801,6 +1803,15 @@ export default function StaffDetails() {
                             <p className="-mt-2 text-[10.5px] font-bold text-matn-xira">Telegram botga ikkala raqam bilan ham kirsa bo'ladi — xabarlar ikkalasiga boradi.</p>
                             {maoshTahrir && <div className="grid grid-cols-2 gap-4"><div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div></div>}
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
+                            {adminmi && (staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
+                                <label className="flex items-start gap-3 rounded-xl border border-chiziq bg-ichki p-3 cursor-pointer">
+                                    <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[var(--color-brand)]" checked={!!editData.menejerHuquqi} onChange={e => setEditData((p: any) => ({ ...p, menejerHuquqi: e.target.checked }))} />
+                                    <span>
+                                        <span className="block text-[12px] font-extrabold text-matn">Menejerlik huquqi</span>
+                                        <span className="block text-[11px] font-bold text-matn-xira mt-0.5">O'qituvchi faqat o'z kurslarini emas, boshqa kurslarni ham Menejer kabi ko'radi va o'zgartiradi.</span>
+                                    </span>
+                                </label>
+                            )}
                             {/* Haydovchi (faqat Telegram bot) va texnik xodim CRM ga kirmaydi — login maydonlari yo'q. */}
                             {staffUser.role !== 'DRIVER' && staffUser.role !== 'TECH_STAFF' && <>
                             <div><label className={lbl}>Email (tizimga kirish logini)</label><input type="email" placeholder="xodim@example.uz" className={inp} value={editData.email||''} onChange={e => setEditData((p:any)=>({...p,email:e.target.value}))} /></div>
