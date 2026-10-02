@@ -9,6 +9,7 @@ import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
 import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
 import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI } from '../../lib/imtihon.js';
 import { toDateStr } from '../../lib/lessons.js';
+import { SmsHisobi } from './SmsHisobi';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
 
 // Imtihon tuzish. Egasining talabi (2026-09-24): "universal bo'lishi kerak" —
@@ -423,6 +424,7 @@ export default function ExamBuilder() {
                     {sozlama.notify.template !== STANDART_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ notify: { ...sozlama.notify, template: SOZLAMA_STANDART.notify.template } })}>Standart matn</Tugma>}
                   </div>
                   <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{xabarNamuna}</pre>
+                  {sozlama.notify.channel !== 'TELEGRAM' && <SmsHisobi matn={xabarNamuna} toldirilgan />}
                 </>
               )}
             </div>
@@ -453,6 +455,7 @@ export default function ExamBuilder() {
                     {sozlama.admit.template !== RUXSATNOMA_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ admit: { ...sozlama.admit, template: RUXSATNOMA_SHABLON } })}>Standart matn</Tugma>}
                   </div>
                   <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{ruxsatnomaNamuna}</pre>
+                  {sozlama.admit.channel !== 'TELEGRAM' && <SmsHisobi matn={ruxsatnomaNamuna} toldirilgan />}
                 </>
               )}
             </div>

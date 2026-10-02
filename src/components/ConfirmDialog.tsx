@@ -46,9 +46,11 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
+      {/* Har doim eng ustida: oyna (masalan Xabarlar dagi z-[1000] modallar) ichidan
+          chaqirilganda ham uning orqasida qolib, bosib bo'lmay qolmasin. */}
       {open && (
         <div
-          className="fixed inset-0 z-[400] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4"
+          className="fixed inset-0 z-[1100] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4"
           role="dialog"
           aria-modal="true"
         >

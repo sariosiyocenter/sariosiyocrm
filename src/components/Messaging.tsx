@@ -15,7 +15,8 @@ import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabar
 import { TransportQoidaKartasi, TransportQoidaFormasi } from './TransportXabari';
 import { QoidaKartasi } from './QoidaKartasi';
 import { kursUstozlari } from '../lib/teacherState';
-import { smsMatni, smsSoni, gsmEmasBelgilar, ESKI_QIMMAT_HARF } from '../../lib/tolovXabari.js';
+import { smsMatni, ESKI_QIMMAT_HARF } from '../../lib/tolovXabari.js';
+import { SmsHisobi, smsHisobla } from './SmsHisobi';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -915,11 +916,7 @@ export default function Messaging() {
 
   // SMS qismlari — Eskizga ketadigan ko'rinishda (smsMatni), server bilan bir xil.
   // Kirill/emoji bo'lsa bir qism 160 emas 70 belgi: narx 2–3 barobar oshadi.
-  const smsInfo = (() => {
-    const matn = smsMatni(messageText);
-    const s = smsSoni(matn);
-    return { ...s, qimmat: s.kodlash === 'UCS-2', belgilar: gsmEmasBelgilar(matn), gsmdaSoni: smsSoni(matn.replace(/[^\n -~]/g, 'a')).soni };
-  })();
+  const smsInfo = smsHisobla(messageText, settings?.orgName);
   const smsKetadi = channel !== 'TELEGRAM' || useSmsFallback;
 
   // Tasdiqlash oynasida Eskiz balansi — pul yetmasa oldindan ko'rinsin.
@@ -1184,6 +1181,14 @@ export default function Messaging() {
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateForm.name.trim() || !templateForm.body.trim()) return;
+    const h = smsHisobla(templateForm.body, settings?.orgName);
+    if (h.qimmat && !(await confirm({
+      title: `Har bir kishiga ${h.soni} ta SMS`,
+      message: `Matnda lotin bo'lmagan belgi bor (${h.belgilar.slice(0, 5).join(' ')}). Shu sabab bu shablon SMS da har bir kishiga ${h.soni} ta SMS bo'lib ketadi${h.gsmdaSoni < h.soni ? `, bularsiz ${h.gsmdaSoni} ta bo'lardi` : ''}. Baribir saqlaysizmi?`,
+      confirmLabel: 'Baribir saqlash',
+      cancelLabel: 'Tuzataman',
+      danger: true,
+    }))) return;
     try {
       const method = editingTemplate ? 'PUT' : 'POST';
       const url = editingTemplate ? `/api/messaging/templates/${editingTemplate.id}` : '/api/messaging/templates';
@@ -1715,18 +1720,8 @@ export default function Messaging() {
                 className="w-full px-4 py-3 bg-slate-55 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all resize-none"
               />
 
-              {/* Length statistics */}
-              <div className="flex justify-between items-center mt-2 px-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
-                <span>{smsInfo.belgi} belgi</span>
-                <span className={smsInfo.soni > 1 ? 'text-amber-500' : ''}>Har bir kishiga: {smsInfo.soni} ta SMS</span>
-              </div>
-              {smsInfo.qimmat && messageText.trim() && (
-                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-[11px] font-bold text-rose-600 dark:text-rose-400 leading-relaxed">
-                  Matnda lotin bo'lmagan belgi bor: <span className="font-mono">{smsInfo.belgilar.slice(0, 8).join(' ')}</span>.
-                  {' '}Shu sabab bir SMS 160 emas, 70 belgi — har bir kishiga {smsInfo.soni} ta SMS ketadi
-                  {smsInfo.gsmdaSoni < smsInfo.soni ? ` (bularsiz ${smsInfo.gsmdaSoni} ta bo'lardi)` : ''}.
-                </div>
-              )}
+              {/* Necha SMS bo'lishi */}
+              {smsKetadi && <SmsHisobi matn={messageText} orgName={settings?.orgName} className="mt-2" />}
             </div>
 
             {/* Live Preview Box */}
@@ -1816,15 +1811,14 @@ export default function Messaging() {
                     );
                   })()}
                   {(() => {
-                    const matn = smsMatni(t.body);
-                    const s = smsSoni(matn);
+                    const s = smsHisobla(t.body, settings?.orgName);
                     // Eskizda "ı ş ç ğ" bilan tasdiqlangan eski shablon: endi SMS
                     // ular almashtirilib ketadi — matn tuzatilib qayta tasdiqlanishi kerak.
                     const eski = ESKI_QIMMAT_HARF.test(t.body);
                     return (
                       <>
-                        <span className={`block tabular-nums ${s.kodlash === 'UCS-2' || eski ? 'text-rose-500' : ''}`}>
-                          SMS: {s.soni} ta qism{s.kodlash === 'UCS-2' ? ` — lotin bo'lmagan belgi bor (${gsmEmasBelgilar(matn).slice(0, 5).join(' ')}), narx 2–3 barobar` : ''}
+                        <span className={`block tabular-nums ${s.qimmat || eski ? 'text-rose-500' : s.soni > 1 ? 'text-amber-500' : ''}`}>
+                          Har bir kishiga: {s.soni} ta SMS{s.qimmat ? ` — lotin bo'lmagan belgi bor (${s.belgilar.slice(0, 5).join(' ')}), narx 2–3 barobar` : ''}
                         </span>
                         {eski && (
                           <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 space-y-1.5">
@@ -2334,15 +2328,7 @@ export default function Messaging() {
                 onChange={e => setTemplateForm({ ...templateForm, body: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
-              {templateForm.body.trim() && (() => {
-                const matn = smsMatni(templateForm.body);
-                const s = smsSoni(matn);
-                return (
-                  <div className={`text-[11px] font-bold mt-1 tabular-nums ${s.kodlash === 'UCS-2' ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
-                    {s.belgi} belgi · SMS: {s.soni} ta qism{s.kodlash === 'UCS-2' ? ` — lotin bo'lmagan belgi bor (${gsmEmasBelgilar(matn).slice(0, 5).join(' ')}), narx 2–3 barobar` : ''}
-                  </div>
-                );
-              })()}
+              <SmsHisobi matn={templateForm.body} orgName={settings?.orgName} className="mt-1.5" />
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}
               </div>
@@ -2591,6 +2577,7 @@ export default function Messaging() {
                   onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
                 />
+                {autoRuleForm.channel !== 'TELEGRAM' && <SmsHisobi matn={autoRuleForm.body} orgName={settings?.orgName} className="mt-1.5" />}
                 <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
                   O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}, {"{imtihon_oylik}"}
                 </div>
