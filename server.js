@@ -23,7 +23,7 @@ import {
   tolovXabarlariRoyxati, qaytaYubor as tolovXabariniQaytaYubor, sinovXabari, eskizBalansi, eskizHolatlariniYangila,
   yetkazishHolati,
 } from './services/tolovXabari.js';
-import { smsMatni } from './lib/tolovXabari.js';
+import { smsMatni, turkchaHarflar } from './lib/tolovXabari.js';
 import {
   qarzXabariniUlash, qarzSozlamasi, qarzSozlamasiniSaqla, qarzdorlarRoyxati, qoldaYubor as qarzQoldaYubor,
   qarzNavbati, qarzXabariniQaytaYubor, qarzXabarlariRoyxati, avtoQarzEslatma, javoblarRoyxati as qarzJavoblari,
@@ -7139,15 +7139,42 @@ app.post('/api/sms/send', authenticate, async (req, res, next) => {
 // matni bilan. Bu yerdagi qattiq yozilgan "Sariosiyo o'quv markazi: farzandingiz
 // … darsga kelmadi" Eskizda tasdiqlanmagan edi va har safar FAILED bo'lardi.
 
-// API: SMS loglari
+// API: SMS loglari. Filtr serverda: ilgari oxirgi 100 ta yozuv olinib
+// brauzerda saralanardi — 644 kishilik kampaniyada oxirgi 100 tasi hammasi
+// "Xato" bo'lib, "Muvaffaqiyatli" bo'sh chiqardi (egasi, 2026-10-02).
 app.get('/api/sms/logs', authenticate, async (req, res, next) => {
   try {
-    const logs = await prisma.smsLog.findMany({
-      where: { schoolId: req.user.schoolId },
-      orderBy: { sentAt: 'desc' },
-      take: 100
-    });
-    res.json(logs);
+    const { campaignId, status, channel } = req.query;
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    // Tepadagi kartalar (jami / muvaffaqiyatli / xato) holat filtrisiz sanaladi.
+    const umumiy = { schoolId: req.user.schoolId };
+    if (campaignId) umumiy.campaignId = parseInt(campaignId) || -1;
+    if (['SMS', 'TELEGRAM'].includes(channel)) umumiy.channel = channel;
+    if (q) umumiy.OR = [
+      { toPhone: { contains: q } },
+      { toName: { contains: q, mode: 'insensitive' } },
+      { message: { contains: q, mode: 'insensitive' } },
+    ];
+    const where = ['SENT', 'FAILED', 'PENDING'].includes(String(status || '').toUpperCase())
+      ? { ...umumiy, status: String(status).toUpperCase() } : umumiy;
+    const take = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+    const skip = Math.max(parseInt(req.query.offset) || 0, 0);
+    const [rows, jami, guruhlar] = await Promise.all([
+      prisma.smsLog.findMany({ where, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }], take, skip }),
+      prisma.smsLog.count({ where }),
+      prisma.smsLog.groupBy({ by: ['status'], where: umumiy, _count: true }),
+    ]);
+    const holatlar = { SENT: 0, FAILED: 0, PENDING: 0 };
+    for (const g of guruhlar) holatlar[g.status] = g._count;
+    res.json({ rows, jami, holatlar });
+  } catch (err) { next(err); }
+});
+
+// Eskiz balansi (so'm) — kampaniyani tasdiqlash oynasida.
+app.get('/api/sms/balans', authenticate, async (req, res, next) => {
+  try {
+    const balans = await Promise.race([eskizBalansi(req.user.schoolId), new Promise(r => setTimeout(() => r(null), 5000))]);
+    res.json({ balans });
   } catch (err) { next(err); }
 });
 
@@ -7738,7 +7765,9 @@ app.get('/api/messaging/templates', authenticate, async (req, res, next) => {
 
 app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
   try {
-    const { name, body, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
+    const { name, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
+    // "ı ş ç ğ" SMS ni 2–3 barobar qimmatlashtiradi — matnda saqlanmaydi (lib/tolovXabari.js).
+    const body = req.body.body ? turkchaHarflar(req.body.body) : req.body.body;
     if (!name || !body) return res.status(400).json({ error: 'name va body kerak' });
 
     // Shablon yaratilishi bilan Eskizga moderatsiyaga ketadi.
@@ -7766,7 +7795,8 @@ app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
 
 app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
   try {
-    const { name, body, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
+    const { name, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
+    const body = typeof req.body.body === 'string' ? turkchaHarflar(req.body.body) : req.body.body;
     const data = {
       ...(name !== undefined && { name }),
       ...(body !== undefined && { body }),

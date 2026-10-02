@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Send, FileText, Settings, History, Search, RefreshCw, Zap, CheckCircle,
   XCircle, Clock, Filter, Plus, Trash2, Edit, AlertCircle, HelpCircle, User, Info, Check, MessageSquare
@@ -15,6 +15,7 @@ import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabar
 import { TransportQoidaKartasi, TransportQoidaFormasi } from './TransportXabari';
 import { QoidaKartasi } from './QoidaKartasi';
 import { kursUstozlari } from '../lib/teacherState';
+import { smsMatni, smsSoni, gsmEmasBelgilar, ESKI_QIMMAT_HARF } from '../../lib/tolovXabari.js';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -425,6 +426,8 @@ export default function Messaging() {
   const [campaigns, setCampaigns] = useState<MessageCampaign[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [logs, setLogs] = useState<SmsLog[]>([]);
+  const [logsJami, setLogsJami] = useState(0);
+  const [logHolatlar, setLogHolatlar] = useState({ SENT: 0, FAILED: 0, PENDING: 0 });
   const [searchLogQuery, setSearchLogQuery] = useState('');
   const [statusLogFilter, setStatusLogFilter] = useState('all');
   const [channelLogFilter, setChannelLogFilter] = useState<'all' | 'SMS' | 'TELEGRAM'>('all');
@@ -493,8 +496,13 @@ export default function Messaging() {
     fetchTemplates();
     fetchCampaigns();
     fetchRules();
-    fetchLogs();
   }, [selectedSchoolId]);
+
+  // Jurnal filtrlari serverda: o'zgarganda qaytadan yuklanadi (qidiruv — biroz kutib).
+  useEffect(() => {
+    const t = setTimeout(() => fetchLogs(), searchLogQuery ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [selectedSchoolId, selectedCampaignId, statusLogFilter, channelLogFilter, searchLogQuery]);
 
   // Eskizga qayta yuborish (moderatsiyaga bormagan yoki xato bilan qaytgan shablon).
   const [eskizYuborilmoqda, setEskizYuborilmoqda] = useState<number | null>(null);
@@ -509,6 +517,26 @@ export default function Messaging() {
       if (!res.ok) { showNotification(d.error || "Yuborib bo'lmadi", 'error'); return; }
       const holat = String(d.eskizStatus || '');
       showNotification(holat.startsWith('xato') ? `Eskiz: ${holat.slice(6)}` : "Eskiz moderatsiyasiga yuborildi", holat.startsWith('xato') ? 'error' : 'success');
+      fetchTemplates();
+    } finally {
+      setEskizYuborilmoqda(null);
+    }
+  };
+
+  // "ı ş ç ğ" li shablon: matn smsMatni ko'rinishiga keltiriladi — server matn
+  // o'zgarganini ko'rib, uni Eskizga qayta tasdiqlashga yuboradi.
+  const shablonniTuzat = async (t: any) => {
+    setEskizYuborilmoqda(t.id);
+    try {
+      const res = await fetch(`/api/messaging/templates/${t.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ body: smsMatni(t.body) })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { showNotification(d.error || "Saqlab bo'lmadi", 'error'); return; }
+      const holat = String(d.eskizStatus || '');
+      showNotification(holat.startsWith('xato') ? `Eskiz: ${holat.slice(6)}` : "Matn tuzatildi va Eskiz tasdig'iga yuborildi", holat.startsWith('xato') ? 'error' : 'success');
       fetchTemplates();
     } finally {
       setEskizYuborilmoqda(null);
@@ -544,15 +572,30 @@ export default function Messaging() {
     } catch (e) { console.error(e); }
   };
 
-  const fetchLogs = async () => {
+  // Filtr tez almashtirilganda eski so'rovning kech kelgan javobi yangisini bosib ketmasin.
+  const logSorovi = useRef(0);
+  /** davomi=true — "Yana ko'rsatish": keyingi sahifa ro'yxat oxiriga qo'shiladi. */
+  const fetchLogs = async (davomi = false) => {
+    const raqam = ++logSorovi.current;
     try {
       setLogsLoading(true);
-      const res = await fetch(`/api/sms/logs?t=${Date.now()}`, {
+      const p = new URLSearchParams({ t: String(Date.now()), limit: '100', offset: String(davomi ? logs.length : 0) });
+      if (selectedCampaignId !== null) p.set('campaignId', String(selectedCampaignId));
+      if (statusLogFilter !== 'all') p.set('status', statusLogFilter.toUpperCase());
+      if (channelLogFilter !== 'all') p.set('channel', channelLogFilter);
+      if (searchLogQuery.trim()) p.set('q', searchLogQuery.trim());
+      const res = await fetch(`/api/sms/logs?${p}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      if (res.ok) setLogs(await res.json());
+      if (res.ok) {
+        const d = await res.json();
+        if (raqam !== logSorovi.current) return;
+        setLogs(prev => davomi ? [...prev, ...d.rows] : d.rows);
+        setLogsJami(d.jami);
+        if (d.holatlar) setLogHolatlar(d.holatlar);
+      }
     } catch (e) { console.error(e); }
-    finally { setLogsLoading(false); }
+    finally { if (raqam === logSorovi.current) setLogsLoading(false); }
   };
 
 
@@ -870,28 +913,23 @@ export default function Messaging() {
     setSelectedRecipientIds(nextMap);
   };
 
-  // Character Counter and SMS Parts calculator
-  const getSmsPartInfo = (text: string) => {
-    const len = text.length;
-    // Check if Unicode (contains cyrillic characters or custom symbols)
-    const isUnicode = /[^\u0000-\u007F]/.test(text);
-    let parts = 1;
-    let limit = isUnicode ? 70 : 160;
+  // SMS qismlari — Eskizga ketadigan ko'rinishda (smsMatni), server bilan bir xil.
+  // Kirill/emoji bo'lsa bir qism 160 emas 70 belgi: narx 2–3 barobar oshadi.
+  const smsInfo = (() => {
+    const matn = smsMatni(messageText);
+    const s = smsSoni(matn);
+    return { ...s, qimmat: s.kodlash === 'UCS-2', belgilar: gsmEmasBelgilar(matn), gsmdaSoni: smsSoni(matn.replace(/[^\n -~]/g, 'a')).soni };
+  })();
+  const smsKetadi = channel !== 'TELEGRAM' || useSmsFallback;
 
-    if (len > limit) {
-      const multiLimit = isUnicode ? 67 : 153;
-      parts = Math.ceil(len / multiLimit);
-    }
-
-    return {
-      length: len,
-      isUnicode,
-      parts,
-      limit
-    };
-  };
-
-  const charInfo = getSmsPartInfo(messageText);
+  // Tasdiqlash oynasida Eskiz balansi — pul yetmasa oldindan ko'rinsin.
+  const [eskizBalans, setEskizBalans] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (!confirmModalOpen || !smsKetadi) return;
+    setEskizBalans(undefined);
+    fetch('/api/sms/balans', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => r.ok ? r.json() : null).then(d => setEskizBalans(d?.balans ?? null)).catch(() => setEskizBalans(null));
+  }, [confirmModalOpen]);
 
   // Template placeholders replacement mockup for Preview panel
   const getPersonalizedPreview = () => {
@@ -1196,22 +1234,8 @@ export default function Messaging() {
     } catch (e: any) { showNotification("Xatolik: " + e.message, 'error'); }
   };
 
-  // History Tab: Filter logs by selected campaign ID, status, and channel
-  const getFilteredLogs = () => {
-    return logs.filter(log => {
-      const matchesCampaign = selectedCampaignId === null || log.campaignId === selectedCampaignId;
-      const sQuery = searchLogQuery.trim().toLowerCase();
-      const matchesSearch = !sQuery ||
-        log.toPhone.includes(sQuery) ||
-        (log.toName || '').toLowerCase().includes(sQuery) ||
-        log.message.toLowerCase().includes(sQuery);
-      const matchesStatus = statusLogFilter === 'all' || log.status.toLowerCase() === statusLogFilter.toLowerCase();
-      const matchesChannel = channelLogFilter === 'all' || log.channel === channelLogFilter;
-      return matchesCampaign && matchesSearch && matchesStatus && matchesChannel;
-    });
-  };
-
-  const displayLogs = getFilteredLogs();
+  // Kampaniya, holat, kanal va qidiruv bo'yicha serverda saralangan (fetchLogs).
+  const displayLogs = logs;
   const failedLogsInDisplay = displayLogs.filter(log => log.status === 'FAILED');
   const allFailedChecked = failedLogsInDisplay.length > 0 && failedLogsInDisplay.every(log => selectedLogIds[log.id]);
   const toggleAllFailed = (checked: boolean) => {
@@ -1692,10 +1716,17 @@ export default function Messaging() {
               />
 
               {/* Length statistics */}
-              <div className="flex justify-between items-center mt-2 px-1 text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                <span>Kodlash: {charInfo.isUnicode ? 'Unicode (Kirill)' : 'GSM-7 (Lotin)'}</span>
-                <span>Belgilar: {charInfo.length} / SMS qismlari: {charInfo.parts}</span>
+              <div className="flex justify-between items-center mt-2 px-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                <span>{smsInfo.belgi} belgi</span>
+                <span className={smsInfo.soni > 1 ? 'text-amber-500' : ''}>Har bir kishiga: {smsInfo.soni} ta SMS</span>
               </div>
+              {smsInfo.qimmat && messageText.trim() && (
+                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-[11px] font-bold text-rose-600 dark:text-rose-400 leading-relaxed">
+                  Matnda lotin bo'lmagan belgi bor: <span className="font-mono">{smsInfo.belgilar.slice(0, 8).join(' ')}</span>.
+                  {' '}Shu sabab bir SMS 160 emas, 70 belgi — har bir kishiga {smsInfo.soni} ta SMS ketadi
+                  {smsInfo.gsmdaSoni < smsInfo.soni ? ` (bularsiz ${smsInfo.gsmdaSoni} ta bo'lardi)` : ''}.
+                </div>
+              )}
             </div>
 
             {/* Live Preview Box */}
@@ -1775,11 +1806,36 @@ export default function Messaging() {
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${h.nuqta}`} />
                           <span className="break-words" title={t.eskizStatus || undefined}>{h.matn}</span>
                         </span>
-                        {shablonTahrir && (!t.eskizStatus || t.eskizStatus.startsWith('xato') || !t.eskizTemplateId) && (
+                        {shablonTahrir && !ESKI_QIMMAT_HARF.test(t.body) && (!t.eskizStatus || t.eskizStatus.startsWith('xato') || !t.eskizTemplateId) && (
                           <button onClick={() => eskizgaQaytaYuborish(t.id)} disabled={eskizYuborilmoqda === t.id}
                             className="w-full py-1.5 rounded-lg border border-brand/40 text-brand hover:bg-brand/10 disabled:opacity-50 text-[11px] font-bold cursor-pointer transition-colors">
                             {eskizYuborilmoqda === t.id ? 'Yuborilmoqda…' : 'Eskizga qayta yuborish'}
                           </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {(() => {
+                    const matn = smsMatni(t.body);
+                    const s = smsSoni(matn);
+                    // Eskizda "ı ş ç ğ" bilan tasdiqlangan eski shablon: endi SMS
+                    // ular almashtirilib ketadi — matn tuzatilib qayta tasdiqlanishi kerak.
+                    const eski = ESKI_QIMMAT_HARF.test(t.body);
+                    return (
+                      <>
+                        <span className={`block tabular-nums ${s.kodlash === 'UCS-2' || eski ? 'text-rose-500' : ''}`}>
+                          SMS: {s.soni} ta qism{s.kodlash === 'UCS-2' ? ` — lotin bo'lmagan belgi bor (${gsmEmasBelgilar(matn).slice(0, 5).join(' ')}), narx 2–3 barobar` : ''}
+                        </span>
+                        {eski && (
+                          <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 space-y-1.5">
+                            <p className="leading-relaxed">Matnda turkcha harf bor ({[...new Set([...t.body].filter(c => ESKI_QIMMAT_HARF.test(c)))].join(' ')}) — SMS 2–3 barobar qimmat ketardi. Tuzatilgan matnni Eskiz qayta tasdiqlashi kerak, ungacha bu shablon bilan SMS ketmaydi.</p>
+                            {shablonTahrir && (
+                              <button onClick={() => shablonniTuzat(t)} disabled={eskizYuborilmoqda === t.id}
+                                className="w-full py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 text-[11px] font-bold cursor-pointer transition-colors">
+                                {eskizYuborilmoqda === t.id ? 'Yuborilmoqda…' : 'Tuzatib, Eskizga yuborish'}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </>
                     );
@@ -1867,19 +1923,19 @@ export default function Messaging() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400">Jami loglar</span>
-              <p className="text-xl font-black text-slate-800 dark:text-white mt-1 tabular-nums">{logs.length}</p>
+              <p className="text-xl font-black text-slate-800 dark:text-white mt-1 tabular-nums">{(logHolatlar.SENT + logHolatlar.FAILED + logHolatlar.PENDING).toLocaleString()}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400">Muvaffaqiyatli</span>
-              <p className="text-xl font-black text-emerald-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'SENT').length}</p>
+              <p className="text-xl font-black text-emerald-500 mt-1 tabular-nums">{logHolatlar.SENT.toLocaleString()}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400">Xatolik yuz bergan</span>
-              <p className="text-xl font-black text-rose-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'FAILED').length}</p>
+              <p className="text-xl font-black text-rose-500 mt-1 tabular-nums">{logHolatlar.FAILED.toLocaleString()}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400">Kutilmoqda (Pending)</span>
-              <p className="text-xl font-black text-amber-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'PENDING').length}</p>
+              <p className="text-xl font-black text-amber-500 mt-1 tabular-nums">{logHolatlar.PENDING.toLocaleString()}</p>
             </div>
           </div>
 
@@ -1937,7 +1993,7 @@ export default function Messaging() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={fetchLogs}
+                    onClick={() => { fetchCampaigns(); fetchLogs(); }}
                     className="p-1.5 bg-slate-55 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-450 hover:text-brand rounded-lg transition-colors cursor-pointer"
                     disabled={logsLoading}
                   >
@@ -2131,13 +2187,23 @@ export default function Messaging() {
                     {displayLogs.length === 0 && (
                       <tr>
                         <td colSpan={6} className="p-16 text-center text-slate-400">
-                          Hech qanday jurnal yozuvi topilmadi.
+                          {logsLoading ? 'Yuklanmoqda…' : 'Hech qanday jurnal yozuvi topilmadi.'}
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
+              {displayLogs.length > 0 && (
+                <div className="p-3 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 tabular-nums">
+                  <span>{displayLogs.length} / {logsJami} ta</span>
+                  {displayLogs.length < logsJami && (
+                    <button onClick={() => fetchLogs(true)} disabled={logsLoading} className={btnOutline}>
+                      {logsLoading ? 'Yuklanmoqda…' : "Yana ko'rsatish"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2151,9 +2217,19 @@ export default function Messaging() {
             <div className="space-y-2">
               <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
               <p className="text-xs text-slate-500 leading-normal">
-                Ushbu xabar **{activeSelectedCount} ta** o'quvchi/ota-onaga **{channel === 'BOTH' || (channel === 'TELEGRAM' && useSmsFallback) ? 'Telegram va SMS' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
+                Ushbu xabar <b>{activeSelectedCount} ta</b> o'quvchi/ota-onaga <b>{channel === 'BOTH' || (channel === 'TELEGRAM' && useSmsFallback) ? 'Telegram va SMS' : channel}</b> kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
               </p>
             </div>
+
+            {smsKetadi && (
+              <div className={`p-3 rounded-2xl border text-xs font-bold leading-relaxed tabular-nums ${smsInfo.qimmat ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400' : 'bg-slate-55 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/50 text-slate-600 dark:text-slate-300'}`}>
+                <div>Har bir kishiga: {smsInfo.soni} ta SMS{smsInfo.qimmat ? ` (lotin bo'lmagan belgi: ${smsInfo.belgilar.slice(0, 5).join(' ')})` : ''}</div>
+                <div>Jami: {(smsInfo.soni * activeSelectedCount).toLocaleString()} ta SMS gacha{channel !== 'SMS' ? " (Telegram'i borlarga SMS ketmaydi)" : ''}</div>
+                <div className="text-slate-500 dark:text-slate-400">
+                  Eskiz balansi: {eskizBalans === undefined ? '…' : eskizBalans === null ? "bilib bo'lmadi" : `${eskizBalans.toLocaleString()} so'm`}
+                </div>
+              </div>
+            )}
 
             <div className="bg-slate-55 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">
               <span className={lbl}>Xabar shablon ko'rinishi</span>
@@ -2258,6 +2334,15 @@ export default function Messaging() {
                 onChange={e => setTemplateForm({ ...templateForm, body: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
+              {templateForm.body.trim() && (() => {
+                const matn = smsMatni(templateForm.body);
+                const s = smsSoni(matn);
+                return (
+                  <div className={`text-[11px] font-bold mt-1 tabular-nums ${s.kodlash === 'UCS-2' ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                    {s.belgi} belgi · SMS: {s.soni} ta qism{s.kodlash === 'UCS-2' ? ` — lotin bo'lmagan belgi bor (${gsmEmasBelgilar(matn).slice(0, 5).join(' ')}), narx 2–3 barobar` : ''}
+                  </div>
+                );
+              })()}
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}
               </div>
