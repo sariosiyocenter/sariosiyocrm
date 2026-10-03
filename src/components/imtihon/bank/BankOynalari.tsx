@@ -7,7 +7,7 @@ import { korinadiganQiyinlik } from './qiyinlik';
 import type { BankFiltrMalumoti } from '../../../types';
 
 // Savollar banki oynalari: tanlangan savollarga bir nechta maydonni birdan qo'yish.
-// (Filtr va qiymatlarni qo'shish / o'zgartirish — ustunlarning o'zida: BankUstunlari.tsx.)
+// (Filtr va qiymatlarni qo'shish / o'zgartirish — bank ekranining chap panelida: BankJadvali.tsx.)
 
 export function Oyna({ sarlavha, izoh, onYop, children, pastki, kenglik = 'max-w-lg' }: {
   sarlavha: string; izoh?: React.ReactNode; onYop: () => void; children: React.ReactNode; pastki?: React.ReactNode; kenglik?: string;

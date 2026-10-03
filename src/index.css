@@ -335,7 +335,7 @@ input[type="number"] {
 }
 
 /* Savollar banki ustunlari: savol biriktirilgan qator bir lahza "chaqnaydi",
-   yangi qo'shilgan qator pastdan chiqadi (src/components/imtihon/bank/BankUstunlari.tsx). */
+   yangi qo'shilgan qator pastdan chiqadi (src/components/imtihon/bank/BankQismlari.tsx). */
 @keyframes bank-chaqnash {
   0% { background-color: color-mix(in srgb, var(--color-brand) 35%, transparent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand) 55%, transparent); }
   100% { background-color: transparent; box-shadow: 0 0 0 7px transparent; }

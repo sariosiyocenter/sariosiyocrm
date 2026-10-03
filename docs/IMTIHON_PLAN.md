@@ -1188,3 +1188,42 @@ kirita olay; balki qiyinlikni 2 ga bo'larman."
 
 Sinov: `test_bank4_api.mjs` 45/45, `bank4_ui.mjs` 37/37 (daraja nomi → olib tashlash → 2 ta → qaytarish;
 guruh sarlavhalari; bo'limda fan nomi).
+
+### 21.2 Maket bo'yicha qayta qurildi: fan yorliqlari, chapda daraxt, kartadagi yorliqlar (2026-10-03)
+
+Egasi ustunli ekranni rad etdi ("real foydalanuvchi tajribasini his qilmayapsan… avval maketini qil").
+Bosib ko'rsa bo'ladigan maket (Artifact) ko'rsatildi, "ok" dan keyin aynan shu ko'rinish qurildi.
+
+- **Fan — tepada yorliq** (`+ Fan`, `…` — nomini o'zgartirish / o'chirish). Pastdagi hamma narsa
+  tanlangan fanniki; alohida "Fanlar" ro'yxati yo'q.
+- **Chap panel** (`bank/BankQismlari.tsx` — `YonQator`, `QatorForma`): *Tuzilma* — «Hamma savollar»,
+  bo'limlar (ochiladi/yig'iladi) ichida mavzular, bo'limsiz mavzular; `+ Bo'lim`, `+ Mavzu`, bo'lim
+  qatoridagi `+` — shu bo'limga mavzu. *Filtrlar* — birinchi ro'yxat «Qiyinlik» (hamma fanlarda bitta),
+  keyin fanning o'z filtrlari; `+ daraja`, `+ qiymat`, `+ Yangi filtr`. Enter — maydon ochiq qoladi.
+  Telefonda panel yig'iladi («Tuzilma va filtrlar»), mavzu tanlansa yopiladi.
+- **Qiyinlik — oddiy ro'yxat**: "rang o'rni" so'ralmaydi. Yangi daraja oxiriga qo'shiladi: uchinchi
+  asosiy o'rin bo'sh bo'lsa — shu o'rin, aks holda `asos = 3` li belgi. Asosiy darajani o'chirish
+  endi rad etilmaydi: tasdiqdan keyin savollari eng yaqin darajaga o'tadi
+  (`PUT bank/darajalar/asosiy/:d {yashirin: true, kochir: true}` → `kochirildi`). Foydalanuvchi darajasi
+  o'chsa va asosi olib tashlangan bo'lsa — savollari ham yaqin darajaga.
+- **Savol kartasi**: yorliqlar (mavzu, qiyinlik, har filtr; qo'yilmagani — punktir «manba?») bosilsa
+  menyu ochiladi (`Menyu`) — qiymat tanlanadi, olib tashlanadi yoki shu yerda yangisi yoziladi
+  (yaratiladi va darhol qo'yiladi). Filtr bitta qiymatli: `questions/bulk {guruhlar: [{groupId, tagIds}]}`.
+  `…` — ochish / o'chirish; ikki marta bosish — ochish.
+- **Bir nechtasi belgilansa** — pastda panel: Mavzuga, Qiyinlik, har filtr, `…` (manba-izoh-holat
+  oynasi, ishlatilishini nolga), O'chirish. Kartani chapdagi mavzu / daraja / filtr qiymatiga sudrab
+  tashlasa ham bo'ladi; mavzuni — bo'limga.
+- **Bekor qilish**: biriktirish va mavzuni bo'limga o'tkazishdan keyin pastda xabar va «Bekor qilish»
+  (savollar ekranda bo'lsa — har biri avvalgi qiymatiga qaytadi). O'chirishlar — tasdiq oynasi bilan.
+- **Sonlar tanlovga qarab**: `bank/filtr` javobida `kesim` — mavzu kesimida `{j, q[3], b{belgi}, y{filtr}}`;
+  ekran tanlangan fan / bo'lim / mavzu uchun o'zi yig'adi va biriktirganda darhol o'zgartiradi (`hissa`).
+  `bank/royxat`: `belgilar[guruh]` ichida `0` — shu filtr qo'yilmaganlar; `qiyinlikSof` — asosiy
+  daraja faqat o'zi (foydalanuvchi darajasi qo'yilganlarsiz).
+- **Savol qo'shish** tugmasi ro'yxat sarlavhasida, tanlangan mavzu nomi bilan; oyna (SavolYuklash)
+  shu mavzu oldindan qo'yilib ochiladi. Saqlangach ro'yxat yangi savollarga o'tadi: bitta mavzuga
+  tushgan bo'lsa — o'sha mavzu, yangilari tepada («yangi» belgisi); bir nechta mavzuga — fan bo'yicha
+  faqat «Hozirgina qo'shilganlar».
+- Ixcham ko'rinish olib tashlandi; tartib «Boshqa filtrlar» ichida. `BankUstunlari.tsx` o'chirildi.
+
+Sinov: `scratch/bank6_ui.mjs` (ZZ yozuvlar; fan → bo'lim → mavzu → daraja → filtr → yorliq, panel,
+sudrash, bekor qilish, filtrlash, telefon).

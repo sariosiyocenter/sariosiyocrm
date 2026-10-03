@@ -571,6 +571,12 @@ export interface BankFiltrMalumoti {
     joylashuv: Record<'0' | '1' | '2' | '4', number>;
     /** belgi id → savollar soni */
     belgilar: Record<number, number>;
+    /**
+     * Mavzu kesimida sonlar (arxivsiz): j — jami; q — asosiy darajalar bo'yicha (foydalanuvchi
+     * darajasi qo'yilmaganlari); b — belgi (daraja yoki filtr qiymati) bo'yicha; y — filtr id →
+     * shu filtrning hech bir qiymati qo'yilmagan savollar. Ekran istalgan tanlov uchun o'zi yig'adi.
+     */
+    kesim?: Record<number, { j: number; q: number[]; b: Record<number, number>; y: Record<number, number> }>;
     guruhlar: BelgiGuruhi[];
 }
 

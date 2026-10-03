@@ -46,7 +46,11 @@ export default function QuestionsList() {
   const [oxshash, setOxshash] = useState(false);
   // "Savol qo'shish" oynasi: ?qosh=1 ham ochadi (eski /questions/new havolalari).
   const qosh = params.get('qosh') === '1';
-  const qoshOch = () => ot({ qosh: '1' });
+  // Bank ro'yxatidan ochilganda — o'sha yerda tanlangan mavzu oldindan qo'yiladi.
+  const [qoshMavzu, setQoshMavzu] = useState<number | null>(null);
+  const qoshOch = () => { setQoshMavzu(null); ot({ qosh: '1' }); };
+  // Hozirgina qo'shilgan savollar — bank ro'yxati ularga o'tadi ("yangi" belgisi bilan).
+  const [yangi, setYangi] = useState<{ ids: number[]; n: number } | null>(null);
 
   // Butun bankdan qidirish (tuzilmaning birinchi qavatida): yozish to'xtagach.
   useEffect(() => {
@@ -95,7 +99,8 @@ export default function QuestionsList() {
           <div className="flex flex-wrap gap-2 shrink-0">
             {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<BarChart3 size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar bo'yicha sonlar va natijalar; o'quv rejadan mavzular; qiyinlikni natijaga moslash">Statistika</Tugma>}
             {savolTahrir && <Tugma kichik ikonka={<Copy size={14} />} onClick={() => setOxshash(true)} title="AI bitta masaladan sonlari va javobi boshqa masalalar tuzadi">O'xshash masala</Tugma>}
-            {savolTahrir && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={qoshOch}>Savol qo'shish</Tugma>}
+            {/* Ro'yxat ko'rinishida «Savol qo'shish» — bankning o'zida (tanlangan mavzu nomi bilan). */}
+            {savolTahrir && tuzilma && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={qoshOch}>Savol qo'shish</Tugma>}
           </div>
         )}
       </div>
@@ -103,8 +108,8 @@ export default function QuestionsList() {
       {bolim === 'andoza' ? (
         <Andozalar daraxt={daraxt} />
       ) : !tuzilma ? (
-        <BankJadvali key={qayta} daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila}
-          onQosh={savolTahrir ? qoshOch : undefined} onTuzilma={() => ot({ kor: 'tuzilma', mavzu: null })} savolTahrir={savolTahrir} />
+        <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
+          onQosh={savolTahrir ? id => { setQoshMavzu(id); ot({ qosh: '1' }); } : undefined} onTuzilma={() => ot({ kor: 'tuzilma', mavzu: null })} savolTahrir={savolTahrir} />
       ) : (
         <>
           {!fan && (
@@ -139,7 +144,10 @@ export default function QuestionsList() {
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => setOxshash(false)} onSaqlandi={ozgardi} />}
-      {qosh && savolTahrir && <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => ot({ qosh: null })} onSaqlandi={ozgardi} />}
+      {qosh && savolTahrir && (
+        <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu : null)} onYop={() => ot({ qosh: null })}
+          onSaqlandi={r => { ozgardi(); if (r?.ids?.length) setYangi({ ids: r.ids, n: Date.now() }); }} />
+      )}
     </div>
   );
 }

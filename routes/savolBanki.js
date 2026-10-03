@@ -460,6 +460,7 @@ export function registerSavolBankiRoutes(app) {
       const s = { ...(g.sozlama && typeof g.sozlama === 'object' ? g.sozlama : {}) };
       const yangi = { ...(s[d] || {}) };
       const eskiNom = joriy[d - 1].nom;
+      let kochirildi = 0;
       if (req.body.name !== undefined) {
         const name = nomi(req.body.name, 60);
         if (!name) return res.status(400).json({ error: 'Daraja nomini kiriting' });
@@ -470,15 +471,22 @@ export function registerSavolBankiRoutes(app) {
         const y = !!req.body.yashirin;
         if (y) {
           if (!joriy.some(q => q.d !== d && !q.yashirin)) return res.status(409).json({ error: 'Kamida bitta daraja qolishi kerak' });
-          const soni = await prisma.question.count({ where: { schoolId: { in: orgIds }, difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 } } });
-          if (soni) return res.status(409).json({ error: `«${eskiNom}» darajasida ${soni} ta savol bor — avval ularni boshqa darajaga o'tkazing` });
+          // Shu darajaning o'zidagi savollar (foydalanuvchi darajasi qo'yilganlari — o'sha darajada qoladi).
+          const ozDarajali = g.tags.map(t => t.id);
+          const shart = { schoolId: { in: orgIds }, difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 }, ...(ozDarajali.length ? { NOT: { tagIds: { hasSome: ozDarajali } } } : {}) };
+          const soni = await prisma.question.count({ where: shart });
+          if (soni && req.body.kochir !== true) return res.status(409).json({ error: `«${eskiNom}» darajasida ${soni} ta savol bor — avval ularni boshqa darajaga o'tkazing` });
+          if (soni) {
+            const nishon = yaqinDaraja(d, joriy.map(q => (q.d === d ? { ...q, yashirin: true } : q)));
+            kochirildi = (await prisma.question.updateMany({ where: shart, data: { difficulty: nishon } })).count;
+          }
         }
         yangi.yashirin = y;
       }
       s[d] = yangi;
       const g2 = await prisma.questionTagGroup.update({ where: { id: g.id }, data: { sozlama: s } });
       const qiyinlik = await qiyinlikSozlamasi(orgIds, g2);
-      res.json({ d, name: qiyinlik[d - 1].nom, eski: eskiNom, yashirin: qiyinlik[d - 1].yashirin, qiyinlik });
+      res.json({ d, name: qiyinlik[d - 1].nom, eski: eskiNom, yashirin: qiyinlik[d - 1].yashirin, qiyinlik, kochirildi });
     } catch (err) { xato(res, next)(err); }
   });
 
@@ -684,6 +692,12 @@ export function registerSavolBankiRoutes(app) {
     try {
       const orgIds = await organizationSchoolIds(req.user);
       const t = await belginiOl(parseInt(req.params.id), orgIds);
+      if (t.group.tur === 'qiyinlik') {
+        const sozlama = await qiyinlikSozlamasi(orgIds);
+        const asos = qiyinlikDarajasi(t.asos || 2);
+        const nishon = yaqinDaraja(asos, sozlama);
+        if (nishon !== asos) await prisma.question.updateMany({ where: { schoolId: { in: orgIds }, tagIds: { has: t.id } }, data: { difficulty: nishon } });
+      }
       await belgilarniSavollardanOl([t.id], orgIds);
       await prisma.questionTag.delete({ where: { id: t.id } });
       res.json({ success: true, name: t.name });
@@ -710,9 +724,21 @@ export function registerSavolBankiRoutes(app) {
       const turlar = { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 };
       const bolimi = new Map(mavzular.map(t => [t.id, t.section || '']));
       const oshir = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+      const hammaGuruh = await belgiGuruhlari(orgIds, fan.id);
+      const darajaIdlar = new Set((hammaGuruh.find(g => g.tur === 'qiyinlik')?.tags || []).map(t => t.id));
+      const ozGuruhlar = hammaGuruh.filter(g => g.tur !== 'qiyinlik').map(g => ({ id: g.id, idlar: new Set(g.tags.map(t => t.id)) }));
+      // Mavzu kesimi: j — jami; q — asosiy darajalar (foydalanuvchi darajasi qo'yilmaganlari);
+      // b — belgi (daraja yoki filtr qiymati) bo'yicha; y — filtrning hech bir qiymati qo'yilmaganlari.
+      const kesim = {};
       for (const q of savollar) {
         holat[q.status] = (holat[q.status] || 0) + 1;
         if (q.status === 'arxiv') continue;
+        const k = (kesim[q.bankTopicId] ||= { j: 0, q: [0, 0, 0], b: {}, y: {} });
+        const teglar = q.tagIds || [];
+        k.j++;
+        for (const t of teglar) k.b[t] = (k.b[t] || 0) + 1;
+        if (!teglar.some(t => darajaIdlar.has(t))) k.q[qiyinlikDarajasi(q.difficulty) - 1]++;
+        for (const g of ozGuruhlar) if (!teglar.some(t => g.idlar.has(t))) k.y[g.id] = (k.y[g.id] || 0) + 1;
         oshir(mavzuSoni, q.bankTopicId);
         oshir(bolimSoni, bolimi.get(q.bankTopicId) || '');
         oshir(manba, q.source || '');
@@ -727,14 +753,13 @@ export function registerSavolBankiRoutes(app) {
       // Bo'limlar: fan ro'yxatidagi tartibda (bo'shi ham), oxirida — bo'limsiz mavzular bo'lsa — ''.
       const bolimlar = [...bolimlarRoyxati(fan), ...(mavzular.some(t => !t.section) ? [''] : [])]
         .map(nom => ({ nom, soni: bolimSoni.get(nom) || 0, mavzular: mavzular.filter(t => kalit(t.section) === kalit(nom)).length }));
-      const hammaGuruh = await belgiGuruhlari(orgIds, fan.id);
       const qatorlar = m => [...m.entries()].map(([nom, soni]) => ({ nom, soni })).sort((a, b) => (a.nom ? 0 : 1) - (b.nom ? 0 : 1) || a.nom.localeCompare(b.nom));
       res.json({
         fan: { id: fan.id, name: fan.name },
         jami: savollar.length - holat.arxiv, yashirin: holat.arxiv, holat, turlar, qiyinlik,
         bolimlar,
         mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
-        manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi,
+        manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi, kesim,
         qiyinlikSozlama: await qiyinlikSozlamasi(orgIds),
         guruhlar: hammaGuruh.filter(g => g.tur !== 'qiyinlik'),
         darajalar: (hammaGuruh.find(g => g.tur === 'qiyinlik')?.tags || []).map(t => ({ id: t.id, name: t.name, asos: qiyinlikDarajasi(t.asos || 2), soni: belgi[t.id] || 0 })),
@@ -965,8 +990,12 @@ async function royxatSharti(f, orgIds) {
   // Qiyinlik ustuni: asosiy darajalar va foydalanuvchi darajalari (belgi) — "yoki".
   const qiyin = (Array.isArray(f.qiyinlik) ? f.qiyinlik : []).map(Number).filter(d => [1, 2, 3].includes(d));
   const darajalar = idlarRoyxati(f.darajalar, 50);
-  if (qiyin.length < 3 && (qiyin.length || darajalar.length)) {
-    and.push({ OR: [...qiyin.map(d => ({ difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 } })), ...(darajalar.length ? [{ tagIds: { hasSome: darajalar } }] : [])] });
+  // qiyinlikSof — asosiy daraja faqat o'zi (foydalanuvchi darajasi qo'yilgan savollarsiz).
+  const sof = f.qiyinlikSof === true;
+  if ((qiyin.length || darajalar.length) && (sof || qiyin.length < 3)) {
+    const ozDarajali = sof && qiyin.length ? ((await darajaGuruhi(orgIds))?.tags || []).map(t => t.id) : [];
+    const ozisiz = ozDarajali.length ? { NOT: { tagIds: { hasSome: ozDarajali } } } : {};
+    and.push({ OR: [...qiyin.map(d => ({ difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 }, ...ozisiz })), ...(darajalar.length ? [{ tagIds: { hasSome: darajalar } }] : [])] });
   }
   const manbalar = matnlar(f.manbalar);
   if (manbalar.length) {
@@ -977,9 +1006,17 @@ async function royxatSharti(f, orgIds) {
     const t = nomi(f.toplam);
     and.push(t ? { toplam: t } : { OR: [{ toplam: null }, { toplam: '' }] });
   }
-  for (const ids of Object.values(f.belgilar && typeof f.belgilar === 'object' ? f.belgilar : {})) {
+  // Filtr ichida — "yoki"; 0 — shu filtrning hech bir qiymati qo'yilmagan savollar.
+  for (const [gid, ids] of Object.entries(f.belgilar && typeof f.belgilar === 'object' ? f.belgilar : {})) {
     const l = idlarRoyxati(ids, 200);
-    if (l.length) and.push({ tagIds: { hasSome: l } });
+    const yoq = Array.isArray(ids) && ids.some(x => Number(x) === 0);
+    const yoki = l.length ? [{ tagIds: { hasSome: l } }] : [];
+    if (yoq) {
+      const g = ANY_ID(gid) ? await prisma.questionTagGroup.findFirst({ where: { id: ANY_ID(gid), schoolId: { in: orgIds } }, include: { tags: { select: { id: true } } } }) : null;
+      if (!g || !g.tags.length) continue;   // qiymati yo'q filtr: hamma savol "qo'yilmagan"
+      yoki.push({ NOT: { tagIds: { hasSome: g.tags.map(t => t.id) } } });
+    }
+    if (yoki.length) and.push(yoki.length === 1 ? yoki[0] : { OR: yoki });
   }
   const dan = ANY_ID(f.qidDan), gacha = ANY_ID(f.qidGacha);
   if (dan || gacha) and.push({ id: { ...(dan ? { gte: dan } : {}), ...(gacha ? { lte: gacha } : {}) } });
