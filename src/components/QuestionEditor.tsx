@@ -9,11 +9,11 @@ import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuk
 import MatnlarOynasi from './imtihon/MatnlarOynasi';
 import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import SavolKorinishi from './imtihon/bank/SavolKorinishi';
-import { QiyinlikTanlov } from './imtihon/bank/qiyinlik';
+import { QiyinlikTanlov, QIYINLIK } from './imtihon/bank/qiyinlik';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
 import { HARFLAR, RAQAM_USTUNLARI, MOSLASH_QATOR, MOSLASH_USTUN, savolXatosi, qiyinlikDarajasi, moslashQatorlari } from '../../lib/imtihon.js';
-import type { Question, Passage, SavolTuri } from '../types';
+import type { Question, Passage, SavolTuri, BelgiGuruhi } from '../types';
 
 // Savol qo'shish va tahrirlash. Fan va mavzu bank tuzilmasidan tanlanadi (shu
 // yerning o'zida yangisini qo'shsa bo'ladi); fan, mavzu, qiyinlik va boshqa
@@ -67,6 +67,10 @@ export default function QuestionEditor() {
   const [q, setQ] = useState<Shaxsiy>(BOSH_SHAXSIY);
   const [muharrirKaliti, setMuharrirKaliti] = useState(0);
   const [meta, setMeta] = useState<Meta | null>(null);
+  // Foydalanuvchi qo'shgan qiyinlik darajalari ("Juda oson"…) va savolda tanlangani (null — asosiy daraja).
+  const [darajalar, setDarajalar] = useState<{ id: number; name: string; asos: number }[]>([]);
+  const [darajaId, setDarajaId] = useState<number | null>(null);
+  const [savolTeglari, setSavolTeglari] = useState<number[]>([]);
   const [yuklanmoqda, setYuklanmoqda] = useState(tahrirRejimi);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qoshildi, setQoshildi] = useState(0);
@@ -77,6 +81,14 @@ export default function QuestionEditor() {
   const [oxshash, setOxshash] = useState(false);
 
   useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
+  useEffect(() => {
+    soro<BelgiGuruhi[]>('GET', 'bank/belgilar').then(g => setDarajalar((g.find(x => x.tur === 'qiyinlik')?.tags || []).map(t => ({ id: t.id, name: t.name, asos: Math.min(3, Math.max(1, t.asos || 2)) })))).catch(() => {});
+  }, [soro]);
+  // Savoldagi daraja belgisi (qiyinligiga mos kelsa) — tanlangan daraja.
+  useEffect(() => {
+    const d = darajalar.find(x => savolTeglari.includes(x.id) && x.asos === umumiy.difficulty);
+    setDarajaId(d ? d.id : null);
+  }, [darajalar, savolTeglari]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // URL da faqat mavzu kelsa — uning fani ham tanlanadi.
   useEffect(() => {
@@ -103,6 +115,7 @@ export default function QuestionEditor() {
         joylashuv: s.joylashuv || 0,
         ong: s.type === 'moslash' && s.answers?.length ? s.answers : ['', '', '', ''],
       });
+      setSavolTeglari(s.tagIds || []);
       setIshlatilgan(s.usedCount || 0);
       setMuharrirKaliti(k => k + 1);
     }).catch(e => showNotification(e.message, 'error')).finally(() => setYuklanmoqda(false));
@@ -135,6 +148,7 @@ export default function QuestionEditor() {
   const yuk = (): Record<string, any> => ({
     bankTopicId: mavzu?.id ?? null, subject: fan?.name || '', topic: mavzu?.name || '',
     difficulty: umumiy.difficulty, status: umumiy.status, language: umumiy.language,
+    ...(darajalar.length ? { darajaId: darajaId || 0 } : {}),
     grade: umumiy.grade || null, source: umumiy.source || null, remark: umumiy.remark.trim() || null,
     tarjima: q.tarjima && (q.tarjima.text.trim() || q.tarjima.options.some(x => x.trim())) ? { ...q.tarjima, options: q.type === 'yopiq' ? q.options.map((_, i) => q.tarjima!.options[i] || '') : [] } : null,
     type: q.type, text: q.text, imageUrl: q.imageUrl, joylashuv: q.type === 'yopiq' && q.joylashuv ? q.joylashuv : null,
@@ -330,7 +344,21 @@ export default function QuestionEditor() {
             {/* label emas: ichidagi tugmalar nomini buzmasin. */}
             <div>
               <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Qiyinlik</span>
-              <QiyinlikTanlov qiymat={umumiy.difficulty} onChange={d => setUmumiy({ ...umumiy, difficulty: d })} />
+              <QiyinlikTanlov qiymat={umumiy.difficulty} onChange={d => { setUmumiy({ ...umumiy, difficulty: d }); setDarajaId(null); }} />
+              {darajalar.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2" role="group" aria-label="O'z darajalaringiz">
+                  {darajalar.map(d => {
+                    const q = QIYINLIK[d.asos - 1];
+                    const tanlangan = darajaId === d.id;
+                    return (
+                      <button key={d.id} type="button" aria-pressed={tanlangan} onClick={() => { setDarajaId(tanlangan ? null : d.id); setUmumiy({ ...umumiy, difficulty: d.asos as 1 | 2 | 3 }); }}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer ${tanlangan ? `${q.fon} ${q.matn} ${q.chiziq}` : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn'}`}>
+                        <span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{d.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Maydon nom="Sinf"><input className={INPUT} value={umumiy.grade} onChange={e => setUmumiy({ ...umumiy, grade: e.target.value })} placeholder="11-sinf" /></Maydon>

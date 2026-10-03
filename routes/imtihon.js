@@ -16,7 +16,7 @@ import { yetadimi } from '../lib/ruxsatlar.js';
 import { markazBrendi } from '../lib/markazBrendi.js';
 import { raschBaholash, tBallar, raschDarajasi } from '../lib/rasch.js';
 import { registerImtihonAIRoutes } from './imtihonAI.js';
-import { registerSavolBankiRoutes, bankniSinxronla, mavzuniNomdanTop } from './savolBanki.js';
+import { registerSavolBankiRoutes, bankniSinxronla, mavzuniNomdanTop, darajaniQoy } from './savolBanki.js';
 import {
   HARFLAR, VARIANT_KODLARI, IMTIHON_HOLATLARI, SAVOL_HOLATLARI, YECHIM_HOLATLARI, qiyinlikDarajasi,
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
@@ -715,6 +715,10 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         await savolMavzusi(orgIds, m, eski.schoolId);
         Object.assign(d, { bankTopicId: m.bankTopicId ?? eski.bankTopicId, subject: m.subject, topic: m.topic });
       } else delete d.bankTopicId;
+      // Qiyinlik yoki daraja o'zgarsa — daraja belgisi qiyinlikka mos tursin.
+      if (req.body.darajaId !== undefined || (d.difficulty !== undefined && d.difficulty !== eski.difficulty)) {
+        Object.assign(d, await darajaniQoy(orgIds, d.tagIds ?? eski.tagIds, d.difficulty ?? eski.difficulty, req.body.darajaId === undefined ? undefined : req.body.darajaId || null));
+      }
       const xato = savolniTekshir({ ...eski, ...d });
       if (xato) return res.status(400).json({ error: xato });
       if (d.passageId && !(await matnTashkilotdami(d.passageId, orgIds))) return res.status(400).json({ error: 'Matn topilmadi' });

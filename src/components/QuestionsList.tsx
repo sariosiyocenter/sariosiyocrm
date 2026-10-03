@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, X, ChevronRight, Copy, ArrowLeft, FolderTree } from 'lucide-react';
+import { Search, Plus, X, ChevronRight, Copy, ArrowLeft, BarChart3 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
@@ -17,9 +17,10 @@ import type { Question } from '../types';
 
 // Savollar banki — butun o'quv markaziga umumiy. Markaz Addmen OMR dasturiga
 // o'rgangan (egasi, 2026-10-01: "ko'p joyi o'xshasin"), shuning uchun tepada
-// Addmen'dagidek ikki bo'lim: "Savollar banki" (filtr ustunlari + ro'yxat +
-// amallar paneli) va "Andoza" (Blueprint). Fan → mavzu tuzilmasi (mavzular,
-// o'quv rejadan import, qiyinlik ustunlari) — "Tuzilma" ko'rinishida (?kor=tuzilma).
+// Addmen'dagidek ikki bo'lim: "Savollar banki" (ustunlar: fan → bo'lim → mavzu →
+// qiyinlik → filtrlar — hammasi shu yerda qo'shiladi; ostida savollar) va "Andoza"
+// (Blueprint). Fanlar bo'yicha statistika, o'quv rejadan mavzular va qiyinlikni
+// natijaga moslash — "Statistika" ko'rinishida (?kor=tuzilma).
 // Savol qo'lda yozilmaydi: "Savol qo'shish" — Word, Excel, PDF, rasm yoki matn.
 
 export default function QuestionsList() {
@@ -81,10 +82,10 @@ export default function QuestionsList() {
             ))}
           </div>
           {bolim === 'bank' && tuzilma && (
-            <nav aria-label="Tuzilma" className="flex flex-wrap items-center gap-1 text-[13px] min-w-0">
+            <nav aria-label="Statistika" className="flex flex-wrap items-center gap-1 text-[13px] min-w-0">
               <button onClick={() => ot({ kor: null, mavzu: null })} className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer mr-1"><ArrowLeft size={14} /> Ro'yxat</button>
               <span className="text-matn-xira">|</span>
-              <button onClick={() => ot({ fan: null, mavzu: null })} className={`font-bold cursor-pointer ${fan ? 'text-matn-sokin hover:text-brand' : 'text-matn'}`}>Tuzilma</button>
+              <button onClick={() => ot({ fan: null, mavzu: null })} className={`font-bold cursor-pointer ${fan ? 'text-matn-sokin hover:text-brand' : 'text-matn'}`}>Statistika</button>
               {fan && <><ChevronRight size={14} className="text-matn-xira" /><button onClick={() => ot({ mavzu: null })} className={`font-bold truncate max-w-[30vw] cursor-pointer ${mavzu ? 'text-matn-sokin hover:text-brand' : 'text-matn'}`}>{fan.name}</button></>}
               {mavzu && <><ChevronRight size={14} className="text-matn-xira" /><span className="font-bold text-matn truncate max-w-[30vw]">{mavzu.name}</span></>}
             </nav>
@@ -92,7 +93,7 @@ export default function QuestionsList() {
         </div>
         {bolim === 'bank' && (
           <div className="flex flex-wrap gap-2 shrink-0">
-            {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<FolderTree size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar, bo'limlar va mavzular; o'quv rejadan import; qiyinlik ustunlari">Tuzilma</Tugma>}
+            {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<BarChart3 size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar bo'yicha sonlar va natijalar; o'quv rejadan mavzular; qiyinlikni natijaga moslash">Statistika</Tugma>}
             {savolTahrir && <Tugma kichik ikonka={<Copy size={14} />} onClick={() => setOxshash(true)} title="AI bitta masaladan sonlari va javobi boshqa masalalar tuzadi">O'xshash masala</Tugma>}
             {savolTahrir && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={qoshOch}>Savol qo'shish</Tugma>}
           </div>

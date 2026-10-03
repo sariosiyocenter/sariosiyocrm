@@ -1072,6 +1072,10 @@ model QuestionTagGroup {
   id        Int           @id @default(autoincrement())
   name      String
   order     Int           @default(0)
+  // Filtr qaysi fanga tegishli (null — hamma fanlarda ko'rinadi).
+  subjectId Int?
+  // 'qiyinlik' — foydalanuvchi qo'shgan qiyinlik darajalari (qiymatlari `asos` bilan).
+  tur       String?
   schoolId  Int
   createdAt DateTime      @default(now())
   tags      QuestionTag[]
@@ -1085,6 +1089,8 @@ model QuestionTag {
   group     QuestionTagGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   name      String
   order     Int              @default(0)
+  // Qiyinlik darajasi uchun: asosiy guruhi (1 — oson, 2 — o'rta, 3 — qiyin).
+  asos      Int?
   createdAt DateTime         @default(now())
 
   @@index([groupId])
@@ -1127,6 +1133,8 @@ model QuestionSubject {
   id        Int             @id @default(autoincrement())
   name      String
   order     Int             @default(0)
+  // Bo'limlar tartibi (bo'sh — hali mavzusi yo'q bo'limlar ham shu yerda turadi).
+  bolimlar  String[]        @default([])
   schoolId  Int
   createdAt DateTime        @default(now())
   topics    QuestionTopic[]

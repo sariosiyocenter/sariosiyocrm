@@ -1118,3 +1118,45 @@ Sinov: `test_andoza_varaq.mjs` 19/19 (bazasiz: tuzilmadan → tekshiruv → yozu
 → chizish → bo'yash → 2 bet o'qish), `dizayner_ui.mjs` 22/22 (brauzer: dizayner → sudrash, yozuv,
 logo, ustma-ust va yo'q savol xatolari → saqlash va qo'llash → universal varaq → 2 varaq skaner,
 ball → 409; ZZ o'chiriladi), regressiya: `test_varaq_render_oqish` 37/37.
+
+## 21. Bank ustunlari: hammasi shu ekranda (2026-10-03)
+
+Egasi (ovozli TZ): "fan qo'shish tushunarli, lekin fanda bo'limlar, bo'limda mavzular bor — hammasi
+savollar ro'yxati turgan birinchi panelda qo'shilsin; kirish-kirish-kirish qiyin; bir necha ustun,
+«buni bu yerga» uslubida; filtrlar fanga bo'ysunsin; oson/o'rta/qiyindan boshqa darajalarni ham o'zim
+qo'shay; hammasini o'zim qo'shaman". Yon paneldagi filtrlar o'rniga — tepada yonma-yon ustunlar.
+
+- **Ustunlar** (`bank/BankJadvali.tsx`, `bank/BankUstunlari.tsx`): Fan → Bo'lim → Mavzu → Qiyinlik →
+  foydalanuvchi filtrlari → "+ O'z filtringiz". Har ustun pastida «+ … qo'shish»: Enter qo'shadi va
+  maydon ochiq qoladi (ketma-ket yozish). Qatorda qalam (nom; mavzuda — bo'limi, darajada — guruhi)
+  va savat. Qatorni bosish — savollarni saralaydi (ustun ichida "yoki", ustunlar orasida "va").
+  Kam ishlatiladigan filtrlar (turi, holati, manba, fayl, izoh, matn, joylashuv, QID) — «Boshqa
+  filtrlar» tugmasi ostida. Qisqa yo'riqnoma (3 qadam) — yopsa eslab qoladi, «?» bilan qayta ochiladi.
+- **Biriktirish**: savol(lar) belgilansa ustunlar tepada yopishib turadi (kompyuterda) va qator
+  yonida tugma chiqadi: → mavzuga o'tkazish / darajani qo'yish, + filtrga biriktirish, − ajratish
+  (hammasi shu qiymatda bo'lsa), yonida "2/5". Savol kartochkasini qatorga sudrab tashlasa ham
+  bo'ladi; mavzuni bo'limga sudrash — bo'limini o'zgartiradi; kartochkadagi belgi yonidagi × —
+  ajratadi. Telefonda pastki paneldagi «Biriktirish» ustunlarga olib chiqadi.
+- **Bo'limlar**: `QuestionSubject.bolimlar String[]` — tartib va hali mavzusi yo'q bo'limlar.
+  API `POST/PUT/DELETE /api/bank/bolimlar` (+ `/tartib`): nom o'zgarsa mavzular, shu fan andozalari va
+  qulflanmagan imtihon qoidalarida ham; o'chirilsa mavzulari "bo'limsiz" qoladi.
+- **Fanga tegishli filtrlar**: `QuestionTagGroup.subjectId` (null — hamma fanda). Ustundagi globus —
+  "hamma fanlarda / faqat shu fanda". Yangi filtr joriy fanga ochiladi; fan o'chsa o'z filtrlari ham.
+  Eski filtrlar (subjectId null) hamma fanda ko'rinaveradi.
+- **Qiyinlik darajalari**: uchta asosiy (oson, o'rta, qiyin — imtihon tuzish shular bilan ishlaydi)
+  + foydalanuvchi darajalari: `QuestionTagGroup.tur = 'qiyinlik'` guruhidagi belgilar, `QuestionTag.asos`
+  (1–3) — qaysi asosiy guruhga kiradi. Daraja qo'yilsa savol qiyinligi = asos va belgi yoziladi
+  (`PUT questions/bulk {darajaId}`, savol muharririda ham); asosiy qiyinlik qo'yilsa yoki natijaga
+  moslansa — mos kelmaydigan daraja belgisi olinadi (`darajaniQoy`). Andoza qatorida daraja oddiy
+  filtr qiymati kabi tanlanadi. API: `POST /api/bank/darajalar`, nom/guruh — `PUT bank/belgilar/:id`.
+- **Tezlik**: ustunlardagi amallar ekranda darhol ko'rinadi (mahalliy holat, sonlar ham), serverga
+  fonda navbat bilan yoziladi; navbat bo'shagach ro'yxat jimgina qayta olinadi; xato bo'lsa xabar va
+  serverdagi holat qaytadi. Tanlov holati sahifadagi savollardan shu yerda sanaladi, tanlov sahifadan
+  katta bo'lsa — `POST /api/bank/tanlov-holati`.
+- Yuqoridagi «Tuzilma» tugmasi «Statistika» bo'ldi (fanlar bo'yicha sonlar, o'quv rejadan mavzular,
+  qiyinlikni natijaga moslash) — fan/bo'lim/mavzu qo'shish uchun endi u yerga kirish shart emas.
+
+Sinov: `test_bank4_api.mjs` 36/36 (bo'limlar, fan filtri, darajalar, tanlov holati, ro'yxat),
+`bank4_ui.mjs` 31/31 (brauzer: fan → bo'limlar → mavzular → daraja → filtr → →/+/− → sudrash →
+kartochkadan ajratish → muharrirda daraja → nom, o'chirish, yig'ish; ZZ o'chiriladi),
+regressiya: bank/imtihon/andoza mantiq testlari.

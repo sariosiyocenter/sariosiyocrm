@@ -545,7 +545,8 @@ export interface Question {
 }
 
 /** Bank filtri (belgi guruhi) va uning qiymatlari. */
-export interface BelgiGuruhi { id: number; name: string; order: number; tags: { id: number; name: string; order: number }[] }
+/** Filtr (belgi guruhi): `subjectId` — faqat shu fanniki (null — hamma fanda); `tur: 'qiyinlik'` — foydalanuvchi darajalari. */
+export interface BelgiGuruhi { id: number; name: string; order: number; subjectId?: number | null; tur?: string | null; tags: { id: number; name: string; order: number; asos?: number }[] }
 
 /** GET /api/bank/filtr — fan bo'yicha filtr ustunlari va sonlar (arxivsiz). */
 export interface BankFiltrMalumoti {
@@ -555,8 +556,11 @@ export interface BankFiltrMalumoti {
     holat: Record<'faol' | 'qoralama' | 'arxiv', number>;
     turlar: Record<SavolTuri, number>;
     qiyinlik: QiyinlikSoni;
-    bolimlar: { nom: string; soni: number }[];
+    /** Bo'limlar tartibi bilan (bo'shi ham); '' — bo'limsiz mavzular. `mavzular` — nechta mavzusi bor. */
+    bolimlar: { nom: string; soni: number; mavzular?: number }[];
     mavzular: { id: number; nom: string; bolim: string; soni: number }[];
+    /** Foydalanuvchi qo'shgan qiyinlik darajalari: `asos` — 1 oson, 2 o'rta, 3 qiyin guruhi. */
+    darajalar: { id: number; name: string; asos: number; soni: number }[];
     manbalar: { nom: string; soni: number }[];
     toplamlar: { nom: string; soni: number }[];
     /** Addmen REMARK qiymatlari. */

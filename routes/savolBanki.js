@@ -97,6 +97,29 @@ async function imtihonNomlariniYangila(orgIds, { fanId, eskiFan, yangiFan, mavzu
   }
 }
 
+/** Foydalanuvchi qo'shgan qiyinlik darajalari guruhi (tashkilotda bitta); `yarat` — bo'lmasa yaratiladi. */
+export async function darajaGuruhi(orgIds, yaratSchoolId = null) {
+  let g = await prisma.questionTagGroup.findFirst({ where: { schoolId: { in: orgIds }, tur: 'qiyinlik' }, include: { tags: { orderBy: [{ order: 'asc' }, { id: 'asc' }] } } });
+  if (!g && yaratSchoolId) g = await prisma.questionTagGroup.create({ data: { name: 'Qiyinlik darajalari', tur: 'qiyinlik', order: 0, schoolId: yaratSchoolId }, include: { tags: true } });
+  return g;
+}
+
+/**
+ * Savolning qiyinligi va daraja belgisi bir-biriga mos tursin: `darajaId` berilsa — shu daraja
+ * (qiyinlik uning asosi), aks holda faqat asosiy qiyinlik qo'yiladi va unga mos kelmaydigan
+ * daraja belgilari olinadi. Qaytadi: {tagIds, difficulty}.
+ */
+export async function darajaniQoy(orgIds, tagIds, difficulty, darajaId) {
+  const g = await darajaGuruhi(orgIds);
+  const daraja = new Map((g?.tags || []).map(t => [t.id, t]));
+  let teglar = (tagIds || []).filter(id => !daraja.has(id));
+  let d = qiyinlikDarajasi(difficulty);
+  const t = darajaId ? daraja.get(Number(darajaId)) : null;
+  if (t) { d = qiyinlikDarajasi(t.asos || 2); teglar = [...teglar, t.id]; }
+  else if (darajaId === undefined) teglar = [...teglar, ...(tagIds || []).filter(id => daraja.has(id) && qiyinlikDarajasi(daraja.get(id).asos || 2) === d)];
+  return { tagIds: teglar, difficulty: d };
+}
+
 export function registerSavolBankiRoutes(app) {
   const xato = (res, next) => err => (err instanceof XatoJavob ? res.status(err.status).json({ error: err.message }) : next(err));
 
@@ -218,6 +241,10 @@ export function registerSavolBankiRoutes(app) {
       const f = await fanniOl(parseInt(req.params.id), orgIds);
       const soni = await prisma.question.count({ where: { bankTopicId: { in: f.topics.map(t => t.id) } } });
       if (soni) return res.status(409).json({ error: `Fanda ${soni} ta savol bor — avval ularni boshqa fanga ko'chiring yoki o'chiring` });
+      // Fanning o'z filtrlari ham ketadi (boshqa fan savollariga biriktirilgan bo'lsa — olinadi).
+      const ozFiltrlari = await prisma.questionTagGroup.findMany({ where: { schoolId: { in: orgIds }, subjectId: f.id }, include: { tags: { select: { id: true } } } });
+      await belgilarniSavollardanOl(ozFiltrlari.flatMap(g => g.tags.map(t => t.id)), orgIds);
+      if (ozFiltrlari.length) await prisma.questionTagGroup.deleteMany({ where: { id: { in: ozFiltrlari.map(g => g.id) } } });
       await prisma.questionSubject.delete({ where: { id: f.id } });
       res.json({ success: true, name: f.name });
     } catch (err) { xato(res, next)(err); }
@@ -235,6 +262,7 @@ export function registerSavolBankiRoutes(app) {
       const t = await prisma.questionTopic.create({
         data: { subjectId: f.id, name, section: nomi(req.body.section) || null, order: f.topics.reduce((a, x) => Math.max(a, x.order), 0) + 1 },
       });
+      await bolimniRoyxatga(f, t.section);
       res.status(201).json(t);
     } catch (err) { xato(res, next)(err); }
   });
@@ -291,6 +319,7 @@ export function registerSavolBankiRoutes(app) {
       if (req.body.section !== undefined) d.section = nomi(req.body.section) || null;
       if (req.body.order !== undefined) d.order = parseInt(req.body.order) || 0;
       const yangi = await prisma.questionTopic.update({ where: { id: t.id }, data: d });
+      if (d.section) await bolimniRoyxatga(await prisma.questionSubject.findUnique({ where: { id: fan.id } }), d.section);
       if (yangiNom !== t.name || fan.id !== t.subjectId) {
         await prisma.question.updateMany({ where: { bankTopicId: t.id }, data: { topic: yangiNom, subject: fan.name } });
         await imtihonNomlariniYangila(orgIds, { mavzuId: t.id, yangiMavzu: yangiNom });
@@ -317,6 +346,104 @@ export function registerSavolBankiRoutes(app) {
     } catch (err) { xato(res, next)(err); }
   });
 
+  // --- Bo'limlar (fan ichidagi mavzular guruhi; nomi bilan yuritiladi) ---
+
+  const bolimlarRoyxati = f => {
+    const l = [...(f.bolimlar || [])];
+    for (const t of [...f.topics].sort((a, b) => a.order - b.order || a.id - b.id)) if (t.section && !l.some(x => kalit(x) === kalit(t.section))) l.push(t.section);
+    return l;
+  };
+
+  app.post('/api/bank/bolimlar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const f = await fanniOl(ANY_ID(req.body.subjectId), orgIds);
+      const name = nomi(req.body.name);
+      if (!name) return res.status(400).json({ error: "Bo'lim nomini kiriting" });
+      const l = bolimlarRoyxati(f);
+      if (l.some(x => kalit(x) === kalit(name))) return res.status(409).json({ error: `«${name}» bo'limi bu fanda bor` });
+      await prisma.questionSubject.update({ where: { id: f.id }, data: { bolimlar: [...l, name] } });
+      res.status(201).json({ name, fan: f.name });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Nomini o'zgartirish: mavzular, andozalar va qulflanmagan imtihon qoidalarida ham.
+  app.put('/api/bank/bolimlar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const f = await fanniOl(ANY_ID(req.body.subjectId), orgIds);
+      const eski = nomi(req.body.eski), yangi = nomi(req.body.yangi);
+      if (!yangi) return res.status(400).json({ error: "Bo'lim nomini kiriting" });
+      const l = bolimlarRoyxati(f);
+      if (!l.some(x => kalit(x) === kalit(eski))) return res.status(404).json({ error: "Bo'lim topilmadi" });
+      if (kalit(eski) !== kalit(yangi) && l.some(x => kalit(x) === kalit(yangi))) return res.status(409).json({ error: `«${yangi}» bo'limi bu fanda bor` });
+      const mavzular = f.topics.filter(t => kalit(t.section) === kalit(eski)).map(t => t.id);
+      await prisma.questionSubject.update({ where: { id: f.id }, data: { bolimlar: l.map(x => (kalit(x) === kalit(eski) ? yangi : x)) } });
+      if (mavzular.length) await prisma.questionTopic.updateMany({ where: { id: { in: mavzular } }, data: { section: yangi } });
+      await bolimNominiTarqat(orgIds, f, eski, yangi);
+      res.json({ name: yangi, eski, fan: f.name, mavzular: mavzular.length });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // O'chirish: mavzulari "bo'limsiz" bo'lib qoladi (mavzu va savollar o'chmaydi).
+  app.delete('/api/bank/bolimlar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const f = await fanniOl(ANY_ID(req.body?.subjectId ?? req.query.subjectId), orgIds);
+      const name = nomi(req.body?.name ?? req.query.name);
+      const l = bolimlarRoyxati(f);
+      if (!l.some(x => kalit(x) === kalit(name))) return res.status(404).json({ error: "Bo'lim topilmadi" });
+      const mavzular = f.topics.filter(t => kalit(t.section) === kalit(name)).map(t => t.id);
+      await prisma.questionSubject.update({ where: { id: f.id }, data: { bolimlar: l.filter(x => kalit(x) !== kalit(name)) } });
+      if (mavzular.length) await prisma.questionTopic.updateMany({ where: { id: { in: mavzular } }, data: { section: null } });
+      res.json({ success: true, name, fan: f.name, mavzular: mavzular.length });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Bo'limlar tartibi (names — yangi tartibda).
+  app.post('/api/bank/bolimlar/tartib', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const f = await fanniOl(ANY_ID(req.body.subjectId), orgIds);
+      const l = bolimlarRoyxati(f);
+      const yangi = (Array.isArray(req.body.names) ? req.body.names : []).map(x => l.find(y => kalit(y) === kalit(x))).filter(Boolean);
+      await prisma.questionSubject.update({ where: { id: f.id }, data: { bolimlar: [...new Set([...yangi, ...l])] } });
+      res.json({ success: true });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // --- Qiyinlik darajalari (foydalanuvchi qo'shadi: "Juda oson", "Biroz qiyin"...) ---
+
+  app.post('/api/bank/darajalar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const name = nomi(req.body.name, 60);
+      const asos = [1, 2, 3].includes(Number(req.body.asos)) ? Number(req.body.asos) : 2;
+      if (!name) return res.status(400).json({ error: 'Daraja nomini kiriting' });
+      const g = await darajaGuruhi(orgIds, req.user.schoolId || orgIds[0]);
+      if (['oson', "o'rta", 'qiyin'].includes(kalit(name)) || g.tags.some(t => kalit(t.name) === kalit(name))) return res.status(409).json({ error: `«${name}» darajasi bor` });
+      const t = await prisma.questionTag.create({ data: { groupId: g.id, name, asos, order: g.tags.reduce((a, x) => Math.max(a, x.order), 0) + 1 } });
+      res.status(201).json(t);
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Tanlangan savollar qayerga biriktirilgani: har mavzu, daraja va filtr qiymatida nechtasi.
+  app.post('/api/bank/tanlov-holati', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const ids = idlarRoyxati(req.body.ids);
+      const rows = ids.length ? await prisma.question.findMany({ where: { id: { in: ids }, schoolId: { in: orgIds } }, select: { bankTopicId: true, difficulty: true, tagIds: true } }) : [];
+      const mavzular = {}, belgilar = {};
+      const qiyinlik = [0, 0, 0];
+      for (const q of rows) {
+        if (q.bankTopicId) mavzular[q.bankTopicId] = (mavzular[q.bankTopicId] || 0) + 1;
+        qiyinlik[qiyinlikDarajasi(q.difficulty) - 1]++;
+        for (const t of q.tagIds || []) belgilar[t] = (belgilar[t] || 0) + 1;
+      }
+      res.json({ jami: rows.length, mavzular, belgilar, qiyinlik });
+    } catch (err) { xato(res, next)(err); }
+  });
+
   // --- Savollarni ommaviy o'zgartirish ---
 
   // Tanlangan savollar: qiyinlik, holat, mavzu, manba, belgilar (qo'shish, olib
@@ -328,6 +455,20 @@ export function registerSavolBankiRoutes(app) {
       if (!ids.length) return res.status(400).json({ error: 'Savollar tanlanmagan' });
       const d = {};
       if (req.body.difficulty !== undefined) d.difficulty = qiyinlikDarajasi(req.body.difficulty);
+      // Daraja (foydalanuvchi qo'shgan): qiyinlik uning asosiga tenglashadi; asosiy qiyinlik
+      // qo'yilsa — eski daraja belgilari olinadi.
+      const darajaOl = [], darajaQosh = [];
+      if (req.body.darajaId !== undefined || req.body.difficulty !== undefined) {
+        const g = await darajaGuruhi(orgIds);
+        if (g) darajaOl.push(...g.tags.map(t => t.id));
+        const did = ANY_ID(req.body.darajaId);
+        if (did) {
+          const t = g?.tags.find(x => x.id === did);
+          if (!t) return res.status(404).json({ error: 'Daraja topilmadi' });
+          d.difficulty = qiyinlikDarajasi(t.asos || 2);
+          darajaQosh.push(t.id);
+        }
+      }
       if (req.body.status !== undefined) {
         if (!SAVOL_HOLATLARI.includes(req.body.status)) return res.status(400).json({ error: "Holat noto'g'ri" });
         d.status = req.body.status;
@@ -340,8 +481,8 @@ export function registerSavolBankiRoutes(app) {
       if (req.body.remark !== undefined) d.remark = nomi(req.body.remark) || null;
       if (req.body.joylashuv !== undefined) d.joylashuv = [1, 2, 4].includes(Number(req.body.joylashuv)) ? Number(req.body.joylashuv) : null;
       if (req.body.ishlatilishNol === true) d.usedCount = 0;
-      const qosh = idlarRoyxati(req.body.tagQosh, 50);
-      const ol = idlarRoyxati(req.body.tagOl, 500);
+      const qosh = [...idlarRoyxati(req.body.tagQosh, 50), ...darajaQosh];
+      const ol = [...idlarRoyxati(req.body.tagOl, 500), ...darajaOl];
       // Guruh bo'yicha almashtirish: guruhning boshqa belgilari olinadi, berilganlari qo'yiladi.
       for (const g of Array.isArray(req.body.guruhlar) ? req.body.guruhlar.slice(0, 20) : []) {
         const guruh = await guruhniOl(ANY_ID(g?.groupId), orgIds);
@@ -410,10 +551,12 @@ export function registerSavolBankiRoutes(app) {
       const orgIds = await organizationSchoolIds(req.user);
       const name = nomi(req.body.name, 120);
       if (!name) return res.status(400).json({ error: 'Filtr nomini kiriting' });
-      const bor = await prisma.questionTagGroup.findMany({ where: { schoolId: { in: orgIds } }, select: { name: true, order: true } });
-      if (bor.some(g => kalit(g.name) === kalit(name))) return res.status(409).json({ error: `«${name}» filtri bor` });
-      const g = await prisma.questionTagGroup.create({ data: { name, order: bor.reduce((a, x) => Math.max(a, x.order), 0) + 1, schoolId: req.user.schoolId || orgIds[0] } });
-      res.status(201).json(g);
+      // subjectId — filtr shu fanniki (boshqa fanda ko'rinmaydi); bo'lmasa hamma fanda.
+      const subjectId = ANY_ID(req.body.subjectId) ? (await fanniOl(ANY_ID(req.body.subjectId), orgIds)).id : null;
+      const bor = await prisma.questionTagGroup.findMany({ where: { schoolId: { in: orgIds } }, select: { name: true, order: true, subjectId: true } });
+      if (bor.some(g => kalit(g.name) === kalit(name) && (!subjectId || !g.subjectId || g.subjectId === subjectId))) return res.status(409).json({ error: `«${name}» filtri bor` });
+      const g = await prisma.questionTagGroup.create({ data: { name, subjectId, order: bor.reduce((a, x) => Math.max(a, x.order), 0) + 1, schoolId: req.user.schoolId || orgIds[0] } });
+      res.status(201).json({ ...g, tags: [] });
     } catch (err) { xato(res, next)(err); }
   });
 
@@ -421,12 +564,17 @@ export function registerSavolBankiRoutes(app) {
     try {
       const orgIds = await organizationSchoolIds(req.user);
       const g = await guruhniOl(parseInt(req.params.id), orgIds);
+      if (g.tur === 'qiyinlik') return res.status(400).json({ error: "Qiyinlik darajalari «Qiyinlik» ustunida boshqariladi" });
       const d = {};
+      if (req.body.subjectId !== undefined) d.subjectId = ANY_ID(req.body.subjectId) ? (await fanniOl(ANY_ID(req.body.subjectId), orgIds)).id : null;
       if (req.body.name !== undefined) {
         d.name = nomi(req.body.name, 120);
         if (!d.name) return res.status(400).json({ error: 'Filtr nomini kiriting' });
-        const boshqa = await prisma.questionTagGroup.findMany({ where: { schoolId: { in: orgIds }, id: { not: g.id } }, select: { name: true } });
-        if (boshqa.some(x => kalit(x.name) === kalit(d.name))) return res.status(409).json({ error: `«${d.name}» filtri bor` });
+      }
+      if (d.name !== undefined || d.subjectId !== undefined) {
+        const yangiNom = d.name ?? g.name, fanId = d.subjectId !== undefined ? d.subjectId : g.subjectId;
+        const boshqa = await prisma.questionTagGroup.findMany({ where: { schoolId: { in: orgIds }, id: { not: g.id } }, select: { name: true, subjectId: true } });
+        if (boshqa.some(x => kalit(x.name) === kalit(yangiNom) && (!fanId || !x.subjectId || x.subjectId === fanId))) return res.status(409).json({ error: `«${yangiNom}» filtri bor` });
       }
       if (req.body.order !== undefined) d.order = parseInt(req.body.order) || 0;
       res.json(await prisma.questionTagGroup.update({ where: { id: g.id }, data: d }));
@@ -437,6 +585,7 @@ export function registerSavolBankiRoutes(app) {
     try {
       const orgIds = await organizationSchoolIds(req.user);
       const g = await guruhniOl(parseInt(req.params.id), orgIds);
+      if (g.tur === 'qiyinlik') return res.status(400).json({ error: "Qiyinlik darajalari «Qiyinlik» ustunida boshqariladi" });
       await belgilarniSavollardanOl(g.tags.map(t => t.id), orgIds);
       await prisma.questionTagGroup.delete({ where: { id: g.id } });
       res.json({ success: true, name: g.name });
@@ -467,6 +616,11 @@ export function registerSavolBankiRoutes(app) {
         if (qardosh.some(x => kalit(x.name) === kalit(d.name))) return res.status(409).json({ error: `«${d.name}» bu filtrda bor` });
       }
       if (req.body.order !== undefined) d.order = parseInt(req.body.order) || 0;
+      // Daraja boshqa guruhga (oson / o'rta / qiyin) o'tsa — shu darajadagi savollarning qiyinligi ham.
+      if (t.group.tur === 'qiyinlik' && [1, 2, 3].includes(Number(req.body.asos)) && Number(req.body.asos) !== t.asos) {
+        d.asos = Number(req.body.asos);
+        await prisma.question.updateMany({ where: { schoolId: { in: orgIds }, tagIds: { has: t.id } }, data: { difficulty: d.asos } });
+      }
       res.json(await prisma.questionTag.update({ where: { id: t.id }, data: d }));
     } catch (err) { xato(res, next)(err); }
   });
@@ -515,7 +669,10 @@ export function registerSavolBankiRoutes(app) {
         turlar[turi(q.type)]++;
         for (const t of q.tagIds || []) belgi[t] = (belgi[t] || 0) + 1;
       }
-      const bolimlar = [...new Set(mavzular.map(t => t.section || ''))].map(nom => ({ nom, soni: bolimSoni.get(nom) || 0 }));
+      // Bo'limlar: fan ro'yxatidagi tartibda (bo'shi ham), oxirida — bo'limsiz mavzular bo'lsa — ''.
+      const bolimlar = [...bolimlarRoyxati(fan), ...(mavzular.some(t => !t.section) ? [''] : [])]
+        .map(nom => ({ nom, soni: bolimSoni.get(nom) || 0, mavzular: mavzular.filter(t => kalit(t.section) === kalit(nom)).length }));
+      const hammaGuruh = await belgiGuruhlari(orgIds, fan.id);
       const qatorlar = m => [...m.entries()].map(([nom, soni]) => ({ nom, soni })).sort((a, b) => (a.nom ? 0 : 1) - (b.nom ? 0 : 1) || a.nom.localeCompare(b.nom));
       res.json({
         fan: { id: fan.id, name: fan.name },
@@ -523,7 +680,8 @@ export function registerSavolBankiRoutes(app) {
         bolimlar,
         mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
         manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi,
-        guruhlar: await belgiGuruhlari(orgIds),
+        guruhlar: hammaGuruh.filter(g => g.tur !== 'qiyinlik'),
+        darajalar: (hammaGuruh.find(g => g.tur === 'qiyinlik')?.tags || []).map(t => ({ id: t.id, name: t.name, asos: qiyinlikDarajasi(t.asos || 2), soni: belgi[t.id] || 0 })),
       });
     } catch (err) { xato(res, next)(err); }
   });
@@ -646,7 +804,16 @@ export function registerSavolBankiRoutes(app) {
         const d = natijaQiyinligi(q.pCorrect);
         if (d && qiyinlikMosEmas(q.difficulty, q.pCorrect)) guruh[d].push(q.id);
       }
-      for (const [d, idlar] of Object.entries(guruh)) if (idlar.length) await prisma.question.updateMany({ where: { id: { in: idlar } }, data: { difficulty: Number(d) } });
+      const darajalar = (await darajaGuruhi(orgIds))?.tags || [];
+      for (const [d, idlar] of Object.entries(guruh)) {
+        if (!idlar.length) continue;
+        await prisma.question.updateMany({ where: { id: { in: idlar } }, data: { difficulty: Number(d) } });
+        // Qiyinligi o'zgargan savolda boshqa guruhdagi daraja belgisi qolmasin.
+        const mosEmas = darajalar.filter(t => qiyinlikDarajasi(t.asos || 2) !== Number(d)).map(t => t.id);
+        if (mosEmas.length) await prisma.$executeRaw`
+          UPDATE "Question" SET "tagIds" = ARRAY(SELECT x FROM unnest("tagIds") AS x WHERE NOT (x = ANY(${mosEmas}::int[])))
+          WHERE id = ANY(${idlar}::int[]) AND "tagIds" && ${mosEmas}::int[]`;
+      }
       res.json({ ozgardi: guruh[1].length + guruh[2].length + guruh[3].length, tekshirildi: royxat.length });
     } catch (err) { xato(res, next)(err); }
   });
@@ -657,11 +824,42 @@ export function registerSavolBankiRoutes(app) {
 const IDLAR_MAX = 20000;
 const idlarRoyxati = (v, max = IDLAR_MAX) => [...new Set((Array.isArray(v) ? v : []).map(ANY_ID).filter(Boolean))].slice(0, max);
 
-async function belgiGuruhlari(orgIds) {
+/** Filtrlar (belgi guruhlari). `fanId` berilsa — shu fanniki va hamma fanga umumiylari. */
+async function belgiGuruhlari(orgIds, fanId = null) {
   const guruhlar = await prisma.questionTagGroup.findMany({
-    where: { schoolId: { in: orgIds } }, include: { tags: { orderBy: [{ order: 'asc' }, { id: 'asc' }] } }, orderBy: [{ order: 'asc' }, { id: 'asc' }],
+    where: { schoolId: { in: orgIds }, ...(fanId ? { OR: [{ subjectId: null }, { subjectId: fanId }] } : {}) },
+    include: { tags: { orderBy: [{ order: 'asc' }, { id: 'asc' }] } }, orderBy: [{ order: 'asc' }, { id: 'asc' }],
   });
-  return guruhlar.map(g => ({ id: g.id, name: g.name, order: g.order, tags: g.tags.map(t => ({ id: t.id, name: t.name, order: t.order })) }));
+  return guruhlar.map(g => ({
+    id: g.id, name: g.name, order: g.order, subjectId: g.subjectId, tur: g.tur,
+    tags: g.tags.map(t => ({ id: t.id, name: t.name, order: t.order, ...(t.asos ? { asos: t.asos } : {}) })),
+  }));
+}
+
+/** Mavzuga bo'lim yozilganda u fan ro'yxatida bo'lmasa — qo'shiladi (tartib saqlansin). */
+async function bolimniRoyxatga(fan, bolim) {
+  const b = nomi(bolim);
+  if (!fan || !b || (fan.bolimlar || []).some(x => kalit(x) === kalit(b))) return;
+  await prisma.questionSubject.update({ where: { id: fan.id }, data: { bolimlar: [...(fan.bolimlar || []), b] } });
+}
+
+/** Bo'lim nomi o'zgarsa: shu fan andozalari va qulflanmagan imtihon qoidalaridagi nomi ham. */
+async function bolimNominiTarqat(orgIds, fan, eski, yangi) {
+  const andozalar = await prisma.questionBlueprint.findMany({ where: { schoolId: { in: orgIds }, subjectId: fan.id } });
+  for (const a of andozalar) {
+    const rows = Array.isArray(a.rows) ? a.rows : [];
+    if (!rows.some(r => r?.bolim && kalit(r.bolim) === kalit(eski))) continue;
+    await prisma.questionBlueprint.update({ where: { id: a.id }, data: { rows: rows.map(r => (r?.bolim && kalit(r.bolim) === kalit(eski) ? { ...r, bolim: yangi } : r)) } });
+  }
+  const exams = await prisma.exam.findMany({ where: { schoolId: { in: orgIds }, lockedAt: null }, select: { id: true, blocks: true } });
+  for (const e of exams) {
+    let ozgardi = false;
+    const blocks = (Array.isArray(e.blocks) ? e.blocks : []).map(b => {
+      if (Number(b.fanId) !== fan.id) return b;
+      return { ...b, topicRules: (b.topicRules || []).map(r => { if (!r?.section || kalit(r.section) !== kalit(eski)) return r; ozgardi = true; return { ...r, section: yangi }; }) };
+    });
+    if (ozgardi) await prisma.exam.update({ where: { id: e.id }, data: { blocks } });
+  }
 }
 
 async function guruhniOl(id, orgIds) {
@@ -704,9 +902,11 @@ async function royxatSharti(f, orgIds) {
     if (tanlangan.length) mavzular = mavzular.filter(t => tanlangan.includes(t.id));
     and.push({ bankTopicId: { in: mavzular.map(t => t.id) } });
   }
+  // Qiyinlik ustuni: asosiy darajalar va foydalanuvchi darajalari (belgi) — "yoki".
   const qiyin = (Array.isArray(f.qiyinlik) ? f.qiyinlik : []).map(Number).filter(d => [1, 2, 3].includes(d));
-  if (qiyin.length && qiyin.length < 3) {
-    and.push({ OR: qiyin.map(d => ({ difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 } })) });
+  const darajalar = idlarRoyxati(f.darajalar, 50);
+  if (qiyin.length < 3 && (qiyin.length || darajalar.length)) {
+    and.push({ OR: [...qiyin.map(d => ({ difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 } })), ...(darajalar.length ? [{ tagIds: { hasSome: darajalar } }] : [])] });
   }
   const manbalar = matnlar(f.manbalar);
   if (manbalar.length) {

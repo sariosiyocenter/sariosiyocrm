@@ -13,12 +13,12 @@ export const QIYINLIK: { d: Qiyinlik; nom: string; matn: string; fon: string; ch
 export const qiyinlikDaraja = (d: number | null | undefined) => QIYINLIK[Math.min(3, Math.max(1, Number(d) || 1)) - 1];
 
 /** "● Oson 5" — qiyinlik va (ixtiyoriy) soni. */
-export function QiyinlikYorligi({ d, soni, xira }: { d: number; soni?: number; xira?: boolean }) {
+export function QiyinlikYorligi({ d, soni, xira, nom }: { d: number; soni?: number; xira?: boolean; /** Foydalanuvchi darajasi nomi ("Juda oson") — rangi asosiy guruhniki. */ nom?: string }) {
   const q = qiyinlikDaraja(d);
   return (
     <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${xira ? 'border-chiziq bg-ichki text-matn-xira' : `${q.fon} ${q.matn} ${q.chiziq}`}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${xira ? 'bg-matn-xira/50' : q.nuqta}`} />
-      {q.nom}{soni !== undefined && <span className="raqam">{soni}</span>}
+      {nom || q.nom}{soni !== undefined && <span className="raqam">{soni}</span>}
     </span>
   );
 }
