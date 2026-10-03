@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImtihonApi } from '../useImtihonApi';
+import { qiyinlikniSozla, qiyinlikMahalliyVersiya } from './qiyinlik';
 import type { BankDaraxt, BankFan, BankMavzu } from '../../../types';
 
 /**
@@ -11,9 +12,16 @@ export function useBankDaraxt(til = '') {
   const [daraxt, setDaraxt] = useState<BankDaraxt | null>(null);
   const [xato, setXato] = useState<string | null>(null);
 
+  const navbat = useRef(0);
   const yangila = useCallback(async () => {
+    const n = ++navbat.current;
+    const v = qiyinlikMahalliyVersiya();
     try {
       const d = await soro<BankDaraxt>('GET', `bank/daraxt${til ? `?til=${til}` : ''}`);
+      // Bu orada yangiroq so'rov ketgan bo'lsa — bu javob eskirgan.
+      if (n !== navbat.current) return d;
+      // Qiyinlik darajalari nomi va olib tashlanganlari — butun ilova uchun (bank, muharrir, imtihon tuzish).
+      qiyinlikniSozla(d.qiyinlik, { agar: v });
       setDaraxt(d);
       setXato(null);
       return d;

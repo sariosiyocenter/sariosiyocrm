@@ -1,3 +1,4 @@
+import { QIYINLIK } from './bank/qiyinlik';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Lock, Unlock, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ArrowRight, BookOpen, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +20,8 @@ interface Qoida {
 }
 interface KalitHolat { kalit: string; session: number; code: string; jami: number; toldirilgan: number; tayyor: boolean }
 const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', moslash: 'moslash', yozma: 'yozma' };
-const QIYIN: Record<number, string> = { 1: 'oson', 2: "o'rta", 3: 'qiyin' };
+// Qiyinlik nomlari bankdagi sozlamadan (foydalanuvchi o'zgartirgan bo'lishi mumkin).
+const QIYIN: Record<number, string> = new Proxy({} as Record<number, string>, { get: (_, d) => (QIYINLIK[Number(d) - 1]?.nom || '').toLowerCase() });
 const qoidaNomi = (q: { mavzu: string; tur: string; qiyinlik: number; tanlangan?: boolean }) =>
   q.tanlangan ? `Tanlangan savollar · ${TUR[q.tur]}` : `${q.mavzu || 'Istalgan mavzu'} · ${TUR[q.tur]}${q.qiyinlik ? ` · ${QIYIN[q.qiyinlik]}` : ''}`;
 

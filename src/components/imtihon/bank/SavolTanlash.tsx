@@ -105,7 +105,7 @@ export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, on
             <div className="flex flex-wrap items-center gap-2 p-3 border-b border-chiziq shrink-0">
               <Tanlov kichik qiymat={d} onChange={setD} variantlar={[
                 { v: 0, nom: `Hammasi ${yaroqli.length}` },
-                ...QIYINLIK.map(q => ({ v: q.d, nom: <span className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{q.nom} <span className="raqam text-matn-xira">{soniD(q.d)}</span></span> })),
+                ...QIYINLIK.filter(q => !q.yashirin || soniD(q.d) > 0).map(q => ({ v: q.d, nom: <span className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{q.nom} <span className="raqam text-matn-xira">{soniD(q.d)}</span></span> })),
               ]} />
               <div className="relative flex-1 min-w-40">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />

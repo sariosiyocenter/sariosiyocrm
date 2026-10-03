@@ -16,7 +16,7 @@ import { yetadimi } from '../lib/ruxsatlar.js';
 import { markazBrendi } from '../lib/markazBrendi.js';
 import { raschBaholash, tBallar, raschDarajasi } from '../lib/rasch.js';
 import { registerImtihonAIRoutes } from './imtihonAI.js';
-import { registerSavolBankiRoutes, bankniSinxronla, mavzuniNomdanTop, darajaniQoy } from './savolBanki.js';
+import { registerSavolBankiRoutes, bankniSinxronla, mavzuniNomdanTop, darajaniQoy, qiyinlikSozlamasi, yaqinDaraja } from './savolBanki.js';
 import {
   HARFLAR, VARIANT_KODLARI, IMTIHON_HOLATLARI, SAVOL_HOLATLARI, YECHIM_HOLATLARI, qiyinlikDarajasi,
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
@@ -661,6 +661,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       d.type = d.type || 'yopiq';
       d.status = d.status || 'faol';
       const orgIds = await organizationSchoolIds(req.user);
+      // Yashirilgan qiyinlik darajasiga savol tushmaydi — eng yaqin ko'rinadiganiga yoziladi.
+      d.difficulty = yaqinDaraja(d.difficulty ?? 1, await qiyinlikSozlamasi(orgIds));
       await savolMavzusi(orgIds, d, schoolId);
       const xato = savolniTekshir(d);
       if (xato) return res.status(400).json({ error: xato });
@@ -683,10 +685,12 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       if (questions.length > 2000) return res.status(400).json({ error: "Bir martada ko'pi bilan 2000 ta savol" });
       const data = [];
       const xatolar = [];
+      const asosiyDarajalar = await qiyinlikSozlamasi(await organizationSchoolIds(req.user));
       questions.forEach((raw, i) => {
         const d = savolMalumoti(raw || {});
         d.type = d.type || 'yopiq';
         d.status = d.status || 'faol';
+        d.difficulty = yaqinDaraja(d.difficulty ?? 1, asosiyDarajalar);
         const xato = savolniTekshir(d);
         if (xato) { xatolar.push({ qator: raw?.qator ?? i + 1, xato }); return; }
         data.push({ ...d, text: d.text ?? '', schoolId, createdById: req.user.id || null });
@@ -715,6 +719,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         await savolMavzusi(orgIds, m, eski.schoolId);
         Object.assign(d, { bankTopicId: m.bankTopicId ?? eski.bankTopicId, subject: m.subject, topic: m.topic });
       } else delete d.bankTopicId;
+      if (d.difficulty !== undefined && d.difficulty !== eski.difficulty) d.difficulty = yaqinDaraja(d.difficulty, await qiyinlikSozlamasi(orgIds));
       // Qiyinlik yoki daraja o'zgarsa — daraja belgisi qiyinlikka mos tursin.
       if (req.body.darajaId !== undefined || (d.difficulty !== undefined && d.difficulty !== eski.difficulty)) {
         Object.assign(d, await darajaniQoy(orgIds, d.tagIds ?? eski.tagIds, d.difficulty ?? eski.difficulty, req.body.darajaId === undefined ? undefined : req.body.darajaId || null));

@@ -3,7 +3,7 @@ import { Trash2, AlertTriangle, CheckCircle2, ListChecks, X, LayoutList, Loader2
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, INPUT, SELECT, Tanlov } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
-import { QIYINLIK, QiyinlikYorligi } from '../bank/qiyinlik';
+import { QIYINLIK, QiyinlikYorligi, useQiyinlik } from '../bank/qiyinlik';
 import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
 import SavolTanlash from '../bank/SavolTanlash';
 import { andozadanQoidalar } from './andozadan';
@@ -148,6 +148,9 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   qatorlar.push({ kalit: 'x', mavzuId: null, nom: '', sonlar: jadval.get('x')?.sonlar || [0, 0, 0, 0], bor: [...fanBor, yig(fanBor)] });
 
   const ustunJami = [0, 1, 2, 3].map(i => qatorlar.reduce((a, q) => a + q.sonlar[i], 0));
+  // Bankda olib tashlangan qiyinlik darajasining ustuni ko'rinmaydi (eski qoidada soni bo'lmasa).
+  useQiyinlik();
+  const ustunBor = (i: number) => i === 3 || !QIYINLIK[i].yashirin || ustunJami[i] > 0;
   const tasodifiyYopiq = yig(ustunJami);
   const raqamliBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.raqamli), 0);
   const yozmaBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.yozma), 0);
@@ -266,7 +269,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                   <span className="text-matn-xira shrink-0">jami <b className="text-matn raqam">{yig(q.sonlar)}</b></span>
                 </div>
                 <div className="grid grid-cols-4 gap-1">
-                  {q.sonlar.map((n, i) => (
+                  {q.sonlar.map((n, i) => ustunBor(i) && (
                     <div key={i} className="flex flex-col items-center gap-0.5">
                       <span className={`text-[10.5px] font-semibold ${i < 3 ? QIYINLIK[i].matn : 'text-matn-sokin'}`}>{i < 3 ? QIYINLIK[i].nom : 'Aralash'}</span>
                       <Katak qator={q} i={i} n={n} kopaytma={kopaytma} disabled={qulf || q.kalit.startsWith('n:')} onChange={v => katak(q.kalit, q, i, v)} />
@@ -277,7 +280,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             ))}
             <p className="flex flex-wrap justify-between gap-2 px-1 text-[12.5px] font-semibold text-matn">
               <span>Jami <span className="raqam">{tasodifiyYopiq}</span></span>
-              <span className="flex gap-2">{ustunJami.slice(0, 3).map((n, i) => <span key={i} className={`raqam ${QIYINLIK[i].matn}`}>{QIYINLIK[i].nom} {n}</span>)}{ustunJami[3] > 0 && <span className="raqam text-matn-sokin">aralash {ustunJami[3]}</span>}</span>
+              <span className="flex gap-2">{ustunJami.slice(0, 3).map((n, i) => ustunBor(i) && <span key={i} className={`raqam ${QIYINLIK[i].matn}`}>{QIYINLIK[i].nom} {n}</span>)}{ustunJami[3] > 0 && <span className="raqam text-matn-sokin">aralash {ustunJami[3]}</span>}</span>
             </p>
           </div>
           <div className="hidden sm:block overflow-x-auto rounded-xl border border-chiziq bg-sirt">
@@ -285,7 +288,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
               <thead className="bg-ichki text-matn-sokin">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold">Mavzu</th>
-                  {QIYINLIK.map(q => <th key={q.d} className={`px-1 py-2 text-center font-semibold w-[76px] ${q.matn}`}>{q.nom}</th>)}
+                  {QIYINLIK.map(q => ustunBor(q.d - 1) && <th key={q.d} className={`px-1 py-2 text-center font-semibold w-[76px] ${q.matn}`}>{q.nom}</th>)}
                   <th className="px-1 py-2 text-center font-semibold w-[76px]" title="Istalgan qiyinlikdan">Aralash</th>
                   <th className="px-2 py-2 text-center font-semibold w-12">Jami</th>
                 </tr>
@@ -299,7 +302,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                         {q.kalit === 'x' ? <span className="text-matn-sokin">Istalgan mavzu</span> : q.nom}
                         {bankdaYoq && <span className="ml-1.5 text-[11px] text-xato">bankda yo'q</span>}
                       </td>
-                      {q.sonlar.map((n, i) => (
+                      {q.sonlar.map((n, i) => ustunBor(i) && (
                         <td key={i} className="px-1 py-1.5 text-center">
                           <Katak qator={q} i={i} n={n} kopaytma={kopaytma} disabled={qulf || bankdaYoq} onChange={v => katak(q.kalit, q, i, v)} />
                         </td>
@@ -312,7 +315,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
               <tfoot className="bg-ichki">
                 <tr>
                   <td className="px-3 py-2 font-semibold text-matn-sokin">Jami</td>
-                  {ustunJami.map((n, i) => <td key={i} className={`px-1 py-2 text-center font-bold raqam ${i < 3 && n ? QIYINLIK[i].matn : 'text-matn'}`}>{n}</td>)}
+                  {ustunJami.map((n, i) => ustunBor(i) && <td key={i} className={`px-1 py-2 text-center font-bold raqam ${i < 3 && n ? QIYINLIK[i].matn : 'text-matn'}`}>{n}</td>)}
                   <td className="px-2 py-2 text-center font-bold text-matn raqam">{tasodifiyYopiq}</td>
                 </tr>
               </tfoot>

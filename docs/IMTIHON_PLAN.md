@@ -1160,3 +1160,31 @@ Sinov: `test_bank4_api.mjs` 36/36 (bo'limlar, fan filtri, darajalar, tanlov hola
 `bank4_ui.mjs` 31/31 (brauzer: fan → bo'limlar → mavzular → daraja → filtr → →/+/− → sudrash →
 kartochkadan ajratish → muharrirda daraja → nom, o'chirish, yig'ish; ZZ o'chiriladi),
 regressiya: bank/imtihon/andoza mantiq testlari.
+
+### 21.1 Egasining izohlari bo'yicha (2026-10-03, kechroq)
+
+"Bo'lim qaysi fanga kirishi yozilmagan; «Fan» bilan «Fanlar» alohida yotibdi; xohlagancha o'zim
+kirita olay; balki qiyinlikni 2 ga bo'larman."
+
+- Ustunlar uch guruhga ajratildi, har birining tepasida nomi: **Tuzilma** (fan → bo'lim → mavzu,
+  orasida strelka), **Qiyinlik**, **O'z filtrlaringiz**. Bo'lim ustuni sarlavhasi ostida «… fani»,
+  Mavzu ustunida «… bo'limi» yoki «… fani — hamma bo'lim». Shunda «Fan» (tuzilma) va foydalanuvchining
+  «Fanlar» filtri aralashmaydi.
+- **Qiyinlik to'liq foydalanuvchiniki**: asosiy uch daraja ham nomi o'zgartiriladi va olib tashlanadi
+  (masalan faqat ikkitasi qoladi). Sozlama — `QuestionTagGroup.sozlama` (tur 'qiyinlik' guruhida):
+  `{1: {nom?, yashirin?}, 2: …, 3: …}`; API `PUT /api/bank/darajalar/asosiy/:d {name?, yashirin?}`.
+  Savoli bor daraja olinmaydi, oxirgisi ham. Olib tashlangan o'rin «Daraja qo'shish»da shu rang
+  tanlansa qaytadi (rang oldindan tanlangan turadi). Olib tashlangan darajaga yozilgan savol
+  (import, AI, natijaga moslash) eng yaqin ko'rinadigan darajaga tushadi (`yaqinDaraja`; teng
+  uzoqlikda — osonrog'iga). Imtihon tuzish o'zgarmagan: uch o'rin qoladi, bo'sh o'rin ulushi
+  qo'shnilariga o'tadi (`taqsimla`).
+- Nomlar butun ilovada bir joydan: `bank/qiyinlik.tsx` (`qiyinlikniSozla`, `useQiyinlik`,
+  `korinadiganQiyinlik`) — `bank/daraxt` javobidagi `qiyinlik` dan to'ladi. Imtihon bloki jadvali,
+  andoza, savol tanlash va muharrirda olib tashlangan daraja ko'rinmaydi.
+- Eskirgan javoblar qo'llanmaydi: `useBankDaraxt` faqat oxirgi so'rov javobini oladi, ekranda
+  o'zgargan qiyinlik sozlamasini eski javob bosib ketmaydi (`qiyinlikMahalliyVersiya`).
+- DEMO fanlar, DEMO imtihonlar va ularning savollari egasining buyrug'i bilan shu kuni bazadan
+  o'chirildi (zaxira — `scratch/demo_ochirildi_2026-10-03_*.json`).
+
+Sinov: `test_bank4_api.mjs` 45/45, `bank4_ui.mjs` 37/37 (daraja nomi → olib tashlash → 2 ta → qaytarish;
+guruh sarlavhalari; bo'limda fan nomi).

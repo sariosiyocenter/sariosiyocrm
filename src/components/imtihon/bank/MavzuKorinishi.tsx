@@ -6,7 +6,7 @@ import { useImtihonApi } from '../useImtihonApi';
 import { Karta, Tugma, Tanlov, INPUT, SELECT, Yuklanmoqda, Maydon } from '../ui';
 import { oddiyMatn } from '../../../lib/matn';
 import { SavolKartasi, SavolOynasi } from './SavolKartasi';
-import { QIYINLIK, QiyinlikTanlov, qiyinlikDaraja } from './qiyinlik';
+import { QIYINLIK, QiyinlikTanlov, qiyinlikDaraja, useQiyinlik } from './qiyinlik';
 import type { BankDaraxt, BankFan, BankMavzu, Question, SavolTuri } from '../../../types';
 
 // Bankning uchinchi qavati — mavzu: savollar qiyinlik bo'yicha uch ustunda
@@ -47,6 +47,9 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onQ
       (!k || oddiyMatn(q.text).toLowerCase().includes(k) || String(q.id) === k));
   }, [savollar, arxiv, tur, qidiruv]);
   const ustun = (d: number) => korinadi.filter(q => qiyinlikDaraja(q.difficulty).d === d);
+  // Olib tashlangan daraja faqat unda savol qolgan bo'lsa ko'rinadi.
+  useQiyinlik();
+  const darajalar = QIYINLIK.filter(q => !q.yashirin || ustun(q.d).length > 0);
   const arxivSoni = (savollar || []).filter(q => q.status === 'arxiv').length;
 
   const ommaviy = async (ids: number[], patch: { difficulty?: number; status?: string; bankTopicId?: number }, xabar: string) => {
@@ -147,7 +150,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onQ
         <>
           {/* Telefonda: bitta ustun, qiyinlik — tab. */}
           <div className="md:hidden space-y-3">
-            <Tanlov qiymat={mobilD} onChange={setMobilD} variantlar={QIYINLIK.map(q => ({
+            <Tanlov qiymat={mobilD} onChange={setMobilD} variantlar={darajalar.map(q => ({
               v: q.d, nom: <span className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${q.nuqta}`} />{q.nom} <span className="raqam text-matn-xira">{ustun(q.d).length}</span></span>,
             }))} />
             <div className="space-y-2">
@@ -156,8 +159,8 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onQ
             </div>
           </div>
           {/* Kompyuterda: uch ustun, karta boshqa ustunga sudraladi. */}
-          <div className="hidden md:grid grid-cols-3 gap-3 items-start">
-            {QIYINLIK.map(q => {
+          <div className="hidden md:grid gap-3 items-start" style={{ gridTemplateColumns: `repeat(${darajalar.length}, minmax(0, 1fr))` }}>
+            {darajalar.map(q => {
               const royxat = ustun(q.d);
               return (
                 <section key={q.d} aria-label={`${q.nom} savollar`}

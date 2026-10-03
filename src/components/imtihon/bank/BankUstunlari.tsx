@@ -37,6 +37,19 @@ export function Ustun({ nom, izoh, tanlangan = 0, amallar, children, past, kengl
   );
 }
 
+/** Ustunlar guruhi: tepasida nomi ("Tuzilma", "Qiyinlik", "O'z filtrlaringiz") — nima nimaga tegishli ekani ko'rinsin. */
+export function UstunlarGuruhi({ nom, izoh, children }: { nom: string; izoh?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="shrink-0" role="group" aria-label={nom}>
+      <p className="px-1 pb-1 flex items-baseline gap-1.5 whitespace-nowrap">
+        <span className="text-[10.5px] font-bold uppercase tracking-wide text-matn-sokin">{nom}</span>
+        {izoh && <span className="text-[10.5px] text-matn-xira">{izoh}</span>}
+      </p>
+      <div className="flex items-stretch gap-2.5">{children}</div>
+    </div>
+  );
+}
+
 /** Ustun sarlavhasidagi kichik tugma (nomini o'zgartirish, o'chirish...). */
 export function SarlavhaTugma({ ikonka, nom, onClick, faol, xavfli }: { ikonka: React.ReactNode; nom: string; onClick: () => void; faol?: boolean; xavfli?: boolean }) {
   return (
@@ -226,6 +239,8 @@ export function QoshQator({ joy, onQosh, qosh, ochiqBoshlansin }: {
   const [band, setBand] = useState(false);
   const maydon = useRef<HTMLInputElement>(null);
   useEffect(() => { if (ochiqBoshlansin) setOchiq(true); }, [ochiqBoshlansin]);
+  // Standart tanlov o'zgarsa (masalan bo'sh o'rin paydo bo'ldi) — tanlov ham.
+  useEffect(() => { if (qosh) setQ(qosh.boshi); }, [qosh?.boshi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const yubor = async (e?: React.FormEvent) => {
     e?.preventDefault();

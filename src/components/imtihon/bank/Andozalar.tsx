@@ -236,7 +236,7 @@ function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla,
                   <td className="px-1.5 py-1.5">
                     <select className={KICHIK} disabled={!tahrir} value={r.qiyinlik} aria-label={`${i + 1}-qator qiyinligi`} onChange={e => qator(i, { qiyinlik: Number(e.target.value) })}>
                       <option value={0}>Aralash</option>
-                      {QIYINLIK.map(q => <option key={q.d} value={q.d}>{q.nom}</option>)}
+                      {QIYINLIK.filter(q => !q.yashirin || r.qiyinlik === q.d).map(q => <option key={q.d} value={q.d}>{q.nom}</option>)}
                     </select>
                   </td>
                   <td className="px-1.5 py-1.5">

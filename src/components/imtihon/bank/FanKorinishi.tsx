@@ -157,7 +157,7 @@ export default function FanKorinishi({ fan, onMavzu, onOrqaga, yangila, onQosh }
           <div className="mt-3">
             <div className="hidden md:grid grid-cols-[1fr_repeat(3,72px)_64px_72px_24px] gap-2 px-4 py-2 bg-ichki text-[11.5px] font-semibold text-matn-sokin">
               <span>Mavzu</span>
-              {QIYINLIK.map(q => <span key={q.d} className={`text-center ${q.matn}`}>{q.nom}</span>)}
+              {QIYINLIK.map(q => <span key={q.d} className={`text-center ${q.matn}`}>{q.yashirin ? '' : q.nom}</span>)}
               <span className="text-center">Jami</span><span className="text-center">Natija</span><span />
             </div>
             <ul className="divide-y divide-chiziq">

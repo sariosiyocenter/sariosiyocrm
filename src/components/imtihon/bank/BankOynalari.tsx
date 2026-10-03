@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, INPUT, SELECT, Maydon } from '../ui';
-import { QIYINLIK } from './qiyinlik';
+import { korinadiganQiyinlik } from './qiyinlik';
 import type { BankFiltrMalumoti } from '../../../types';
 
 // Savollar banki oynalari: tanlangan savollarga bir nechta maydonni birdan qo'yish.
@@ -103,7 +103,7 @@ export function BelgilashOynasi({ ids, filtr, boshi, onYop, onSaqlandi }: {
         <Maydon nom="Qiyinlik">
           <select className={SELECT} value={qiyinlik} onChange={e => setQiyinlik(e.target.value)}>
             <option value={OZGARMAYDI}>O'zgarmasin</option>
-            {QIYINLIK.map(q => <option key={q.d} value={q.d}>{q.nom}</option>)}
+            {korinadiganQiyinlik().map(q => <option key={q.d} value={q.d}>{q.nom}</option>)}
           </select>
         </Maydon>
         <Maydon nom="Manba" izoh={manba === null ? undefined : manba === '' ? "Manba olib tashlanadi" : undefined}>

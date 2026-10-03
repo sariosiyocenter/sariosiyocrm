@@ -622,7 +622,12 @@ export interface BankFan {
     mavzular: BankMavzu[];
 }
 
-export interface BankDaraxt { jami: number; fanlar: BankFan[] }
+export interface BankDaraxt {
+    jami: number;
+    fanlar: BankFan[];
+    /** Asosiy qiyinlik darajalari: foydalanuvchi qo'ygan nom va olib tashlangani. */
+    qiyinlik?: { d: number; nom: string; yashirin?: boolean }[];
+}
 
 export interface Passage {
     id: number;

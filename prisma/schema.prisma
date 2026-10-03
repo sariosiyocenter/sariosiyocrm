@@ -1076,6 +1076,8 @@ model QuestionTagGroup {
   subjectId Int?
   // 'qiyinlik' — foydalanuvchi qo'shgan qiyinlik darajalari (qiymatlari `asos` bilan).
   tur       String?
+  // 'qiyinlik' guruhida: asosiy uch darajaning nomi va yashirilgani — {1: {nom?, yashirin?}, 2: …, 3: …}.
+  sozlama   Json?
   schoolId  Int
   createdAt DateTime      @default(now())
   tags      QuestionTag[]

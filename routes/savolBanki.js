@@ -104,6 +104,26 @@ export async function darajaGuruhi(orgIds, yaratSchoolId = null) {
   return g;
 }
 
+const ASOSIY_DARAJALAR = { 1: 'Oson', 2: "O'rta", 3: 'Qiyin' };
+
+/**
+ * Asosiy uch daraja (imtihon tuzish shular bilan ishlaydi): foydalanuvchi nomini o'zgartirishi
+ * yoki keraksizini yashirishi mumkin (masalan faqat ikkita daraja qoldirish).
+ */
+export async function qiyinlikSozlamasi(orgIds, guruh) {
+  const g = guruh === undefined ? await darajaGuruhi(orgIds) : guruh;
+  const s = g?.sozlama && typeof g.sozlama === 'object' ? g.sozlama : {};
+  return [1, 2, 3].map(d => ({ d, nom: nomi(s[d]?.nom, 60) || ASOSIY_DARAJALAR[d], yashirin: !!s[d]?.yashirin }));
+}
+
+/** Yashirilgan darajaga tushgan qiymat — eng yaqin ko'rinadiganiga (teng uzoqlikda — osonrog'iga). */
+export function yaqinDaraja(d, sozlama) {
+  const x = qiyinlikDarajasi(d);
+  const ochiq = (sozlama || []).filter(q => !q.yashirin).map(q => q.d);
+  if (!ochiq.length || ochiq.includes(x)) return x;
+  return [...ochiq].sort((a, b) => Math.abs(a - x) - Math.abs(b - x) || a - b)[0];
+}
+
 /**
  * Savolning qiyinligi va daraja belgisi bir-biriga mos tursin: `darajaId` berilsa — shu daraja
  * (qiyinlik uning asosi), aks holda faqat asosiy qiyinlik qo'yiladi va unga mos kelmaydigan
@@ -183,7 +203,7 @@ export function registerSavolBankiRoutes(app) {
         jami += fan.jami;
         return fan;
       });
-      res.json({ jami, fanlar: out });
+      res.json({ jami, fanlar: out, qiyinlik: await qiyinlikSozlamasi(orgIds) });
     } catch (err) { next(err); }
   });
 
@@ -421,9 +441,44 @@ export function registerSavolBankiRoutes(app) {
       const asos = [1, 2, 3].includes(Number(req.body.asos)) ? Number(req.body.asos) : 2;
       if (!name) return res.status(400).json({ error: 'Daraja nomini kiriting' });
       const g = await darajaGuruhi(orgIds, req.user.schoolId || orgIds[0]);
-      if (['oson', "o'rta", 'qiyin'].includes(kalit(name)) || g.tags.some(t => kalit(t.name) === kalit(name))) return res.status(409).json({ error: `«${name}» darajasi bor` });
+      const asosiy = await qiyinlikSozlamasi(orgIds, g);
+      if (asosiy.some(q => !q.yashirin && kalit(q.nom) === kalit(name)) || g.tags.some(t => kalit(t.name) === kalit(name))) return res.status(409).json({ error: `«${name}» darajasi bor` });
       const t = await prisma.questionTag.create({ data: { groupId: g.id, name, asos, order: g.tags.reduce((a, x) => Math.max(a, x.order), 0) + 1 } });
       res.status(201).json(t);
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Asosiy daraja (1 — oson, 2 — o'rta, 3 — qiyin o'rni): nomini o'zgartirish yoki yashirish /
+  // qaytarish. Savoli bor daraja yashirilmaydi; kamida bittasi qoladi.
+  app.put('/api/bank/darajalar/asosiy/:d', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const d = Number(req.params.d);
+      if (![1, 2, 3].includes(d)) return res.status(400).json({ error: "Daraja noto'g'ri" });
+      const g = await darajaGuruhi(orgIds, req.user.schoolId || orgIds[0]);
+      const joriy = await qiyinlikSozlamasi(orgIds, g);
+      const s = { ...(g.sozlama && typeof g.sozlama === 'object' ? g.sozlama : {}) };
+      const yangi = { ...(s[d] || {}) };
+      const eskiNom = joriy[d - 1].nom;
+      if (req.body.name !== undefined) {
+        const name = nomi(req.body.name, 60);
+        if (!name) return res.status(400).json({ error: 'Daraja nomini kiriting' });
+        if (joriy.some(q => q.d !== d && !q.yashirin && kalit(q.nom) === kalit(name)) || g.tags.some(t => kalit(t.name) === kalit(name))) return res.status(409).json({ error: `«${name}» darajasi bor` });
+        yangi.nom = name;
+      }
+      if (req.body.yashirin !== undefined) {
+        const y = !!req.body.yashirin;
+        if (y) {
+          if (!joriy.some(q => q.d !== d && !q.yashirin)) return res.status(409).json({ error: 'Kamida bitta daraja qolishi kerak' });
+          const soni = await prisma.question.count({ where: { schoolId: { in: orgIds }, difficulty: d === 3 ? { gte: 3 } : d === 2 ? 2 : { lte: 1 } } });
+          if (soni) return res.status(409).json({ error: `«${eskiNom}» darajasida ${soni} ta savol bor — avval ularni boshqa darajaga o'tkazing` });
+        }
+        yangi.yashirin = y;
+      }
+      s[d] = yangi;
+      const g2 = await prisma.questionTagGroup.update({ where: { id: g.id }, data: { sozlama: s } });
+      const qiyinlik = await qiyinlikSozlamasi(orgIds, g2);
+      res.json({ d, name: qiyinlik[d - 1].nom, eski: eskiNom, yashirin: qiyinlik[d - 1].yashirin, qiyinlik });
     } catch (err) { xato(res, next)(err); }
   });
 
@@ -454,7 +509,7 @@ export function registerSavolBankiRoutes(app) {
       const ids = idlarRoyxati(req.body.ids);
       if (!ids.length) return res.status(400).json({ error: 'Savollar tanlanmagan' });
       const d = {};
-      if (req.body.difficulty !== undefined) d.difficulty = qiyinlikDarajasi(req.body.difficulty);
+      if (req.body.difficulty !== undefined) d.difficulty = yaqinDaraja(req.body.difficulty, await qiyinlikSozlamasi(orgIds));
       // Daraja (foydalanuvchi qo'shgan): qiyinlik uning asosiga tenglashadi; asosiy qiyinlik
       // qo'yilsa — eski daraja belgilari olinadi.
       const darajaOl = [], darajaQosh = [];
@@ -680,6 +735,7 @@ export function registerSavolBankiRoutes(app) {
         bolimlar,
         mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
         manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi,
+        qiyinlikSozlama: await qiyinlikSozlamasi(orgIds),
         guruhlar: hammaGuruh.filter(g => g.tur !== 'qiyinlik'),
         darajalar: (hammaGuruh.find(g => g.tur === 'qiyinlik')?.tags || []).map(t => ({ id: t.id, name: t.name, asos: qiyinlikDarajasi(t.asos || 2), soni: belgi[t.id] || 0 })),
       });
@@ -799,10 +855,14 @@ export function registerSavolBankiRoutes(app) {
       else if (fid) where.bankTopic = { subjectId: fid };
       const royxat = await prisma.question.findMany({ where, select: { id: true, difficulty: true, pCorrect: true } });
       const guruh = { 1: [], 2: [], 3: [] };
-      // Faqat aniq mos kelmaydiganlari (chegara atrofidagilar o'zgarmaydi).
+      const asosiy = await qiyinlikSozlamasi(orgIds);
+      // Faqat aniq mos kelmaydiganlari (chegara atrofidagilar o'zgarmaydi). Yashirilgan daraja
+      // o'rniga — eng yaqin ko'rinadigani.
       for (const q of royxat) {
         const d = natijaQiyinligi(q.pCorrect);
-        if (d && qiyinlikMosEmas(q.difficulty, q.pCorrect)) guruh[d].push(q.id);
+        if (!d || !qiyinlikMosEmas(q.difficulty, q.pCorrect)) continue;
+        const d2 = yaqinDaraja(d, asosiy);
+        if (d2 !== qiyinlikDarajasi(q.difficulty)) guruh[d2].push(q.id);
       }
       const darajalar = (await darajaGuruhi(orgIds))?.tags || [];
       for (const [d, idlar] of Object.entries(guruh)) {

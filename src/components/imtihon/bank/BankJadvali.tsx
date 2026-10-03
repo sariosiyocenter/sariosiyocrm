@@ -9,8 +9,8 @@ import { HARFLAR } from '../../../../lib/imtihon.js';
 import { BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
 import MoslashJadvali from './MoslashJadvali';
-import { QIYINLIK, QiyinlikYorligi } from './qiyinlik';
-import { Ustun, Qator, QoshQator, UstunBosh, UstunGuruh, SarlavhaTugma, Yoriqnoma, KutishQatori, sudrashniBoshla, sudralayotgan, type Biriktirish, type Sudralgan } from './BankUstunlari';
+import { QIYINLIK, RANG_NOMLARI, QiyinlikYorligi, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
+import { Ustun, UstunlarGuruhi, Qator, QoshQator, UstunBosh, UstunGuruh, SarlavhaTugma, Yoriqnoma, KutishQatori, sudrashniBoshla, sudralayotgan, type Biriktirish, type Sudralgan } from './BankUstunlari';
 import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, Question, SavolTuri } from '../../../types';
 
 // Savollar banki. Tepada yonma-yon ustunlar: Fan → Bo'lim → Mavzu → Qiyinlik →
@@ -77,6 +77,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
   const fan = daraxt.fanlar.find(f => f.id === fanId) || daraxt.fanlar[0] || null;
+  useQiyinlik();   // darajalar nomi yoki soni o'zgarsa — qayta chiziladi
 
   const [filtr, setFiltr] = useState<BankFiltrMalumoti | null>(null);
   const [t, setT] = useState<FiltrTanlovi>(BOSH);
@@ -442,8 +443,35 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     fonda(() => soro('DELETE', `bank/mavzular/${m.id}`));
   };
 
+  // Asosiy daraja (yashil / sariq / qizil o'rin): nomini o'zgartirish va olib tashlash. Savoli bor daraja
+  // olinmaydi; oxirgisi ham. Olib tashlangan o'rin «Daraja qo'shish» da shu rang tanlansa qaytadi.
+  const asosiyNomi = async (d: number, nom: string) => {
+    if (QIYINLIK[d - 1].nom === nom) return true;
+    if (QIYINLIK.some(q => q.d !== d && !q.yashirin && birXil(q.nom, nom)) || darajalar.some(x => birXil(x.name, nom))) return bor(nom);
+    qiyinlikniSozla(qiyinlikSozlamasi().map(q => (q.d === d ? { ...q, nom } : q)), { mahalliy: true });
+    fonda(() => soro('PUT', `bank/darajalar/asosiy/${d}`, { name: nom }));
+    return true;
+  };
+  const asosiyOchir = async (d: number) => {
+    const q = QIYINLIK[d - 1];
+    if (QIYINLIK.filter(x => !x.yashirin).length <= 1) return showNotification('Kamida bitta daraja qolishi kerak', 'error');
+    const n = filtr?.qiyinlik[d - 1] || 0;
+    if (n > 0) return showNotification(`«${q.nom}» darajasida ${n} ta savol bor — avval ularni belgilab, boshqa daraja yonidagi → bilan o'tkazing`, 'error');
+    if (!(await confirm({ title: `«${q.nom}» darajasi olib tashlansinmi?`, message: "Qolgan darajalar bilan ishlaysiz. Keyin «Daraja qo'shish» orqali qaytarsa bo'ladi.", confirmLabel: 'Olib tashlash', danger: true }))) return;
+    qiyinlikniSozla(qiyinlikSozlamasi().map(x => (x.d === d ? { ...x, yashirin: true } : x)), { mahalliy: true });
+    setT(x => ({ ...x, qiyinlik: x.qiyinlik.filter(y => y !== d) }));
+    fonda(() => soro('PUT', `bank/darajalar/asosiy/${d}`, { yashirin: true }));
+  };
   const darajaQosh = async (nom: string, asos: string) => {
-    if (QIYINLIK.some(q => birXil(q.nom, nom)) || darajalar.some(d => birXil(d.name, nom)) || kutilmoqda.some(k => k.ustun === 'daraja' && birXil(k.nom, nom))) return bor(nom);
+    if (QIYINLIK.some(q => !q.yashirin && birXil(q.nom, nom)) || darajalar.some(d => birXil(d.name, nom)) || kutilmoqda.some(k => k.ustun === 'daraja' && birXil(k.nom, nom))) return bor(nom);
+    const o = Math.min(3, Math.max(1, Number(asos) || 1));
+    // Shu rangdagi o'rin bo'sh bo'lsa — yangi daraja uning o'zi bo'ladi.
+    if (QIYINLIK[o - 1].yashirin) {
+      qiyinlikniSozla(qiyinlikSozlamasi().map(x => (x.d === o ? { ...x, nom, yashirin: false } : x)), { mahalliy: true });
+      chaqna(`q${o}`);
+      fonda(() => soro('PUT', `bank/darajalar/asosiy/${o}`, { name: nom, yashirin: false }));
+      return true;
+    }
     kutishQosh('daraja', nom);
     fonda(async () => {
       try {
@@ -597,8 +625,9 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
         </div>
 
         {!yigiq && (
-          <div className="flex gap-2.5 overflow-x-auto p-2.5 snap-x">
-            {/* Fan */}
+          <div className="flex gap-4 overflow-x-auto px-2.5 pt-2 pb-2.5 snap-x">
+            {/* Tuzilma: fan → bo'lim → mavzu (har biri chapdagisiga tegishli) */}
+            <UstunlarGuruhi nom="Tuzilma" izoh="fan → bo'lim → mavzu">
             <Ustun nom="Fan" kenglik="w-[196px]" past={savolTahrir && <QoshQator joy="Fan qo'shish" onQosh={fanQosh} ochiqBoshlansin={!daraxt.fanlar.length} />}>
               {!daraxt.fanlar.length && <UstunBosh>Bank bo'sh. Birinchi fanni qo'shing — masalan «Matematika».</UstunBosh>}
               {daraxt.fanlar.map(f => (
@@ -608,16 +637,17 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
               {kutayotganlar('fan')}
             </Ustun>
 
+
             {!fan ? (
-              <div className="flex-1 min-w-64 h-[236px] rounded-xl border border-dashed border-chiziq flex items-center justify-center p-6 text-center text-[12.5px] text-matn-sokin">
+              <div className="w-[420px] h-[236px] rounded-xl border border-dashed border-chiziq flex items-center justify-center p-6 text-center text-[12.5px] text-matn-sokin">
                 Avval chapdagi ustunda fan qo'shing — keyin shu yerda uning bo'limlari, mavzulari va filtrlari chiqadi.
               </div>
             ) : !filtr ? (
-              <div className="flex-1 min-w-64 h-[236px] flex items-center justify-center"><Yuklanmoqda /></div>
+              <div className="w-[420px] h-[236px] flex items-center justify-center"><Yuklanmoqda /></div>
             ) : (
               <>
-                {/* Bo'lim */}
-                <Ustun nom="Bo'lim" tanlangan={t.bolimlar.length} past={savolTahrir && <QoshQator joy="Bo'lim qo'shish" onQosh={bolimQosh} />}>
+                <ChevronRight size={16} className="self-center shrink-0 -mx-1.5 text-matn-xira" aria-hidden />
+                <Ustun nom="Bo'lim" izoh={`${fan.name} fani`} tanlangan={t.bolimlar.length} past={savolTahrir && <QoshQator joy="Bo'lim qo'shish" onQosh={bolimQosh} />}>
                   {!filtr.bolimlar.length && <UstunBosh>Bo'lim yo'q. Masalan: Algebra, Geometriya. Shart emas — mavzularni bo'limsiz ham qo'shsa bo'ladi.</UstunBosh>}
                   {filtr.bolimlar.map(b => (
                     <Qator key={b.nom || '_'} nom={b.nom || "Bo'limsiz"} korinish={b.nom ? undefined : <i className="text-matn-sokin">Bo'limsiz</i>} soni={b.soni}
@@ -627,8 +657,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                   ))}
                 </Ustun>
 
-                {/* Mavzu */}
-                <Ustun nom="Mavzu" kenglik="w-[244px]" tanlangan={t.mavzular.length} izoh={maqsadBolim ? `${maqsadBolim} bo'limi` : undefined}
+                <ChevronRight size={16} className="self-center shrink-0 -mx-1.5 text-matn-xira" aria-hidden />
+                <Ustun nom="Mavzu" kenglik="w-[244px]" tanlangan={t.mavzular.length} izoh={maqsadBolim ? `${maqsadBolim} bo'limi` : `${fan.name} fani — hamma bo'lim`}
                   past={savolTahrir && <QoshQator joy={maqsadBolim ? `Mavzu qo'shish — ${maqsadBolim}` : "Mavzu qo'shish"} onQosh={mavzuQosh} />}>
                   {filtr.mavzular.length > 10 && (
                     <li className="sticky top-0 z-10 bg-sirt pb-1">
@@ -645,24 +675,35 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                   {kutayotganlar('mavzu')}
                 </Ustun>
 
-                {/* Qiyinlik: uchta asosiy daraja va o'zingiz qo'shganlar */}
-                <Ustun nom="Qiyinlik" kenglik="w-[196px]" tanlangan={t.qiyinlik.length + t.darajalar.length}
+              </>
+            )}
+            </UstunlarGuruhi>
+
+            {fan && filtr && (
+              <>
+                <UstunlarGuruhi nom="Qiyinlik" izoh="darajalarni o'zingiz belgilaysiz">
+                {/* Qiyinlik: darajalar ro'yxati to'liq foydalanuvchiniki — nomini o'zgartiradi, olib tashlaydi, qo'shadi */}
+                <Ustun nom="Qiyinlik" izoh="hamma fanlarda" kenglik="w-[204px]" tanlangan={t.qiyinlik.length + t.darajalar.length}
                   past={savolTahrir && <QoshQator joy="Daraja qo'shish" onQosh={darajaQosh}
-                    qosh={{ nom: 'Guruhi', boshi: '1', variantlar: QIYINLIK.map(q => ({ v: String(q.d), nom: q.nom, nuqta: q.nuqta })) }} />}>
+                    qosh={{ nom: 'Rangi', boshi: String(QIYINLIK.find(q => q.yashirin)?.d || 1), variantlar: QIYINLIK.map((q, i) => ({ v: String(q.d), nom: q.yashirin ? `${RANG_NOMLARI[i]} — bo'sh o'rin` : `${q.nom} ichida`, nuqta: q.nuqta })) }} />}>
                   {QIYINLIK.map((q, i) => {
                     const ozlari = darajalar.filter(d => d.asos === q.d);
                     const sof = Math.max(0, (holat?.qiyinlik[i] || 0) - ozlari.reduce((a, d) => a + (holat?.belgilar[d.id] || 0), 0));
+                    const korinadi = !q.yashirin || filtr.qiyinlik[i] > 0;
                     return (
                       <React.Fragment key={q.d}>
-                        <Qator nom={q.nom} nuqta={q.nuqta} soni={filtr.qiyinlik[i]} faol={t.qiyinlik.includes(q.d)} onBos={() => setT(x => ({ ...x, qiyinlik: almashtirRoyxat(x.qiyinlik, q.d) }))}
-                          biriktir={birik('kochir', sof, () => biriktir(ids, { difficulty: q.d }, `${N} ta savol — «${q.nom}»`, `q${q.d}`))}
-                          qabul="savol" onTashla={s => tashlandi(s, { difficulty: q.d }, q.nom, `q${q.d}`, 'darajasiga qo\'yildi')} chaqnash={chaqnash === `q${q.d}`} sudrashda={sudrash} />
+                        {korinadi && (
+                          <Qator nom={q.nom} nuqta={q.nuqta} soni={filtr.qiyinlik[i]} faol={t.qiyinlik.includes(q.d)} onBos={() => setT(x => ({ ...x, qiyinlik: almashtirRoyxat(x.qiyinlik, q.d) }))}
+                            onSaqla={savolTahrir ? nom => asosiyNomi(q.d, nom) : undefined} onOchir={savolTahrir ? () => asosiyOchir(q.d) : undefined}
+                            biriktir={birik('kochir', sof, () => biriktir(ids, { difficulty: q.d }, `${N} ta savol — «${q.nom}»`, `q${q.d}`))}
+                            qabul="savol" onTashla={s => tashlandi(s, { difficulty: q.d }, q.nom, `q${q.d}`, 'darajasiga qo\'yildi')} chaqnash={chaqnash === `q${q.d}`} sudrashda={sudrash} />
+                        )}
                         {ozlari.map(d => (
-                          <Qator key={d.id} nom={d.name} korinish={<span className="pl-3">{d.name}</span>} nuqta={q.nuqta} soni={d.soni} faol={t.darajalar.includes(d.id)}
+                          <Qator key={d.id} nom={d.name} korinish={<span className={korinadi ? 'pl-3' : ''}>{d.name}</span>} nuqta={q.nuqta} soni={d.soni} faol={t.darajalar.includes(d.id)}
                             onBos={() => setT(x => ({ ...x, darajalar: almashtirRoyxat(x.darajalar, d.id) }))}
                             onSaqla={savolTahrir ? (nom, asos) => belgiSaqla(d.id, { name: nom, asos: Number(asos) || d.asos }) : undefined}
                             onOchir={savolTahrir ? () => belgiOchir(d, 'Qiyinlik', d.soni) : undefined}
-                            tahrirQosh={{ nom: 'Guruhi', qiymat: String(d.asos), korinish: 'nuqtalar', variantlar: QIYINLIK.map(z => ({ v: String(z.d), nom: z.nom, nuqta: z.nuqta })) }}
+                            tahrirQosh={{ nom: 'Rangi', qiymat: String(d.asos), korinish: 'nuqtalar', variantlar: QIYINLIK.map((z, k) => ({ v: String(z.d), nom: z.yashirin ? RANG_NOMLARI[k] : `${z.nom} ichida`, nuqta: z.nuqta })) }}
                             biriktir={birik('kochir', holat?.belgilar[d.id] || 0, () => biriktir(ids, { darajaId: d.id }, `${N} ta savol — «${d.name}»`, `t${d.id}`))}
                             qabul="savol" onTashla={s => tashlandi(s, { darajaId: d.id }, d.name, `t${d.id}`, 'darajasiga qo\'yildi')} chaqnash={chaqnash === `t${d.id}`} sudrashda={sudrash} />
                         ))}
@@ -671,8 +712,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                   })}
                   {kutayotganlar('daraja')}
                 </Ustun>
+                </UstunlarGuruhi>
 
-                {/* Foydalanuvchi filtrlari */}
+                {/* Foydalanuvchi filtrlari — tuzilmadan alohida (masalan «Manba», «Test turi») */}
+                <UstunlarGuruhi nom="O'z filtrlaringiz" izoh="siz ochgan ustunlar — xohlagancha">
                 {filtr.guruhlar.map(g => (
                   <Ustun key={g.id} boshNom={g.name} tanlangan={(t.belgilar[g.id] || []).length} izoh={g.subjectId ? `faqat ${fan.name}` : 'hamma fanlarda'}
                     nom={filtrNomi?.id === g.id ? (
@@ -711,8 +754,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                   <Ustun key={`kf${i}`} nom={k.nom} izoh="saqlanmoqda…"><KutishQatori nom="Ustun tayyorlanmoqda" /></Ustun>
                 ))}
 
-                {/* Yangi filtr */}
                 {savolTahrir && <YangiFiltr fan={fan.name} onQosh={filtrQosh} />}
+                </UstunlarGuruhi>
               </>
             )}
           </div>
