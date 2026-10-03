@@ -115,8 +115,11 @@ function Belgilar({ n }: { n: Natija }) {
 /** Saqlash natijasi — Zukko faol savollarni imtihonga qo'shishi uchun. */
 export interface SaqlashNatijasi { soni: number; ids: number[]; faolIds: number[] }
 
-export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
-  daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null; onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
+export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, mavzuNomi: boshMavzuNomi, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
+  daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null;
+  /** `mavzuId` ning nomi — mavzu hozirgina yaratilgan bo'lib, daraxtda hali ko'rinmasa ham savollar o'shanga tushsin. */
+  mavzuNomi?: string;
+  onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
   /** Zukko dan: biriktirilgan fayllar; avto — yuklangach ajratish o'zi boshlanadi; yuqorida — Zukko panelining ustida. */
   boshFayllar?: File[]; avto?: boolean; yuqorida?: boolean;
 }) {
@@ -129,8 +132,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const [yangiMavzu, setYangiMavzu] = useState<string | null>(null);
   const fan = fanniTop(daraxt, fanId);
   const mavzu = mavzuniTop(fan, mavzuId);
+  // Bank ro'yxatidan kelgan mavzu daraxtda hali yo'q (hozirgina yaratilgan) — nomi bilan ishlaymiz.
+  const kutilgan = !mavzu && mavzuId != null && mavzuId === boshMavzu && boshMavzuNomi ? boshMavzuNomi : '';
   // Qat'iy mavzu (tanlangan yoki yangi) — bo'lmasa AI o'zi ajratadi.
-  const qatiyMavzu = yangiMavzu !== null ? yangiMavzu.trim() : mavzu?.name || '';
+  const qatiyMavzu = yangiMavzu !== null ? yangiMavzu.trim() : mavzu?.name || kutilgan;
 
   const [manbalar, setManbalar] = useState<Manba[]>([]);
   const [matnOchiq, setMatnOchiq] = useState(false);
@@ -365,12 +370,13 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       }
       const questions = tanlanganlar.map((n, i) => {
         const bank = n.subject === fan?.name ? fan?.mavzular.find(m => m.name === n.topic) : undefined;
+        const kutilganId = !bank && kutilgan && n.subject === fan?.name && n.topic === kutilgan ? mavzuId : null;
         const asos = n.manba === 'excel' && n.excel ? (({ qator, ...e }) => e)(n.excel) : n.manba === 'jadval' ? {} : { source: 'AI import' };   // eslint-disable-line @typescript-eslint/no-unused-vars
         return {
           ...asos,
           toplam: n.toplam || null,
           ...(n.tarjima ? { tarjima: n.tarjima } : {}),
-          subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? null,
+          subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? kutilganId ?? null,
           type: n.type, text: n.text, options: n.type === 'yopiq' || n.type === 'moslash' ? n.options : null,
           correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, difficulty: n.difficulty, language: n.language || 'uz',
           solution: n.solution || null,
@@ -468,9 +474,11 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                     <Tugma kichik turi="oddiy" ikonka={<X size={13} />} onClick={() => setYangiMavzu(null)} aria-label="Bekor" />
                   </div>
                 ) : (
-                  <select className={SELECT} value={mavzu?.id ?? ''} disabled={!fan || band} aria-label="Mavzu"
+                  <select className={SELECT} value={mavzu?.id ?? (kutilgan ? mavzuId ?? '' : '')} disabled={!fan || band} aria-label="Mavzu"
                     onChange={e => (e.target.value === 'yangi' ? setYangiMavzu('') : setMavzuId(Number(e.target.value) || null))}>
-                    <option value="">{fan ? 'AI o\'zi mavzularga ajratsin' : 'Avval fanni tanlang'}</option>
+                    {/* Word jadvali va Excel AI siz o'qiladi — mavzu tanlanmasa «Aralash» ga tushadi. */}
+                    <option value="">{!fan ? 'Avval fanni tanlang' : jadvallar.length > 0 && !aiKerak ? `Tanlanmagan — «${ARALASH}» mavzusiga tushadi` : 'AI o\'zi mavzularga ajratsin'}</option>
+                    {kutilgan && mavzuId != null && <option value={mavzuId}>{kutilgan}</option>}
                     {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
                       ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
                       : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}

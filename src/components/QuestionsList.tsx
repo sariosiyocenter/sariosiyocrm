@@ -47,7 +47,7 @@ export default function QuestionsList() {
   // "Savol qo'shish" oynasi: ?qosh=1 ham ochadi (eski /questions/new havolalari).
   const qosh = params.get('qosh') === '1';
   // Bank ro'yxatidan ochilganda — o'sha yerda tanlangan mavzu oldindan qo'yiladi.
-  const [qoshMavzu, setQoshMavzu] = useState<number | null>(null);
+  const [qoshMavzu, setQoshMavzu] = useState<{ id: number; nom: string } | null>(null);
   const qoshOch = () => { setQoshMavzu(null); ot({ qosh: '1' }); };
   // Hozirgina qo'shilgan savollar — bank ro'yxati ularga o'tadi ("yangi" belgisi bilan).
   const [yangi, setYangi] = useState<{ ids: number[]; n: number } | null>(null);
@@ -109,7 +109,12 @@ export default function QuestionsList() {
         <Andozalar daraxt={daraxt} />
       ) : !tuzilma ? (
         <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
-          onQosh={savolTahrir ? id => { setQoshMavzu(id); ot({ qosh: '1' }); } : undefined} onTuzilma={() => ot({ kor: 'tuzilma', mavzu: null })} savolTahrir={savolTahrir} />
+          onQosh={savolTahrir ? m => {
+            setQoshMavzu(m);
+            // Hozirgina yaratilgan mavzu daraxtda hali yo'q bo'lsa — yangilab qo'yamiz (oyna nomi bilan ishlayveradi).
+            if (m && !daraxt.fanlar.some(f => f.mavzular.some(x => x.id === m.id))) yangila();
+            ot({ qosh: '1' });
+          } : undefined} onTuzilma={() => ot({ kor: 'tuzilma', mavzu: null })} savolTahrir={savolTahrir} />
       ) : (
         <>
           {!fan && (
@@ -145,7 +150,8 @@ export default function QuestionsList() {
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => setOxshash(false)} onSaqlandi={ozgardi} />}
       {qosh && savolTahrir && (
-        <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu : null)} onYop={() => ot({ qosh: null })}
+        <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
+          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onYop={() => ot({ qosh: null })}
           onSaqlandi={r => { ozgardi(); if (r?.ids?.length) setYangi({ ids: r.ids, n: Date.now() }); }} />
       )}
     </div>

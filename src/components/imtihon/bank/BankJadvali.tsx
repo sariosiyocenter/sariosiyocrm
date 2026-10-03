@@ -68,8 +68,8 @@ function hissa(kesim: Kesim, q: Pick<Qator_, 'bankTopicId' | 'difficulty' | 'tag
 
 export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, onTuzilma, savolTahrir, yangilash = 0, yangi }: {
   daraxt: BankDaraxt; fanId: number | null; onFan: (id: number) => void; yangilaDaraxt: () => Promise<unknown> | void;
-  /** «Savol qo'shish» — tanlangan mavzu oldindan qo'yiladi. */
-  onQosh?: (mavzuId: number | null) => void; onTuzilma: () => void; savolTahrir: boolean;
+  /** «Savol qo'shish» — tanlangan mavzu oldindan qo'yiladi (nomi bilan: hozirgina yaratilgan mavzu daraxtda hali bo'lmasligi mumkin). */
+  onQosh?: (mavzu: { id: number; nom: string } | null) => void; onTuzilma: () => void; savolTahrir: boolean;
   /** Tashqarida bank o'zgardi (savol qo'shildi) — ro'yxat jimgina qayta olinadi. */
   yangilash?: number;
   /** Hozirgina qo'shilgan savollar: ro'yxat ularga o'tadi, «yangi» belgisi bilan. */
@@ -243,6 +243,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const yakkaMavzular = mavzular.filter(m => !m.bolim || !bolimNomlari.some(b => birXil(b, m.bolim)));
   const fanJami = mavzular.reduce((a, m) => a + mavzuSoni(m.id), 0);
   const tanlanganMavzu = tanlov.tur === 'mavzu' ? mavzular.find(m => m.id === tanlov.id) || null : null;
+  const qoshMavzu = tanlanganMavzu ? { id: tanlanganMavzu.id, nom: tanlanganMavzu.nom } : null;
 
   // Filtr sonlari — chapda tanlangan joy (fan, bo'lim yoki mavzu) ichida.
   const yig = useMemo(() => {
@@ -277,12 +278,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const sahifadagi = royxat?.items.map(q => q.id) || [];
   const sahifaTanlangan = sahifadagi.length > 0 && sahifadagi.every(id => tanlangan.has(id));
   const almashtir = useCallback((id: number) => setTanlangan(x => { const n = new Set(x); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
-  const sahifaniTanla = () => setTanlangan(x => {
-    const n = new Set(x);
-    if (sahifaTanlangan) sahifadagi.forEach(id => n.delete(id)); else sahifadagi.forEach(id => n.add(id));
-    return n;
-  });
+  // «Hammasini tanlash» — ro'yxatdagi hamma savol (boshqa sahifadagilari ham); yana bosilsa — tanlov olinadi.
+  const kopSahifa = !!royxat && royxat.total > sahifadagi.length;
+  const hammasiTanlangan = sahifaTanlangan && (!kopSahifa || tanlangan.size >= (royxat?.total || 0));
   const hammasiniTanla = async () => {
+    if (hammasiTanlangan) { setTanlangan(new Set()); return; }
+    if (!kopSahifa) { setTanlangan(x => new Set([...x, ...sahifadagi])); return; }
     setBand('tanla');
     try {
       const r = await soro<{ ids: number[] }>('GET', `bank/royxat?f=${sorov}&idlar=1&tartib=${tartib}`);
@@ -334,7 +335,13 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     // Boshqa mavzuga o'tgan savol hozirgi ro'yxatdan chiqadi.
     const chiqadi = (q: Qator_) => 'mavzu' in a && tanlov.tur !== 'hamma' && set.has(q.id)
       && (tanlov.tur === 'mavzu' ? tanlov.id !== a.mavzu : !bolimMavzulari(tanlov.nom).some(m => m.id === a.mavzu));
-    setRoyxat(r => r && ({ items: r.items.filter(q => !chiqadi(q)).map(q => yangilar.get(q.id) || q), total: r.total - r.items.filter(chiqadi).length }));
+    setRoyxat(r => {
+      if (!r) return r;
+      const qoladi = r.items.filter(q => !chiqadi(q));
+      const chiqdi = r.items.length - qoladi.length;
+      // Ekrandagilar chiqqan bo'lsa — tanlovning qolgani (boshqa sahifadagilari) ham shu ro'yxatdan chiqadi.
+      return { items: qoladi.map(q => yangilar.get(q.id) || q), total: Math.max(qoladi.length, r.total - (chiqdi ? Math.max(chiqdi, idlar.length) : 0)) };
+    });
     filtrda(x => {
       const k: Kesim = JSON.parse(JSON.stringify(x.kesim || {}));
       for (const q of ekranda) { hissa(k, q, -1, darajaIdlar, guruhTeglari); hissa(k, yangilar.get(q.id)!, 1, darajaIdlar, guruhTeglari); }
@@ -859,7 +866,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
               <h2 className="text-[18px] leading-tight font-bold text-matn break-words">{sarlavha.nom}</h2>
             </div>
             {savolTahrir && onQosh && (
-              <Tugma turi={filtr && !mavzular.length ? 'ikkinchi' : 'asosiy'} ikonka={<Plus size={15} />} onClick={() => onQosh(tanlov.tur === 'mavzu' ? tanlov.id : null)}>
+              <Tugma turi={filtr && !mavzular.length ? 'ikkinchi' : 'asosiy'} ikonka={<Plus size={15} />} onClick={() => onQosh(qoshMavzu)}>
                 Savol qo'shish{tanlov.tur === 'mavzu' ? ` — ${sarlavha.nom}` : ''}
               </Tugma>
             )}
@@ -973,11 +980,9 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             {saralangan && <button onClick={() => setS(BOSH)} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer ml-1">tozalash</button>}
             <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
               {(savolTahrir || ochiradi) && sahifadagi.length > 1 && (
-                <button onClick={sahifaniTanla} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer">{sahifaTanlangan ? 'Tanlovni olish' : 'Hammasini tanlash'}</button>
-              )}
-              {sahifaTanlangan && !!royxat?.total && royxat.total > sahifadagi.length && tanlangan.size < royxat.total && (
                 <button onClick={hammasiniTanla} disabled={band === 'tanla'} className="text-[12px] font-semibold text-brand hover:underline cursor-pointer disabled:opacity-50">
-                  {band === 'tanla' ? <Loader2 size={12} className="inline animate-spin" /> : null} Hamma {royxat.total} tasini tanlash
+                  {band === 'tanla' ? <Loader2 size={12} className="inline animate-spin mr-1" /> : null}
+                  {hammasiTanlangan ? 'Tanlovni olish' : kopSahifa ? `Hamma ${royxat!.total} tasini tanlash` : 'Hammasini tanlash'}
                 </button>
               )}
               {sahifalash}
@@ -1002,7 +1007,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                 </div>
               ) : (
                 <BoshHolat sarlavha={`«${sarlavha.nom}» da hali savol yo'q`} izoh="Word, Excel, PDF yoki rasmdan savol qo'shing — ular shu yerga tushadi.">
-                  {savolTahrir && onQosh && <Tugma kichik turi="asosiy" ikonka={<Plus size={13} />} onClick={() => onQosh(tanlov.tur === 'mavzu' ? tanlov.id : null)}>Savol qo'shish</Tugma>}
+                  {savolTahrir && onQosh && <Tugma kichik turi="asosiy" ikonka={<Plus size={13} />} onClick={() => onQosh(qoshMavzu)}>Savol qo'shish</Tugma>}
                 </BoshHolat>
               )}
             </div>
