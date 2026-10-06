@@ -21,7 +21,7 @@ import type { Question, Passage, SavolTuri, BelgiGuruhi } from '../types';
 // mavzuga 20 ta savol ketma-ket kiritiladi. Formulalar $...$ ichida LaTeX bilan.
 
 type Umumiy = { fanId: number | null; mavzuId: number | null; grade: string; source: string; remark: string; language: 'uz' | 'ru' | 'en'; difficulty: number; status: 'faol' | 'qoralama' | 'arxiv' };
-type Tarjima = { til: 'uz' | 'ru' | 'en'; text: string; options: string[] };
+type Tarjima = { til: 'uz' | 'ru' | 'en'; text: string; options: string[]; /** Uchinchi til — tahrirlanmaydi, saqlanib qoladi. */ boshqa?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] }[] };
 type Shaxsiy = {
   type: SavolTuri; text: string; imageUrl: string | null; options: string[]; correctAnswer: string; answers: string;
   points: string; lockOptions: boolean; solution: string; solutionStatus: 'yoq' | 'qoralama' | 'tasdiqlangan'; passage: { id: number; title?: string | null } | null;
@@ -111,7 +111,7 @@ export default function QuestionEditor() {
         answers: s.type === 'moslash' ? '' : (s.answers || []).join(', '), points: s.points != null ? String(s.points) : '',
         lockOptions: !!s.lockOptions, solution: s.solution || '', solutionStatus: (s.solutionStatus as any) || 'yoq',
         passage: s.passage || (s.passageId ? { id: s.passageId } : null),
-        tarjima: s.tarjima ? { til: s.tarjima.til || 'ru', text: s.tarjima.text || '', options: s.tarjima.options || [] } : null,
+        tarjima: s.tarjima ? { til: s.tarjima.til || 'ru', text: s.tarjima.text || '', options: s.tarjima.options || [], ...(s.tarjima.boshqa?.length ? { boshqa: s.tarjima.boshqa } : {}) } : null,
         joylashuv: s.joylashuv || 0,
         ong: s.type === 'moslash' && s.answers?.length ? s.answers : ['', '', '', ''],
       });
@@ -217,7 +217,7 @@ export default function QuestionEditor() {
   const aiIkkinchiTil = () => aiIsh('ikkinchi', async () => {
     const til = q.tarjima?.til || 'ru';
     const r = await soro<Tarjima>('POST', `questions/${id}/ai/tarjima-matn`, { til });
-    setQ(x => ({ ...x, tarjima: { til: r.til, text: r.text, options: r.options || [] } }));
+    setQ(x => ({ ...x, tarjima: { ...x.tarjima, til: r.til, text: r.text, options: r.options || [] } }));
     setMuharrirKaliti(k => k + 1);
     showNotification("Tarjima to'ldirildi — tekshirib, saqlang", 'success');
   });

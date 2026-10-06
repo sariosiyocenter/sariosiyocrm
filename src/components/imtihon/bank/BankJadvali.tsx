@@ -118,7 +118,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   useEffect(() => {
     const k = kechikkan.current;
     kechikkan.current = null;
-    setTanlov(k?.tanlov || { tur: 'hamma' }); setS(k?.s || BOSH); if (k) setTartib('desc');
+    setTanlov(k?.tanlov || { tur: 'hamma' }); setS(k?.s || BOSH); if (k) setTartib('asc');
     setTanlangan(new Set()); setSahifa(1); setFiltr(null); setQosh(null); setMenyu(null); setFanTahrir(false); setFiltrTahrir(null); setYopiq(new Set());
   }, [fan?.id]);
 
@@ -140,8 +140,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
   useEffect(() => { if (yangilash) { jim.current = true; setQayta(n => n + 1); } }, [yangilash]);
 
-  // Hozirgina qo'shilgan savollar: hammasi bitta mavzuda bo'lsa — o'sha mavzu ochiladi
-  // (yangilari tepada), aks holda — fan bo'yicha faqat yangi qo'shilganlar ko'rsatiladi.
+  // Hozirgina qo'shilgan savollar: faqat o'shalar ko'rsatiladi, fayldagi tartibda (1 dan).
+  // Hammasi bitta mavzuda bo'lsa — o'sha mavzu ochiladi, aks holda — butun fan.
   useEffect(() => {
     if (!yangi?.ids.length) return;
     let bekor = false;
@@ -150,12 +150,11 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       if (bekor) return;
       const mavzuIdlar = Object.keys(r.mavzular).map(Number);
       if (!mavzuIdlar.length) return;
-      const holat = mavzuIdlar.length === 1
-        ? { tanlov: { tur: 'mavzu', id: mavzuIdlar[0] } as Tanlov, s: BOSH }
-        : { tanlov: { tur: 'hamma' } as Tanlov, s: { ...BOSH, qidDan: String(Math.min(...yangi.ids)), qidGacha: String(Math.max(...yangi.ids)) } };
+      const yangilari: Saralash = { ...BOSH, qidDan: String(Math.min(...yangi.ids)), qidGacha: String(Math.max(...yangi.ids)) };
+      const holat = { tanlov: (mavzuIdlar.length === 1 ? { tur: 'mavzu', id: mavzuIdlar[0] } : { tur: 'hamma' }) as Tanlov, s: yangilari };
       const egasi = daraxtRef.current.fanlar.find(f => f.mavzular.some(m => m.id === mavzuIdlar[0]));
       if (egasi && egasi.id !== fanIdRef.current) { kechikkan.current = holat; onFan(egasi.id); return; }
-      setTanlov(holat.tanlov); setS(holat.s); setTartib('desc'); setTanlangan(new Set());
+      setTanlov(holat.tanlov); setS(holat.s); setTartib('asc'); setTanlangan(new Set());
     }).catch(() => { /* ro'yxat o'z joyida qoladi */ });
     return () => { bekor = true; };
   }, [yangi?.n]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1013,10 +1012,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             </div>
           ) : (
             <ul aria-label="Savollar" className={`flex flex-col gap-2 transition-opacity ${yuklanmoqda ? 'opacity-60' : ''}`}>
-              {royxat.items.map(q => {
+              {royxat.items.map((q, i) => {
                 const d = savolDarajasi(q);
                 return (
-                  <SavolKarta key={q.id} q={q} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
+                  <SavolKarta key={q.id} q={q} raqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
                     mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''} darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar}
                     onTanla={almashtir} onKor={korish} onSudra={savolTahrir ? sudra : undefined} onMenyu={kartaMenyu} />
                 );
@@ -1191,8 +1190,11 @@ function Belgilar<K extends string | number>({ qiymatlar, tanlangan, onChange }:
  * Yorliqlar (mavzu, qiyinlik, filtrlar) bosilsa — shu yerning o'zida o'zgartiriladi; karta
  * chapdagi mavzu yoki filtr qatoriga sudrab tashlanadi.
  */
-const SavolKarta = memo(function SavolKarta({ q, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu }: {
-  q: Qator_; tanlangan: boolean; yangi: boolean; tanlanadi: boolean; tahrir: boolean; mavzu: string; darajaNom: string; darajaNuqta: string; guruhlar: BelgiGuruhi[];
+const SavolKarta = memo(function SavolKarta({ q, raqam, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu }: {
+  q: Qator_;
+  /** Ro'yxatdagi tartib raqami — har ko'rinishda (fan, bo'lim, mavzu, filtr) 1 dan boshlanadi. */
+  raqam: number;
+  tanlangan: boolean; yangi: boolean; tanlanadi: boolean; tahrir: boolean; mavzu: string; darajaNom: string; darajaNuqta: string; guruhlar: BelgiGuruhi[];
   onTanla: (id: number) => void; onKor: (id: number) => void; onSudra?: (id: number, e: React.DragEvent) => void;
   onMenyu: (tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => void;
 }) {
@@ -1215,7 +1217,7 @@ const SavolKarta = memo(function SavolKarta({ q, tanlangan, yangi, tanlanadi, ta
       </div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span className="raqam text-[11.5px] font-bold text-matn-xira mr-0.5">#{q.id}</span>
+          <span className="raqam text-[13px] font-bold text-matn mr-0.5">{raqam}.</span>
           {yangi && <span className="px-1.5 py-0.5 rounded-md bg-yaxshi-fon text-yaxshi text-[10.5px] font-bold">yangi</span>}
           {yorliq('mavzu', mavzu ? CHIP_BOR : CHIP_BOSH, mavzu ? `mavzu — ${mavzu}` : 'mavzusi yo\'q', <><Folder size={12} className="shrink-0" /><span className="truncate max-w-56">{mavzu || 'mavzu?'}</span></>)}
           {yorliq('daraja', CHIP_BOR, `qiyinlik — ${darajaNom}`, <><span className={`w-2 h-2 rounded-full shrink-0 ${darajaNuqta}`} /><span className="truncate max-w-40">{darajaNom}</span></>)}
@@ -1230,6 +1232,7 @@ const SavolKarta = memo(function SavolKarta({ q, tanlangan, yangi, tanlanadi, ta
           {q.passageId && <Yorliq>matnli</Yorliq>}
           <span className="ml-auto flex items-center gap-1.5 text-[11.5px] text-matn-xira">
             {!!q.usedCount && <span>{q.usedCount} marta ishlatilgan</span>}
+            <span className="raqam" title="Savolning bankdagi doimiy raqami (ID) — qaysi mavzuda turishidan qat'i nazar o'zgarmaydi">ID {q.id}</span>
             <button type="button" aria-label={`#${q.id} — amallar`} title="Ochish, o'chirish" aria-haspopup="menu" onClick={e => onMenyu('savol', e.currentTarget, q.id)}
               className="p-1 -mr-1 rounded-lg text-matn-sokin hover:bg-ichki hover:text-matn cursor-pointer"><MoreHorizontal size={16} /></button>
           </span>

@@ -537,9 +537,10 @@ export interface JadvalSavol {
   correctAnswer: string;
   /** Bo'lsa — savol qoralama bo'lib tushadi. */
   xato: string | null;
-  /** Ikki tilli QR: "N (ru)" qatoridagi tarjima. */
-  tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
+  /** "N (ru)" qatoridagi tarjima; ikkinchi tarjima qatori ("N (en)") — `boshqa` da. */
+  tarjima?: JadvalTarjima & { boshqa?: JadvalTarjima[] } | null;
 }
+export interface JadvalTarjima { til: 'uz' | 'ru' | 'en'; text: string; options: string[] }
 export interface JadvalNatija { savollar: JadvalSavol[]; formulaSoni: number; oqilmagan: number; rasmSoni: number }
 
 const KIRILL_HARF: Record<string, string> = { А: 'A', Б: 'B', В: 'C', Г: 'D', Д: 'E', Е: 'F' };
@@ -618,7 +619,10 @@ export async function wordJadvalSavollari(fayl: File, rasmYukla: (dataUrl: strin
       const matn = await katakHtml(kataklar[1]);
       const variantlar = await Promise.all(kataklar.slice(2, n - 1).map(katakHtml));
       while (variantlar.length && !variantlar[variantlar.length - 1]) variantlar.pop();
-      if (oldingi && (matn || variantlar.some(Boolean))) oldingi.tarjima = { til, text: matn, options: variantlar };
+      if (oldingi && (matn || variantlar.some(Boolean))) {
+        const t: JadvalTarjima = { til, text: matn, options: variantlar };
+        oldingi.tarjima = oldingi.tarjima ? { ...oldingi.tarjima, boshqa: [...(oldingi.tarjima.boshqa || []), t] } : t;
+      }
       continue;
     }
     const savolKatak = kataklar[seriya ? 1 : 0];

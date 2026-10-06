@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Sparkles, Camera, FileUp, ClipboardPaste, Trash2, Pencil, CheckCircle2, AlertTriangle, Loader2, Copy, FileSpreadsheet, FileText, Download, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Camera, FileUp, ClipboardPaste, Trash2, Pencil, CheckCircle2, AlertTriangle, Loader2, Copy, FileSpreadsheet, FileText, RotateCcw } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
@@ -9,7 +9,7 @@ import { HARFLAR, savolXatosi, raqamniTozala } from '../../../../lib/imtihon.js'
 import { QiyinlikTanlov } from './qiyinlik';
 import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
-import { exceldanSavollar, shablonniYukla, type ExcelSavol } from './excel';
+import { exceldanSavollar, type ExcelSavol } from './excel';
 import QrShablonTugma from './QrShablonTugma';
 import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
 import { compressAndUpload } from '../../../lib/image';
@@ -40,7 +40,7 @@ interface Natija extends AiSavol {
   manba: 'ai' | 'excel' | 'jadval';
   /** To'plam — qaysi fayldan (Addmen "QR file name"). */
   toplam?: string | null;
-  tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
+  tarjima?: JadvalSavol['tarjima'];
   raqam?: string | null;
   javobManbasi?: 'material' | 'ai' | null;
   /** Javob boshqa sahifadagi kalitdan olindi. */
@@ -59,6 +59,8 @@ interface AiMatn { id: string; sarlavha: string; matn: string }
 const PARTIYA = 3;
 const MAKS_SAHIFA = 40;
 const TEKSHIRUV_BOLAGI = 12;
+/** AI bir so'rovda nechta savolni mavzuga ajratadi. */
+const MAVZULASH_BOLAGI = 40;
 const ARALASH = 'Aralash';
 const KICHIK_SELECT = 'max-w-full px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] text-matn outline-none focus:border-brand cursor-pointer';
 
@@ -266,6 +268,31 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             language: 'uz', solution: null, solutionStatus: 'yoq', xato: q.xato, toplam, tarjima: q.tarjima || null,
           });
         }
+      }
+      // Mavzu tanlanmagan Word jadvali: AI har savolni fanning mavzulariga ajratadi (mos mavzu
+      // bo'lmasa — yangi nom taklif qiladi). AI ulanmagan yoki javob bermasa — «Aralash».
+      const mavzusiz = qatiyMavzu ? [] : yig.filter(q => q.manba === 'jadval');
+      if (mavzusiz.length && fan && ai?.yoqilgan) {
+        const nomlar = fan.mavzular.map(m => m.name);
+        const mavzular = new Map<number, string>();
+        for (let i = 0; i < mavzusiz.length; i += MAVZULASH_BOLAGI) {
+          setJarayon({ matn: 'AI savollarni mavzularga ajratmoqda', i, jami: mavzusiz.length });
+          const bolak = mavzusiz.slice(i, i + MAVZULASH_BOLAGI);
+          try {
+            const r = await soro<{ mavzular: string[] }>('POST', 'questions/ai/mavzula', { fan: fan.name, mavzular: nomlar, savollar: bolak.map(q => q.text) });
+            bolak.forEach((q, k) => {
+              const taklif = String(r.mavzular?.[k] || '').trim();
+              if (!taklif) return;
+              const nom = nomlar.find(x => x.toLowerCase() === taklif.toLowerCase()) || taklif;
+              if (!nomlar.includes(nom)) nomlar.push(nom);
+              mavzular.set(q.kalit, nom);
+            });
+          } catch (e: any) {
+            xatolar.push(`mavzularga ajratish: ${xatoMatni(e)}`);
+            break;
+          }
+        }
+        for (let i = 0; i < yig.length; i++) if (mavzular.has(yig[i].kalit)) yig[i] = { ...yig[i], topic: mavzular.get(yig[i].kalit)! };
       }
       if (aiKerak && fan) {
         // So'rovlar: sahifa suratlari 3 tadan, Word — o'qilganda bo'lingan qismlar,
@@ -477,7 +504,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                   <select className={SELECT} value={mavzu?.id ?? (kutilgan ? mavzuId ?? '' : '')} disabled={!fan || band} aria-label="Mavzu"
                     onChange={e => (e.target.value === 'yangi' ? setYangiMavzu('') : setMavzuId(Number(e.target.value) || null))}>
                     {/* Word jadvali va Excel AI siz o'qiladi — mavzu tanlanmasa «Aralash» ga tushadi. */}
-                    <option value="">{!fan ? 'Avval fanni tanlang' : jadvallar.length > 0 && !aiKerak ? `Tanlanmagan — «${ARALASH}» mavzusiga tushadi` : 'AI o\'zi mavzularga ajratsin'}</option>
+                    <option value="">{!fan ? 'Avval fanni tanlang' : jadvallar.length > 0 && !aiKerak && !ai?.yoqilgan ? `Tanlanmagan — «${ARALASH}» mavzusiga tushadi` : 'AI o\'zi mavzularga ajratsin'}</option>
                     {kutilgan && mavzuId != null && <option value={mavzuId}>{kutilgan}</option>}
                     {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
                       ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
@@ -538,7 +565,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                         <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileText size={15} className="text-brand shrink-0" />
                           <span className="min-w-0">
                             <span className="block truncate">{j.nom}</span>
-                            <span className="block text-[11.5px] text-matn-xira">Word jadvali (Addmen QR) · {j.savollar.length} ta savol{chala ? ` · ${chala} tasi chala (qoralama bo'ladi)` : ''} · AI kerak emas</span>
+                            <span className="block text-[11.5px] text-matn-xira">Word jadvali · {j.savollar.length} ta savol{chala ? ` · ${chala} tasi chala (qoralama bo'ladi)` : ''}</span>
                           </span>
                         </span>
                         <button type="button" aria-label="Olib tashlash" disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== j.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
@@ -584,7 +611,6 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
 
             <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <button type="button" onClick={shablonniYukla} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-matn-sokin hover:text-brand cursor-pointer w-fit"><Download size={13} /> Excel shablon</button>
                 <QrShablonTugma />
               </span>
               <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !aiSiz}

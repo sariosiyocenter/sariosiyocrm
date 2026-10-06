@@ -14,7 +14,7 @@ import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
 import { savolVariantlari, varaqTuzilmasi, turi, qiyinlikDarajasi, HARFLAR } from '../lib/imtihon.js';
 import {
   aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn, matnIzi,
-  savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, tarjimaQil, yozmaBaho,
+  savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, savollarniMavzula, tarjimaQil, yozmaBaho,
 } from '../lib/imtihonAI.js';
 
 // AI so'rovi pullik va sekin: xodim boshiga soatiga 120 ta.
@@ -210,6 +210,19 @@ export function registerImtihonAIRoutes(app) {
       const royxat = (Array.isArray(req.body?.savollar) ? req.body.savollar : []).slice(0, 12).map(kelganSavol);
       if (!royxat.length) return res.status(400).json({ error: "Savollar ro'yxati bo'sh" });
       res.json({ natijalar: await savollarniTekshir(royxat) });
+    } catch (err) { aiXatosi(err, res, next); }
+  });
+
+  // Tayyor savollar (Word jadvali) — mavzularga: har savolga mavzu nomi qaytadi, hech narsa saqlanmaydi.
+  app.post('/api/questions/ai/mavzula', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!tayyormi(res)) return;
+      const fan = String(req.body?.fan || '').trim().slice(0, 120);
+      if (!fan) return res.status(400).json({ error: 'Fanni kiriting' });
+      const savollar = (Array.isArray(req.body?.savollar) ? req.body.savollar : []).slice(0, 60).map(s => htmldanMatn(String(s ?? '').slice(0, 20000)).slice(0, 500));
+      if (!savollar.length) return res.status(400).json({ error: "Savollar ro'yxati bo'sh" });
+      const mavzular = (Array.isArray(req.body?.mavzular) ? req.body.mavzular : []).slice(0, 300).map(m => String(m ?? '').trim().slice(0, 120)).filter(Boolean);
+      res.json({ mavzular: await savollarniMavzula({ fan, mavzular, savollar }) });
     } catch (err) { aiXatosi(err, res, next); }
   });
 

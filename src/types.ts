@@ -527,7 +527,7 @@ export interface Question {
     /** Javob variantlari kitobchada nechta ustunda (Addmen DISPLAY CHOICES; null — o'zi). */
     joylashuv?: 1 | 2 | 4 | null;
     /** Ikkinchi tildagi matn (Addmen "Bilingual"). */
-    tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] } | null;
+    tarjima?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[]; /** Uchinchi til (Word shablonidan). */ boshqa?: { til: 'uz' | 'ru' | 'en'; text: string; options: string[] }[] } | null;
     usedCount?: number;
     pCorrect?: number | null;
     discrimination?: number | null;

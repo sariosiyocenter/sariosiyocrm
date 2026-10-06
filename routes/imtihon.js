@@ -232,8 +232,12 @@ function savolMalumoti(body) {
     const t = body.tarjima && typeof body.tarjima === 'object' ? body.tarjima : {};
     const matn = String(t.text ?? '').slice(0, LAVHA_MAX);
     const variantlar = Array.isArray(t.options) ? t.options.slice(0, HARFLAR.length).map(x => String(x ?? '').slice(0, 4000)) : [];
+    const boshqa = (Array.isArray(t.boshqa) ? t.boshqa : []).slice(0, 2)
+      .filter(x => x && typeof x === 'object' && ['uz', 'ru', 'en'].includes(x.til))
+      .map(x => ({ til: x.til, text: String(x.text ?? '').slice(0, LAVHA_MAX), options: (Array.isArray(x.options) ? x.options : []).slice(0, HARFLAR.length).map(o => String(o ?? '').slice(0, 4000)) }))
+      .filter(x => x.text.trim() || x.options.some(o => o.trim()));
     d.tarjima = matn.trim() || variantlar.some(x => x.trim())
-      ? { til: ['uz', 'ru', 'en'].includes(t.til) ? t.til : 'ru', text: matn, options: variantlar }
+      ? { til: ['uz', 'ru', 'en'].includes(t.til) ? t.til : 'ru', text: matn, options: variantlar, ...(boshqa.length ? { boshqa } : {}) }
       : Prisma.DbNull;
   }
   // Belgilar mavjudligi saqlashda tekshirilmaydi: yo'q id filtrda shunchaki uchramaydi.

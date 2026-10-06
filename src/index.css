@@ -336,6 +336,10 @@ input[type="number"] {
 
 /* Savollar banki ustunlari: savol biriktirilgan qator bir lahza "chaqnaydi",
    yangi qo'shilgan qator pastdan chiqadi (src/components/imtihon/bank/BankQismlari.tsx). */
+/* Formulalar (KaTeX): fayldagi shrift qanday bo'lmasin, sonlar va oddiy belgilar matn bilan
+   bir xil shriftda va o'lchamda; o'zgaruvchilar (x, y) formula shriftida qoladi. */
+:root .katex { font-size: 1.02em; font-family: 'Sora', 'Inter', KaTeX_Main, system-ui, sans-serif; }
+
 @keyframes bank-chaqnash {
   0% { background-color: color-mix(in srgb, var(--color-brand) 35%, transparent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand) 55%, transparent); }
   100% { background-color: transparent; box-shadow: 0 0 0 7px transparent; }

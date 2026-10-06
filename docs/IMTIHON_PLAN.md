@@ -1227,3 +1227,30 @@ Bosib ko'rsa bo'ladigan maket (Artifact) ko'rsatildi, "ok" dan keyin aynan shu k
 
 Sinov: `scratch/bank6_ui.mjs` (ZZ yozuvlar; fan → bo'lim → mavzu → daraja → filtr → yorliq, panel,
 sudrash, bekor qilish, filtrlash, telefon).
+
+### 21.3 Birinchi foydalanishdan keyin: tartib raqami, fayl tartibi, AI mavzulari, shablon (2026-10-06)
+
+Egasi: "1285-savoldan keyin 1291 keladi — tushunarsiz; qayerga kirsam ham 1-savoldan boshlansin;
+fayldagi tartibda tushsin; mavzuga AI o'zi ajratsin; shrift bir xil bo'lsin; Excel shablon kerak
+emas, Word shablon yaxshilansin, nega «QR»; tilni bittadan ortiq tanlab bo'lsin".
+
+- **Tartib raqami**: kartada `1.`, `2.` … — ro'yxatdagi o'rni (sahifa hisobga olinadi), har
+  ko'rinishda (fan, bo'lim, mavzu, filtr) 1 dan. Bazadagi doimiy raqam kartaning chetida «ID 1285».
+- **Fayldagi tartib**: savollar bitta `createManyAndReturn` bilan yoziladi, id lari fayl tartibida;
+  ro'yxat id bo'yicha o'sish tartibida. Qo'shilgandan keyin ro'yxat faqat yangi savollarni
+  («Hozirgina qo'shilganlar» yorlig'i — QID oralig'i) fayldagi tartibda ko'rsatadi (avval
+  "yangilari avval" teskari tartib edi).
+- **AI mavzularga ajratadi (Word jadvali)**: mavzu tanlanmagan bo'lsa `POST /api/questions/ai/mavzula
+  {fan, mavzular[], savollar[]}` 40 tadan chaqiriladi (`savollarniMavzula`): bankdagi mavzu mos kelsa —
+  o'sha, bo'lmasa qisqa yangi nom (ko'rib chiqishda «yangi mavzu» belgisi, har savolda o'zgartirsa
+  bo'ladi). AI ulanmagan yoki xato bersa — «Aralash». Hech narsa saqlanmaydi (audit: skip).
+- **Shrift**: fayldagi shrift olinmaydi (matn toza HTML). Formulalar (KaTeX) matn bilan bir xil
+  o'lcham va shriftda: `:root .katex` (index.css) — sonlar va oddiy belgilar ilova shriftida.
+- **Shablon**: «Excel shablon» havolasi olib tashlandi (Excel fayl yuklash ishlayveradi). «Word QR
+  shablon» → «Word shablon» (QR — Addmen'dagi fayl nomi edi, QR kodga aloqasi yo'q). Oynada tillar:
+  o'zbekcha — asosiy, ruscha va inglizcha — belgilab qo'shiladi (ikkalasi ham). Jadvalda har savol
+  ostida "N (ru)", "N (en)" qatorlari; yo'riqnoma raqamlangan, namuna qatori bilan.
+- **Uchinchi til**: birinchi tarjima — `Question.tarjima` ning o'zi, qolgani `tarjima.boshqa[]` da
+  saqlanadi (savol muharriri uni saqlab qoladi). Kitobcha hozircha faqat birinchi tarjimani chiqaradi.
+
+Sinov: `scratch/bank7_ui.mjs` (soxta AI: `scratch/ai_soxta_mavzu.mjs`), `bank6_ui.mjs`.
