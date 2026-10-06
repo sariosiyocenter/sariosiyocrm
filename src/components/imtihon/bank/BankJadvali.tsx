@@ -10,6 +10,7 @@ import { BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
 import MoslashJadvali from './MoslashJadvali';
 import OxshashKop from './OxshashKop';
+import FanKartalari from './FanKartalari';
 import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
 import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, Question, SavolTuri } from '../../../types';
@@ -102,7 +103,6 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   // Serverga yozilayotgan yangi qatorlar (nomi darhol ko'rinadi).
   const [kutilmoqda, setKutilmoqda] = useState<{ joy: string; nom: string }[]>([]);
   const [qosh, setQosh] = useState<Qosh>(null);
-  const [fanTahrir, setFanTahrir] = useState(false);
   const [filtrTahrir, setFiltrTahrir] = useState<number | null>(null);
   const [menyu, setMenyu] = useState<MenyuHolati | null>(null);
   const [yopiq, setYopiq] = useState<Set<string>>(new Set());
@@ -124,7 +124,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     const k = kechikkan.current;
     kechikkan.current = null;
     setTanlov(k?.tanlov || { tur: 'hamma' }); setS(k?.s || BOSH); if (k) setTartib('asc');
-    setTanlangan(new Set()); setSahifa(1); setFiltr(null); setQosh(null); setMenyu(null); setFanTahrir(false); setFiltrTahrir(null); setYopiq(new Set());
+    setTanlangan(new Set()); setSahifa(1); setFiltr(null); setQosh(null); setMenyu(null); setFiltrTahrir(null); setYopiq(new Set());
   }, [fan?.id]);
 
   const fanIdRef = useRef(fan?.id);
@@ -414,7 +414,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     if (!(await confirm({ title: `«${f.name}» fani o'chirilsinmi?`, message: "Fanning bo'lim, mavzu va o'z filtrlari ham o'chadi.", confirmLabel: "O'chirish", danger: true }))) return;
     await amal(async () => {
       await soro('DELETE', `bank/fanlar/${f.id}`);
-      if (f.id === fan?.id) onFan(0);
+      // O'chirish tugaguncha boshqa fan tanlangan bo'lsa — tanlovga tegilmaydi.
+      if (fanIdRef.current === f.id) onFan(0);
       await yangilaDaraxt();
     });
   };
@@ -688,31 +689,9 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
   return (
     <div className="space-y-3">
-      {/* ---------------- Fanlar ---------------- */}
-      <div role="tablist" aria-label="Fanlar" className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[12px] font-semibold text-matn-xira mr-0.5">Fan</span>
-        {daraxt.fanlar.map(f => (fanTahrir && f.id === fan.id ? (
-          <QatorForma key={f.id} boshi={f.name} joy="Fan nomi" onYubor={nom => (nom === f.name ? true : fanNomi(f, nom))} onYop={() => setFanTahrir(false)} className="w-56" />
-        ) : (
-          <React.Fragment key={f.id}>
-            <button type="button" role="tab" aria-selected={f.id === fan.id} onClick={() => onFan(f.id)}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-semibold cursor-pointer transition-colors ${f.id === fan.id ? 'bg-brand border-brand text-brand-ust' : 'bg-sirt border-chiziq text-matn hover:border-chiziq-kuchli'}`}>
-              {f.name}<span className={`raqam text-[12px] font-normal ${f.id === fan.id ? 'opacity-80' : 'text-matn-xira'}`}>{f.id === fan.id && filtr ? fanJami : f.jami - f.arxiv}</span>
-            </button>
-            {f.id === fan.id && savolTahrir && (
-              <button type="button" aria-label={`${f.name} — nomini o'zgartirish yoki o'chirish`} title="Nomini o'zgartirish yoki o'chirish"
-                onClick={e => setMenyu({ tur: 'fan', rect: e.currentTarget.getBoundingClientRect(), ids: [] })}
-                className="p-1.5 -ml-0.5 rounded-lg text-matn-sokin hover:bg-ichki hover:text-matn cursor-pointer"><MoreHorizontal size={16} /></button>
-            )}
-          </React.Fragment>
-        )))}
-        {kutilmoqda.filter(k => k.joy === 'fan').map((k, i) => (
-          <span key={`kf${i}`} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-chiziq-kuchli text-[13px] text-matn-xira"><Loader2 size={13} className="animate-spin" />{k.nom}</span>
-        ))}
-        {savolTahrir && (qosh?.tur === 'fan'
-          ? <QatorForma joy="Fan nomi, masalan Fizika" onYubor={fanQosh} onYop={() => setQosh(null)} className="w-60" />
-          : <button type="button" onClick={() => setQosh({ tur: 'fan' })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-chiziq-kuchli bg-sirt text-[12.5px] font-semibold text-matn hover:border-brand hover:text-brand cursor-pointer"><Plus size={14} />Fan</button>)}
-      </div>
+      {/* ---------------- Fanlar: kartalar qatori ---------------- */}
+      <FanKartalari fanlar={daraxt.fanlar} faolId={fan.id} faolSoni={filtr ? fanJami : null} tahrir={savolTahrir}
+        kutilmoqda={kutilmoqda.filter(k => k.joy === 'fan').map(k => k.nom)} onFan={onFan} onQosh={fanQosh} onNom={fanNomi} onOchir={fanOchir} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[304px_minmax(0,1fr)] gap-3.5 items-start">
         {/* ---------------- Chap: tuzilma va filtrlar ---------------- */}
@@ -1058,12 +1037,6 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       </div>
 
       {/* ---------------- Ochiladigan menyular ---------------- */}
-      {menyu && menyu.tur === 'fan' && (
-        <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`${fan.name} fani`}>
-          <MenyuBand ikonka={<Pencil size={14} />} onClick={() => { setMenyu(null); setFanTahrir(true); }}>Nomini o'zgartirish</MenyuBand>
-          <MenyuBand ikonka={<Trash2 size={14} />} xavfli onClick={() => fanOchir(fan)}>Fanni o'chirish{fan.jami > 0 ? ` (${fan.jami} ta savol bor)` : ''}</MenyuBand>
-        </Menyu>
-      )}
       {menyu && menyu.tur === 'savol' && (
         <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`#${menyu.ids[0]} savol`}>
           <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>{savolTahrir ? 'Ochish va tahrirlash' : "Ko'rish"}</MenyuBand>

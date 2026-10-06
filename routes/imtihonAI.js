@@ -14,7 +14,7 @@ import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
 import { savolVariantlari, varaqTuzilmasi, turi, qiyinlikDarajasi, HARFLAR } from '../lib/imtihon.js';
 import {
   aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn, matnIzi,
-  savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, savollarniMavzula, tarjimaQil, yozmaBaho,
+  savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, savollarniMavzula, savollarniTuz, tarjimaQil, yozmaBaho,
 } from '../lib/imtihonAI.js';
 
 // AI so'rovi pullik va sekin: xodim boshiga soatiga 120 ta.
@@ -211,6 +211,24 @@ export function registerImtihonAIRoutes(app) {
       const royxat = (Array.isArray(req.body?.savollar) ? req.body.savollar : []).slice(0, 12).map(kelganSavol);
       if (!royxat.length) return res.status(400).json({ error: "Savollar ro'yxati bo'sh" });
       res.json({ natijalar: await savollarniTekshir(royxat) });
+    } catch (err) { aiXatosi(err, res, next); }
+  });
+
+  // Mavzu bo'yicha yangi savollar (ustozning talabi va namunasi ixtiyoriy); hech narsa saqlanmaydi —
+  // ustoz ko'rib, tanlab, o'zi bankka qo'shadi.
+  app.post('/api/questions/ai/tuz', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!tayyormi(res)) return;
+      const qisqa = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+      const fan = qisqa(req.body?.fan, 120), mavzu = qisqa(req.body?.mavzu, 200);
+      if (!fan) return res.status(400).json({ error: 'Fanni tanlang' });
+      if (!mavzu) return res.status(400).json({ error: 'Mavzuni tanlang' });
+      const savollar = await savollarniTuz({
+        fan, mavzu, tavsif: qisqa(req.body?.tavsif, 1000), namuna: String(req.body?.namuna ?? '').trim().slice(0, 3000),
+        soni: req.body?.soni, tur: req.body?.tur, qiyinlik: req.body?.qiyinlik, til: ['uz', 'ru', 'en'].includes(req.body?.til) ? req.body.til : 'uz',
+        bor: (Array.isArray(req.body?.bor) ? req.body.bor : []).slice(0, 40).map(b => qisqa(b, 160)).filter(Boolean),
+      });
+      res.json({ savollar: savollar.map(({ matnId, ...k }) => k) }); // eslint-disable-line no-unused-vars
     } catch (err) { aiXatosi(err, res, next); }
   });
 

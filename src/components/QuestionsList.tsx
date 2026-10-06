@@ -9,6 +9,8 @@ import FanlarKorinishi from './imtihon/bank/FanlarKorinishi';
 import FanKorinishi from './imtihon/bank/FanKorinishi';
 import MavzuKorinishi from './imtihon/bank/MavzuKorinishi';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
+import AiTuzish from './imtihon/bank/AiTuzish';
+import type { QoshRejim } from './imtihon/bank/QoshRejimi';
 import SavolYuklash from './imtihon/bank/SavolYuklash';
 import BankJadvali from './imtihon/bank/BankJadvali';
 import Andozalar from './imtihon/bank/Andozalar';
@@ -44,7 +46,7 @@ export default function QuestionsList() {
   const [qayta, setQayta] = useState(0);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   // «Savol qo'shish» oynasining yo'li: fayldan yoki bitta masalaga o'xshashini tuzish (AI).
-  const [qoshRejim, setQoshRejim] = useState<'fayl' | 'oxshash'>('fayl');
+  const [qoshRejim, setQoshRejim] = useState<QoshRejim>('fayl');
   // "Savol qo'shish" oynasi: ?qosh=1 ham ochadi (eski /questions/new havolalari).
   const qosh = params.get('qosh') === '1';
   // Bank ro'yxatidan ochilganda — o'sha yerda tanlangan mavzu oldindan qo'yiladi.
@@ -150,6 +152,11 @@ export default function QuestionsList() {
       )}
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
+      {qosh && savolTahrir && qoshRejim === 'ai' && (
+        <AiTuzish daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
+          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
+          onSaqlandi={ids => { ozgardi(); if (ids.length) setYangi({ ids, n: Date.now() }); }} />
+      )}
       {qosh && savolTahrir && qoshRejim === 'oxshash' && (
         <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)} onRejim={setQoshRejim}
           onYop={() => ot({ qosh: null })} onSaqlandi={ozgardi} />

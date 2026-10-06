@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Sparkles, Camera, FileUp, ClipboardPaste, Trash2, Pencil, CheckCircle2, AlertTriangle, Loader2, Copy, FileSpreadsheet, FileText, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Camera, FileUp, Trash2, Pencil, CheckCircle2, AlertTriangle, Loader2, Copy, FileSpreadsheet, FileText, RotateCcw } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
@@ -11,6 +11,7 @@ import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
 import { exceldanSavollar, type ExcelSavol } from './excel';
 import QrShablonTugma from './QrShablonTugma';
+import QoshRejimi, { type QoshRejim } from './QoshRejimi';
 import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
 import { compressAndUpload } from '../../../lib/image';
 import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
@@ -122,7 +123,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   /** `mavzuId` ning nomi — mavzu hozirgina yaratilgan bo'lib, daraxtda hali ko'rinmasa ham savollar o'shanga tushsin. */
   mavzuNomi?: string;
   /** Berilsa — sarlavhada «Fayldan | O'xshashini tuzish» almashtirgichi chiqadi. */
-  onRejim?: (rejim: 'fayl' | 'oxshash') => void;
+  onRejim?: (rejim: QoshRejim) => void;
   onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
   /** Zukko dan: biriktirilgan fayllar; avto — yuklangach ajratish o'zi boshlanadi; yuqorida — Zukko panelining ustida. */
   boshFayllar?: File[]; avto?: boolean; yuqorida?: boolean;
@@ -142,7 +143,6 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const qatiyMavzu = yangiMavzu !== null ? yangiMavzu.trim() : mavzu?.name || kutilgan;
 
   const [manbalar, setManbalar] = useState<Manba[]>([]);
-  const [matnOchiq, setMatnOchiq] = useState(false);
   const [matn, setMatn] = useState('');
   const [ustida, setUstida] = useState(false);
   const kameraRef = useRef<HTMLInputElement>(null);
@@ -477,15 +477,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> Savol qo'shish</h3>
-            <p className="text-[12px] text-matn-xira">Rasm, PDF, Word, Excel yoki matn — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
-            {onRejim && (
-              <div className="mt-2 inline-flex rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savol qo'shish usuli">
-                {([['fayl', 'Fayldan'], ['oxshash', "O'xshashini tuzish (AI)"]] as const).map(([v, nom]) => (
-                  <button key={v} type="button" role="tab" aria-selected={v === 'fayl'} disabled={band} onClick={() => onRejim(v)}
-                    className={`px-3 py-1 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors disabled:opacity-50 ${v === 'fayl' ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{nom}</button>
-                ))}
-              </div>
-            )}
+            <p className="text-[12px] text-matn-xira">Rasm, PDF, Word yoki Excel — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
+            {onRejim && <QoshRejimi rejim="fayl" onRejim={onRejim} band={band} />}
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
@@ -532,19 +525,11 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                 <Tugma turi="asosiy" ikonka={<Camera size={15} />} disabled={band} onClick={() => kameraRef.current?.click()}>{sahifalar.length ? 'Yana suratga olish' : 'Suratga olish'}</Tugma>
                 <Tugma ikonka={<FileUp size={15} />} disabled={band} onClick={() => faylRef.current?.click()}>Fayl tanlash</Tugma>
-                <Tugma turi="oddiy" ikonka={<ClipboardPaste size={15} />} disabled={band} onClick={() => setMatnOchiq(v => !v)}>Matnni joylash</Tugma>
               </div>
               <p className="mt-3 text-[11.5px] text-matn-xira">PDF, Word, rasm (kitob, daftar, test sahifasi) yoki Excel · kompyuterda faylni shu yerga tashlash yoki Ctrl+V · {MAKS_SAHIFA} sahifagacha</p>
               <input ref={kameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
               <input ref={faylRef} type="file" multiple accept={`image/*,application/pdf,.pdf,.docx,.doc,${DOCX},.xlsx,.xls`} className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
             </div>
-
-            {matnOchiq && (
-              <Maydon nom="Matn" izoh="Word, Telegram yoki saytdan nusxalangan savollar — AI ajratadi">
-                <textarea rows={6} autoFocus className={INPUT} value={matn} onChange={e => setMatn(e.target.value)} aria-label="Savollar matni"
-                  placeholder="1. Poyezd 3 soatda 180 km yo'l bosdi. Tezligini toping. A) 50 B) 60 C) 70 D) 80" />
-              </Maydon>
-            )}
 
             {(sahifalar.length > 0 || excellar.length > 0 || wordlar.length > 0 || jadvallar.length > 0) && (
               <div className="space-y-2">

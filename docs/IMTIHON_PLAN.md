@@ -1274,3 +1274,22 @@ Imtihonlar bosilganda savollar bankiga tushsin; o'xshash masala va savol qo'shis
   ochiladi; `?imtihon=ID` havolalari avvalgidek «Imtihonlar» bo'limida.
 
 Sinov: `scratch/bank8_ui.mjs` (soxta AI: `scratch/ai_soxta_server.mjs`).
+
+### 21.5 Fanlar kartalari, mavzu bo'yicha AI savol tuzadi (2026-10-07)
+
+Egasi: "fanlar tepada qo'pol turibdi, qo'shish noqulay — chiroyli qil; «matndan» kerak emas;
+mavzuni aytsam (namuna bersam ham, bermasam ham) AI shuncha masala yoki misol tuzib bersin".
+
+- **Fanlar — kartalar qatori** (`bank/FanKartalari.tsx`): har fan o'z rangidagi belgi (nomidan
+  barqaror rang), savol va mavzu soni, qiyinlik taqsimoti chizig'i; tanlangani ajralib turadi.
+  Oxirida «Yangi fan» kartasi — nomi shu kartada yoziladi. Nomini o'zgartirish / o'chirish —
+  kartadagi «…». Fan o'chirilayotganda boshqa fan tanlansa, tanlovga tegilmaydi.
+- **«Savol qo'shish» — uch yo'l** (`bank/QoshRejimi.tsx`): «Fayldan», «Mavzu bo'yicha (AI tuzadi)»,
+  «Namunaga o'xshash (AI)». «Matnni joylash» olib tashlandi.
+- **Mavzu bo'yicha** (`bank/AiTuzish.tsx`, `POST /api/questions/ai/tuz` → `savollarniTuz`): fan, mavzu,
+  ixtiyoriy «Nima kerak» (o'z so'zi bilan) va ixtiyoriy namuna; 5 / 10 / 20 ta, variantli yoki
+  raqamli javobli, qiyinligi. 10 tadan tuziladi (oldingilari takrorlanmasin deb yuboriladi), keyin
+  `ai/tekshir` kalitni ko'rmay qayta yechadi. Tekshiruvdan o'tgani faol, qolgani qoralama; manba —
+  «AI tuzdi». Hech narsa ustoz ko'rib tasdiqlamaguncha saqlanmaydi.
+
+Sinov: `scratch/bank9_ui.mjs` (soxta AI: `scratch/ai_soxta_server.mjs`).
