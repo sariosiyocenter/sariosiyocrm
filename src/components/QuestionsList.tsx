@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, X, ChevronRight, Copy, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Search, Plus, X, ChevronRight, ArrowLeft, BarChart3 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
@@ -43,12 +43,13 @@ export default function QuestionsList() {
   const [natijalar, setNatijalar] = useState<Question[] | null>(null);
   const [qayta, setQayta] = useState(0);
   const [ochiq, setOchiq] = useState<Question | null>(null);
-  const [oxshash, setOxshash] = useState(false);
+  // «Savol qo'shish» oynasining yo'li: fayldan yoki bitta masalaga o'xshashini tuzish (AI).
+  const [qoshRejim, setQoshRejim] = useState<'fayl' | 'oxshash'>('fayl');
   // "Savol qo'shish" oynasi: ?qosh=1 ham ochadi (eski /questions/new havolalari).
   const qosh = params.get('qosh') === '1';
   // Bank ro'yxatidan ochilganda — o'sha yerda tanlangan mavzu oldindan qo'yiladi.
   const [qoshMavzu, setQoshMavzu] = useState<{ id: number; nom: string } | null>(null);
-  const qoshOch = () => { setQoshMavzu(null); ot({ qosh: '1' }); };
+  const qoshOch = () => { setQoshMavzu(null); setQoshRejim('fayl'); ot({ qosh: '1' }); };
   // Hozirgina qo'shilgan savollar — bank ro'yxati ularga o'tadi ("yangi" belgisi bilan).
   const [yangi, setYangi] = useState<{ ids: number[]; n: number } | null>(null);
 
@@ -98,7 +99,6 @@ export default function QuestionsList() {
         {bolim === 'bank' && (
           <div className="flex flex-wrap gap-2 shrink-0">
             {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<BarChart3 size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar bo'yicha sonlar va natijalar; o'quv rejadan mavzular; qiyinlikni natijaga moslash">Statistika</Tugma>}
-            {savolTahrir && <Tugma kichik ikonka={<Copy size={14} />} onClick={() => setOxshash(true)} title="AI bitta masaladan sonlari va javobi boshqa masalalar tuzadi">O'xshash masala</Tugma>}
             {/* Ro'yxat ko'rinishida «Savol qo'shish» — bankning o'zida (tanlangan mavzu nomi bilan). */}
             {savolTahrir && tuzilma && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={qoshOch}>Savol qo'shish</Tugma>}
           </div>
@@ -109,8 +109,10 @@ export default function QuestionsList() {
         <Andozalar daraxt={daraxt} />
       ) : !tuzilma ? (
         <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
+          onYangi={ids => setYangi({ ids, n: Date.now() })}
           onQosh={savolTahrir ? m => {
             setQoshMavzu(m);
+            setQoshRejim('fayl');
             // Hozirgina yaratilgan mavzu daraxtda hali yo'q bo'lsa — yangilab qo'yamiz (oyna nomi bilan ishlayveradi).
             if (m && !daraxt.fanlar.some(f => f.mavzular.some(x => x.id === m.id))) yangila();
             ot({ qosh: '1' });
@@ -148,10 +150,13 @@ export default function QuestionsList() {
       )}
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
-      {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => setOxshash(false)} onSaqlandi={ozgardi} />}
-      {qosh && savolTahrir && (
+      {qosh && savolTahrir && qoshRejim === 'oxshash' && (
+        <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)} onRejim={setQoshRejim}
+          onYop={() => ot({ qosh: null })} onSaqlandi={ozgardi} />
+      )}
+      {qosh && savolTahrir && qoshRejim === 'fayl' && (
         <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
-          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onYop={() => ot({ qosh: null })}
+          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
           onSaqlandi={r => { ozgardi(); if (r?.ids?.length) setYangi({ ids: r.ids, n: Date.now() }); }} />
       )}
     </div>

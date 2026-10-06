@@ -74,7 +74,7 @@ export default function ExamsList() {
     { id: 'skaner', nom: 'Skaner', ikonka: ScanLine, ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar va tarix', ikonka: BarChart3, ochiq: kora('imtihonlar.natija') },
   ].filter(t => t.ochiq) as { id: TabId; nom: string; ikonka: typeof BookOpen }[];
-  const tab = (TABLAR.find(t => t.id === params.get('tab'))?.id || (TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
+  const tab = (TABLAR.find(t => t.id === params.get('tab'))?.id || (params.has('imtihon') && TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
   const k = params.get('k');
   const ozgartir = (patch: Record<string, string | null>) => setParams(p => {
     for (const [kalit, v] of Object.entries(patch)) { if (v === null) p.delete(kalit); else p.set(kalit, v); }

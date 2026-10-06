@@ -1254,3 +1254,23 @@ emas, Word shablon yaxshilansin, nega «QR»; tilni bittadan ortiq tanlab bo'lsi
   saqlanadi (savol muharriri uni saqlab qoladi). Kitobcha hozircha faqat birinchi tarjimani chiqaradi.
 
 Sinov: `scratch/bank7_ui.mjs` (soxta AI: `scratch/ai_soxta_mavzu.mjs`), `bank6_ui.mjs`.
+
+### 21.4 O'xshash masalalar: bankdagi savoldan, bitta «Savol qo'shish» (2026-10-06)
+
+Egasi: "bankdagi bor masalalarga ham o'xshash masala qo'shish; o'xshash masalani kuchaytirish;
+Imtihonlar bosilganda savollar bankiga tushsin; o'xshash masala va savol qo'shishni birlashtirish".
+
+- **Bankdagi savollardan** (`bank/OxshashKop.tsx`): ro'yxatda belgilangan savollar (pastki panel —
+  «O'xshashini tuzish») yoki bitta savol (karta menyusi) uchun AI har biriga 1/3/5 ta o'xshashini
+  tuzadi (`ai/oxshash`) va qayta yechib tekshiradi (`ai/tekshir`). Bir martada 20 tagacha asl savol.
+  Yangi savol asl savolning mavzusiga tushadi (`parentId`, `bankTopicId`); tekshiruvdan o'tgani —
+  faol, qolgani — qoralama; javobi asl savolnikidek chiqqani (`aslBilanBir`) o'zi belgilanmaydi.
+- **Kuchaytirish**: bir nechta savoldan birdaniga; qiyinligi — «Osonroq / O'sha / Qiyinroq»
+  (`klonlarYasa({daraja})`: topshiriq matni shunga mos, saqlanganda qiyinlik bir pog'ona suriladi).
+- **Bitta oyna**: tepada alohida «O'xshash masala» tugmasi yo'q. «Savol qo'shish» oynasida ikki yo'l:
+  «Fayldan» (SavolYuklash) va «O'xshashini tuzish (AI)» (OxshashSavollar — rasm yoki matndan);
+  ikkalasi `onRejim` bilan almashadi (QuestionsList `qoshRejim`).
+- **Menyudagi «Imtihonlar»**: tab ko'rsatilmasa birinchi ruxsat etilgan bo'lim (Savollar banki)
+  ochiladi; `?imtihon=ID` havolalari avvalgidek «Imtihonlar» bo'limida.
+
+Sinov: `scratch/bank8_ui.mjs` (soxta AI: `scratch/ai_soxta_server.mjs`).

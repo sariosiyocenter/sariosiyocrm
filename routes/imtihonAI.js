@@ -198,7 +198,8 @@ export function registerImtihonAIRoutes(app) {
       const kamchilik = savolKamchiligi(q);
       if (kamchilik) return res.status(400).json({ error: kamchilik });
       const usul = req.body?.usul === 'vaziyat' ? 'vaziyat' : 'sonlar';
-      const klonlar = await klonlarYasa(q, q.options, { soni: req.body?.soni, usul, tur: req.body?.tur || null, tekshir: false });
+      const daraja = ['oson', 'qiyin'].includes(req.body?.daraja) ? req.body.daraja : null;
+      const klonlar = await klonlarYasa(q, q.options, { soni: req.body?.soni, usul, tur: req.body?.tur || null, tekshir: false, daraja });
       res.json({ klonlar: klonlar.map(({ matnId, ...k }) => k) }); // eslint-disable-line no-unused-vars
     } catch (err) { aiXatosi(err, res, next); }
   });

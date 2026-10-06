@@ -45,8 +45,10 @@ function Belgi({ n }: { n: Natija }) {
 }
 
 
-export default function OxshashSavollar({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, asl: bankdagi = null, onYop, onSaqlandi }: {
+export default function OxshashSavollar({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, asl: bankdagi = null, onRejim, onYop, onSaqlandi }: {
   daraxt: BankDaraxt;
+  /** Berilsa — sarlavhada «Fayldan | O'xshashini tuzish» almashtirgichi chiqadi («Savol qo'shish» oynasining ikkinchi yo'li). */
+  onRejim?: (rejim: 'fayl' | 'oxshash') => void;
   fanId?: number | null;
   mavzuId?: number | null;
   /** Bankdagi savolga o'xshash tuzish — rasm bosqichi o'tkazib yuboriladi. */
@@ -354,8 +356,16 @@ export default function OxshashSavollar({ daraxt, fanId: boshFan = null, mavzuId
       <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-3xl border border-chiziq my-2 sm:my-4">
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
-            <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> {bankdagi ? "O'xshash savollar" : "Rasmdan o'xshash savollar"}</h3>
-            <p className="text-[12px] text-matn-xira">AI masalani o'qiydi, sonlari va javobi boshqa masalalar tuzadi, keyin ularni qayta yechib tekshiradi.</p>
+            <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> {onRejim ? "Savol qo'shish" : bankdagi ? "O'xshash savollar" : "Rasmdan o'xshash savollar"}</h3>
+            <p className="text-[12px] text-matn-xira">{onRejim ? 'Bitta masalaning rasmi yoki matni — ' : ''}AI masalani o'qiydi, sonlari va javobi boshqa masalalar tuzadi, keyin ularni qayta yechib tekshiradi.</p>
+            {onRejim && (
+              <div className="mt-2 inline-flex rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savol qo'shish usuli">
+                {([['fayl', 'Fayldan'], ['oxshash', "O'xshashini tuzish (AI)"]] as const).map(([v, nom]) => (
+                  <button key={v} type="button" role="tab" aria-selected={v === 'oxshash'} disabled={band} onClick={() => onRejim(v)}
+                    className={`px-3 py-1 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors disabled:opacity-50 ${v === 'oxshash' ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{nom}</button>
+                ))}
+              </div>
+            )}
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>

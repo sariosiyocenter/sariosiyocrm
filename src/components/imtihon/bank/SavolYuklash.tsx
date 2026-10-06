@@ -117,10 +117,12 @@ function Belgilar({ n }: { n: Natija }) {
 /** Saqlash natijasi — Zukko faol savollarni imtihonga qo'shishi uchun. */
 export interface SaqlashNatijasi { soni: number; ids: number[]; faolIds: number[] }
 
-export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, mavzuNomi: boshMavzuNomi, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
+export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, mavzuNomi: boshMavzuNomi, onRejim, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
   daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null;
   /** `mavzuId` ning nomi — mavzu hozirgina yaratilgan bo'lib, daraxtda hali ko'rinmasa ham savollar o'shanga tushsin. */
   mavzuNomi?: string;
+  /** Berilsa — sarlavhada «Fayldan | O'xshashini tuzish» almashtirgichi chiqadi. */
+  onRejim?: (rejim: 'fayl' | 'oxshash') => void;
   onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
   /** Zukko dan: biriktirilgan fayllar; avto — yuklangach ajratish o'zi boshlanadi; yuqorida — Zukko panelining ustida. */
   boshFayllar?: File[]; avto?: boolean; yuqorida?: boolean;
@@ -476,6 +478,14 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> Savol qo'shish</h3>
             <p className="text-[12px] text-matn-xira">Rasm, PDF, Word, Excel yoki matn — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
+            {onRejim && (
+              <div className="mt-2 inline-flex rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savol qo'shish usuli">
+                {([['fayl', 'Fayldan'], ['oxshash', "O'xshashini tuzish (AI)"]] as const).map(([v, nom]) => (
+                  <button key={v} type="button" role="tab" aria-selected={v === 'fayl'} disabled={band} onClick={() => onRejim(v)}
+                    className={`px-3 py-1 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors disabled:opacity-50 ${v === 'fayl' ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{nom}</button>
+                ))}
+              </div>
+            )}
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
