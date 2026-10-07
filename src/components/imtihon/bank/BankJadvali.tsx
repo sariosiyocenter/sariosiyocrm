@@ -68,7 +68,7 @@ function hissa(kesim: Kesim, q: Pick<Qator_, 'bankTopicId' | 'difficulty' | 'tag
   for (const g of guruhlar) if (!teglar.some(t => g.idlar.has(t))) k.y[g.id] = Math.max(0, (k.y[g.id] || 0) + ishora);
 }
 
-export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, onTuzilma, savolTahrir, yangilash = 0, yangi, onYangi }: {
+export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, onTuzilma, savolTahrir, yangilash = 0, yangi, onYangi, onTanlov }: {
   daraxt: BankDaraxt; fanId: number | null; onFan: (id: number) => void; yangilaDaraxt: () => Promise<unknown> | void;
   /** «Savol qo'shish» — tanlangan mavzu oldindan qo'yiladi (nomi bilan: hozirgina yaratilgan mavzu daraxtda hali bo'lmasligi mumkin). */
   onQosh?: (mavzu: { id: number; nom: string } | null) => void; onTuzilma: () => void; savolTahrir: boolean;
@@ -78,6 +78,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   yangi?: { ids: number[]; n: number } | null;
   /** Shu ekranning o'zida savol qo'shildi (o'xshash masalalar) — `yangi` bo'lib qaytadi. */
   onYangi?: (ids: number[]) => void;
+  /** Chapda tanlangan mavzu (yo'q bo'lsa null) — tepadagi «Savol qo'shish» shu mavzuga ochilishi uchun. */
+  onTanlov?: (mavzu: { id: number; nom: string } | null) => void;
 }) {
   const { ozgartira, showNotification } = useCRM();
   const ochiradi = ozgartira('imtihonlar.ochirish');
@@ -248,6 +250,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const fanJami = mavzular.reduce((a, m) => a + mavzuSoni(m.id), 0);
   const tanlanganMavzu = tanlov.tur === 'mavzu' ? mavzular.find(m => m.id === tanlov.id) || null : null;
   const qoshMavzu = tanlanganMavzu ? { id: tanlanganMavzu.id, nom: tanlanganMavzu.nom } : null;
+  useEffect(() => { onTanlov?.(qoshMavzu); }, [qoshMavzu?.id, qoshMavzu?.nom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filtr sonlari — chapda tanlangan joy (fan, bo'lim yoki mavzu) ichida.
   const yig = useMemo(() => {
@@ -843,18 +846,6 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
         {/* ---------------- O'ng: savollar ---------------- */}
         <div className="min-w-0 space-y-2.5">
-          <div className="bg-sirt border border-chiziq rounded-2xl px-3.5 py-3 flex flex-wrap items-center gap-x-3.5 gap-y-2">
-            <div className="flex-1 min-w-[200px]">
-              <p className="text-[12px] text-matn-xira truncate">{sarlavha.yol}</p>
-              <h2 className="text-[18px] leading-tight font-bold text-matn break-words">{sarlavha.nom}</h2>
-            </div>
-            {savolTahrir && onQosh && (
-              <Tugma turi={filtr && !mavzular.length ? 'ikkinchi' : 'asosiy'} ikonka={<Plus size={15} />} onClick={() => onQosh(qoshMavzu)}>
-                Savol qo'shish{tanlov.tur === 'mavzu' ? ` — ${sarlavha.nom}` : ''}
-              </Tugma>
-            )}
-          </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-48">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />

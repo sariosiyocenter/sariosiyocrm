@@ -54,6 +54,8 @@ export default function QuestionsList() {
   const qoshOch = () => { setQoshMavzu(null); setQoshRejim('fayl'); ot({ qosh: '1' }); };
   // Hozirgina qo'shilgan savollar — bank ro'yxati ularga o'tadi ("yangi" belgisi bilan).
   const [yangi, setYangi] = useState<{ ids: number[]; n: number } | null>(null);
+  // Bank ro'yxatida chapda tanlangan mavzu — tepadagi «Savol qo'shish» shunga ochiladi.
+  const [tanlov, setTanlov] = useState<{ id: number; nom: string } | null>(null);
 
   // Butun bankdan qidirish (tuzilmaning birinchi qavatida): yozish to'xtagach.
   useEffect(() => {
@@ -100,9 +102,14 @@ export default function QuestionsList() {
         </div>
         {bolim === 'bank' && (
           <div className="flex flex-wrap gap-2 shrink-0">
+            {/* Ro'yxat ko'rinishida — chapda tanlangan mavzuga ochiladi (nomi tugmada yozilgan). */}
+            {savolTahrir && (
+              <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} className="max-w-full"
+                onClick={() => { if (tuzilma) { qoshOch(); return; } setQoshMavzu(tanlov); setQoshRejim('fayl'); if (tanlov && !daraxt.fanlar.some(f => f.mavzular.some(x => x.id === tanlov.id))) yangila(); ot({ qosh: '1' }); }}>
+                <span className="truncate">Savol qo'shish{!tuzilma && tanlov ? ` — ${tanlov.nom}` : ''}</span>
+              </Tugma>
+            )}
             {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<BarChart3 size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar bo'yicha sonlar va natijalar; o'quv rejadan mavzular; qiyinlikni natijaga moslash">Statistika</Tugma>}
-            {/* Ro'yxat ko'rinishida «Savol qo'shish» — bankning o'zida (tanlangan mavzu nomi bilan). */}
-            {savolTahrir && tuzilma && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={qoshOch}>Savol qo'shish</Tugma>}
           </div>
         )}
       </div>
@@ -111,7 +118,7 @@ export default function QuestionsList() {
         <Andozalar daraxt={daraxt} />
       ) : !tuzilma ? (
         <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
-          onYangi={ids => setYangi({ ids, n: Date.now() })}
+          onYangi={ids => setYangi({ ids, n: Date.now() })} onTanlov={setTanlov}
           onQosh={savolTahrir ? m => {
             setQoshMavzu(m);
             setQoshRejim('fayl');
