@@ -495,7 +495,10 @@ export interface CRMState {
 
 // --- Imtihon moduli (docs/IMTIHON_PLAN.md, mantiq — lib/imtihon.js) ---
 
-export type SavolTuri = 'yopiq' | 'raqamli' | 'moslash' | 'yozma';
+/** 'juft' — moslashtirish guruhining savoli; 'qismli' — bitta raqam ostidagi a), b) qismi (ikkalasi guruhli savolga tegishli). */
+export type SavolTuri = 'yopiq' | 'raqamli' | 'moslash' | 'juft' | 'qismli' | 'yozma';
+/** Guruhli savol (Milliy sertifikat): umumiy shart + kichik savollar. */
+export type GuruhTuri = 'moslash' | 'qismli';
 
 export interface Question {
     id: number;
@@ -521,7 +524,7 @@ export interface Question {
     solutionStatus?: 'yoq' | 'qoralama' | 'tasdiqlangan';
     status?: 'qoralama' | 'faol' | 'arxiv';
     passageId?: number | null;
-    passage?: { id: number; title?: string | null } | null;
+    passage?: { id: number; title?: string | null; tur?: string | null; text?: string; variantlar?: string[] | null; /** Guruhli savol: hamma bo'laklari (id bo'yicha). */ questions?: { id: number }[] } | null;
     /** Izoh (Addmen REMARK). */
     remark?: string | null;
     /** Javob variantlari kitobchada nechta ustunda (Addmen DISPLAY CHOICES; null — o'zi). */

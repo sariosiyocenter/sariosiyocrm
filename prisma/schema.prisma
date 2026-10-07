@@ -1165,6 +1165,10 @@ model Passage {
   title     String?
   text      String
   imageUrl  String?
+  // Guruhli savol (Milliy sertifikat): 'moslash' — bir nechta savolga bitta umumiy javoblar
+  // ro'yxati (variantlar); 'qismli' — bitta raqam ostida a), b) qismlari. null — oddiy umumiy matn.
+  tur        String?
+  variantlar Json?
   subject   String
   schoolId  Int
   createdAt DateTime @default(now())

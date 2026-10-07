@@ -166,9 +166,10 @@ export function registerImtihonAIRoutes(app) {
   // Klonlar: qoralama savollar (parentId — asl savol). Tekshiruvdan o'tmagani manbasida belgilanadi.
   app.post('/api/questions/:id/ai/klon', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
-      if (!tayyormi(res)) return;
       const q = await savolniOl(parseInt(req.params.id));
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
+      if (['juft', 'qismli'].includes(q.type)) return res.status(400).json({ error: "Guruhli savolga o'xshashini tuzish hali yo'q" });
+      if (!tayyormi(res)) return;
       const klonlar = await klonlarYasa(q, savolVariantlari(q), { soni: req.body?.soni });
       const yaratildi = [];
       for (const k of klonlar) {
@@ -248,11 +249,12 @@ export function registerImtihonAIRoutes(app) {
   // Tarjima: yangi qoralama savol boshqa tilda (kalit o'sha — variantlar tartibi saqlanadi).
   app.post('/api/questions/:id/ai/tarjima', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
-      if (!tayyormi(res)) return;
       const til = String(req.body?.til || '');
       if (!['uz', 'ru', 'en'].includes(til)) return res.status(400).json({ error: 'Tilni tanlang' });
       const q = await savolniOl(parseInt(req.params.id));
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
+      if (['juft', 'qismli'].includes(q.type)) return res.status(400).json({ error: "Guruhli savolni tarjima qilish hali yo'q" });
+      if (!tayyormi(res)) return;
       if ((q.language || 'uz') === til) return res.status(400).json({ error: 'Savol allaqachon shu tilda' });
       const t = await tarjimaQil(q, savolVariantlari(q), til);
       const yangi = await prisma.question.create({

@@ -169,8 +169,13 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
     // Turi: tanlash oynasida yuklanganidan, bo'lmasa oldingi qoidadan.
     const eskiTur = new Map<number, SavolTuri>();
     for (const r of qolda) for (const id of tanlanganSavollar(r) as number[]) eskiTur.set(id, (r.type || 'yopiq') as SavolTuri);
-    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], yozma: [] };
-    for (const id of ids) guruh[turlar[id] || eskiTur.get(id) || 'yopiq'].push(id);
+    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], juft: [], qismli: [], yozma: [] };
+    for (const id of ids) {
+      const tur = turlar[id] || eskiTur.get(id) || 'yopiq';
+      // Guruhli savollar (juft, qismli) imtihonga hali qo'shilmaydi — kitobcha va varaq tayyor bo'lguncha.
+      if (tur === 'juft' || tur === 'qismli') continue;
+      guruh[tur].push(id);
+    }
     const yangi: TopicRule[] = (Object.keys(guruh) as SavolTuri[]).filter(k => guruh[k].length).map(k => ({
       topic: '', type: k, count: guruh[k].length, questionIds: guruh[k], ...(k === 'yozma' && t.yozmaBal != null ? { points: t.yozmaBal } : {}),
     }));

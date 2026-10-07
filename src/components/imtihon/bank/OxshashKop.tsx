@@ -60,6 +60,8 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
 
   const bittaSavol = async (id: number): Promise<Guruh> => {
     const asl = await soro<Question>('GET', `questions/${id}`);
+    // Guruhli savolning bitta bo'lagi umumiy shartsiz ma'nosiz — unga o'xshashini tuzib bo'lmaydi.
+    if (asl.type === 'juft' || asl.type === 'qismli') throw new Error("Guruhli savolga o'xshashini tuzish hali yo'q");
     const a: AiSavol = {
       type: asl.type, text: asl.text, options: asl.options || null, correctAnswer: asl.correctAnswer || '',
       difficulty: qiyinlikDarajasi(asl.difficulty || 2), language: asl.language || 'uz', solution: asl.solution || null,

@@ -11,9 +11,11 @@ import { SavolOynasi } from './SavolKartasi';
 import MoslashJadvali from './MoslashJadvali';
 import OxshashKop from './OxshashKop';
 import FanKartalari from './FanKartalari';
+import GuruhKarta, { type GuruhMenyusi } from './GuruhKarta';
+import GuruhOynasi from './GuruhOynasi';
 import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
-import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, Question, SavolTuri } from '../../../types';
+import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question, SavolTuri } from '../../../types';
 
 // Savollar banki (egasi bilan maketda kelishilgan ko'rinish, 2026-10-03).
 // Fan — tepada yorliq; pastdagi hamma narsa shu fanniki. Chapda tuzilma (bo'lim → mavzu) va
@@ -37,7 +39,7 @@ interface Saralash {
 }
 const BOSH: Saralash = { qiyinlik: [], darajalar: [], belgilar: {}, manbalar: [], toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '', izohlar: [], matnli: '', joylashuv: [] };
 const JOYLASHUV_NOMI: Record<number, string> = { 0: 'Avtomatik', 1: '1 ustun', 2: '2 ustun', 4: '4 ustun' };
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
 const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 const almashtirRoyxat = <K,>(l: K[], k: K) => (l.includes(k) ? l.filter(x => x !== k) : [...l, k]);
 const TABLETKA = (faol: boolean) => `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust border-brand' : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn hover:border-chiziq-kuchli'}`;
@@ -45,12 +47,12 @@ const CHIP = 'inline-flex items-center gap-1 max-w-full px-1.5 py-0.5 rounded-md
 const CHIP_BOR = `${CHIP} border-chiziq bg-ichki text-matn`;
 const CHIP_BOSH = `${CHIP} border-dashed border-chiziq-kuchli text-matn-xira`;
 
-type Qator_ = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points' | 'remark' | 'passageId' | 'joylashuv'>;
+type Qator_ = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points' | 'remark' | 'passageId' | 'joylashuv' | 'passage'>;
 type Kesim = NonNullable<BankFiltrMalumoti['kesim']>;
 /** Savol(lar)ga qo'yiladigan narsa: mavzu, asosiy daraja, foydalanuvchi darajasi yoki filtr qiymati (null — olib tashlash). */
 type Amal = { mavzu: number } | { daraja: number } | { darajaId: number } | { guruh: number; tag: number | null };
 type Qosh = { tur: 'fan' } | { tur: 'bolim' } | { tur: 'mavzu'; bolim: string } | { tur: 'daraja' } | { tur: 'filtr' } | { tur: 'qiymat'; guruh: number } | null;
-type MenyuTuri = 'fan' | 'savol' | 'mavzu' | 'daraja' | 'guruh' | 'yana';
+type MenyuTuri = 'fan' | 'savol' | 'mavzu' | 'daraja' | 'guruh' | 'yana' | 'guruhkarta';
 interface MenyuHolati { tur: MenyuTuri; rect: DOMRect; ids: number[]; guruh?: number }
 interface Daraja { kalit: string; nom: string; nuqta: string; d: number; id?: number }
 
@@ -100,6 +102,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const [belgilash, setBelgilash] = useState(false);
   // Bankdagi savol(lar)ga o'xshash masala tuzish oynasi — asl savollar id lari.
   const [oxshash, setOxshash] = useState<number[] | null>(null);
+  // Tahrirlanayotgan guruhli savol (umumiy shart id si).
+  const [guruhTahrir, setGuruhTahrir] = useState<number | null>(null);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   const [band, setBand] = useState<string | null>(null);
   // Serverga yozilayotgan yangi qatorlar (nomi darhol ko'rinadi).
@@ -149,12 +153,16 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
   // Hozirgina qo'shilgan savollar: faqat o'shalar ko'rsatiladi, fayldagi tartibda (1 dan).
   // Hammasi bitta mavzuda bo'lsa — o'sha mavzu ochiladi, aks holda — butun fan.
+  const sRef = useRef(s);
+  sRef.current = s;
   useEffect(() => {
     if (!yangi?.ids.length) return;
     let bekor = false;
+    // Javob kelguncha saralash qo'lda o'zgartirilsa (masalan, yorliq olib tashlansa) — o'sha qoladi.
+    const boshS = sRef.current;
     setYangiIdlar(new Set(yangi.ids));
     soro<{ mavzular: Record<number, number> }>('POST', 'bank/tanlov-holati', { ids: yangi.ids }).then(r => {
-      if (bekor) return;
+      if (bekor || sRef.current !== boshS) return;
       const mavzuIdlar = Object.keys(r.mavzular).map(Number);
       if (!mavzuIdlar.length) return;
       const yangilari: Saralash = { ...BOSH, qidDan: String(Math.min(...yangi.ids)), qidGacha: String(Math.max(...yangi.ids)) };
@@ -389,6 +397,13 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     e.dataTransfer.setDragImage(rasm, 12, 14);
     setTimeout(() => rasm.remove(), 0);
   }, []);
+  // Guruhli savol kartasi: belgilash va menyular guruhdagi hamma savolga birdaniga.
+  const guruhTanla = useCallback((idlar: number[], tanlansin: boolean) => setTanlangan(x => {
+    const n = new Set(x);
+    idlar.forEach(id => { if (tanlansin) n.add(id); else n.delete(id); });
+    return n;
+  }), []);
+  const guruhMenyu = useCallback((tur: GuruhMenyusi, el: HTMLElement, idlar: number[], guruh?: number) => setMenyu({ tur, rect: el.getBoundingClientRect(), ids: idlar, guruh }), []);
   const kartaMenyu = useCallback((tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => setMenyu({ tur, rect: el.getBoundingClientRect(), ids: [id], guruh }), []);
   const tanla = (t: Tanlov) => { setTanlov(t); setYonOchiq(false); };
 
@@ -623,6 +638,16 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     const r = await soro<{ ochirildi: number; arxivlandi: number }>('POST', 'questions/bulk-ochir', { ids: idlar });
     xabarBer(`${r.ochirildi} ta savol o'chirildi${r.arxivlandi ? `, ${r.arxivlandi} tasi arxivga o'tdi` : ''}`);
     setTanlangan(x => { const n = new Set(x); idlar.forEach(id => n.delete(id)); return n; });
+    ozgardi();
+  });
+
+  /** Guruhli savolni butunligicha o'chirish: sharti va hamma bo'laklari (ishlatilganlari arxivga o'tadi). */
+  const guruhOchir = (pid: number, soni: number) => ish('ochir', async () => {
+    setMenyu(null);
+    if (!(await confirm({ title: "Guruhli savol o'chirilsinmi?", message: `Umumiy shart va ${soni} ta savoli o'chadi. Imtihonda ishlatilganlari o'chirilmaydi — arxivga o'tadi.`, confirmLabel: "O'chirish", danger: true }))) return;
+    const r = await soro<{ ochirildi: number; arxivlandi: number }>('DELETE', `bank/guruhlar/${pid}`);
+    xabarBer(`Guruhli savol o'chirildi${r.arxivlandi ? ` — ${r.arxivlandi} ta savoli arxivga o'tdi` : ''}`);
+    setTanlangan(new Set());
     ozgardi();
   });
 
@@ -989,6 +1014,20 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             <ul aria-label="Savollar" className={`flex flex-col gap-2 transition-opacity ${yuklanmoqda ? 'opacity-60' : ''}`}>
               {royxat.items.map((q, i) => {
                 const d = savolDarajasi(q);
+                // Guruhli savol: bir guruhning ketma-ket savollari bitta karta bo'lib chiqadi.
+                const gp = q.passage && (q.passage.tur === 'moslash' || q.passage.tur === 'qismli') ? q.passage : null;
+                if (gp) {
+                  // Sahifadagi hamma bo'laklari (ketma-ket bo'lmasa ham) birinchi uchragan joyida, id tartibida.
+                  if (royxat.items.findIndex(x => x.passage?.id === gp.id) !== i) return null;
+                  const azolar = royxat.items.filter(x => x.passage?.id === gp.id).sort((x, y) => x.id - y.id);
+                  const hammasi = gp.questions?.length ? gp.questions.map(x => x.id) : azolar.map(x => x.id);
+                  return (
+                    <GuruhKarta key={`g${gp.id}`} savollar={azolar} hammaIdlar={hammasi} tur={gp.tur as GuruhTuri} shart={gp.text || ''} variantlar={gp.variantlar || []}
+                      boshRaqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={hammasi.every(id => tanlangan.has(id))} yangi={azolar.some(x => yangiIdlar.has(x.id))}
+                      tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir} mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''}
+                      darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar} onTanla={guruhTanla} onMenyu={guruhMenyu} />
+                  );
+                }
                 return (
                   <SavolKarta key={q.id} q={q} raqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
                     mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''} darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar}
@@ -1028,6 +1067,14 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       </div>
 
       {/* ---------------- Ochiladigan menyular ---------------- */}
+      {menyu && menyu.tur === 'guruhkarta' && (
+        <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom="Guruhli savol">
+          {savolTahrir && (
+            <MenyuBand ikonka={<Pencil size={14} />} onClick={() => { const pid = royxat?.items.find(x => x.id === menyu.ids[0] || x.passage?.questions?.some(y => y.id === menyu.ids[0]))?.passage?.id; setMenyu(null); if (pid) setGuruhTahrir(pid); }}>Tahrirlash</MenyuBand>
+          )}
+          {ochiradi && <MenyuBand ikonka={<Trash2 size={14} />} xavfli onClick={() => { const pid = royxat?.items.find(x => x.id === menyu.ids[0] || x.passage?.questions?.some(y => y.id === menyu.ids[0]))?.passage?.id; if (pid) guruhOchir(pid, menyu.ids.length); }}>Guruhni o'chirish</MenyuBand>}
+        </Menyu>
+      )}
       {menyu && menyu.tur === 'savol' && (
         <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`#${menyu.ids[0]} savol`}>
           <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>{savolTahrir ? 'Ochish va tahrirlash' : "Ko'rish"}</MenyuBand>
@@ -1108,6 +1155,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
       {belgilash && filtr && <BelgilashOynasi ids={ids} filtr={filtr} boshi={belgilashBoshi()} onYop={() => setBelgilash(false)} onSaqlandi={ozgardi} />}
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
+      {guruhTahrir != null && <GuruhOynasi daraxt={daraxt} guruhId={guruhTahrir} onYop={() => setGuruhTahrir(null)} onSaqlandi={ozgardi} />}
       {oxshash && (
         <OxshashKop ids={oxshash} onYop={() => setOxshash(null)}
           onSaqlandi={yangiIds => { setTanlangan(new Set()); ozgardi(); if (yangiIds.length) onYangi?.(yangiIds); }} />

@@ -10,6 +10,7 @@ import FanKorinishi from './imtihon/bank/FanKorinishi';
 import MavzuKorinishi from './imtihon/bank/MavzuKorinishi';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import AiTuzish from './imtihon/bank/AiTuzish';
+import GuruhOynasi from './imtihon/bank/GuruhOynasi';
 import type { QoshRejim } from './imtihon/bank/QoshRejimi';
 import SavolYuklash from './imtihon/bank/SavolYuklash';
 import BankJadvali from './imtihon/bank/BankJadvali';
@@ -159,6 +160,11 @@ export default function QuestionsList() {
       )}
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
+      {qosh && savolTahrir && qoshRejim === 'guruh' && (
+        <GuruhOynasi daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
+          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
+          onSaqlandi={ids => { ozgardi(); if (ids.length) setYangi({ ids, n: Date.now() }); }} />
+      )}
       {qosh && savolTahrir && qoshRejim === 'ai' && (
         <AiTuzish daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
           mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}

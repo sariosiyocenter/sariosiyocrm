@@ -18,11 +18,19 @@ export function tozalaHtml(html: string): string {
   const doc = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html');
   const ildiz = doc.body.firstElementChild as HTMLElement;
   const yur = (el: Element) => {
-    for (const bola of Array.from(el.children)) {
+    let navbat = Array.from(el.children);
+    while (navbat.length) {
+      const bola = navbat.shift() as Element;
       if (!TEGLAR.has(bola.tagName)) {
-        // Noma'lum teg — ichidagi matn qoladi, tegning o'zi ketadi.
+        // Noma'lum teg — ichidagi matn qoladi, tegning o'zi ketadi. Yuqoriga chiqqan bolalari
+        // ham navbatga qo'shiladi: aks holda ichma-ich noma'lum teglar ichidagi on* atributlar
+        // tekshirilmay qolardi.
         if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META'].includes(bola.tagName)) bola.remove();
-        else bola.replaceWith(...Array.from(bola.childNodes));
+        else {
+          const ichi = Array.from(bola.children);
+          bola.replaceWith(...Array.from(bola.childNodes));
+          navbat = [...ichi, ...navbat];
+        }
         continue;
       }
       for (const a of Array.from(bola.attributes)) {

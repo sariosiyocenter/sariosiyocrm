@@ -1,12 +1,13 @@
 import React from 'react';
 
-/** «Savol qo'shish» oynasining yo'llari: fayldan, namunaga o'xshash yoki mavzu bo'yicha AI tuzadi. */
-export type QoshRejim = 'fayl' | 'oxshash' | 'ai';
+/** «Savol qo'shish» oynasining yo'llari: fayldan, mavzu bo'yicha AI tuzadi, namunaga o'xshash, guruhli savol (qo'lda). */
+export type QoshRejim = 'fayl' | 'oxshash' | 'ai' | 'guruh';
 
 const YOLLAR: { v: QoshRejim; nom: string }[] = [
   { v: 'fayl', nom: 'Fayldan' },
   { v: 'ai', nom: "Mavzu bo'yicha (AI tuzadi)" },
   { v: 'oxshash', nom: "Namunaga o'xshash (AI)" },
+  { v: 'guruh', nom: 'Guruhli savol' },
 ];
 
 interface QoshRejimiProps {

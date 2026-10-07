@@ -28,7 +28,7 @@ const DTM_ANDOZA: ExamBlock[] = [
   { id: yangiId(), subject: '2-asosiy fan', pointsPerQuestion: 2.1, topicRules: [{ topic: '', count: 30, type: 'yopiq' }] },
 ];
 
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
 // Manfiy ball: xato javob uchun savol balining qancha qismi ayiriladi (Addmen "negative marking").
 const JARIMALAR: { v: number; nom: string }[] = [
   { v: 0, nom: "Yo'q" }, { v: 0.25, nom: '¼' }, { v: 1 / 3, nom: '⅓' }, { v: 0.5, nom: '½' }, { v: 1, nom: "To'liq" },

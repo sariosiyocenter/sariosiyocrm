@@ -1293,3 +1293,49 @@ mavzuni aytsam (namuna bersam ham, bermasam ham) AI shuncha masala yoki misol tu
   «AI tuzdi». Hech narsa ustoz ko'rib tasdiqlamaguncha saqlanmaydi.
 
 Sinov: `scratch/bank9_ui.mjs` (soxta AI: `scratch/ai_soxta_server.mjs`).
+
+
+## 22. Guruhli savollar — Milliy sertifikat turlari (2026-10-07)
+
+Egasi Milliy sertifikat sahifasining rasmini yubordi: "shunaqa savollar ham tuzishimiz kerak".
+Ikki tur yetishmas edi; maket ko'rsatildi (bank kartasi, kitobcha, javob varaqasi), "implement qil".
+
+- **Moslashtirish guruhi** (33–35 kabi): bitta umumiy shart, bir nechta savol, hammasi uchun BITTA
+  javoblar ro'yxati (A–F; ortiqchalari chalg'ituvchi). Har savolning kaliti — harf.
+- **Qismli savol** (36 kabi): bitta shart, a), b) qismlari, har birining o'z javobi; imtihonda bitta
+  raqam oladi (36a, 36b).
+
+**Ma'lumot.** Guruh — `Passage` (umumiy matn) ning turi: `Passage.tur` = 'moslash' | 'qismli',
+`Passage.variantlar` — umumiy javoblar ro'yxati. Kichik savollar — `Question` (`passageId`), yangi
+turlar: `juft` (moslashtirish savoli: `options` — ro'yxat nusxasi, `correctAnswer` — harf,
+`lockOptions`) va `qismli` (qism: `correctAnswer` — javob; `answers` to'ldirilgan bo'lsa — son,
+skaner tekshira oladi; bo'sh bo'lsa — ustoz). Tartib (a, b…) — id bo'yicha.
+Nega alohida savol turi: javob varaqasi va kalit imtihon QOIDALARIDAN (tur bo'yicha) yasaladi,
+variantda savollar tur bo'yicha joylashadi — guruh savollari o'z bo'limida turishi uchun tur kerak.
+
+**1-bosqich (bank).** `GET/POST/PUT/DELETE /api/bank/guruhlar` (shart + savollar bitta so'rovda;
+ishlatilgan savol guruhdan olinmaydi; o'chirishda ishlatilgani arxivga o'tadi, qolgani sharti bilan
+o'chadi). `bank/royxat` har savol bilan `passage {tur, text, variantlar, questions[id]}` qaytaradi;
+ro'yxatda bir guruhning sahifadagi hamma savollari bitta karta (`bank/GuruhKarta.tsx`) — ketma-ket
+kelmasa ham; yorliqlar va belgilash guruhning HAMMA savoliga (sahifada ko'rinmayotganiga ham).
+Kiritish — «Savol qo'shish → Guruhli savol» (`bank/GuruhOynasi.tsx`), tahrir — kartadagi «…».
+Savol turlari sanaladigan joylar `SAVOL_TURLARI` dan yasaladi (`mavzuMavjudligi` qo'lda sanalgan
+edi — guruh qo'shilganda `bank/daraxt` yiqilardi).
+
+**To'siqlar (2-bosqichgacha).** Guruh bo'lagi oddiy savol emas: `PUT /api/questions/:id` va
+`ai/klon` uni rad etadi; guruh sharti «umumiy matnlar» ro'yxatiga chiqmaydi va `passages` yo'llari
+bilan o'zgarmaydi/o'chmaydi (bu yo'llar endi tashkilotni ham tekshiradi). Imtihon qoidasi yangi
+turni olmaydi — `qoidaTuri()` 'yopiq' ga tushiradi; Andoza, qo'lda tanlash va Zukko guruh
+bo'laklarini o'tkazib yuboradi. 2-bosqichda `qoidaTuri` dagi cheklov olinadi.
+Guruh — bir butun: ommaviy amal (`questions/bulk`, `bulk-ochir`) bitta bo'lagiga berilsa ham hamma
+bo'lagiga qo'llanadi (`guruhiBilan`); bo'lak yakka o'chirilmaydi, tarjima qilinmaydi; oddiy savol
+guruh turida yoki guruh shartiga bog'lanib yaratilmaydi (`savolMalumoti`, `matnTashkilotdami`).
+`tozalaHtml` (src/lib/matn.ts): ochilgan noma'lum teg ichidagi bolalar ham tekshiriladi — ilgari
+ichma-ich ikki noma'lum teg ichidagi `on*` atribut o'tib ketardi.
+
+**Keyingi bosqichlar.** (2) imtihon qoidalari, variant (guruh butunligicha, `y` — ko'rinadigan
+raqam "36a"), kitobcha (umumiy javoblar ustuni); (3) javob varaqasi (A–F bo'limi, qismlar uchun
+raqam katagi yoki yozish katagi), skaner, ustoz tekshiruvi, natijalar. Rasmdan AI bilan kiritish va
+AI tuzishi — 1-bosqichdan keyin.
+
+Sinov: `scratch/guruh1_ui.mjs`.

@@ -4,9 +4,10 @@
 // natijasiga moslash. Savoldagi subject/topic — tuzilmadagi nomlarning nusxasi
 // (eski imtihon qoidalari nom bo'yicha ishlaydi), nom o'zgarsa ular ham yangilanadi.
 
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
-import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI, savolVariantlari } from '../lib/imtihon.js';
+import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI, SAVOL_TURLARI, GURUH_TURLARI, HARFLAR, savolVariantlari } from '../lib/imtihon.js';
 
 const nomi = (v, max = 200) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const kalit = v => nomi(v).toLowerCase();
@@ -159,7 +160,7 @@ export function registerSavolBankiRoutes(app) {
                  ("imageUrl" IS NOT NULL) AS "rasmBor", (btrim(text) <> '') AS "matnBor"
           FROM "Question" WHERE "schoolId" = ANY(${orgIds})`,
       ]);
-      const bosh = () => ({ jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 }, natijaYig: 0, natijaSoni: 0, moslash: 0, yaroqli: [] });
+      const bosh = () => ({ jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, juft: 0, qismli: 0, yozma: 0 }, natijaYig: 0, natijaSoni: 0, moslash: 0, yaroqli: [] });
       const mv = new Map();
       for (const q of savollar) {
         if (!q.bankTopicId) continue;
@@ -184,7 +185,7 @@ export function registerSavolBankiRoutes(app) {
       const yaxlit = x => Math.round(x * 1000) / 10;
       let jami = 0;
       const out = fanlar.map(f => {
-        const fan = { id: f.id, name: f.name, order: f.order, jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 }, natija: null, moslash: 0, mavzular: [] };
+        const fan = { id: f.id, name: f.name, order: f.order, jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, juft: 0, qismli: 0, yozma: 0 }, natija: null, moslash: 0, mavzular: [] };
         let yig = 0, soni = 0;
         fan.mavzular = [...f.topics].sort((a, b) => a.order - b.order || a.id - b.id).map(t => {
           const s = mv.get(t.id) || bosh();
@@ -507,6 +508,136 @@ export function registerSavolBankiRoutes(app) {
     } catch (err) { xato(res, next)(err); }
   });
 
+  // --- Guruhli savollar (Milliy sertifikat): umumiy shart + kichik savollar ---
+  // 'moslash' — savollar bitta umumiy javoblar ro'yxatidan (A–F) javob oladi; 'qismli' — a), b)
+  // qismlari, har birining o'z javobi (son bo'lsa `son: true` — keyin skaner tekshira oladi).
+
+  const matnQisqa = (v, max = 20000) => String(v ?? '').slice(0, max);
+  /** So'rovdagi guruhni tekshirib, saqlashga tayyor shaklga keltiradi (xato bo'lsa — XatoJavob). */
+  const guruhMalumoti = (body) => {
+    const tur = Object.keys(GURUH_TURLARI).includes(body?.tur) ? body.tur : null;
+    if (!tur) throw new XatoJavob(400, "Guruh turi noto'g'ri");
+    const text = matnQisqa(body.text);
+    if (!text.trim()) throw new XatoJavob(400, 'Umumiy shartni yozing');
+    if (Array.isArray(body.savollar) && body.savollar.length > 10) throw new XatoJavob(400, "Bitta guruhda ko'pi bilan 10 ta savol");
+    const savollar = (Array.isArray(body.savollar) ? body.savollar : []).map(s => ({
+      id: ANY_ID(s?.id), text: matnQisqa(s?.text), javob: nomi(s?.javob, 40), son: s?.son === true,
+    }));
+    // "Skaner (son)" faqat javob haqiqatan son bo'lsa (butun, o'nli yoki oddiy kasr).
+    if (tur === 'qismli' && savollar.some(s => s.son && !/^-?\d+([.,]\d+)?(\/\d+)?$/.test(s.javob))) {
+      throw new XatoJavob(400, "Skaner tekshiradigan qismning javobi son bo'lishi kerak (masalan 6 yoki 9,1) — son bo'lmasa «Ustoz tekshiradi» ni tanlang");
+    }
+    if (savollar.length < (tur === 'moslash' ? 2 : 1)) throw new XatoJavob(400, tur === 'moslash' ? 'Kamida 2 ta savol kerak' : 'Kamida bitta qism kerak');
+    if (savollar.some(s => !s.text.trim())) throw new XatoJavob(400, "Bo'sh savol bor");
+    let variantlar = null;
+    if (tur === 'moslash') {
+      variantlar = (Array.isArray(body.variantlar) ? body.variantlar : []).slice(0, HARFLAR.length).map(v => matnQisqa(v, 4000));
+      if (variantlar.length < 2 || variantlar.some(v => !v.trim())) throw new XatoJavob(400, "Javoblar ro'yxatida kamida 2 ta, bo'sh bo'lmagan javob kerak");
+      for (const s of savollar) {
+        const k = HARFLAR.indexOf(s.javob.toUpperCase());
+        if (k < 0 || k >= variantlar.length) throw new XatoJavob(400, "Har savolning to'g'ri javobi (harfi) belgilanishi kerak");
+        s.javob = HARFLAR[k];
+      }
+    } else if (savollar.some(s => !s.javob)) throw new XatoJavob(400, "Har qismning to'g'ri javobi yozilishi kerak");
+    return { tur, text, variantlar, savollar };
+  };
+  /** Kichik savolning bazadagi shakli. */
+  const guruhSavoli = (g, s, umumiy) => ({
+    ...umumiy, type: GURUH_TURLARI[g.tur], text: s.text, correctAnswer: s.javob,
+    options: g.tur === 'moslash' ? g.variantlar : null,
+    // Qism javobi son bo'lsa — qabul qilinadigan javob sifatida ham yoziladi (skaner tekshiruvi uchun).
+    answers: g.tur === 'qismli' && s.son ? [s.javob] : null,
+    lockOptions: true,
+  });
+
+  app.get('/api/bank/guruhlar/:id', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const p = await prisma.passage.findUnique({ where: { id: ANY_ID(req.params.id) || 0 }, include: { questions: { orderBy: { id: 'asc' } } } });
+      if (!p || !orgIds.includes(p.schoolId) || !GURUH_TURLARI[p.tur]) return res.status(404).json({ error: 'Guruhli savol topilmadi' });
+      res.json({
+        id: p.id, tur: p.tur, text: p.text, variantlar: Array.isArray(p.variantlar) ? p.variantlar : [],
+        mavzuId: p.questions[0]?.bankTopicId ?? null, difficulty: qiyinlikDarajasi(p.questions[0]?.difficulty || 2),
+        savollar: p.questions.map(q => ({ id: q.id, text: q.text, javob: q.correctAnswer || '', son: Array.isArray(q.answers) && q.answers.length > 0, ishlatilgan: q.usedCount > 0 })),
+      });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  app.post('/api/bank/guruhlar', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const g = guruhMalumoti(req.body);
+      const mavzu = await mavzuniOl(ANY_ID(req.body.mavzuId), orgIds);
+      const schoolId = req.user.schoolId || orgIds[0];
+      const difficulty = yaqinDaraja(req.body.difficulty ?? 2, await qiyinlikSozlamasi(orgIds));
+      const natija = await prisma.$transaction(async (tx) => {
+        const p = await tx.passage.create({ data: { tur: g.tur, text: g.text, variantlar: g.variantlar ?? undefined, subject: mavzu.subject.name, schoolId } });
+        const umumiy = { passageId: p.id, bankTopicId: mavzu.id, subject: mavzu.subject.name, topic: mavzu.name, difficulty, status: 'faol', language: 'uz', source: nomi(req.body.source, 200) || null, schoolId, createdById: req.user.id || null };
+        // Tartib saqlansin (a, b … id bo'yicha): bittalab yoziladi.
+        const ids = [];
+        for (const s of g.savollar) ids.push((await tx.question.create({ data: guruhSavoli(g, s, umumiy), select: { id: true } })).id);
+        return { id: p.id, ids };
+      });
+      res.status(201).json({ ...natija, tur: g.tur, mavzu: mavzu.name, soni: natija.ids.length });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Tahrir: shart, javoblar ro'yxati va kichik savollar. Imtihonda ishlatilgan savol o'chirilmaydi.
+  app.put('/api/bank/guruhlar/:id', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const p = await prisma.passage.findUnique({ where: { id: ANY_ID(req.params.id) || 0 }, include: { questions: { orderBy: { id: 'asc' } } } });
+      if (!p || !orgIds.includes(p.schoolId) || !GURUH_TURLARI[p.tur]) return res.status(404).json({ error: 'Guruhli savol topilmadi' });
+      const g = guruhMalumoti({ ...req.body, tur: p.tur });
+      const bor = new Map(p.questions.map(q => [q.id, q]));
+      if (g.savollar.some(s => s.id && !bor.has(s.id))) return res.status(400).json({ error: 'Bu guruhga tegishli bo\'lmagan savol bor' });
+      const qoladi = new Set(g.savollar.map(s => s.id).filter(Boolean));
+      const ochadi = p.questions.filter(q => !qoladi.has(q.id));
+      if (ochadi.some(q => q.usedCount > 0 || q.lastUsedAt)) return res.status(409).json({ error: "Imtihonda ishlatilgan savolni guruhdan olib bo'lmaydi" });
+      const namuna = p.questions[0];
+      const umumiy = namuna
+        ? { passageId: p.id, bankTopicId: namuna.bankTopicId, subject: namuna.subject, topic: namuna.topic, difficulty: namuna.difficulty, status: namuna.status, language: namuna.language || 'uz', tagIds: namuna.tagIds, schoolId: namuna.schoolId, createdById: req.user.id || null }
+        : null;
+      if (!umumiy && g.savollar.some(s => !s.id)) return res.status(409).json({ error: "Guruh bo'sh — yangisini yarating" });
+      await prisma.$transaction(async (tx) => {
+        await tx.passage.update({ where: { id: p.id }, data: { text: g.text, variantlar: g.variantlar ?? undefined } });
+        if (ochadi.length) await tx.question.deleteMany({ where: { id: { in: ochadi.map(q => q.id) } } });
+        for (const s of g.savollar) {
+          const d = guruhSavoli(g, s, {});
+          if (s.id) await tx.question.update({ where: { id: s.id }, data: { text: d.text, correctAnswer: d.correctAnswer, options: d.options ?? Prisma.DbNull, answers: d.answers ?? Prisma.DbNull } });
+          else await tx.question.create({ data: guruhSavoli(g, s, umumiy) });
+        }
+      });
+      res.json({ id: p.id, tur: p.tur, soni: g.savollar.length });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  // Guruhni o'chirish: sharti va hamma savollari. Imtihonda ishlatilgan savol o'chirilmaydi —
+  // arxivga o'tadi (variantlar unga murojaat qiladi), shart ham u bilan qoladi.
+  app.delete('/api/bank/guruhlar/:id', authenticate, async (req, res, next) => {
+    try {
+      const orgIds = await organizationSchoolIds(req.user);
+      const p = await prisma.passage.findUnique({ where: { id: ANY_ID(req.params.id) || 0 }, include: { questions: { select: { id: true, usedCount: true, lastUsedAt: true } } } });
+      if (!p || !orgIds.includes(p.schoolId) || !GURUH_TURLARI[p.tur]) return res.status(404).json({ error: 'Guruhli savol topilmadi' });
+      const ishlatilgan = p.questions.filter(q => q.usedCount > 0 || q.lastUsedAt).map(q => q.id);
+      const ochadi = p.questions.filter(q => !ishlatilgan.includes(q.id)).map(q => q.id);
+      await prisma.$transaction(async (tx) => {
+        if (ochadi.length) await tx.question.deleteMany({ where: { id: { in: ochadi } } });
+        if (ishlatilgan.length) await tx.question.updateMany({ where: { id: { in: ishlatilgan } }, data: { status: 'arxiv' } });
+        else await tx.passage.delete({ where: { id: p.id } });
+      });
+      res.json({ id: p.id, tur: p.tur, ochirildi: ochadi.length, arxivlandi: ishlatilgan.length });
+    } catch (err) { xato(res, next)(err); }
+  });
+
+  /** Guruhli savol — bir butun: ro'yxatda bo'lagi bo'lsa, qolgan bo'laklari ham qo'shiladi. */
+  const guruhiBilan = async (ids, orgIds) => {
+    const azolar = await prisma.question.findMany({ where: { id: { in: ids }, schoolId: { in: orgIds }, type: { in: Object.values(GURUH_TURLARI) }, passageId: { not: null } }, select: { passageId: true } });
+    if (!azolar.length) return ids;
+    const hammasi = await prisma.question.findMany({ where: { passageId: { in: [...new Set(azolar.map(q => q.passageId))] } }, select: { id: true } });
+    return [...new Set([...ids, ...hammasi.map(q => q.id)])];
+  };
+
   // --- Savollarni ommaviy o'zgartirish ---
 
   // Tanlangan savollar: qiyinlik, holat, mavzu, manba, belgilar (qo'shish, olib
@@ -514,7 +645,7 @@ export function registerSavolBankiRoutes(app) {
   app.put('/api/questions/bulk', authenticate, async (req, res, next) => {
     try {
       const orgIds = await organizationSchoolIds(req.user);
-      const ids = idlarRoyxati(req.body.ids);
+      const ids = await guruhiBilan(idlarRoyxati(req.body.ids), orgIds);
       if (!ids.length) return res.status(400).json({ error: 'Savollar tanlanmagan' });
       const d = {};
       if (req.body.difficulty !== undefined) d.difficulty = yaqinDaraja(req.body.difficulty, await qiyinlikSozlamasi(orgIds));
@@ -587,7 +718,7 @@ export function registerSavolBankiRoutes(app) {
   app.post('/api/questions/bulk-ochir', authenticate, async (req, res, next) => {
     try {
       const orgIds = await organizationSchoolIds(req.user);
-      const ids = idlarRoyxati(req.body.ids);
+      const ids = await guruhiBilan(idlarRoyxati(req.body.ids), orgIds);
       if (!ids.length) return res.status(400).json({ error: 'Savollar tanlanmagan' });
       const royxat = await prisma.question.findMany({ where: { id: { in: ids }, schoolId: { in: orgIds } }, select: { id: true, usedCount: true, lastUsedAt: true } });
       const ishlatilgan = royxat.filter(q => q.usedCount > 0 || q.lastUsedAt).map(q => q.id);
@@ -596,6 +727,8 @@ export function registerSavolBankiRoutes(app) {
         ochadi.length ? prisma.question.deleteMany({ where: { id: { in: ochadi } } }) : { count: 0 },
         ishlatilgan.length ? prisma.question.updateMany({ where: { id: { in: ishlatilgan } }, data: { status: 'arxiv' } }) : { count: 0 },
       ]);
+      // Hamma savoli o'chgan guruhli savolning sharti ham ketadi.
+      await prisma.passage.deleteMany({ where: { schoolId: { in: orgIds }, tur: { not: null }, questions: { none: {} } } });
       res.json({ ochirildi: o.count, arxivlandi: a.count });
     } catch (err) { xato(res, next)(err); }
   });
@@ -721,7 +854,7 @@ export function registerSavolBankiRoutes(app) {
       const joylashuv = { 0: 0, 1: 0, 2: 0, 4: 0 };
       const qiyinlik = [0, 0, 0];
       const holat = { faol: 0, qoralama: 0, arxiv: 0 };
-      const turlar = { yopiq: 0, raqamli: 0, moslash: 0, yozma: 0 };
+      const turlar = { yopiq: 0, raqamli: 0, moslash: 0, juft: 0, qismli: 0, yozma: 0 };
       const bolimi = new Map(mavzular.map(t => [t.id, t.section || '']));
       const oshir = (m, k) => m.set(k, (m.get(k) || 0) + 1);
       const hammaGuruh = await belgiGuruhlari(orgIds, fan.id);
@@ -789,6 +922,8 @@ export function registerSavolBankiRoutes(app) {
             topic: true, bankTopicId: true, usedCount: true, createdAt: true, imageUrl: true,
             options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, points: true, pCorrect: true,
             remark: true, passageId: true, joylashuv: true,
+            // Guruhli savol kartasi uchun: umumiy shart va javoblar ro'yxati.
+            passage: { select: { id: true, tur: true, text: true, variantlar: true, questions: { select: { id: true }, orderBy: { id: 'asc' } } } },
           },
         }),
         prisma.question.count({ where }),
@@ -1022,7 +1157,7 @@ async function royxatSharti(f, orgIds) {
   if (dan || gacha) and.push({ id: { ...(dan ? { gte: dan } : {}), ...(gacha ? { lte: gacha } : {}) } });
   if (SAVOL_HOLATLARI.includes(f.holat)) and.push({ status: f.holat });
   else and.push({ status: { not: 'arxiv' } });
-  if (['yopiq', 'raqamli', 'moslash', 'yozma'].includes(f.tur)) and.push({ type: f.tur });
+  if (SAVOL_TURLARI.includes(f.tur)) and.push({ type: f.tur });
   // Addmen REMARK, PASSAGE, DISPLAY CHOICES filtrlari.
   const izohlar = matnlar(f.izohlar);
   if (izohlar.length) {
