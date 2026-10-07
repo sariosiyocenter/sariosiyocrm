@@ -259,7 +259,7 @@ function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla,
                   })}
                   <td className="px-1.5 py-1.5">
                     <select className={KICHIK} disabled={!tahrir} value={r.tur} aria-label={`${i + 1}-qator turi`} onChange={e => qator(i, { tur: e.target.value as SavolTuri })}>
-                      {/* Guruhli savol turlari (juft, qismli) andozaga hali qo'shilmaydi — imtihonda qo'llab-quvvatlanguncha. */}
+                      {/* Guruhli savol turlari (juft, qismli) andozaga kirmaydi: ular imtihon blokidagi alohida sonlar bilan qo'shiladi. */}
                       {(Object.keys(TUR_NOMI) as SavolTuri[]).filter(t => t !== 'juft' && t !== 'qismli').map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
                     </select>
                   </td>

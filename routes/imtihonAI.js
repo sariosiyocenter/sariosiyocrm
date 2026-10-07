@@ -301,7 +301,7 @@ export function registerImtihonAIRoutes(app) {
       if (!it) return res.status(409).json({ error: "Variant aniqlanmagan — avval variantni tanlang" });
       // "Faqat kalit" savolining matni bankda yo'q — AI faqat javobni va ballni ko'radi.
       const q = Number.isInteger(it.q) ? await savolniOl(it.q) : null;
-      res.json(await yozmaBaho({ savol: q?.text || '', maks: it.p, mezon: q?.solution || '', rasm: req.body?.rasm }));
+      res.json(await yozmaBaho({ savol: q?.text || '', maks: it.p, mezon: q?.solution || (it.tj ? `To'g'ri javob: ${it.tj}` : ''), rasm: req.body?.rasm }));
     } catch (err) { aiXatosi(err, res, next); }
   });
 }

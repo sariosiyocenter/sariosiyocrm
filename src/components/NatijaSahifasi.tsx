@@ -12,7 +12,7 @@ import MoslashJadvali from './imtihon/bank/MoslashJadvali';
  * ustoz tasdiqlagan yechim.
  */
 
-interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; ong?: string[]; p: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; javob: any; togri: string[] | null; holat: string | null; ball: number; yechim: string | null }
+interface Savol { n: number; y?: string; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; ong?: string[]; p: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; javob: any; togri: string[] | null; holat: string | null; ball: number; yechim: string | null }
 interface Javob {
   markaz: string;
   imtihon: { name: string; date: string; maxScore: number; scoring: string };
@@ -150,7 +150,7 @@ export default function NatijaSahifasi() {
                   )}
                   <article className="bg-sirt rounded-2xl border border-chiziq p-4">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[13px] font-bold text-matn">{s.n}-savol</span>
+                      <span className="text-[13px] font-bold text-matn">{s.y ?? s.n}-savol</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11.5px] font-semibold ${h.cls}`}><h.Ikonka size={12} />{h.nom}</span>
                     </div>
                     {s.matn && <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.matn) }} />}

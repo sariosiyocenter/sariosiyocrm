@@ -13,7 +13,7 @@ import type { ImtihonTafsil } from './turlar';
 // avtomatik (o'sha mavzu va qiyinlikdan kam ishlatilgani) yoki QID bilan.
 
 interface Qator {
-  q: number; session: number; n: number; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number; pa: number | null;
+  q: number; session: number; n: number; y?: string; g?: string; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number; pa: number | null;
   text: string; imageUrl: string | null; topic: string; difficulty: number; usedCount: number;
   options: string[]; correctAnswer: string | null; answers: string[] | null; remark: string | null;
 }
@@ -90,7 +90,7 @@ export default function TanlanganSavollar({ exam, onOzgardi }: { exam: ImtihonTa
                   <React.Fragment key={x.q}>
                     {yangiBlok && <tr className="bg-sirt"><td colSpan={8} className="px-3 pt-3 pb-1 text-[11.5px] font-bold uppercase tracking-wide text-matn-xira">{exam.blocks[x.b]?.subject || `${x.b + 1}-blok`}</td></tr>}
                     <tr className={`${yangilangan === x.q ? 'bg-yaxshi-fon/60' : ''} ${band === x.q ? 'opacity-50' : ''}`}>
-                      <td className="px-2 py-2 text-center raqam text-matn-sokin align-top">{x.n}</td>
+                      <td className="px-2 py-2 text-center raqam text-matn-sokin align-top">{x.y ?? x.n}</td>
                       <td className="px-2 py-2 align-top">
                         <span className="inline-flex items-center gap-1.5 raqam text-matn-sokin"><span className={`w-2 h-2 rounded-full ${dq.nuqta}`} title={dq.nom} />{x.q}</span>
                       </td>

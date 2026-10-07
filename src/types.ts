@@ -661,6 +661,10 @@ export interface TopicRule {
     points?: number;
     /** Qo'lda tanlangan savollar — har variantga shular tushadi. */
     questionIds?: number[];
+    /** Qismli savol (type 'qismli'): bitta savoldagi qismlar soni; `count` — qismlar (kataklar) soni. */
+    qism?: number;
+    /** Qismli savol: qism javobini kim tekshiradi — 'son' (skaner, raqamli katak) yoki 'ustoz' (yozma maydon). */
+    tekshir?: 'son' | 'ustoz';
     /** Andoza qatoridan: bo'lim, manba va belgilar (hammasi bo'lishi shart). */
     section?: string;
     source?: string;
@@ -681,6 +685,14 @@ export interface BlokTaqsimot {
     moslash?: number;
     yozma: number;
     yozmaBal?: number | null;
+    /** Moslashtirish guruhlari savollari soni (guruhlar butunligicha olinadi) va har birining bali. */
+    juft?: number;
+    juftBal?: number | null;
+    /** Qismli savollar soni (savol, qism emas), har qism bali, bitta savoldagi qismlar va tekshiruvchi. */
+    qismli?: number;
+    qismBal?: number | null;
+    qismSoni?: number;
+    qismTekshir?: 'son' | 'ustoz';
 }
 
 export interface ExamBlock {

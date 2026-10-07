@@ -7,7 +7,7 @@ import { QIYINLIK, QiyinlikYorligi, useQiyinlik } from '../bank/qiyinlik';
 import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
 import SavolTanlash from '../bank/SavolTanlash';
 import { andozadanQoidalar } from './andozadan';
-import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul } from '../../../../lib/imtihon.js';
+import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul, qismSoni, qismTekshiruvi } from '../../../../lib/imtihon.js';
 import type { Andoza, BankDaraxt, BankFan, BelgiGuruhi, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
 
 // Imtihonning bitta fan bloki (bank rejimi). Odatiy yo'l: fan → savollar soni →
@@ -34,9 +34,13 @@ function taqsimotQoidalardan(blok: ExamBlock, fan: BankFan | null): BlokTaqsimot
     if (m) mavzular.add(m.id);
   }
   const sum = (t: SavolTuri) => tasodifiy.filter(r => (r.type || 'yopiq') === t).reduce((a, r) => a + (Number(r.count) || 0), 0);
+  const qismQoida = tasodifiy.find(r => r.type === 'qismli');
+  const qism = qismSoni(qismQoida);
   return {
     jami: sum('yopiq'), aralash: 'qolda', mavzular: [...mavzular], raqamli: sum('raqamli'), moslash: sum('moslash'), yozma: sum('yozma'),
     yozmaBal: tasodifiy.find(r => r.type === 'yozma' && r.points != null)?.points ?? null,
+    juft: sum('juft'), juftBal: tasodifiy.find(r => r.type === 'juft' && r.points != null)?.points ?? null,
+    qismli: Math.floor(sum('qismli') / qism), qismBal: qismQoida?.points ?? null, qismSoni: qism, qismTekshir: qismTekshiruvi(qismQoida),
   };
 }
 
@@ -99,6 +103,12 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
       for (const m of mavzular) if (yoy.jadval[m.id]) rules.push({ topic: m.name, mavzuId: m.id, type: tur, count: yoy.jadval[m.id], ...points });
       if (yoy.yetmadi) rules.push({ topic: '', type: tur, count: yoy.yetmadi, ...points });
     }
+    // Guruhli savollar: guruh butunligicha olinadi, shuning uchun mavzularga bo'linmaydi (fanning istalgan mavzusidan).
+    if (yangiT.juft) rules.push({ topic: '', type: 'juft', count: yangiT.juft, ...(yangiT.juftBal != null ? { points: yangiT.juftBal } : {}) });
+    if (yangiT.qismli) {
+      const qism = qismSoni({ qism: yangiT.qismSoni });
+      rules.push({ topic: '', type: 'qismli', count: yangiT.qismli * qism, qism, tekshir: qismTekshiruvi({ tekshir: yangiT.qismTekshir }), ...(yangiT.qismBal != null ? { points: yangiT.qismBal } : {}) });
+    }
     rules.push(...(yangiQolda ?? qolda));
     onChange({ ...blok, fanId: fan.id, subject: fan.name, taqsimot: yangiT, topicRules: rules });
   };
@@ -159,11 +169,21 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   const fandaRaqamli = (fan?.mavzular || []).some(m => yig(m.bor.raqamli) > 0) || t.raqamli > 0;
   const fandaYozma = (fan?.mavzular || []).some(m => yig(m.bor.yozma) > 0) || t.yozma > 0;
   const fandaMoslash = (fan?.mavzular || []).some(m => yig(m.bor.moslash || [0]) > 0) || tMoslash > 0;
-  const jamiSavol = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
+  // Guruhli savollar fanning istalgan mavzusidan olinadi.
+  const juftBor = (fan?.mavzular || []).reduce((a, m) => a + yig(m.bor.juft || [0]), 0);
+  const qismBor = (fan?.mavzular || []).reduce((a, m) => a + yig(m.bor.qismli || [0]), 0);
+  const tJuft = t.juft || 0;
+  const tQismli = t.qismli || 0;
+  const tQism = qismSoni({ qism: t.qismSoni });
+  const fandaJuft = juftBor > 0 || tJuft > 0;
+  const fandaQismli = qismBor > 0 || tQismli > 0;
+  // Qismli savolning qismlari bitta savol sanaladi.
+  const jamiSavol = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) / (r.type === 'qismli' ? qismSoni(r) : 1), 0);
   const jamiBall = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) * qoidaBali(r, blok, scoring), 0);
   const kamchilik = qatorlar.some(q => q.sonlar.some((n, i) => n > 0 && n * kopaytma > q.bor[i]))
     || (t.raqamli > 0 && t.raqamli * kopaytma > raqamliBor) || (t.yozma > 0 && t.yozma * kopaytma > yozmaBor)
-    || (tMoslash > 0 && tMoslash * kopaytma > moslashBor);
+    || (tMoslash > 0 && tMoslash * kopaytma > moslashBor)
+    || (tJuft > 0 && tJuft * kopaytma > juftBor) || (tQismli > 0 && tQismli * tQism * kopaytma > qismBor);
 
   const qoldaTanlandi = (ids: number[], turlar: Record<number, SavolTuri>) => {
     // Turi: tanlash oynasida yuklanganidan, bo'lmasa oldingi qoidadan.
@@ -172,7 +192,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
     const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], juft: [], qismli: [], yozma: [] };
     for (const id of ids) {
       const tur = turlar[id] || eskiTur.get(id) || 'yopiq';
-      // Guruhli savollar (juft, qismli) imtihonga hali qo'shilmaydi — kitobcha va varaq tayyor bo'lguncha.
+      // Guruhli savollar qo'lda tanlanmaydi (guruh butun bo'lishi shart) — pastdagi «Moslashtirish guruhi» va «Qismli savol» sonlari bilan qo'shiladi.
       if (tur === 'juft' || tur === 'qismli') continue;
       guruh[tur].push(id);
     }
@@ -327,7 +347,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             </table>
           </div>
 
-          {(fandaRaqamli || fandaMoslash || fandaYozma) && (
+          {(fandaRaqamli || fandaMoslash || fandaYozma || fandaJuft || fandaQismli) && (
             <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
               {fandaRaqamli && (
                 <label className="flex items-end gap-2">
@@ -363,6 +383,51 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                   </span>
                   <span className={`pb-2.5 text-[11.5px] ${t.yozma * kopaytma > yozmaBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {yozmaBor}</span>
                 </label>
+              )}
+              {fandaJuft && (
+                <div className="flex items-end gap-2" role="group" aria-label="Moslashtirish guruhi">
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title="Bir nechta savol bitta umumiy javoblar ro'yxatidan (A–F) javob oladi. Guruh butunligicha olinadi.">Moslashtirish guruhi</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tJuft} aria-label="Moslashtirish guruhi savollari soni"
+                      onChange={e => qayta({ ...t, juft: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </label>
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">har biri, ball</span>
+                    <input className={`${INPUT} w-20`} inputMode="decimal" disabled={qulf} value={t.juftBal ?? ''} placeholder={String(blok.pointsPerQuestion)} aria-label="Moslashtirish guruhi savoli bali"
+                      onChange={e => qayta({ ...t, juftBal: e.target.value === '' ? null : Number(e.target.value.replace(',', '.')) || 0 }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </label>
+                  <span className={`pb-2.5 text-[11.5px] ${tJuft * kopaytma > juftBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {juftBor} · guruh butun olinadi</span>
+                </div>
+              )}
+              {fandaQismli && (
+                <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Qismli savol">
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title="Bitta raqam ostida a), b) qismlari: 36a, 36b.">Qismli savol (a, b)</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tQismli} aria-label="Qismli savollar soni"
+                      onChange={e => qayta({ ...t, qismli: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </label>
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">qismlar</span>
+                    <select className={`${SELECT} w-16`} disabled={qulf} value={tQism} aria-label="Bitta savoldagi qismlar soni"
+                      onChange={e => qayta({ ...t, qismSoni: Number(e.target.value) }, t.aralash === 'qolda' ? jadval : undefined)}>
+                      {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">har qism, ball</span>
+                    <input className={`${INPUT} w-20`} inputMode="decimal" disabled={qulf} value={t.qismBal ?? ''} placeholder={String(blok.pointsPerQuestion)} aria-label="Qism bali"
+                      onChange={e => qayta({ ...t, qismBal: e.target.value === '' ? null : Number(e.target.value.replace(',', '.')) || 0 }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </label>
+                  <label>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">javobni tekshiradi</span>
+                    <select className={`${SELECT} w-44`} disabled={qulf} value={qismTekshiruvi({ tekshir: t.qismTekshir })} aria-label="Qism javobini kim tekshiradi"
+                      onChange={e => qayta({ ...t, qismTekshir: e.target.value as 'son' | 'ustoz' }, t.aralash === 'qolda' ? jadval : undefined)}>
+                      <option value="ustoz">Ustoz (yozma maydon)</option>
+                      <option value="son">Skaner (son katagi)</option>
+                    </select>
+                  </label>
+                  <span className={`pb-2.5 text-[11.5px] ${tQismli * tQism * kopaytma > qismBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {qismBor} qism</span>
+                </div>
               )}
             </div>
           )}
@@ -473,7 +538,7 @@ function AndozaBloki({ blok, fan, kopaytma, scoring, qulf, onChiqish }: {
               return (
                 <tr key={i}>
                   <td className="px-3 py-1.5 text-matn">{r.label || r.topic || 'Istalgan'}</td>
-                  <td className="px-2 py-1.5 text-matn-sokin">{r.type === 'raqamli' ? 'Raqamli' : r.type === 'moslash' ? 'Moslashtirish' : r.type === 'yozma' ? 'Yozma' : 'Variantli'}</td>
+                  <td className="px-2 py-1.5 text-matn-sokin">{r.type === 'raqamli' ? 'Raqamli' : r.type === 'moslash' ? 'Moslashtirish' : r.type === 'yozma' ? 'Yozma' : r.type === 'juft' ? 'Moslashtirish guruhi' : r.type === 'qismli' ? `Qismli savol (${qismTekshiruvi(r) === 'son' ? 'skaner' : 'ustoz'})` : 'Variantli'}</td>
                   <td className="px-2 py-1.5 text-center font-bold raqam">{r.count}</td>
                   <td className={`px-2 py-1.5 text-center raqam ${kam ? 'text-xato font-bold' : 'text-matn-sokin'}`}>
                     {hisob ? hisob[i]?.boshQolgan ?? 0 : <Loader2 size={12} className="inline animate-spin" />}

@@ -20,7 +20,8 @@ import type { ImtihonTafsil } from './turlar';
 // Kalitni varaqdan ham olsa bo'ladi (Addmen kabi): ustoz bo'sh varaqqa to'g'ri
 // javoblarni bo'yaydi, skanerlaydi — kalit o'zi to'ladi, keyin tekshirib saqlanadi.
 
-type Savol = { n: number; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number };
+/** `y` — ko'rinadigan raqam ("36a"), `harf` — qatordagi doirachalar soni (moslashtirish guruhi: 6). */
+type Savol = { n: number; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number; y?: string; g?: string; harf?: number };
 const MAXSUS: Record<string, { belgi: string; nom: string; cls: string }> = {
   '*': { belgi: '✱', nom: 'Bekor — hammaga ball', cls: 'text-ogoh border-ogoh/40 bg-ogoh-fon' },
   '-': { belgi: '✕', nom: 'Hisobdan chiqarilgan', cls: 'text-xato border-xato-chiziq bg-xato-fon' },
@@ -93,7 +94,7 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
 
   const holati = (kalit: string) => {
     const arr = keys[kalit] || [];
-    const xato = tuz.filter(q => kalitQiymati(q.t, arr[q.n - 1], s.optionCount).xato).length;
+    const xato = tuz.filter(q => kalitQiymati(q.t, arr[q.n - 1], q.harf || s.optionCount).xato).length;
     return { toldirilgan: tuz.length - xato, jami: tuz.length };
   };
 
@@ -256,12 +257,12 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
           <datalist id={`mavzular-${exam.id}`}>{takliflar.map(t => <option key={t} value={t} />)}</datalist>
           {bloklar.map(b => (
             <div key={b.nom + b.savollar[0].n}>
-              <p className="text-[12.5px] font-semibold text-matn mb-2">{b.nom} <span className="font-normal text-matn-xira">· {b.savollar[0].n}–{b.savollar[b.savollar.length - 1].n}-savollar</span></p>
+              <p className="text-[12.5px] font-semibold text-matn mb-2">{b.nom} <span className="font-normal text-matn-xira">· {b.savollar[0].y ?? b.savollar[0].n}–{b.savollar[b.savollar.length - 1].y ?? b.savollar[b.savollar.length - 1].n}-savollar</span></p>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5">
                 {b.savollar.map(q => (
                   <label key={q.n} className="flex items-center gap-1.5 rounded-lg border border-chiziq bg-sirt px-2 py-1.5">
-                    <span className="w-7 text-right text-[12px] font-bold text-matn-sokin raqam shrink-0">{q.n}</span>
-                    <input list={`mavzular-${exam.id}`} aria-label={`${q.n}-savol mavzusi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0`} value={mavzu(q.n)}
+                    <span className="w-7 text-right text-[12px] font-bold text-matn-sokin raqam shrink-0">{q.y ?? q.n}</span>
+                    <input list={`mavzular-${exam.id}`} aria-label={`${q.y ?? q.n}-savol mavzusi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0`} value={mavzu(q.n)}
                       placeholder="mavzu" maxLength={120} onChange={e => mavzuQoy({ [q.n]: e.target.value })} />
                   </label>
                 ))}
@@ -294,30 +295,30 @@ export default function KalitMuharriri({ exam, onSaqlandi }: { exam: ImtihonTafs
 
       {korinish === 'javob' && bloklar.map(b => (
         <div key={b.nom + b.savollar[0].n}>
-          <p className="text-[12.5px] font-semibold text-matn mb-2">{b.nom} <span className="font-normal text-matn-xira">· {b.savollar[0].n}–{b.savollar[b.savollar.length - 1].n}-savollar</span></p>
+          <p className="text-[12.5px] font-semibold text-matn mb-2">{b.nom} <span className="font-normal text-matn-xira">· {b.savollar[0].y ?? b.savollar[0].n}–{b.savollar[b.savollar.length - 1].y ?? b.savollar[b.savollar.length - 1].n}-savollar</span></p>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5">
             {b.savollar.map(q => {
               const v = qiymat(q.n);
               const m = MAXSUS[v];
-              const xato = !m && kalitQiymati(q.t, v, s.optionCount).xato;
+              const xato = !m && kalitQiymati(q.t, v, q.harf || s.optionCount).xato;
               return (
                 <div key={q.n} className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 ${m ? m.cls : xato ? 'border-chiziq bg-sirt' : 'border-yaxshi/30 bg-yaxshi-fon/40'}`}>
-                  <span className="w-7 text-right text-[12px] font-bold text-matn-sokin raqam shrink-0">{q.n}</span>
+                  <span className="w-7 text-right text-[12px] font-bold text-matn-sokin raqam shrink-0">{q.y ?? q.n}</span>
                   {m ? <span className="flex-1 text-[12px] font-semibold">{m.nom}</span>
                     : q.t === 'yopiq' ? (
                       <span className="flex-1 flex gap-1">
-                        {harflar.map(h => (
-                          <button key={h} type="button" onClick={e => harfBos(q, h, e.shiftKey)} aria-label={`${q.n}-savol: ${h}`} aria-pressed={v.includes(h)}
+                        {(q.harf ? HARFLAR.slice(0, q.harf) : harflar).map((h: string) => (
+                          <button key={h} type="button" onClick={e => harfBos(q, h, e.shiftKey)} aria-label={`${q.y ?? q.n}-savol: ${h}`} aria-pressed={v.includes(h)}
                             className={`w-7 h-7 rounded-full border text-[12px] font-bold cursor-pointer ${v.includes(h) ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand bg-sirt'}`}>{h}</button>
                         ))}
                       </span>
                     ) : q.t === 'moslash' ? (
-                      <input aria-label={`${q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0 uppercase`} value={v} placeholder="PQ|R|S|T — har qatorga" title="Moslashtirish: har qator (A–D) uchun o'ng ustun harflari (P–T), qatorlar | bilan" onChange={e => qoy(q.n, e.target.value.toUpperCase())} />
+                      <input aria-label={`${q.y ?? q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0 uppercase`} value={v} placeholder="PQ|R|S|T — har qatorga" title="Moslashtirish: har qator (A–D) uchun o'ng ustun harflari (P–T), qatorlar | bilan" onChange={e => qoy(q.n, e.target.value.toUpperCase())} />
                     ) : q.t === 'raqamli' ? (
-                      <input aria-label={`${q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0`} value={v} placeholder="0,5 yoki 0,5;1/2" onChange={e => qoy(q.n, e.target.value)} />
+                      <input aria-label={`${q.y ?? q.n}-savol javobi`} className={`${INPUT} py-1 px-2 flex-1 min-w-0`} value={v} placeholder="0,5 yoki 0,5;1/2" onChange={e => qoy(q.n, e.target.value)} />
                     ) : <span className="flex-1 text-[12px] text-matn-xira">yozma — ustoz baholaydi ({q.p} ball)</span>}
                   <button type="button" onClick={() => maxsus(q)} title="Oddiy → bekor (hammaga ball) → hisobdan chiqarish"
-                    aria-label={`${q.n}-savol holati: ${m ? m.nom : 'oddiy'}`}
+                    aria-label={`${q.y ?? q.n}-savol holati: ${m ? m.nom : 'oddiy'}`}
                     className={`w-7 h-7 shrink-0 rounded-lg border text-[12px] cursor-pointer ${m ? m.cls : 'border-chiziq text-matn-xira hover:text-matn bg-sirt'}`}>{m ? m.belgi : '⋯'}</button>
                 </div>
               );

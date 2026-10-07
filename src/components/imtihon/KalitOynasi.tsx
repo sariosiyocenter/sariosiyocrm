@@ -13,7 +13,7 @@ import MoslashJadvali from './bank/MoslashJadvali';
 // o'zgarishdan keyin server hamma natijani qayta hisoblaydi.
 
 interface KalitJavobi {
-  variants: { session: number; code: string; items: { n: number; q: number; t: string; b: number; p: number; javob: any; m?: number[] }[] }[];
+  variants: { session: number; code: string; items: { n: number; y?: string; q: number; t: string; b: number; p: number; javob: any; m?: number[] }[] }[];
   savollar: { id: number; text: string; subject: string; topic: string; type: string; correctAnswer: string; answers?: string[] | null; options: string[] }[];
   cancelled: Record<string, 'hammaga' | 'chiqarish'>;
   keyFix: Record<string, string[]>;
@@ -39,7 +39,7 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
   const savollarTartibi = useMemo(() => {
     // Birinchi variant tartibida, shu smenaning savollari.
     const v = variantlar[0];
-    return v ? v.items.map(it => ({ n: it.n, q: it.q, t: it.t })) : [];
+    return v ? v.items.map(it => ({ n: it.y ?? it.n, q: it.q, t: it.t })) : [];
   }, [variantlar]);
 
   const saqla = async (qid: number, patch: { cancelled?: Record<string, any>; keyFix?: Record<string, any> }) => {
@@ -99,9 +99,9 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                 </tr>
               </thead>
               <tbody>
-                {(variantlar[0]?.items || []).map((_, i) => (
+                {(variantlar[0]?.items || []).map((birinchi, i) => (
                   <tr key={i} className="odd:bg-sirt even:bg-ichki/40">
-                    <td className="sticky left-0 bg-inherit px-2 py-1.5 font-semibold text-matn-sokin raqam">{i + 1}</td>
+                    <td className="sticky left-0 bg-inherit px-2 py-1.5 font-semibold text-matn-sokin raqam">{birinchi.y ?? i + 1}</td>
                     {variantlar.map(v => {
                       const it = v.items[i];
                       const bekorQilingan = k.cancelled[it.q];

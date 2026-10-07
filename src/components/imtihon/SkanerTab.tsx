@@ -512,10 +512,10 @@ function QoldaKiritish({ exam, orinlar, boshlangich, onSaqlandi }: { exam: Imtih
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1.5">
             {tuzilma.savollar.filter((x: any) => x.tur !== 'yozma').map((sv: any) => (
               <div key={sv.n} className="flex items-center gap-2">
-                <span className="w-7 text-right text-[12px] font-semibold text-matn-sokin raqam">{sv.n}</span>
+                <span className="w-7 text-right text-[12px] font-semibold text-matn-sokin raqam">{sv.y ?? sv.n}</span>
                 {sv.tur === 'yopiq' ? (
                   <div className="flex gap-1">
-                    {harflar.map(h => (
+                    {(sv.harf ? HARFLAR.slice(0, sv.harf) : harflar).map((h: string) => (
                       <button key={h} onClick={() => setJavob(j => ({ ...j, [sv.n]: j[sv.n] === h ? '' : h }))}
                         className={`w-8 h-8 rounded-full border text-[12px] font-bold cursor-pointer ${javob[sv.n] === h ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
                     ))}

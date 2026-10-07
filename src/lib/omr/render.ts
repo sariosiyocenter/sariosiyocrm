@@ -265,7 +265,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
   // Blok sarlavhalari va yopiq savollar
   for (const s of sahifa.sarlavhalar) q.push(matn(s.x, s.y, s.matn, { size: 2.5, bold: true, rang: '#333', maxW: 34 }));
   for (const sv of sahifa.yopiq) {
-    if (sv.raqam.x >= 0) q.push(matn(sv.raqam.x, sv.raqam.y, String(sv.n), { size: 2.7, bold: true, anchor: 'end' }));
+    if (sv.raqam.x >= 0) q.push(matn(sv.raqam.x, sv.raqam.y, sv.y ?? String(sv.n), { size: 2.7, bold: true, anchor: 'end' }));
     for (const d of sv.doiralar) q.push(doira(belgilar, d));
   }
 
@@ -273,7 +273,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
   for (const sv of sahifa.raqamli) {
     const { quti, yozuv } = sv;
     q.push(`<rect x="${f(quti.x)}" y="${f(quti.y)}" width="${f(quti.w)}" height="${f(quti.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.3"/>`);
-    q.push(matn(quti.x + 1.5, quti.y + 3, `${sv.n}-savol (javob)`, { size: 2.5, bold: true }));
+    q.push(matn(quti.x + 1.5, quti.y + 3, `${sv.y ?? sv.n}-savol (javob)`, { size: 2.5, bold: true }));
     sv.ustunlar.forEach((ustun, c) => {
       const x = yozuv.x + c * (yozuv.w / sv.ustunlar.length);
       q.push(`<rect x="${f(x + 0.3)}" y="${f(yozuv.y)}" width="${f(yozuv.w / sv.ustunlar.length - 0.6)}" height="${f(yozuv.h)}" fill="#fff" stroke="#888" stroke-width="0.2"/>`);
@@ -285,7 +285,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
   for (const sv of sahifa.moslash || []) {
     const { quti } = sv;
     q.push(`<rect x="${f(quti.x)}" y="${f(quti.y)}" width="${f(quti.w)}" height="${f(quti.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.3"/>`);
-    q.push(matn(quti.x + 1.5, quti.y + 3.2, `${sv.n}-savol (moslash)`, { size: 2.5, bold: true, maxW: quti.w - 3 }));
+    q.push(matn(quti.x + 1.5, quti.y + 3.2, `${sv.y ?? sv.n}-savol (moslash)`, { size: 2.5, bold: true, maxW: quti.w - 3 }));
     sv.qatorlar[0].forEach(d => q.push(matn(d.x, quti.y + 8, d.v, { size: 2.4, bold: true, anchor: 'middle', rang: '#333' })));
     sv.qatorlar.forEach((qator, r) => {
       q.push(matn(quti.x + 3.5, qator[0].y + 0.9, 'ABCD'[r], { size: 2.6, bold: true, anchor: 'middle' }));
@@ -296,7 +296,15 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
   // Yozma maydonlar
   for (const sv of sahifa.yozma) {
     const { quti } = sv;
-    q.push(matn(quti.x, quti.y - 1.2, `${sv.n}-savol — yozma javob${sv.ball ? ` (${sv.ball} ball)` : ''}`, { size: 2.7, bold: true }));
+    if (sv.ixcham) {
+      // Qismli savol qismi: raqami chapda, javob shu katak ichiga yoziladi.
+      q.push(`<rect x="${f(quti.x)}" y="${f(quti.y)}" width="${f(quti.w)}" height="${f(quti.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.35"/>`);
+      q.push(`<line x1="${f(quti.x + 11)}" y1="${f(quti.y)}" x2="${f(quti.x + 11)}" y2="${f(quti.y + quti.h)}" stroke="${CHIZIQ}" stroke-width="0.25"/>`);
+      q.push(matn(quti.x + 5.5, quti.y + quti.h / 2 + 1.2, sv.y ?? String(sv.n), { size: 3.2, bold: true, anchor: 'middle' }));
+      q.push(matn(quti.x + quti.w - 1.5, quti.y + quti.h - 1.3, 'javob', { size: 1.9, anchor: 'end', rang: '#999' }));
+      continue;
+    }
+    q.push(matn(quti.x, quti.y - 1.2, `${sv.y ?? sv.n}-savol — yozma javob${sv.ball ? ` (${sv.ball} ball)` : ''}`, { size: 2.7, bold: true }));
     q.push(`<rect x="${f(quti.x)}" y="${f(quti.y)}" width="${f(quti.w)}" height="${f(quti.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.35"/>`);
     for (let y = quti.y + 8; y < quti.y + quti.h - 2; y += 8) q.push(`<line x1="${f(quti.x + 2)}" y1="${f(y)}" x2="${f(quti.x + quti.w - 2)}" y2="${f(y)}" stroke="#ddd" stroke-width="0.2"/>`);
     q.push(matn(quti.x + quti.w - 1.5, quti.y + quti.h - 1.5, 'Ball: ______ (ustoz)', { size: 2.3, anchor: 'end', rang: '#888' }));

@@ -19,7 +19,7 @@ interface Tafsil {
   id: number; name: string; session: number | null; variantCode: string | null; reviewStatus: string; score: number;
   raw: Record<string, string> | null; manual: Record<string, any> | null; flags: { n: number; sabab: string; f?: number[] }[] | null;
   pages: Record<string, { url: string }> | null; answers: Record<string, any> | null;
-  items: { n: number; t: string; p: number; m?: number[] }[];
+  items: { n: number; y?: string; g?: string; /** Ustoz tekshiradigan qismning to'g'ri javobi (kalit ruxsati bo'lsa). */ tj?: string; t: string; p: number; m?: number[] }[];
   shubhalar: { n: number; sabab: string; f?: number[] }[];
   seat: { variant: string | null; sheetCode: string } | null;
 }
@@ -88,7 +88,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
       }
       for (const q of sh.raqamli) m.set(q.n, { page: sh.page, turi: 'raqamli', quti: { x: q.quti.x - 1, y: q.quti.y - 1, w: q.quti.w + 2, h: q.quti.h + 2 } });
       for (const q of sh.moslash || []) m.set(q.n, { page: sh.page, turi: 'moslash', quti: { x: q.quti.x - 1, y: q.quti.y - 1, w: q.quti.w + 2, h: q.quti.h + 2 } });
-      for (const q of sh.yozma) m.set(q.n, { page: sh.page, turi: 'yozma', quti: { x: q.quti.x - 1, y: q.quti.y - 5, w: q.quti.w + 2, h: q.quti.h + 6 } });
+      for (const q of sh.yozma) m.set(q.n, { page: sh.page, turi: 'yozma', quti: q.ixcham ? { x: q.quti.x - 1, y: q.quti.y - 1, w: q.quti.w + 2, h: q.quti.h + 2 } : { x: q.quti.x - 1, y: q.quti.y - 5, w: q.quti.w + 2, h: q.quti.h + 6 } });
     }
     return m;
   }, [sahifalar]);
@@ -122,7 +122,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
     // Shubhali javobga qaror berilmagan bo'lsa — skaner taklifi qabul qilinadi.
     for (const f of shubhalar) if (!(f.n in manual)) manual[f.n] = t.raw?.[f.n] ?? '';
     for (const y of yozmalar) if (!(y.n in manual) && t.manual?.[y.n] === undefined) {
-      showNotification(`${y.n}-savol (yozma) bali kiritilmagan`, 'error');
+      showNotification(`${y.y ?? y.n}-savol (yozma) bali kiritilmagan`, 'error');
       return;
     }
     const body: any = { manual };
@@ -221,8 +221,8 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                   return (
                     <div key={f.n} className="rounded-xl border border-chiziq p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <p className="text-[13px] font-semibold text-matn">{f.n}-savol <span className="font-normal text-matn-sokin">· {f.sabab}</span></p>
-                        {f.f && it?.t !== 'moslash' && <p className="text-[11px] text-matn-xira raqam">to'lganlik: {f.f.map((x, i) => `${harflar[i] || i + 1} ${Math.round(x * 100)}%`).join(' · ')}</p>}
+                        <p className="text-[13px] font-semibold text-matn">{it?.y ?? f.n}-savol <span className="font-normal text-matn-sokin">· {f.sabab}</span></p>
+                        {f.f && it?.t !== 'moslash' && <p className="text-[11px] text-matn-xira raqam">to'lganlik: {f.f.map((x, i) => `${HARFLAR[i] || i + 1} ${Math.round(x * 100)}%`).join(' · ')}</p>}
                       </div>
                       {j && <Kesim url={rasm(j.page)} quti={j.quti} pxMm={j.turi === 'raqamli' ? 4 : j.turi === 'moslash' ? 5 : 6} />}
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -232,7 +232,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                           <input className={`${INPUT} w-32 py-1.5`} value={tanlov} onChange={e => setQaror(q => ({ ...q, [f.n]: e.target.value }))} placeholder="Javob" />
                         ) : (
                           <>
-                            {harflar.map(h => (
+                            {(it?.g === 'juft' ? HARFLAR : harflar).map((h: string) => (
                               <button key={h} disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [f.n]: h }))}
                                 className={`w-9 h-9 rounded-full border text-[13px] font-bold cursor-pointer ${tanlov === h ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
                             ))}
@@ -249,8 +249,9 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                   const joriy = qaror[it.n]?.ball ?? t.manual?.[it.n]?.ball ?? '';
                   return (
                     <div key={it.n} className="rounded-xl border border-chiziq p-3">
-                      <p className="text-[13px] font-semibold text-matn mb-2">{it.n}-savol — yozma ({it.p} ball)</p>
+                      <p className="text-[13px] font-semibold text-matn mb-2">{it.y ?? it.n}-savol — {it.g === 'qismli' ? 'qism javobi' : 'yozma'} ({it.p} ball)</p>
                       {j && <Kesim url={rasm(j.page)} quti={j.quti} pxMm={3.4} />}
+                      {it.tj && <p className="mt-2 text-[12.5px] text-matn-sokin">To'g'ri javob: <b className="text-yaxshi raqam">{it.tj}</b></p>}
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[12.5px] text-matn-sokin">Ball:</span>
                         <input className={`${INPUT} w-24 py-1.5`} inputMode="decimal" disabled={!tahrir} value={joriy}

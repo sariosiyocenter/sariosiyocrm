@@ -1326,16 +1326,52 @@ edi — guruh qo'shilganda `bank/daraxt` yiqilardi).
 `ai/klon` uni rad etadi; guruh sharti «umumiy matnlar» ro'yxatiga chiqmaydi va `passages` yo'llari
 bilan o'zgarmaydi/o'chmaydi (bu yo'llar endi tashkilotni ham tekshiradi). Imtihon qoidasi yangi
 turni olmaydi — `qoidaTuri()` 'yopiq' ga tushiradi; Andoza, qo'lda tanlash va Zukko guruh
-bo'laklarini o'tkazib yuboradi. 2-bosqichda `qoidaTuri` dagi cheklov olinadi.
+bo'laklarini o'tkazib yuboradi (2-bosqichda qoida cheklovi olindi; yakka savol yo'llari — `yakkaSavolTuri`).
 Guruh — bir butun: ommaviy amal (`questions/bulk`, `bulk-ochir`) bitta bo'lagiga berilsa ham hamma
 bo'lagiga qo'llanadi (`guruhiBilan`); bo'lak yakka o'chirilmaydi, tarjima qilinmaydi; oddiy savol
 guruh turida yoki guruh shartiga bog'lanib yaratilmaydi (`savolMalumoti`, `matnTashkilotdami`).
 `tozalaHtml` (src/lib/matn.ts): ochilgan noma'lum teg ichidagi bolalar ham tekshiriladi — ilgari
 ichma-ich ikki noma'lum teg ichidagi `on*` atribut o'tib ketardi.
 
-**Keyingi bosqichlar.** (2) imtihon qoidalari, variant (guruh butunligicha, `y` — ko'rinadigan
-raqam "36a"), kitobcha (umumiy javoblar ustuni); (3) javob varaqasi (A–F bo'limi, qismlar uchun
-raqam katagi yoki yozish katagi), skaner, ustoz tekshiruvi, natijalar. Rasmdan AI bilan kiritish va
-AI tuzishi — 1-bosqichdan keyin.
+**2-bosqich (imtihon, kitobcha, varaq) — 2026-10-07.** Asosiy qaror: guruh turlari varaqda
+MAVJUD katak turlariga tushadi, shuning uchun varaq chizmasi, skaner va ball hisobi ularni alohida
+bilmaydi (`BOLIMLAR`, lib/imtihon.js):
 
-Sinov: `scratch/guruh1_ui.mjs`.
+| qoida turi | varaqdagi katak (`t`) | izoh |
+|---|---|---|
+| `juft` | `yopiq` qator, doim A–F (`harf: 6`) | qolgan qatorlar imtihonning `optionCount` ida qoladi |
+| `qismli`, `tekshir: 'son'` | `raqamli` katak | faqat hamma qismi "Skaner (son)" bo'lgan savollar olinadi |
+| `qismli`, `tekshir: 'ustoz'` | `yozma` — ixcham maydon (`ixcham`) | bitta savolning qismlari bir qatorda; ustoz ball qo'yadi |
+
+Blok ichidagi tartib: yopiq → juft → raqamli → qismli(son) → moslash → qismli(ustoz) → yozma
+(eski imtihonlarda tartib o'zgarmaydi: `scratch/guruh2_dvigatel.mjs` eski dvigatel bilan 300 ta
+tasodifiy imtihonni solishtiradi).
+
+- **Raqamlar.** `n` — har katakning ichki raqami (kalit, javoblar, skaner shu bo'yicha). Ko'rinadigan
+  raqam — `y` ("36a"): `varaqTuzilmasi` har katakka qo'yadi (faqat `String(n)` dan farq qilsa),
+  variant elementiga ham o'tadi. Ko'rsatiladigan joyda `raqamYorligi(it)` / `x.y ?? x.n`: kitobcha
+  (HTML, Word), varaq, kalit (chop, ko'rish, muharrir), skanerda qo'lda kiritish, tekshirish, natija
+  sahifasi, onlayn test, hisobotlar (1211, Excel ustunlari). `savolSoni` — savollar soni (qismlar
+  bitta savol); `totalQuestions` shuni saqlaydi.
+- **Qoida.** `{type:'juft', count}` — count savollar soni; `{type:'qismli', count, qism, tekshir}` —
+  count QISMLAR soni (savollar × qism), `qism` 1–4 (varaq hamma variantda bir xil bo'lishi uchun
+  qat'iy). Blok taqsimotida: `juft`, `juftBal`, `qismli` (savollar), `qismSoni`, `qismTekshir`, `qismBal`.
+- **Tanlov.** Guruh butunligicha olinadi (`guruhBirligiMos`: hamma bo'lagi faol va yaroqli; qismli —
+  qismlar soni qoidadagidek). `tanla(..., butun)` guruhni bo'lmaydi — butun guruhlar bilan aniq son
+  chiqmasa "yetmaydi". Qismli savollar faqat o'z qoidasi ichida aralashadi (raqamlar joyida qoladi).
+  Qulflashda bank faqat faol savollar bilan olinadi — guruhning to'liq hajmi alohida so'raladi
+  (`guruhHajmiOl` → `guruhHajmi`), aks holda bir bo'lagi arxivdagi guruh "butun" ko'rinardi.
+  "Bank yetarlimi" ham shuni hisoblaydi: `butunYigindi` — butun guruhlar bilan chiqadigan son
+  (`sabab.butunGuruh` — mos savol bor, lekin aynan shu son chiqmaydi).
+- **Kitobcha.** `guruhHtml` (chop.ts) va Word: moslashtirishda — "33–35." umumiy shart, chapda
+  savollar, o'ngda BITTA javoblar ro'yxati; qismli savolda — bitta raqam, ostida a), b).
+- **Tekshirish.** Ustoz tekshiradigan qism elementida `tj` — to'g'ri javob (kalit kabi sir:
+  kitobchaga va kalit ruxsatisiz natijaga chiqmaydi); tekshirish kartasida ko'rinadi.
+- **"Faqat kalit" rejimi** ham shu turlarni oladi (o'z kitobchasi bilan Milliy sertifikat sinovi):
+  qoida turi ro'yxatida "Moslashtirish guruhi (A–F)", "Qismli savol — skaner / ustoz".
+- **Hali yo'q:** guruhni qo'lda (aniq savollar) tanlash, andoza (Blueprint) qatorida guruh turi,
+  Zukko orqali qo'shish, erkin varaq (dizayner) da guruh kataklari uchun alohida blok, onlayn testda
+  ustoz tekshiradigan qismlar (yozma kabi ko'rsatilmaydi), rasmdan AI bilan kiritish.
+
+Sinov: `scratch/guruh1_ui.mjs` (bank), `scratch/guruh2_dvigatel.mjs` (dvigatel, bazasiz),
+`scratch/guruh2_ui.mjs` (imtihon → kitobcha → varaq → skaner → tekshirish).

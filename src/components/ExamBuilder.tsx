@@ -7,7 +7,7 @@ import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuk
 import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
 import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
-import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI } from '../../lib/imtihon.js';
+import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI, qismSoni, qismTekshiruvi } from '../../lib/imtihon.js';
 import { toDateStr } from '../../lib/lessons.js';
 import { SmsHisobi } from './SmsHisobi';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
@@ -29,6 +29,16 @@ const DTM_ANDOZA: ExamBlock[] = [
 ];
 
 const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
+/** "Faqat kalit" rejimidagi qoida turlari (varaqdagi tartibda). */
+const KALIT_TURLARI = [
+  { v: 'yopiq', nom: 'Yopiq' },
+  { v: 'juft', nom: 'Moslashtirish guruhi (A–F)' },
+  { v: 'raqamli', nom: 'Raqamli' },
+  { v: 'qismli:son', nom: 'Qismli savol (36a, 36b) — skaner, son' },
+  { v: 'moslash', nom: 'Moslash' },
+  { v: 'qismli:ustoz', nom: 'Qismli savol (36a, 36b) — ustoz tekshiradi' },
+  { v: 'yozma', nom: 'Yozma' },
+];
 // Manfiy ball: xato javob uchun savol balining qancha qismi ayiriladi (Addmen "negative marking").
 const JARIMALAR: { v: number; nom: string }[] = [
   { v: 0, nom: "Yo'q" }, { v: 0.25, nom: '¼' }, { v: 1 / 3, nom: '⅓' }, { v: 0.5, nom: '½' }, { v: 1, nom: "To'liq" },
@@ -149,7 +159,7 @@ export default function ExamBuilder() {
           <button aria-label="Orqaga" onClick={() => navigate(tahrir ? `/exams/${id}` : '/exams')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="text-[15px] font-bold text-matn">{tahrir ? 'Imtihon sozlamalari' : 'Yangi imtihon'}</h1>
-            <p className="text-[12px] text-matn-xira">{tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}</p>
+            <p className="text-[12px] text-matn-xira">{tuzilma.savolSoni ?? tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}</p>
           </div>
           {qulf && <Yorliq rang="brand"><Lock size={11} /> Qulflangan</Yorliq>}
         </div>
@@ -256,7 +266,7 @@ export default function ExamBuilder() {
               onOchir={bloklar.length > 1 ? () => setBloklar(x => x.filter((_, i) => i !== bi)) : undefined} />
           )) : <Yuklanmoqda matn="Savollar banki yuklanmoqda…" />)}
           {kalitRejimi && bloklar.map((b, bi) => {
-            const blokSavollar = b.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
+            const blokSavollar = b.topicRules.reduce((a, r) => a + Math.round((Number(r.count) || 0) / (r.type === 'qismli' ? qismSoni(r) : 1)), 0);
             return (
               <div key={b.id} className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-2">
                 <div className="flex flex-wrap items-end gap-2">
@@ -278,12 +288,21 @@ export default function ExamBuilder() {
                 <div className="space-y-1.5">
                   {b.topicRules.map((r, ri) => (
                     <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
-                      <select className={`${SELECT} col-span-6 sm:col-span-4`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
-                        {(['yopiq', 'raqamli', 'moslash', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                      {/* Qismli savol: bitta raqam ostida a), b) — kataklar soni = savollar × 2; tekshiruvchi tur bilan birga tanlanadi. */}
+                      <select className={`${SELECT} col-span-6 sm:col-span-4`} disabled={qulf} value={r.type === 'qismli' ? `qismli:${qismTekshiruvi(r)}` : r.type || 'yopiq'} aria-label="Savol turi"
+                        onChange={e => {
+                          const [tur, tekshir] = e.target.value.split(':');
+                          const savollar = r.type === 'qismli' ? Math.max(1, Math.round((Number(r.count) || 0) / qismSoni(r))) : Number(r.count) || 1;
+                          qoidaQoy(bi, ri, tur === 'qismli'
+                            ? { type: 'qismli', tekshir: tekshir as 'son' | 'ustoz', qism: 2, count: savollar * 2 }
+                            : { type: tur as SavolTuri, tekshir: undefined, qism: undefined, count: savollar });
+                        }}>
+                        {KALIT_TURLARI.map(t => <option key={t.v} value={t.v}>{t.nom}</option>)}
                       </select>
-                      <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" title="Savollar soni" />
+                      <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} type="number" min={1} value={r.type === 'qismli' ? Math.round((Number(r.count) || 0) / qismSoni(r)) : r.count}
+                        onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) * (r.type === 'qismli' ? qismSoni(r) : 1) })} aria-label="Soni" title="Savollar soni" />
                       <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder="Ball" title="Shu qatordagi har bir savol bali (bo'sh — blokning «bir savol bali»)" />
-                      <div className="col-span-10 sm:col-span-3 text-[11.5px] text-matn-xira">{r.count || 0} ta savol{r.points != null ? ` · har biri ${r.points} ball` : ''}</div>
+                      <div className="col-span-10 sm:col-span-3 text-[11.5px] text-matn-xira">{r.type === 'qismli' ? `${Math.round((Number(r.count) || 0) / qismSoni(r))} ta savol × ${qismSoni(r)} qism` : `${r.count || 0} ta savol`}{r.points != null ? ` · har ${r.type === 'qismli' ? 'qism' : 'biri'} ${r.points} ball` : ''}</div>
                       {!qulf && <button aria-label="Qoidani o'chirish" onClick={() => blokQoy(bi, { topicRules: b.topicRules.filter((_, j) => j !== ri) })} className="col-span-2 sm:col-span-1 justify-self-end p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
                     </div>
                   ))}

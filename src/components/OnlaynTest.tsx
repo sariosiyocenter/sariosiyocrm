@@ -11,7 +11,7 @@ import { sanaMatni } from './imtihon/format';
  * yakunlanadi. "Faqat kalit" imtihonida — onlayn javob varaqasi (savollar kitobchada).
  */
 
-interface Savol { n: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean; ong?: string[]; r?: number; c?: number }
+interface Savol { n: number; /** Ko'rinadigan raqam ("36a") — tartib raqamidan farq qilsa. */ y?: string; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean; ong?: string[]; r?: number; c?: number }
 interface Holat {
   markaz: { nomi: string; logo: string | null };
   imtihon: { nomi: string; sana: string; daqiqa: number; savolSoni: number; ochiladi: string | null; yopiladi: string | null };
@@ -204,13 +204,13 @@ export default function OnlaynTest() {
                 <div className="space-y-1.5">
                   {savollar.filter(x => x.n >= b.boshi && x.n <= b.oxiri).map(x => (
                     <div key={x.n} className="flex items-center gap-2">
-                      <span className="w-8 text-right text-[13px] font-bold text-matn-sokin raqam">{x.n}</span>
+                      <span className="w-8 text-right text-[13px] font-bold text-matn-sokin raqam">{x.y ?? x.n}</span>
                       {x.t === 'yopiq' ? (
                         <div className="flex gap-1.5">
                           {x.variantlar.map((_, i) => {
                             const h = HARF[i];
                             const tanlangan = javoblar[x.n] === h;
-                            return <button key={h} onClick={() => javobQoy(x.n, tanlangan ? '' : h)} aria-pressed={tanlangan} aria-label={`${x.n}: ${h}`}
+                            return <button key={h} onClick={() => javobQoy(x.n, tanlangan ? '' : h)} aria-pressed={tanlangan} aria-label={`${x.y ?? x.n}: ${h}`}
                               className={`w-10 h-10 rounded-full border-2 text-[14px] font-bold cursor-pointer ${tanlangan ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq-kuchli text-matn-sokin bg-sirt'}`}>{h}</button>;
                           })}
                         </div>
@@ -218,7 +218,7 @@ export default function OnlaynTest() {
                         <MoslashJavob r={x.r || 4} c={x.c || 5} qiymat={javoblar[x.n] || ''} onChange={v => javobQoy(x.n, v)} />
                       ) : (
                         <input inputMode="decimal" className="w-32 px-3 py-2 rounded-xl border border-chiziq bg-ichki text-[14px] text-matn outline-none focus:border-brand" value={javoblar[x.n] || ''} placeholder="javob"
-                          aria-label={`${x.n}-savol javobi`} onChange={e => javobQoy(x.n, e.target.value.slice(0, 12))} />
+                          aria-label={`${x.y ?? x.n}-savol javobi`} onChange={e => javobQoy(x.n, e.target.value.slice(0, 12))} />
                       )}
                     </div>
                   ))}
@@ -227,8 +227,8 @@ export default function OnlaynTest() {
             ))}
           </section>
         ) : s && (
-          <section className="bg-sirt rounded-2xl border border-chiziq p-4 space-y-4" aria-label={`${s.n}-savol`}>
-            <p className="text-[12px] font-semibold text-matn-xira">{s.n}-savol · {savollar.length} tadan {joriy + 1}-si</p>
+          <section className="bg-sirt rounded-2xl border border-chiziq p-4 space-y-4" aria-label={`${s.y ?? s.n}-savol`}>
+            <p className="text-[12px] font-semibold text-matn-xira">{s.y ?? s.n}-savol · {savollar.length} tadan {joriy + 1}-si</p>
             {matn && (
               <div className="rounded-xl bg-ichki p-3 space-y-2">
                 {matn.title && <p className="text-[12.5px] font-bold text-matn">{matn.title}</p>}
@@ -284,8 +284,8 @@ export default function OnlaynTest() {
         {panel && !kitobcha && (
           <div className="max-w-2xl mx-auto px-4 pt-3 grid grid-cols-8 sm:grid-cols-10 gap-1.5 max-h-[40vh] overflow-y-auto">
             {savollar.map((x, i) => (
-              <button key={x.n} onClick={() => { setJoriy(i); setPanel(false); }} aria-label={`${x.n}-savol`}
-                className={`h-9 rounded-lg text-[12.5px] font-bold raqam cursor-pointer border ${i === joriy ? 'border-brand ring-2 ring-brand/30' : 'border-chiziq'} ${javoblar[x.n] ? 'bg-brand text-brand-ust' : 'bg-ichki text-matn-sokin'}`}>{x.n}</button>
+              <button key={x.n} onClick={() => { setJoriy(i); setPanel(false); }} aria-label={`${x.y ?? x.n}-savol`}
+                className={`h-9 rounded-lg text-[12.5px] font-bold raqam cursor-pointer border ${i === joriy ? 'border-brand ring-2 ring-brand/30' : 'border-chiziq'} ${javoblar[x.n] ? 'bg-brand text-brand-ust' : 'bg-ichki text-matn-sokin'}`}>{x.y ?? x.n}</button>
             ))}
           </div>
         )}

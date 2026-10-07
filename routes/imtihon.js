@@ -25,7 +25,7 @@ import {
   almashtirishNomzodlari, savolniAlmashtir, sorovnomaBloklari, sorovnomaVariantlari, sorovnomaYorliqlari,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala, moslashQatorlari,
   varaqAndozaTozala,
-  SAVOL_TURLARI, qoidaTuri, guruhSavolimi,
+  SAVOL_TURLARI, yakkaSavolTuri, guruhSavolimi, qismSoni, qismTekshiruvi,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
 
@@ -126,7 +126,7 @@ function kalitHolati(e) {
   const tuz = kalitTuzilmasi(e.blocks, e.scoring);
   return kalitToplamlari(s).map(({ kalit, session, code }) => {
     const qiymatlar = s.keys[kalit] || [];
-    const xatolar = tuz.filter(q => kalitQiymati(q.t, qiymatlar[q.n - 1], s.optionCount).xato).length;
+    const xatolar = tuz.filter(q => kalitQiymati(q.t, qiymatlar[q.n - 1], q.harf || s.optionCount).xato).length;
     return { kalit, session, code, jami: tuz.length, toldirilgan: tuz.length - xatolar, tayyor: xatolar === 0 };
   });
 }
@@ -144,6 +144,7 @@ const musbatId = v => { const n = parseInt(v); return Number.isInteger(n) && n >
 function taqsimotniTozala(t) {
   if (!t || typeof t !== 'object') return undefined;
   const son = (v, max = 300) => Math.min(max, Math.max(0, parseInt(v) || 0));
+  const bal = (v) => (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
   return {
     jami: son(t.jami),
     aralash: ['oson', 'muvozanat', 'qiyin', 'qolda'].includes(t.aralash) ? t.aralash : 'muvozanat',
@@ -152,6 +153,13 @@ function taqsimotniTozala(t) {
     moslash: son(t.moslash),
     yozma: son(t.yozma),
     yozmaBal: t.yozmaBal !== undefined && t.yozmaBal !== null && t.yozmaBal !== '' && Number.isFinite(Number(t.yozmaBal)) ? Number(t.yozmaBal) : null,
+    // Guruhli savollar (Milliy sertifikat): moslashtirish guruhlari va qismli savollar.
+    juft: son(t.juft),
+    juftBal: bal(t.juftBal),
+    qismli: son(t.qismli),
+    qismBal: bal(t.qismBal),
+    qismSoni: qismSoni({ qism: t.qismSoni }),
+    qismTekshir: qismTekshiruvi({ tekshir: t.qismTekshir }),
   };
 }
 
@@ -168,8 +176,14 @@ function blokniTozala(blocks) {
         const rule = {
           topic: String(r?.topic || '').trim().slice(0, 200),
           count: ids.length || Math.min(300, Math.max(0, parseInt(r?.count) || 0)),
-          type: qoidaTuri(r?.type),
+          type: turi(r?.type),
         };
+        // Qismli savol: bitta savoldagi qismlar soni va javobni kim tekshirishi (varaq shunga qarab chiziladi).
+        if (rule.type === 'qismli') {
+          rule.qism = qismSoni(r);
+          rule.tekshir = qismTekshiruvi(r);
+          rule.count -= rule.count % rule.qism;
+        }
         const mid = musbatId(r?.mavzuId);
         if (mid) rule.mavzuId = mid;
         if (ids.length) rule.questionIds = ids;
@@ -205,7 +219,7 @@ function savolMalumoti(body) {
   if (body.text !== undefined) d.text = String(body.text ?? '').slice(0, LAVHA_MAX);
   if (body.imageUrl !== undefined) d.imageUrl = body.imageUrl || null;
   // Guruh turlari (juft, qismli) faqat bank/guruhlar orqali yaratiladi — bu yerda 'yopiq' ga tushadi.
-  if (body.type !== undefined) d.type = qoidaTuri(body.type);
+  if (body.type !== undefined) d.type = yakkaSavolTuri(body.type);
   if (body.options !== undefined) {
     d.options = Array.isArray(body.options) ? body.options.slice(0, HARFLAR.length).map(x => String(x ?? '').slice(0, 4000)) : null;
   }
@@ -294,6 +308,15 @@ const BANK_SELECT = {
  * Variant yasash uchun bank: tuzilmaga bog'lab, har savolga fan va mavzu id si.
  * Bo'lim — mavzuning bo'limi (Andoza qatorlari shu bo'yicha tanlaydi).
  */
+/**
+ * Guruhli savollarning to'liq hajmi (holatidan qat'i nazar): bank faqat faol savollar bilan
+ * olinganda ham bir bo'lagi qoralama yoki arxivdagi guruh "butun" sanalmasligi uchun.
+ */
+async function guruhHajmiOl(orgIds) {
+  const l = await prisma.question.groupBy({ by: ['passageId'], where: { schoolId: { in: orgIds }, passageId: { not: null }, type: { in: ['juft', 'qismli'] } }, _count: { _all: true } });
+  return new Map(l.map(x => [x.passageId, x._count._all]));
+}
+
 async function bankniOl(orgIds, qoshimcha = {}) {
   await bankniSinxronla(orgIds);
   const rows = await prisma.question.findMany({ where: { schoolId: { in: orgIds }, ...qoshimcha }, select: BANK_SELECT });
@@ -984,7 +1007,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
     const scoring = d.scoring ?? eski?.scoring ?? 'blok';
     if (d.blocks !== undefined || d.scoring !== undefined) {
       const t = varaqTuzilmasi(blocks, scoring);
-      d.totalQuestions = t.jami;
+      d.totalQuestions = t.savolSoni ?? t.jami;
       const qoshimcha = sozlamaniTozala(d.settings ?? eski?.settings).qoshimcha;
       d.maxScore = Math.round((t.maks + qoshimcha.reduce((a, x) => a + x.max, 0)) * 100) / 100;
     }
@@ -1145,7 +1168,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         await prisma.$transaction([
           prisma.examVariant.deleteMany({ where: { examId: id } }),
           prisma.examVariant.createMany({ data: variants.map(v => ({ examId: id, session: v.session, code: v.code, items: v.items })) }),
-          prisma.exam.update({ where: { id }, data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, totalQuestions: tuzilma.jami, maxScore: 0 } }),
+          prisma.exam.update({ where: { id }, data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, totalQuestions: tuzilma.savolSoni ?? tuzilma.jami, maxScore: 0 } }),
         ]);
         await orinVariantlariniYangila(id, 1);
         const yangi = await prisma.exam.findUnique({ where: { id } });
@@ -1160,7 +1183,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         await prisma.$transaction([
           prisma.examVariant.deleteMany({ where: { examId: id } }),
           prisma.examVariant.createMany({ data: r.variants.map(v => ({ examId: id, session: v.session, code: v.code, items: v.items })) }),
-          prisma.exam.update({ where: { id }, data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, totalQuestions: tuzilma.jami, maxScore: tuzilma.maks } }),
+          prisma.exam.update({ where: { id }, data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, totalQuestions: tuzilma.savolSoni ?? tuzilma.jami, maxScore: tuzilma.maks } }),
         ]);
         await orinVariantlariniYangila(id, s0.variantCount);
         const yangi = await prisma.exam.findUnique({ where: { id } });
@@ -1170,7 +1193,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const orgIds = await organizationSchoolIds(req.user);
       const bank = await bankniOl(orgIds, { status: 'faol' });
       const seed = e.seed ?? crypto.randomInt(1, 2 ** 31 - 1);
-      const r = variantlarniYasash({ blocks: e.blocks, scoring: e.scoring, settings: e.settings, seed, bank });
+      const r = variantlarniYasash({ blocks: e.blocks, scoring: e.scoring, settings: e.settings, seed, bank, guruhHajmi: await guruhHajmiOl(orgIds) });
       if (r.kamchiliklar.length) {
         return res.status(400).json({ error: 'Savollar banki yetmaydi', kamchiliklar: r.kamchiliklar, ogohlantirishlar: r.ogohlantirishlar });
       }
@@ -1182,7 +1205,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         prisma.examVariant.createMany({ data: r.variants.map(v => ({ examId: id, session: v.session, code: v.code, items: v.items })) }),
         prisma.exam.update({
           where: { id },
-          data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, seed, settings: s, totalQuestions: tuzilma.jami, maxScore: tuzilma.maks },
+          data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, seed, settings: s, totalQuestions: tuzilma.savolSoni ?? tuzilma.jami, maxScore: tuzilma.maks },
         }),
         prisma.question.updateMany({ where: { id: { in: r.ishlatilgan } }, data: { usedCount: { increment: 1 }, lastUsedAt: hozir } }),
       ]);
@@ -1243,7 +1266,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         variants: variants.map(v => ({
           session: v.session, code: v.code,
           // eslint-disable-next-line no-unused-vars
-          items: v.items.map(({ k, j, ka, mk, ...qolgan }) => qolgan),
+          items: v.items.map(({ k, j, ka, mk, tj, ...qolgan }) => qolgan),
         })),
         savollar: savollar.map(q => ({
           id: q.id, text: q.text, imageUrl: q.imageUrl, type: q.type, options: savolVariantlari(q), passageId: q.passageId, remark: q.remark, tarjima: q.tarjima, joylashuv: q.joylashuv,
@@ -1334,7 +1357,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         korildi.add(it.q);
         const q = qmap.get(it.q);
         savollar.push({
-          q: it.q, session: v.session, n: it.n, b: it.b, t: it.t, p: it.p, pa: it.pa || null,
+          q: it.q, session: v.session, n: it.n, ...(it.y ? { y: it.y } : {}), ...(it.g ? { g: it.g } : {}), b: it.b, t: it.t, p: it.p, pa: it.pa || null,
           text: q?.text || '', imageUrl: q?.imageUrl || null, topic: q?.topic || '', difficulty: q?.difficulty ?? 2, usedCount: q?.usedCount ?? 0,
           // To'g'ri javob — faqat kalitni ko'radiganlarga.
           options: q ? savolVariantlari(q) : [], correctAnswer: kalitKorinadi ? q?.correctAnswer || '' : null, answers: kalitKorinadi || q?.type === 'moslash' ? q?.answers || null : null, remark: q?.remark || null,
@@ -1414,7 +1437,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         manba: s.source,
         variants: variants.map(v => ({
           session: v.session, code: v.code,
-          items: v.items.map(it => ({ n: it.n, q: it.q, t: it.t, b: it.b, p: it.p, javob: it.t === 'yopiq' ? (it.ka ? it.ka.join('') : HARFLAR[it.k]) : it.t === 'raqamli' ? it.j : it.t === 'moslash' ? (it.mk || []).join('|') : null, m: it.m, bekor: it.bekor || null })),
+          items: v.items.map(it => ({ n: it.n, ...(it.y ? { y: it.y } : {}), q: it.q, t: it.t, b: it.b, p: it.p, javob: it.t === 'yopiq' ? (it.ka ? it.ka.join('') : HARFLAR[it.k]) : it.t === 'raqamli' ? it.j : it.t === 'moslash' ? (it.mk || []).join('|') : null, m: it.m, bekor: it.bekor || null })),
         })),
         savollar: savollar.map(q => ({ id: q.id, text: q.text, subject: q.subject, topic: q.topic, type: q.type, correctAnswer: q.correctAnswer, answers: q.answers, options: savolVariantlari(q) })),
         cancelled: s.cancelled,
@@ -1926,7 +1949,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         items: variant ? variant.items.map(it => {
           if (kalit) return it;
           // eslint-disable-next-line no-unused-vars
-          const { k, j, ...qolgan } = it;
+          const { k, j, tj, ...qolgan } = it;
           return qolgan;
         }) : [],
         shubhalar: halQilinmagan(r.flags, r.manual),
@@ -2530,7 +2553,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const variantlar = q ? savolVariantlari(q) : [];
       const tartib = it.m || variantlar.map((_, i) => i);
       return {
-        n: it.n, t: it.t, b: it.b, pa: it.pa || null, matn: q?.text || '', rasm: q?.imageUrl || null,
+        n: it.n, ...(it.y ? { y: it.y } : {}), ...(it.g ? { g: it.g } : {}), t: it.t, b: it.b, pa: it.pa || null, matn: q?.text || '', rasm: q?.imageUrl || null,
         variantlar: it.t === 'yopiq' ? (q ? tartib.map(i => variantlar[i] ?? '') : HARFLAR.slice(0, s.optionCount)) : it.t === 'moslash' ? variantlar : [],
         ...(it.t === 'moslash' ? { ong: Array.isArray(q?.answers) ? q.answers : [], r: it.r || variantlar.length || 4, c: q ? (q.answers || []).length || 5 : it.c || 5 } : {}),
         // "Faqat kalit": matn kitobchada — faqat harflar.
@@ -2753,7 +2776,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           } else if (it.t === 'raqamli') togri = s.keyFix[it.q] || it.j || [];
           else if (it.t === 'moslash') togri = [s.keyFix[it.q]?.[0] || (it.mk || []).join('|')];
           return {
-            n: it.n, t: it.t, p: it.p, pa: it.pa || null,
+            n: it.n, ...(it.y ? { y: it.y } : {}), t: it.t, p: it.p, pa: it.pa || null,
             matn: q?.text || '', rasm: q?.imageUrl || null,
             variantlar: it.t === 'yopiq' ? tartib.map(i => variantlar[i] ?? '') : it.t === 'moslash' ? variantlar : [],
             ...(it.t === 'moslash' ? { ong: Array.isArray(q?.answers) ? q.answers : [] } : {}),

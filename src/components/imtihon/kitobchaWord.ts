@@ -1,7 +1,7 @@
-import { HARFLAR } from '../../../lib/imtihon.js';
+import { HARFLAR, QISM_HARFLARI, raqamYorligi } from '../../../lib/imtihon.js';
 import { oddiyMatn } from '../../lib/matn';
 import { Rasmlar, rasmlarniYukla, htmlParagraflar, htmlRunlar, matnRun, docxYasa, TWIP_SM } from '../../lib/docx';
-import { MOSLASH_KORSATMA, type KitobchaMalumoti, type KitobchaSozlama } from './chop';
+import { MOSLASH_KORSATMA, JUFT_KORSATMA, savolRaqami, savollarSoni, type KitobchaMalumoti, type KitobchaSozlama } from './chop';
 import type { Exam } from '../../types';
 
 // Kitobcha Word (.docx) da (Addmen QPG "Format: DOC"): har variant — muqova
@@ -38,13 +38,13 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
     const sessiya = s.sessions.find(x => x.id === session);
     const bloklar = exam.blocks.map((b, bi) => {
       const lar = v.items.filter(it => it.b === bi);
-      return { nomi: b.subject, soni: lar.length, boshi: lar[0]?.n, oxiri: lar[lar.length - 1]?.n, ball: exam.scoring === 'blok' ? b.pointsPerQuestion : null };
+      return { nomi: b.subject, soni: savollarSoni(lar), boshi: lar[0] ? savolRaqami(lar[0]) : undefined, oxiri: lar.length ? savolRaqami(lar[lar.length - 1]) : undefined, ball: exam.scoring === 'blok' ? b.pointsPerQuestion : null };
     });
     // --- Muqova (1 ustun)
     qismlar.push(
       p(matnRun(markaz, { sz: 18, rang: '444444' })),
       p(matnRun(exam.name, { b: true, sz: 32 })),
-      p(matnRun(`${exam.date}${sessiya ? ` · ${sessiya.name}${sessiya.time ? ` (${sessiya.time})` : ''}` : ''} · ${exam.duration} daqiqa · ${v.items.length} ta savol`, { sz: 18 })),
+      p(matnRun(`${exam.date}${sessiya ? ` · ${sessiya.name}${sessiya.time ? ` (${sessiya.time})` : ''}` : ''} · ${exam.duration} daqiqa · ${savollarSoni(v.items)} ta savol`, { sz: 18 })),
       p(matnRun('VARIANT ', { sz: 20 }) + matnRun(code, { b: true, sz: 44 }), `<w:jc w:val="right"/>${CHEGARA}<w:ind w:left="${MATN_W - 1700}"/><w:spacing w:before="60" w:after="120"/>`),
     );
     const katak = (matn: string, b = false) => `<w:tc><w:tcPr><w:tcBorders><w:top w:val="single" w:sz="4" w:color="555555"/><w:left w:val="single" w:sz="4" w:color="555555"/><w:bottom w:val="single" w:sz="4" w:color="555555"/><w:right w:val="single" w:sz="4" w:color="555555"/></w:tcBorders></w:tcPr>${p(matnRun(matn, { b, sz: 18 }))}</w:tc>`;
@@ -55,6 +55,7 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
       `Javob varaqasida kitobcha variantini (${code}) ham bo'yang. Kitobchaga yozish mumkin — u tekshirilmaydi.`,
       ...(v.items.some(it => it.t === 'raqamli') ? ["Raqamli javobni katak tepasiga yozing va har belgini ostidagi ustunda bo'yang (minus, vergul, kasr chizig'i ham)."] : []),
       ...(v.items.some(it => it.t === 'moslash') ? [MOSLASH_KORSATMA] : []),
+      ...(v.items.some(it => it.g === 'juft') ? [JUFT_KORSATMA] : []),
     ];
     qoidalar.forEach((q, i) => qismlar.push(p(matnRun(`• ${q}`, { sz: 18 }), `<w:ind w:left="227" w:hanging="227"/>${i === 0 ? '<w:spacing w:before="120"/>' : ''}`)));
     qismlar.push(p('', sectPr(1, 'nextPage')));
@@ -62,7 +63,10 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
     // --- Savollar (1 yoki 2 ustun)
     let joriyBlok = -1;
     let joriyMatn: number | null = null;
+    // Guruhli savolning keyingi bo'laklari — birinchisi bilan birga yoziladi.
+    const yozilgan = new Set<number>();
     v.items.forEach((it, idx) => {
+      if (yozilgan.has(it.n)) return;
       if (it.b !== joriyBlok) {
         joriyBlok = it.b;
         const b = bloklar[it.b];
@@ -71,6 +75,44 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
       }
       const q = savolMap.get(it.q);
       if (!q) return;
+      if (it.g && it.pa) {
+        // Guruhli savol: umumiy shart, keyin savollar (qismlar); moslashtirishda — oxirida umumiy javoblar ro'yxati.
+        const azolar = [it];
+        for (let j = idx + 1; j < v.items.length && v.items[j].pa === it.pa && v.items[j].g === it.g; j++) azolar.push(v.items[j]);
+        azolar.forEach(x => yozilgan.add(x.n));
+        const shart = matnMap.get(it.pa);
+        const juft = it.g === 'juft';
+        const bosh = juft && azolar.length > 1 ? `${raqamYorligi(it)}–${raqamYorligi(azolar[azolar.length - 1])}.` : `${savolRaqami(it)}.`;
+        htmlParagraflar(shart?.text || '', rasmlar, rasmSm).forEach((runlar, i) => qismlar.push(p(
+          (i === 0 ? `${matnRun(bosh, { b: true })}${matnRun(' ')}` : '') + runlar,
+          `<w:keepNext/>${i === 0 ? '<w:spacing w:before="100"/>' : ''}`,
+        )));
+        if (shart?.imageUrl) qismlar.push(p(rasmlar.drawing(shart.imageUrl, rasmSm), '<w:keepNext/>'));
+        azolar.forEach((x, k) => {
+          const xq = savolMap.get(x.q);
+          const belgi = juft ? `${raqamYorligi(x)}.` : azolar.length > 1 ? `${QISM_HARFLARI[k]})` : '';
+          htmlParagraflar(xq?.text || '', rasmlar, rasmSm).forEach((runlar, i) => qismlar.push(p(
+            (i === 0 && belgi ? `${matnRun(belgi, { b: true })}<w:r><w:tab/></w:r>` : '') + runlar,
+            `<w:keepNext/><w:ind w:left="${CHEKINISH * 2}"${i === 0 && belgi ? ` w:hanging="${CHEKINISH}"` : ''}/>`,
+          )));
+          if (xq?.imageUrl) qismlar.push(p(rasmlar.drawing(xq.imageUrl, rasmSm), `<w:keepNext/><w:ind w:left="${CHEKINISH * 2}"/>`));
+        });
+        if (juft) {
+          const royxat = q.options;
+          const qatorda = royxat.every(x => oddiyMatn(x || '').length <= 11 && !/<img/i.test(x || '')) ? 3 : 2;
+          const qadam = (ustunW - CHEKINISH) / qatorda;
+          const tabs = `<w:tabs>${Array.from({ length: qatorda - 1 }, (_, k) => `<w:tab w:val="left" w:pos="${Math.round(CHEKINISH + qadam * (k + 1))}"/>`).join('')}</w:tabs>`;
+          for (let i = 0; i < royxat.length; i += qatorda) {
+            const bolak = royxat.slice(i, i + qatorda).map((x, k) => `${matnRun(`${HARFLAR[i + k]})`, { b: true })}${matnRun(' ')}${htmlRunlar(x || '', rasmlar, Math.min(qadam / TWIP_SM - 0.8, 6))}`).join('<w:r><w:tab/></w:r>');
+            qismlar.push(p(bolak, `${i + qatorda >= royxat.length ? '' : '<w:keepNext/>'}<w:ind w:left="${CHEKINISH}"/>${tabs}${i === 0 ? '<w:spacing w:before="60"/>' : ''}`));
+          }
+        } else {
+          const joylar = azolar.map(raqamYorligi).join(', ');
+          qismlar.push(p(matnRun(it.t === 'raqamli' ? `Javoblarni javob varaqasidagi ${joylar} kataklariga yozing va bo'yang.` : `Javoblarni javob varaqasidagi ${joylar} maydonlariga yozing (har biri ${it.p} ball).`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));
+        }
+        joriyMatn = null;
+        return;
+      }
       if (it.pa && it.pa !== joriyMatn) {
         joriyMatn = it.pa;
         const m = matnMap.get(it.pa);
@@ -78,7 +120,7 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
         for (let j = idx + 1; j < v.items.length && v.items[j].pa === it.pa; j++) oxiri = v.items[j].n;
         if (m) {
           const ppr = `${CHEGARA}<w:spacing w:after="0"/>`;
-          qismlar.push(p(matnRun(`${m.title ? `${m.title}. ` : ''}Matnni o'qing va ${it.n}–${oxiri}-savollarga javob bering.`, { b: true, sz: 20 }), `<w:keepNext/>${ppr}<w:spacing w:before="120"/>`));
+          qismlar.push(p(matnRun(`${m.title ? `${m.title}. ` : ''}Matnni o'qing va ${raqamYorligi(it)}–${raqamYorligi(v.items[oxiri - 1] || { n: oxiri })}-savollarga javob bering.`, { b: true, sz: 20 }), `<w:keepNext/>${ppr}<w:spacing w:before="120"/>`));
           for (const x of htmlParagraflar(m.text, rasmlar, rasmSm)) qismlar.push(p(x, `<w:keepNext/>${ppr}`));
           if (m.imageUrl) qismlar.push(p(rasmlar.drawing(m.imageUrl, rasmSm), ppr));
           qismlar.push(p('', '<w:spacing w:after="80"/>'));
@@ -87,7 +129,7 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
 
       const matnlar = htmlParagraflar(q.text, rasmlar, rasmSm);
       matnlar.forEach((runlar, i) => qismlar.push(p(
-        (i === 0 ? `${matnRun(`${it.n}.`, { b: true })}<w:r><w:tab/></w:r>` : '') + runlar,
+        (i === 0 ? `${matnRun(`${raqamYorligi(it)}.`, { b: true })}<w:r><w:tab/></w:r>` : '') + runlar,
         `<w:keepNext/><w:ind w:left="${CHEKINISH}"${i === 0 ? ` w:hanging="${CHEKINISH}"` : ''}/>${i === 0 ? '<w:spacing w:before="100"/>' : ''}`,
       )));
       if (q.imageUrl) qismlar.push(p(rasmlar.drawing(q.imageUrl, rasmSm), `<w:keepNext/><w:ind w:left="${CHEKINISH}"/>`));
@@ -122,9 +164,9 @@ export async function kitobchaWord(exam: Exam, markaz: string, d: KitobchaMalumo
             `${i < qatorlar - 1 ? '<w:keepNext/>' : ''}<w:ind w:left="${CHEKINISH}"/><w:tabs><w:tab w:val="left" w:pos="${yarim}"/></w:tabs>`));
         }
       } else if (it.t === 'raqamli') {
-        qismlar.push(p(matnRun(`Javobni javob varaqasidagi ${it.n}-katakka yozing va bo'yang.`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));
+        qismlar.push(p(matnRun(`Javobni javob varaqasidagi ${raqamYorligi(it)}-katakka yozing va bo'yang.`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));
       } else {
-        qismlar.push(p(matnRun(`Yechimni javob varaqasidagi ${it.n}-maydonga yozing (${it.p} ball).`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));
+        qismlar.push(p(matnRun(`Yechimni javob varaqasidagi ${raqamYorligi(it)}-maydonga yozing (${it.p} ball).`, { i: true, sz: 18 }), `<w:ind w:left="${CHEKINISH}"/>`));
       }
       if (o.izoh && q.remark) qismlar.push(p(matnRun(`Izoh: ${q.remark}`, { i: true, sz: 17, rang: '555555' }), `<w:ind w:left="${CHEKINISH}"/>`));
     });

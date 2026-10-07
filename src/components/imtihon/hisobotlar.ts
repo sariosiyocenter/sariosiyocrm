@@ -358,7 +358,8 @@ export function ikkiQismliHtml(k: HisobotKirish, kengaytirilgan: boolean): strin
 
 /** 1211 — har o'quvchi: har savolga javobi, natija belgisi va (ruxsat bo'lsa) kalit. */
 export function javoblarBolaklari(k: HisobotKirish): { r: HisobotNatija; html: string }[] {
-  const tuz = varaqTuzilmasi(k.exam.blocks, k.exam.scoring) as { bloklar: { nomi: string; boshi: number; oxiri: number }[] };
+  const tuz = varaqTuzilmasi(k.exam.blocks, k.exam.scoring) as { bloklar: { nomi: string; boshi: number; oxiri: number }[]; savollar: { n: number; y?: string }[] };
+  const yorliq = (n: number) => tuz.savollar[n - 1]?.y ?? String(n);
   const belgi = (h: string) => (h === 'togri' ? '✓' : h === 'bosh' ? '–' : h === 'bekor' ? '∗' : h === 'qisman' ? '½' : h === 'ortiqcha' ? '○' : '✗');
   return guruhlar(k).flatMap(g => g.l).map(r => {
     const kalit = k.malumot.kalit?.[`${r.session ?? 1}|${r.variant}`];
@@ -368,7 +369,7 @@ export function javoblarBolaklari(k: HisobotKirish): { r: HisobotNatija; html: s
       for (let n = b.boshi; n <= b.oxiri; n++) {
         const d = dmap.get(n);
         const h = d?.holat || 'bosh';
-        kataklar.push(`<div class="kt ${h}"><span class="n">${n}</span><b>${esc(d?.javob || '')}</b><i>${belgi(h)}</i>${kalit ? `<small>${esc(kalit[n] || '')}</small>` : ''}</div>`);
+        kataklar.push(`<div class="kt ${h}"><span class="n">${esc(yorliq(n))}</span><b>${esc(d?.javob || '')}</b><i>${belgi(h)}</i>${kalit ? `<small>${esc(kalit[n] || '')}</small>` : ''}</div>`);
       }
       const bs = r.blockScores[bi];
       return `<div class="blok"><div class="bn">${esc(b.nomi)} <span>${bs ? `${v(bs.earned)} / ${v(bs.max)} · T ${bs.togri ?? ''} · X ${bs.xato ?? ''} · B ${bs.bosh ?? ''}` : ''}</span></div><div class="kataklar">${kataklar.join('')}</div></div>`;
@@ -619,7 +620,9 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
   });
   const qoshimcha = (r: HisobotNatija, o: Record<string, unknown>) => { for (const q of k.exam.settings.qoshimcha || []) o[q.nom] = r.extra?.[q.nom] ?? ''; };
   const royxat = guruhlar(k).flatMap(g => g.l);
-  const tuz = varaqTuzilmasi(k.exam.blocks, k.exam.scoring) as { jami: number };
+  const tuz = varaqTuzilmasi(k.exam.blocks, k.exam.scoring) as { jami: number; savollar: { n: number; y?: string }[] };
+  /** Excel ustuni nomi: savolning ko'rinadigan raqami ("36a"). */
+  const ustun = (n: number) => tuz.savollar[n - 1]?.y ?? String(n);
   const hammasi = turi === '2331';
   if (turi === '2111' || hammasi) varaq("Ball ro'yxati", royxat.map((r, i) => ({ ...asos(r, i), ...yakun(r) })));
   if (turi === '2112') {
@@ -668,7 +671,7 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
     varaq(rwl ? 'Javoblar (T-X-B)' : 'Javoblar', royxat.map((r, i) => {
       const o = asos(r, i);
       const d = new Map(r.detail.map(x => [x.n, x]));
-      for (let n = 1; n <= tuz.jami; n++) { const x = d.get(n); o[String(n)] = rwl ? harf(x?.holat || 'bosh') : x?.javob || ''; }
+      for (let n = 1; n <= tuz.jami; n++) { const x = d.get(n); o[ustun(n)] = rwl ? harf(x?.holat || 'bosh') : x?.javob || ''; }
       if (rwl) { o["To'g'ri"] = r.detail.filter(x => x.holat === 'togri').length; o.Xato = r.detail.filter(x => x.holat === 'xato').length; o["Bo'sh"] = r.detail.filter(x => x.holat === 'bosh').length; }
       return o;
     }));
@@ -679,7 +682,7 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
     varaq('Ikki imtihon javoblari', royxat.map((r, i) => {
       const o = asos(r, i);
       const d1 = new Map(r.detail.map(x => [x.n, x]));
-      for (let n = 1; n <= tuz.jami; n++) o[`1-${n}`] = d1.get(n)?.javob || '';
+      for (let n = 1; n <= tuz.jami; n++) o[`1-${ustun(n)}`] = d1.get(n)?.javob || '';
       o['1-ball'] = r.score;
       const r2 = ikkinchi.get(birlashKaliti(r));
       const d2 = new Map((r2?.detail || []).map(x => [x.n, x]));
@@ -692,7 +695,7 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
     varaq("Savol bo'yicha ball", royxat.map((r, i) => {
       const o = asos(r, i);
       const d = new Map(r.detail.map(x => [x.n, x]));
-      for (let n = 1; n <= tuz.jami; n++) { const x = d.get(n); o[String(n)] = !x || x.holat === 'bosh' ? '' : x.ball; }
+      for (let n = 1; n <= tuz.jami; n++) { const x = d.get(n); o[ustun(n)] = !x || x.holat === 'bosh' ? '' : x.ball; }
       o.Jami = r.score;
       return o;
     }));
@@ -701,7 +704,7 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
     varaq('Kalit', Object.entries(k.malumot.kalit).map(([kod, javoblar]) => {
       const [smena, variant] = kod.split('|');
       const o: Record<string, unknown> = { Smena: smena, Variant: variant };
-      for (let n = 1; n <= tuz.jami; n++) o[String(n)] = javoblar[n] || '';
+      for (let n = 1; n <= tuz.jami; n++) o[ustun(n)] = javoblar[n] || '';
       return o;
     }));
   }

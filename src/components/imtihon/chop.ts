@@ -4,11 +4,11 @@
 
 import { esc } from '../../lib/chopEtish';
 import { formulaliHtml, oddiyMatn } from '../../lib/matn';
-import { HARFLAR } from '../../../lib/imtihon.js';
+import { HARFLAR, QISM_HARFLARI, raqamYorligi } from '../../../lib/imtihon.js';
 import type { Exam } from '../../types';
 
 export interface KitobchaMalumoti {
-  variants: { session: number; code: string; items: { n: number; q: number; b: number; t: string; p: number; m?: number[]; pa?: number }[] }[];
+  variants: { session: number; code: string; items: { n: number; q: number; b: number; t: string; p: number; m?: number[]; pa?: number; /** Ko'rinadigan raqam ("36a") — tartib raqamidan farq qilsa. */ y?: string; /** Guruhli savol bo'lagi: 'juft' | 'qismli'. */ g?: string }[] }[];
   savollar: { id: number; text: string; imageUrl?: string | null; type: string; options: string[]; passageId?: number | null; remark?: string | null; tarjima?: { til: string; text: string; options: string[] } | null; joylashuv?: number | null; ong?: string[] }[];
   matnlar: { id: number; title?: string | null; text: string; imageUrl?: string | null }[];
 }
@@ -70,7 +70,52 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .moslash ol { list-style: none; padding: 0; margin: 0; }
 .moslash li { margin: 0.6mm 0; display: flex; gap: 1.4mm; }
 .moslash p { margin: 0; }
+.guruh-ichi { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); column-gap: 3mm; margin: 1.4mm 0 0 7.6mm; align-items: start; }
+.guruh-savollar, .qismlar { list-style: none; padding: 0; margin: 0; }
+.guruh-savollar li, .qismlar li { display: flex; gap: 1.6mm; margin: 0 0 1.4mm; }
+.guruh-savollar li > b { min-width: 6mm; }
+.guruh-savollar p, .qismlar p { margin: 0; }
+.guruh-javoblar { list-style: none; margin: 0; padding: 1.2mm 2mm; border: 0.6pt solid #000; }
+.guruh-javoblar li { margin: 0.5mm 0; display: flex; gap: 1.4mm; }
+.guruh-javoblar p { margin: 0; }
+.qismlar { margin: 1.2mm 0 0 7.6mm; }
+.guruh > .bosh > b { white-space: nowrap; }
 `;
+
+/** Savol raqami harfsiz ("36a" → "36"): blok oraliqlari va qismli savolning umumiy raqami uchun. */
+export const savolRaqami = (it: { n: number; y?: string }): string => raqamYorligi(it).replace(/[a-z]+$/, '');
+/** Variantdagi savollar soni (qismli savolning qismlari bitta savol). */
+export const savollarSoni = (items: { n: number; y?: string }[]): number => new Set(items.map(savolRaqami)).size;
+export const JUFT_KORSATMA = "Umumiy javoblar ro'yxati berilgan savollarda har savolga ro'yxatdan (A–F) bitta javobni tanlang — bitta javob bir necha savolga to'g'ri kelmaydi, ortiqcha javoblar ham bor.";
+
+type KitobchaElementi = KitobchaMalumoti['variants'][number]['items'][number];
+
+/**
+ * Guruhli savol (Milliy sertifikat): umumiy shart bir marta. Moslashtirishda — chapda savollar,
+ * o'ngda hammasi uchun bitta javoblar ro'yxati; qismli savolda — bitta raqam ostida a), b) qismlari.
+ */
+function guruhHtml(azolar: KitobchaElementi[], savolMap: Map<number, KitobchaMalumoti['savollar'][number]>, shart: KitobchaMalumoti['matnlar'][number] | undefined): string {
+  const birinchi = azolar[0];
+  const shartHtml = `${formulaliHtml(shart?.text || '')}${shart?.imageUrl ? `<img src="${esc(shart.imageUrl)}" alt="">` : ''}`;
+  const matni = (it: KitobchaElementi) => { const q = savolMap.get(it.q); return `${formulaliHtml(q?.text || '')}${q?.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}`; };
+  if (birinchi.g === 'juft') {
+    const raqamlar = azolar.length > 1 ? `${raqamYorligi(birinchi)}–${raqamYorligi(azolar[azolar.length - 1])}` : raqamYorligi(birinchi);
+    const royxat = savolMap.get(birinchi.q)?.options || [];
+    return `<div class="savol guruh"><div class="bosh"><b>${raqamlar}.</b><div class="matn">${shartHtml}</div></div>
+      <div class="guruh-ichi">
+        <ol class="guruh-savollar">${azolar.map(it => `<li><b>${raqamYorligi(it)}.</b><div class="matn">${matni(it)}</div></li>`).join('')}</ol>
+        <ol class="guruh-javoblar">${royxat.map((x, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(x || '')}</span></li>`).join('')}</ol>
+      </div></div>`;
+  }
+  const raqam = savolRaqami(birinchi);
+  const joylar = azolar.map(raqamYorligi).join(', ');
+  const korsatma = birinchi.t === 'raqamli'
+    ? `Javoblarni javob varaqasidagi ${joylar} kataklariga yozing va bo'yang.`
+    : `Javoblarni javob varaqasidagi ${joylar} maydonlariga yozing${azolar.length ? ` (har biri ${azolar[0].p} ball)` : ''}.`;
+  return `<div class="savol guruh"><div class="bosh"><b>${raqam}.</b><div class="matn">${shartHtml}</div></div>
+    <ol class="qismlar">${azolar.map((it, i) => `<li><b>${azolar.length > 1 ? `${QISM_HARFLARI[i]})` : ''}</b><div class="matn">${matni(it)}</div></li>`).join('')}</ol>
+    <div class="izoh">${korsatma}</div></div>`;
+}
 
 /** Kitobcha ko'rinishi (Addmen QPG "Output": ustunlar, bo'lim sarlavhasi, izohlar, ikkinchi til). */
 export interface KitobchaSozlama { ustun: 1 | 2; bolimSarlavha: boolean; izoh: boolean; ikkiTil: boolean }
@@ -103,13 +148,13 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
     const sessiya = s.sessions.find(x => x.id === session);
     const bloklar = exam.blocks.map((b, bi) => {
       const lar = v.items.filter(it => it.b === bi);
-      return { nomi: b.subject, soni: lar.length, boshi: lar[0]?.n, oxiri: lar[lar.length - 1]?.n, ball: exam.scoring === 'blok' ? b.pointsPerQuestion : null };
+      return { nomi: b.subject, soni: savollarSoni(lar), boshi: lar[0] ? savolRaqami(lar[0]) : undefined, oxiri: lar.length ? savolRaqami(lar[lar.length - 1]) : undefined, ball: exam.scoring === 'blok' ? b.pointsPerQuestion : null };
     });
     const muqova = `
       <div class="muqova">
         <div class="markaz">${esc(markaz)}</div>
         <div class="nom">${esc(exam.name)}</div>
-        <div class="meta">${esc(exam.date)}${sessiya ? ` · ${esc(sessiya.name)}${sessiya.time ? ` (${esc(sessiya.time)})` : ''}` : ''} · ${exam.duration} daqiqa · ${v.items.length} ta savol</div>
+        <div class="meta">${esc(exam.date)}${sessiya ? ` · ${esc(sessiya.name)}${sessiya.time ? ` (${esc(sessiya.time)})` : ''}` : ''} · ${exam.duration} daqiqa · ${savollarSoni(v.items)} ta savol</div>
         <div class="variant"><small>VARIANT</small><b>${esc(code)}</b></div>
         <table><tr><th>Fan</th><th>Savollar</th><th>Soni</th>${exam.scoring === 'blok' ? '<th>Bir savol bali</th>' : ''}</tr>
           ${bloklar.map(b => `<tr><td>${esc(b.nomi)}</td><td>${b.boshi ?? ''}–${b.oxiri ?? ''}</td><td>${b.soni}</td>${exam.scoring === 'blok' ? `<td>${b.ball}</td>` : ''}</tr>`).join('')}
@@ -119,12 +164,16 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
           <li>Javob varaqasida kitobcha variantini (<b>${esc(code)}</b>) ham bo'yang. Kitobchaga yozish mumkin — u tekshirilmaydi.</li>
           ${v.items.some(it => it.t === 'raqamli') ? "<li>Raqamli javobni katak tepasiga yozing va har belgini ostidagi ustunda bo'yang (minus, vergul, kasr chizig'i ham).</li>" : ''}
           ${v.items.some(it => it.t === 'moslash') ? `<li>${MOSLASH_KORSATMA}</li>` : ''}
+          ${v.items.some(it => it.g === 'juft') ? `<li>${JUFT_KORSATMA}</li>` : ''}
         </ul>
       </div>`;
     let joriyBlok = -1;
     let joriyMatn: number | null = null;
     const qismlar: string[] = [];
+    // Guruhli savolning keyingi bo'laklari — birinchisi bilan birga chiziladi.
+    const chizilgan = new Set<number>();
     v.items.forEach((it, idx) => {
+      if (chizilgan.has(it.n)) return;
       if (it.b !== joriyBlok) {
         joriyBlok = it.b;
         const b = bloklar[it.b];
@@ -133,23 +182,31 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
       }
       const q = savolMap.get(it.q);
       if (!q) return;
+      if (it.g && it.pa) {
+        const azolar = [it];
+        for (let j = idx + 1; j < v.items.length && v.items[j].pa === it.pa && v.items[j].g === it.g; j++) azolar.push(v.items[j]);
+        azolar.forEach(x => chizilgan.add(x.n));
+        qismlar.push(guruhHtml(azolar, savolMap, matnMap.get(it.pa)));
+        joriyMatn = null;
+        return;
+      }
       if (it.pa && it.pa !== joriyMatn) {
         joriyMatn = it.pa;
         const p = matnMap.get(it.pa);
         let oxiri = it.n;
         for (let j = idx + 1; j < v.items.length && v.items[j].pa === it.pa; j++) oxiri = v.items[j].n;
         if (p) {
-          qismlar.push(`<div class="matn-quti"><div class="sarlavha">${p.title ? `${esc(p.title)}. ` : ''}Matnni o'qing va ${it.n}–${oxiri}-savollarga javob bering.</div>${formulaliHtml(p.text)}${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ''}</div>`);
+          qismlar.push(`<div class="matn-quti"><div class="sarlavha">${p.title ? `${esc(p.title)}. ` : ''}Matnni o'qing va ${raqamYorligi(it)}–${raqamYorligi(v.items[oxiri - 1] || { n: oxiri })}-savollarga javob bering.</div>${formulaliHtml(p.text)}${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ''}</div>`);
         }
       } else if (!it.pa) joriyMatn = null;
       let pastki = '';
       if (it.t === 'yopiq') pastki = variantHtml(q, it, o);
-      else if (it.t === 'raqamli') pastki = `<div class="izoh">Javobni javob varaqasidagi ${it.n}-katakka yozing va bo'yang.</div>`;
+      else if (it.t === 'raqamli') pastki = `<div class="izoh">Javobni javob varaqasidagi ${raqamYorligi(it)}-katakka yozing va bo'yang.</div>`;
       else if (it.t === 'moslash') pastki = moslashHtml(q);
-      else pastki = `<div class="izoh">Yechimni javob varaqasidagi ${it.n}-maydonga yozing (${it.p} ball).</div>`;
+      else pastki = `<div class="izoh">Yechimni javob varaqasidagi ${raqamYorligi(it)}-maydonga yozing (${it.p} ball).</div>`;
       const tarjima = o.ikkiTil && q.tarjima?.text?.trim() ? `<div class="tarjima">${formulaliHtml(q.tarjima.text)}</div>` : '';
       const izoh = o.izoh && q.remark ? `<div class="remark">Izoh: ${esc(q.remark)}</div>` : '';
-      qismlar.push(`<div class="savol"><div class="bosh"><b>${it.n}.</b><div class="matn">${formulaliHtml(q.text)}${tarjima}</div></div>${q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}${pastki}${izoh}</div>`);
+      qismlar.push(`<div class="savol"><div class="bosh"><b>${raqamYorligi(it)}.</b><div class="matn">${formulaliHtml(q.text)}${tarjima}</div></div>${q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}${pastki}${izoh}</div>`);
     });
     return `<section class="kitobcha">${muqova}<div class="savollar${o.ustun === 1 ? ' bir' : ''}">${qismlar.join('')}</div></section>`;
   }).join('');
@@ -203,7 +260,7 @@ export function vedomostHtml(p: { exam: Exam; smena: string; xona: string; orinl
 
 export interface KalitMalumoti {
   manba: string;
-  variants: { session: number; code: string; items: { n: number; q: number | null; t: string; b: number; javob: string | string[] | null; m?: number[]; bekor?: string | null }[] }[];
+  variants: { session: number; code: string; items: { n: number; y?: string; q: number | null; t: string; b: number; javob: string | string[] | null; m?: number[]; bekor?: string | null }[] }[];
   cancelled: Record<string, string>;
   keyFix: Record<string, string[]>;
 }
@@ -228,8 +285,8 @@ export function kalitVaragiHtml(exam: Exam, markaz: string, d: KalitMalumoti, se
     const bloklar = exam.blocks.map((b, bi) => ({ nomi: b.subject, items: v.items.filter(it => it.b === bi) })).filter(b => b.items.length);
     return `<section class="bet kalit">
       <div class="kalit-bosh"><div><div class="markaz">${esc(markaz)}</div><h1>Javoblar kaliti</h1><h2>${esc(exam.name)} · ${esc(exam.date)}</h2></div><div class="variant"><small>VARIANT</small><b>${esc(v.code)}</b></div></div>
-      ${bloklar.map(b => `<h3>${esc(b.nomi)} <small>${b.items[0].n}–${b.items[b.items.length - 1].n}</small></h3>
-        <div class="kataklar">${b.items.map(it => { const j = javob(it); return `<div class="kt${j.replace(/<[^>]+>/g, '').length > 3 ? ' uzun' : ''}"><span>${it.n}</span><b>${j}</b></div>`; }).join('')}</div>`).join('')}
+      ${bloklar.map(b => `<h3>${esc(b.nomi)} <small>${savolRaqami(b.items[0])}–${savolRaqami(b.items[b.items.length - 1])}</small></h3>
+        <div class="kataklar">${b.items.map(it => { const j = javob(it); return `<div class="kt${j.replace(/<[^>]+>/g, '').length > 3 ? ' uzun' : ''}"><span>${esc(raqamYorligi(it))}</span><b>${j}</b></div>`; }).join('')}</div>`).join('')}
       <p class="maxfiy">Maxfiy hujjat — imtihon tugaguncha tarqatilmasin. ✱ — bekor (hammaga ball), ✕ — hisobdan chiqarilgan.</p>
     </section>`;
   }).join('');
