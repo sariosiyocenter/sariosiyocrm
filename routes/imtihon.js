@@ -182,7 +182,7 @@ function blokniTozala(blocks) {
         if (rule.type === 'qismli') {
           rule.qism = qismSoni(r);
           rule.tekshir = qismTekshiruvi(r);
-          rule.count -= rule.count % rule.qism;
+          if (!ids.length) rule.count -= rule.count % rule.qism;
         }
         const mid = musbatId(r?.mavzuId);
         if (mid) rule.mavzuId = mid;
@@ -625,7 +625,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const [items, total] = await Promise.all([
         prisma.question.findMany({
           where, orderBy: { id: 'desc' }, skip: (sahifa - 1) * soni, take: soni,
-          include: { passage: { select: { id: true, title: true } }, bankTopic: { select: { id: true, name: true, subjectId: true } } },
+          // Guruhli savol: hamma bo'laklari id si — tanlashda guruh butun ekanini bilish uchun.
+          include: { passage: { select: { id: true, title: true, tur: true, questions: { select: { id: true } } } }, bankTopic: { select: { id: true, name: true, subjectId: true } } },
         }),
         prisma.question.count({ where }),
       ]);
@@ -2554,7 +2555,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const tartib = it.m || variantlar.map((_, i) => i);
       return {
         n: it.n, ...(it.y ? { y: it.y } : {}), ...(it.g ? { g: it.g } : {}), t: it.t, b: it.b, pa: it.pa || null, matn: q?.text || '', rasm: q?.imageUrl || null,
-        variantlar: it.t === 'yopiq' ? (q ? tartib.map(i => variantlar[i] ?? '') : HARFLAR.slice(0, s.optionCount)) : it.t === 'moslash' ? variantlar : [],
+        variantlar: it.t === 'yopiq' ? (q ? tartib.map(i => variantlar[i] ?? '') : HARFLAR.slice(0, it.g === 'juft' ? HARFLAR.length : s.optionCount)) : it.t === 'moslash' ? variantlar : [],
         ...(it.t === 'moslash' ? { ong: Array.isArray(q?.answers) ? q.answers : [], r: it.r || variantlar.length || 4, c: q ? (q.answers || []).length || 5 : it.c || 5 } : {}),
         // "Faqat kalit": matn kitobchada — faqat harflar.
         kitobcha: !q,
@@ -2651,6 +2652,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
     const vaqtTugadi = Date.now() > muddat + TEST_KECHIKISH;
     const items = (await prisma.examVariant.findFirst({ where: { examId: e.id, session: r.session ?? 1, code: r.variantCode } }))?.items || [];
     const turlar = new Map(items.map(it => [String(it.n), it.t]));
+    const qismlar = new Set(items.filter(it => it.t === 'yozma' && it.g === 'qismli').map(it => String(it.n)));
     const yangi = {};
     if (!vaqtTugadi) {
       for (const [n, v] of Object.entries(req.body?.javoblar && typeof req.body.javoblar === 'object' ? req.body.javoblar : {})) {
@@ -2658,6 +2660,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         if (t === 'yopiq') yangi[n] = HARFLAR.includes(String(v).toUpperCase()) ? String(v).toUpperCase() : '';
         else if (t === 'raqamli') yangi[n] = raqamniTozala(v).slice(0, 12);
         else if (t === 'moslash') { const q = moslashQatorlari(v).slice(0, 4); yangi[n] = q.some(Boolean) ? q.join('|') : ''; }
+        // Qismli savolning ustoz tekshiradigan qismi: javob matn bo'lib saqlanadi.
+        else if (qismlar.has(String(n))) yangi[n] = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
       }
     }
     // Javoblar bazada birlashtiriladi (jsonb ||): bir vaqtda kelgan ikki so'rov bir-birining javobini o'chirmaydi.

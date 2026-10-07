@@ -5,7 +5,7 @@ import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, INPUT, Yuklanmoqda, BoshHolat } from './ui';
 import { varaqParametrlari } from './varaqParam';
 import { varaqSahifalari, W, type Sahifa } from '../../lib/omr/layout';
-import { varaqTuzilmasi, HARFLAR, vergul } from '../../../lib/imtihon.js';
+import { varaqTuzilmasi, HARFLAR, vergul, yozmaJavobMos } from '../../../lib/imtihon.js';
 import { useAiHolat, AI_SOZLANMAGAN } from './useAiHolat';
 import type { ImtihonTafsil } from './turlar';
 
@@ -251,7 +251,9 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                     <div key={it.n} className="rounded-xl border border-chiziq p-3">
                       <p className="text-[13px] font-semibold text-matn mb-2">{it.y ?? it.n}-savol — {it.g === 'qismli' ? 'qism javobi' : 'yozma'} ({it.p} ball)</p>
                       {j && <Kesim url={rasm(j.page)} quti={j.quti} pxMm={3.4} />}
-                      {it.tj && <p className="mt-2 text-[12.5px] text-matn-sokin">To'g'ri javob: <b className="text-yaxshi raqam">{it.tj}</b></p>}
+                      {typeof t.raw?.[it.n] === 'string' && t.raw[it.n] && <p className="mt-2 text-[12.5px] text-matn-sokin">O'quvchi yozgan (onlayn): <b className="text-matn">{t.raw[it.n]}</b></p>}
+                      {it.tj && <p className="mt-2 text-[12.5px] text-matn-sokin">To'g'ri javob: <b className="text-yaxshi raqam">{it.tj}</b>
+                        {typeof t.raw?.[it.n] === 'string' && yozmaJavobMos(t.raw[it.n], it.tj) && joriy === '' && <span className="ml-2 text-yaxshi font-semibold">✓ mos keldi — {it.p} ball avtomatik qo'yilgan</span>}</p>}
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[12.5px] text-matn-sokin">Ball:</span>
                         <input className={`${INPUT} w-24 py-1.5`} inputMode="decimal" disabled={!tahrir} value={joriy}

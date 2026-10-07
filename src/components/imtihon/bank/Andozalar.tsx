@@ -13,7 +13,7 @@ import type { Andoza, AndozaQatori, BankDaraxt, BankFiltrMalumoti, SavolTuri } f
 // — filtr (bo'lim, mavzu, qiyinlik, manba, foydalanuvchi filtrlari, tur) va nechta
 // savol. Imtihon tuzishda fan blokiga "Andozadan" tanlanadi — qatorlar qoida bo'ladi.
 
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli', moslash: 'Moslashtirish', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli', moslash: 'Moslashtirish', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol (a, b)', yozma: 'Yozma' };
 const YANGI_QATOR: AndozaQatori = { bolim: null, mavzuId: null, qiyinlik: 0, manba: null, tagIds: [], tur: 'yopiq', soni: 5 };
 const KICHIK = 'w-full min-w-0 px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none focus:border-brand cursor-pointer';
 
@@ -259,8 +259,8 @@ function AndozaMuharriri({ a, daraxt, tahrir, ozgargan, band, onChange, onSaqla,
                   })}
                   <td className="px-1.5 py-1.5">
                     <select className={KICHIK} disabled={!tahrir} value={r.tur} aria-label={`${i + 1}-qator turi`} onChange={e => qator(i, { tur: e.target.value as SavolTuri })}>
-                      {/* Guruhli savol turlari (juft, qismli) andozaga kirmaydi: ular imtihon blokidagi alohida sonlar bilan qo'shiladi. */}
-                      {(Object.keys(TUR_NOMI) as SavolTuri[]).filter(t => t !== 'juft' && t !== 'qismli').map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                      {/* Guruhli savollar butunligicha olinadi; qismli savolda son — savollar soni (har biri a, b). */}
+                      {(Object.keys(TUR_NOMI) as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
                     </select>
                   </td>
                   <td className="px-1.5 py-1.5 text-center">

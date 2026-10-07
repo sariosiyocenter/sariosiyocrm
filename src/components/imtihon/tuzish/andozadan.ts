@@ -13,7 +13,9 @@ export function andozadanQoidalar(a: Andoza, fan: BankFan, guruhlar: BelgiGuruhi
     return {
       topic: m?.name || '', ...(m ? { mavzuId: m.id } : {}), ...(r.bolim ? { section: r.bolim } : {}), ...(r.manba ? { source: r.manba } : {}),
       ...(r.tagIds.length ? { tagIds: r.tagIds } : {}), ...(r.qiyinlik ? { difficulty: r.qiyinlik } : {}),
-      type: r.tur, count: r.soni, label: label || 'Istalgan', ...(r.tur === 'yozma' && yozmaBal != null ? { points: yozmaBal } : {}),
+      type: r.tur, label: label || 'Istalgan', ...(r.tur === 'yozma' && yozmaBal != null ? { points: yozmaBal } : {}),
+      // Qismli savol: andozada savollar soni — qoidada qismlar soni (har savol a, b — 2 qism; ustoz tekshiradi).
+      ...(r.tur === 'qismli' ? { count: r.soni * 2, qism: 2, tekshir: 'ustoz' as const } : { count: r.soni }),
     };
   });
 }

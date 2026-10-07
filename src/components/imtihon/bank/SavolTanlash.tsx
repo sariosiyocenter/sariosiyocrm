@@ -11,8 +11,11 @@ import type { BankDaraxt, BankFan, Question, SavolTuri } from '../../../types';
 // Imtihonga aniq savollarni tanlash: fan → mavzu → qiyinlik bo'yicha. Tanlangan
 // savollar har variantga tushadi. Bitta matnga bog'langan savollar birga tanlanadi.
 
+/** Tanlangan savolning guruhi: umumiy shart (matn) id si va javobi son ekani (qismli savolda skaner tekshira oladi). */
+export type TanlovGuruhi = { pa: number | null; son: boolean };
+
 export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, onYop }: {
-  fan: BankFan; daraxt: BankDaraxt; tanlangan: number[]; onTanla: (ids: number[], turlar: Record<number, SavolTuri>) => void; onYop: () => void;
+  fan: BankFan; daraxt: BankDaraxt; tanlangan: number[]; onTanla: (ids: number[], turlar: Record<number, SavolTuri>, guruhlar: Record<number, TanlovGuruhi>) => void; onYop: () => void;
 }) {
   const { soro } = useImtihonApi();
   const [mavzuId, setMavzuId] = useState<number | null>(() => fan.mavzular.find(m => m.faol > 0)?.id ?? fan.mavzular[0]?.id ?? null);
@@ -24,12 +27,19 @@ export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, on
   const [korish, setKorish] = useState<Question | null>(null);
   // Yuklangan savollarning turi — tanlanganlar imtihonda turi bo'yicha qatorlarga bo'linadi.
   const turlar = useRef<Record<number, SavolTuri>>({});
+  const guruhlar = useRef<Record<number, TanlovGuruhi>>({});
 
   useEffect(() => {
     if (!mavzuId) { setSavollar([]); return; }
     setSavollar(null);
     soro<{ items: Question[] }>('GET', `questions?mavzuId=${mavzuId}&holat=faol&soni=200`)
-      .then(r => { r.items.forEach(q => { turlar.current[q.id] = q.type; }); setSavollar(r.items); })
+      .then(r => {
+        r.items.forEach(q => {
+          turlar.current[q.id] = q.type;
+          guruhlar.current[q.id] = { pa: q.passageId ?? null, son: Array.isArray(q.answers) && q.answers.length > 0 };
+        });
+        setSavollar(r.items);
+      })
       .catch(() => setSavollar([]));
   }, [mavzuId, soro]);
 
@@ -45,6 +55,16 @@ export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, on
     const k = qidiruv.trim().toLowerCase();
     return yaroqli.filter(q => (!d || qiyinlikDaraja(q.difficulty).d === d) && (!k || oddiyMatn(q.text).toLowerCase().includes(k)));
   }, [yaroqli, d, qidiruv]);
+
+  /** Guruhli savolni tanlab bo'lmaslik sababi (butun emas yoki qismlari ko'p); oddiy savol va butun guruhda — ''. */
+  const guruhTosigi = (q: Question): string => {
+    if (q.type !== 'juft' && q.type !== 'qismli') return '';
+    const hammasi = q.passage?.questions?.map(x => x.id) || [];
+    const bor = new Set(yaroqli.filter(x => x.passageId === q.passageId).map(x => x.id));
+    if (!hammasi.length || hammasi.some(id => !bor.has(id))) return "guruhning bir bo'lagi faol emas yoki chala — bankda to'ldiring";
+    if (q.type === 'qismli' && hammasi.length > 4) return "4 tadan ko'p qism — imtihon varag'iga sig'maydi";
+    return '';
+  };
 
   const almashtir = (q: Question) => setTanlangan(s => {
     const n = new Set(s);
@@ -117,7 +137,13 @@ export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, on
                 <p className="text-center text-[12.5px] text-matn-xira py-10">{yaroqli.length ? 'Filtrga mos savol yo\'q' : "Bu mavzuda imtihonga tayyor (faol) savol yo'q"}</p>
               ) : korinadi.map(q => (
                 <div key={q.id} className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0"><SavolKartasi q={q} onOch={() => setKorish(q)} tanlash tanlangan={tanlangan.has(q.id)} onTanla={() => almashtir(q)} /></div>
+                  <div className="flex-1 min-w-0">
+                    {(q.type === 'juft' || q.type === 'qismli') && (guruhTosigi(q)
+                      ? <p className="mb-0.5 text-[11px] font-semibold text-xato">{q.type === 'juft' ? 'Moslashtirish guruhi' : 'Qismli savol'} — tanlab bo'lmaydi: {guruhTosigi(q)}</p>
+                      : <p className="mb-0.5 text-[11px] font-semibold text-brand-dark dark:text-brand-accent">{q.type === 'juft' ? 'Moslashtirish guruhi' : 'Qismli savol'} — bo'laklari birga tanlanadi</p>
+                    )}
+                    <SavolKartasi q={q} onOch={() => setKorish(q)} tanlash tanlangan={tanlangan.has(q.id)} onTanla={() => { if (!guruhTosigi(q) || tanlangan.has(q.id)) almashtir(q); }} />
+                  </div>
                   <button onClick={() => setKorish(q)} className="mt-2 text-[11.5px] text-matn-xira hover:text-brand cursor-pointer shrink-0">Ko'rish</button>
                 </div>
               ))}
@@ -130,7 +156,7 @@ export default function SavolTanlash({ fan, daraxt, tanlangan: bosh, onTanla, on
           <span className="text-[13px] text-matn"><b className="raqam">{tanlangan.size}</b> ta savol tanlandi</span>
           <div className="flex gap-2">
             <Tugma onClick={onYop}>Bekor</Tugma>
-            <Tugma turi="asosiy" onClick={() => onTanla([...tanlangan], turlar.current)}>Tanlash</Tugma>
+            <Tugma turi="asosiy" onClick={() => onTanla([...tanlangan], turlar.current, guruhlar.current)}>Tanlash</Tugma>
           </div>
         </div>
       </div>

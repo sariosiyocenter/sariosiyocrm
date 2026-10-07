@@ -16,6 +16,8 @@ import type { BankDaraxt, GuruhTuri } from '../../../types';
 // Yangi guruh yaratadi yoki borini tahrirlaydi (`guruhId`).
 
 const MAKS_SAVOL = 6;
+/** Qismli savolda ko'pi bilan 4 qism: imtihon varag'ida a–d bilan belgilanadi. */
+const MAKS_QISM = 4;
 interface KichikSavol { id?: number; text: string; javob: string; son: boolean; ishlatilgan?: boolean }
 interface GuruhJavobi { id: number; tur: GuruhTuri; text: string; variantlar: string[]; mavzuId: number | null; difficulty: number; savollar: (KichikSavol & { id: number })[] }
 const BOSH_SAVOL = (tur: GuruhTuri): KichikSavol => ({ text: '', javob: tur === 'moslash' ? '' : '', son: true });
@@ -190,7 +192,7 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
                     </li>
                   ))}
                 </ul>
-                {savollar.length < MAKS_SAVOL && (
+                {savollar.length < (tur === 'qismli' ? MAKS_QISM : MAKS_SAVOL) && (
                   <button type="button" onClick={() => setSavollar(l => [...l, BOSH_SAVOL(tur)])} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:underline cursor-pointer">
                     <Plus size={13} strokeWidth={2.6} />{tur === 'moslash' ? 'savol' : 'qism'}
                   </button>

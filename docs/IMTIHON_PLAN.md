@@ -1369,9 +1369,34 @@ tasodifiy imtihonni solishtiradi).
   kitobchaga va kalit ruxsatisiz natijaga chiqmaydi); tekshirish kartasida ko'rinadi.
 - **"Faqat kalit" rejimi** ham shu turlarni oladi (o'z kitobchasi bilan Milliy sertifikat sinovi):
   qoida turi ro'yxatida "Moslashtirish guruhi (A–F)", "Qismli savol — skaner / ustoz".
-- **Hali yo'q:** guruhni qo'lda (aniq savollar) tanlash, andoza (Blueprint) qatorida guruh turi,
-  Zukko orqali qo'shish, erkin varaq (dizayner) da guruh kataklari uchun alohida blok, onlayn testda
-  ustoz tekshiradigan qismlar (yozma kabi ko'rsatilmaydi), rasmdan AI bilan kiritish.
+**3-bosqich (2026-10-07, egasi: "hammasi") — qolgan yo'llar.**
+
+- **Qo'lda tanlash.** `SavolTanlash` guruhning bitta bo'lagi bosilsa hammasini tanlaydi; butun
+  bo'lmagan (bir bo'lagi faol emas/chala) yoki 4 tadan ko'p qismli guruh tanlanmaydi (`GET
+  /api/questions` har savol bilan `passage.questions[id]` qaytaradi). Blokda har tanlangan guruh —
+  O'Z qoidasi (`questionIds`; qismli — `qism` = bo'laklar soni): ro'yxatdan bitta bo'lak olinsa butun
+  qoida ketadi. Qo'lda tanlanganda `count` kesilmaydi (`blokniTozala`).
+- **Zukko** (`imtihongaSavolQoshish`): guruhning bitta savoli aytilsa ham hamma bo'lagi olinadi,
+  har guruh o'z qoidasi; bir bo'lagi faol emas yoki imtihonda bor guruh — ogohlantirish bilan qoladi.
+- **Andoza (Blueprint).** Qator turi `juft` yoki `qismli` bo'la oladi; qismli qatorda son — SAVOLLAR
+  soni (qoida: `count = soni × 2`, `qism: 2`, `tekshir: 'ustoz'`).
+- **Onlayn test.** Ustoz tekshiradigan qism onlaynda yozib kiritiladi (`raw[n]` — matn). Javob `tj`
+  ga aynan mos kelsa (`yozmaJavobMos`: son — qiymati bo'yicha, matn — bo'shliq va harf kattaligisiz)
+  ball o'zi qo'yiladi, aks holda ustozga qoladi (tekshirish kartasida "O'quvchi yozgan" ko'rinadi).
+  Ustoz qo'ygan ball doim ustun.
+- **Erkin varaq (dizayner).** `andozaDoiralari` — yopiq blok ustuni kengligi: moslashtirish guruhi
+  bo'lsa 6 doirachaga (qator esa o'z sonini chizadi). `tuzilmadanAndoza`: qism maydonlari ixcham va
+  bir qatorda; bo'sh sahifaga ham sig'maydigan raqamli/moslash bloki bo'linadi (ilgari varaqdan chiqardi).
+- **AI.** `questions/ai/import` endi `guruhlar` ham qaytaradi (model ko'rsatmasi: guruhli savollar
+  `savollar` ga emas, `guruhlar` ga); `questions/ai/guruh-tuz` — mavzu bo'yicha guruh tuzadi
+  («Mavzu bo'yicha» oynasida turlar: Moslashtirish guruhi, Qismli savol). Ko'rinishi va bankka yozish —
+  `bank/AiGuruhKarta.tsx`. Holat: AI kiritgan yoki tuzgan guruh bankka DOIM qoralama
+  bo'lib tushadi (`POST bank/guruhlar` `status: 'qoralama'` — javob bo'lmasligi ham mumkin): oddiy
+  savoldagi kabi AI qayta yechib tekshiruvi guruhda yo'q. Ustoz bankda ko'rib, faol qiladi. Qismli savolda ko'pi bilan 4 qism (a–d).
+- **Hali yo'q:** "shu guruhga o'xshashini tuz", guruh bo'laklarini tarjima qilish, guruh uchun AI
+  qayta yechib tekshiruvi (shuning uchun AI yechgani qoralama), Word jadval-shablonida guruh.
 
 Sinov: `scratch/guruh1_ui.mjs` (bank), `scratch/guruh2_dvigatel.mjs` (dvigatel, bazasiz),
 `scratch/guruh2_ui.mjs` (imtihon → kitobcha → varaq → skaner → tekshirish).
+`scratch/guruh3_sof.mjs` (erkin varaq, onlayn javob — bazasiz), `scratch/guruh3_ui.mjs` (qo'lda tanlash,
+andoza), `scratch/guruh4_ui.mjs` (AI importi va tuzishi — soxta AI: `scratch/ai_soxta_guruh.mjs`).

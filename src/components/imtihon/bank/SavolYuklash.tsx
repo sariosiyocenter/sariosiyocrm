@@ -12,6 +12,7 @@ import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni,
 import { exceldanSavollar, type ExcelSavol } from './excel';
 import QrShablonTugma from './QrShablonTugma';
 import QoshRejimi, { type QoshRejim } from './QoshRejimi';
+import { AiGuruhKarta, guruhlarniSaqla, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
 import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
 import { compressAndUpload } from '../../../lib/image';
 import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
@@ -151,6 +152,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const [jarayon, setJarayon] = useState<{ matn: string; i: number; jami: number } | null>(null);
   const [natijalar, setNatijalar] = useState<Natija[] | null>(null);
   const [matnlar, setMatnlar] = useState<AiMatn[]>([]);
+  // AI materialdan topgan guruhli savollar (moslashtirish guruhi, qismli savol) — alohida ro'yxat.
+  const [aiGuruhlar, setAiGuruhlar] = useState<AiGuruh[]>([]);
   const [filtr, setFiltr] = useState<'hammasi' | 'tekshirish' | 'takror'>('hammasi');
   const [tahrirda, setTahrirda] = useState<number | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
@@ -243,6 +246,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     const yig: Natija[] = [];
     const matnYig: AiMatn[] = [];
     const kalitYig: { raqam: string; javob: string }[] = [];
+    const guruhYig: AiGuruh[] = [];
     const xatolar: string[] = [];
     try {
       for (const e of excellar) {
@@ -310,12 +314,13 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         for (let i = 0; i < partiyalar.length; i++) {
           setJarayon({ matn: `AI o'qimoqda${yig.length ? ` · ${yig.length} ta savol` : ''}`, i, jami: partiyalar.length });
           try {
-            const r = await soro<{ savollar: any[]; matnlar: AiMatn[]; kalit: { raqam: string; javob: string }[] }>('POST', 'questions/ai/import', {
+            const r = await soro<{ savollar: any[]; guruhlar?: Omit<AiGuruh, 'kalit' | 'tanlangan'>[]; matnlar: AiMatn[]; kalit: { raqam: string; javob: string }[] }>('POST', 'questions/ai/import', {
               fan: fan.name, mavzu: qatiyMavzu, mavzular: fan.mavzular.map(m => m.name), til: 'auto',
               rasmlar: partiyalar[i].rasmlar, matn: partiyalar[i].matn,
             });
             matnYig.push(...(r.matnlar || []).map(m => ({ ...m, id: `p${i}-${m.id}` })));
             kalitYig.push(...(r.kalit || []));
+            for (const g of r.guruhlar || []) guruhYig.push({ ...g, kalit: keyingi++, tanlangan: !g.xato, topic: qatiyMavzu || mavzuNomi(g.topic) });
             for (const q of r.savollar || []) {
               yig.push({
                 ...q, kalit: keyingi++, manba: 'ai', tanlangan: false, subject: fan.name,
@@ -339,10 +344,11 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         korilgan.add(iz);
         return true;
       }).map(q => (q.manba === 'ai' ? { ...q, tanlangan: !q.takrorId && matniBor(q.text) } : q));
-      if (!royxat.length) {
+      if (!royxat.length && !guruhYig.length) {
         showNotification(xatolar.length ? `O'qib bo'lmadi: ${xatolar[0]}` : 'Savol topilmadi — aniqroq surat oling yoki boshqa fayl tanlang', 'error');
         return;
       }
+      setAiGuruhlar(guruhYig);
       // Mustaqil tekshiruv: AI javobni ko'rmay qayta yechadi (yozma, takror va javobsizlar — yo'q).
       const tek = royxat.filter(q => q.manba === 'ai' && q.type !== 'yozma' && q.correctAnswer && !q.takrorId);
       const tekKalit = new Set(tek.map(q => q.kalit));
@@ -387,9 +393,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
 
   const tanlanganlar = (natijalar || []).filter(n => n.tanlangan);
   const faolSoni = tanlanganlar.filter(n => holatiQanday(n) === 'faol').length;
+  const tanlanganGuruhlar = aiGuruhlar.filter(g => g.tanlangan && !g.xato);
 
   const saqla = async () => {
-    if (!tanlanganlar.length) return;
+    if (!tanlanganlar.length && !tanlanganGuruhlar.length) return;
     setSaqlanmoqda(true);
     try {
       const matnIdlari = new Map<string, number>();
@@ -424,9 +431,40 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         r.faolIds.push(...(b.faolIds || []));
         r.xatolar.push(...b.xatolar);
       }
+      // Guruhli savollar: har biri bankka guruh bo'lib yoziladi (mavzusi bo'lmasa — yaratiladi).
+      let guruhXabari = '';
+      let guruhQolgan: AiGuruh[] = [];
+      let guruhXato = '';
+      if (tanlanganGuruhlar.length && fan) {
+        const mavzuIdlari = new Map<string, number>();
+        const mavzuIdOl = async (nom: string) => {
+          const t = nom || ARALASH;
+          const bor = mavzuIdlari.get(t) ?? fan.mavzular.find(m => m.name.toLowerCase() === t.toLowerCase())?.id ?? (kutilgan && t === kutilgan && mavzuId ? mavzuId : undefined);
+          if (bor) return bor;
+          // Mavzu hozirgina (shu faylning oddiy savollari bilan) yaratilgan bo'lishi mumkin.
+          const yangi = await mavzuniTopYokiYarat(soro, fan.id, t);
+          mavzuIdlari.set(t, yangi);
+          return yangi;
+        };
+        setJarayon({ matn: 'Guruhli savollar yozilmoqda', i: 0, jami: tanlanganGuruhlar.length });
+        const g = await guruhlarniSaqla(soro, tanlanganGuruhlar, mavzuIdOl, 'AI import');
+        r.ids.push(...g.ids);
+        guruhXabari = g.soni ? `${g.soni} ta guruhli savol (qoralama — bankda ko'rib, faol qilasiz)` : '';
+        guruhQolgan = g.qolgan;
+        guruhXato = g.xatolar[0] || '';
+      }
       setJarayon(null);
       const qoralama = questions.filter(q => q.status === 'qoralama').length;
-      showNotification(`${r.count} ta savol bankka qo'shildi${qoralama ? ` — ${qoralama} tasi qoralama (bankda ko'rib, faol qilasiz)` : ''}${r.xatolar.length ? `; ${r.xatolar.length} tasi qo'shilmadi: ${r.xatolar[0].xato}` : ''}`, r.xatolar.length ? 'info' : 'success');
+      // Yozilmagan guruhlar oynada qoladi (qayta urinish uchun) — yozilganlari ro'yxatdan chiqadi.
+      if (guruhQolgan.length) {
+        showNotification(`${guruhQolgan.length} ta guruhli savol yozilmadi: ${guruhXato}${r.count || guruhXabari ? ` (qolgani bankka qo'shildi)` : ''}`, 'error');
+        onSaqlandi({ soni: r.count, ids: r.ids || [], faolIds: r.faolIds || [] });
+        setNatijalar([]);
+        setAiGuruhlar(guruhQolgan);
+        return;
+      }
+      if (guruhXabari && !r.count) showNotification(`${guruhXabari} bankka qo'shildi`, 'success');
+      else showNotification(`${r.count} ta savol${guruhXabari ? ` va ${guruhXabari}` : ''} bankka qo'shildi${qoralama ? ` — ${qoralama} tasi qoralama (bankda ko'rib, faol qilasiz)` : ''}${r.xatolar.length ? `; ${r.xatolar.length} tasi qo'shilmadi: ${r.xatolar[0].xato}` : ''}`, r.xatolar.length ? 'info' : 'success');
       onSaqlandi({ soni: r.count, ids: r.ids || [], faolIds: r.faolIds || [] });
       onYop();
     } catch (e: any) {
@@ -634,7 +672,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                     ...(sanoq.takror ? [{ v: 'takror' as const, nom: `Bankda bor ${sanoq.takror}` }] : []),
                   ]} />
                   <Tugma kichik turi="oddiy" disabled={band} onClick={() => setNatijalar(l => (l || []).map(n => ({ ...n, tanlangan: !n.takrorId })))}>Hammasini tanlash</Tugma>
-                  <Tugma kichik turi="oddiy" ikonka={<RotateCcw size={13} />} disabled={band} onClick={() => { setNatijalar(null); setMatnlar([]); setFiltr('hammasi'); }}>Boshqa fayl</Tugma>
+                  <Tugma kichik turi="oddiy" ikonka={<RotateCcw size={13} />} disabled={band} onClick={() => { setNatijalar(null); setMatnlar([]); setAiGuruhlar([]); setFiltr('hammasi'); }}>Boshqa fayl</Tugma>
                 </div>
               </div>
               {jarayon && (
@@ -643,7 +681,15 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                   <div className="h-1.5 rounded-full bg-ichki overflow-hidden"><div className="h-full bg-brand transition-all" style={{ width: `${jarayon.jami ? Math.round((jarayon.i / jarayon.jami) * 100) : 0}%` }} /></div>
                 </div>
               )}
-              {!korinadi.length && <p className="text-[12.5px] text-matn-xira py-6 text-center">Bu ro'yxatda savol yo'q</p>}
+              {aiGuruhlar.length > 0 && filtr === 'hammasi' && (
+                <section aria-label="Guruhli savollar" className="space-y-2">
+                  <h4 className="text-[12.5px] font-bold text-matn">Guruhli savollar <span className="font-normal text-matn-xira">· {aiGuruhlar.length} ta — bankka guruh bo'lib tushadi (umumiy shart bir marta)</span></h4>
+                  <ul className="space-y-2">
+                    {aiGuruhlar.map(g => <AiGuruhKarta key={g.kalit} g={g} band={band} onTanla={v => setAiGuruhlar(l => l.map(x => (x.kalit === g.kalit ? { ...x, tanlangan: v } : x)))} />)}
+                  </ul>
+                </section>
+              )}
+              {!korinadi.length && !aiGuruhlar.length && <p className="text-[12.5px] text-matn-xira py-6 text-center">Bu ro'yxatda savol yo'q</p>}
               {guruhlar.map(([nom, royxat]) => (
                 <section key={nom} aria-label={nom} className="space-y-2">
                   <h4 className="flex flex-wrap items-center gap-2 pt-2 text-[13px] font-bold text-matn">
@@ -693,13 +739,13 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             </div>
             <div className="sticky bottom-0 z-10 bg-sirt rounded-b-2xl border-t border-chiziq px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <p className="text-[12px] text-matn-sokin">
-                {tanlanganlar.length
-                  ? <>Tanlandi: <b className="text-matn">{tanlanganlar.length}</b> · faol {faolSoni}{tanlanganlar.length - faolSoni ? ` · qoralama ${tanlanganlar.length - faolSoni}` : ''}</>
+                {tanlanganlar.length || tanlanganGuruhlar.length
+                  ? <>Tanlandi: <b className="text-matn">{tanlanganlar.length}</b> · faol {faolSoni}{tanlanganlar.length - faolSoni ? ` · qoralama ${tanlanganlar.length - faolSoni}` : ''}{tanlanganGuruhlar.length ? ` · guruhli savol ${tanlanganGuruhlar.length} (qoralama)` : ''}</>
                   : 'Savollarni belgilang'}
                 {sanoq.tekshirilmoqda > 0 && <span className="block text-[11px] text-matn-xira">Tekshiruv tugagach — tasdiqlanganlari faol bo'ladi</span>}
               </p>
-              <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={!tanlanganlar.length || !!jarayon || tahrirda !== null} onClick={saqla}>
-                {tanlanganlar.length ? `${tanlanganlar.length} ta savolni bankka qo'shish` : "Bankka qo'shish"}
+              <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={(!tanlanganlar.length && !tanlanganGuruhlar.length) || !!jarayon || tahrirda !== null} onClick={saqla}>
+                {tanlanganlar.length ? `${tanlanganlar.length} ta savol${tanlanganGuruhlar.length ? ` va ${tanlanganGuruhlar.length} ta guruhni` : 'ni'} bankka qo'shish` : tanlanganGuruhlar.length ? `${tanlanganGuruhlar.length} ta guruhli savolni bankka qo'shish` : "Bankka qo'shish"}
               </Tugma>
             </div>
           </>

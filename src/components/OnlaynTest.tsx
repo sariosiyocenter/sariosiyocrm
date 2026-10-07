@@ -11,7 +11,7 @@ import { sanaMatni } from './imtihon/format';
  * yakunlanadi. "Faqat kalit" imtihonida — onlayn javob varaqasi (savollar kitobchada).
  */
 
-interface Savol { n: number; /** Ko'rinadigan raqam ("36a") — tartib raqamidan farq qilsa. */ y?: string; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean; ong?: string[]; r?: number; c?: number }
+interface Savol { n: number; /** Ko'rinadigan raqam ("36a") — tartib raqamidan farq qilsa. */ y?: string; /** Guruhli savol bo'lagi: 'juft' | 'qismli'. */ g?: string; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; b: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; kitobcha: boolean; ong?: string[]; r?: number; c?: number }
 interface Holat {
   markaz: { nomi: string; logo: string | null };
   imtihon: { nomi: string; sana: string; daqiqa: number; savolSoni: number; ochiladi: string | null; yopiladi: string | null };
@@ -120,7 +120,8 @@ export default function OnlaynTest() {
     return () => window.clearTimeout(t);
   }, [qolgan, d?.holat, yubor]);
 
-  const savollar = useMemo(() => (d?.savollar || []).filter(s => s.t !== 'yozma'), [d]);
+  // Yozma savollar onlayn topshirilmaydi; qismli savolning qismi esa qisqa javob — yozib kiritiladi.
+  const savollar = useMemo(() => (d?.savollar || []).filter(s => s.t !== 'yozma' || s.g === 'qismli'), [d]);
   const matnMap = useMemo(() => new Map((d?.matnlar || []).map(m => [m.id, m])), [d]);
   const javobSoni = savollar.filter(s => javoblar[s.n]).length;
   const kitobcha = savollar.length > 0 && savollar.every(s => s.kitobcha);
@@ -217,8 +218,8 @@ export default function OnlaynTest() {
                       ) : x.t === 'moslash' ? (
                         <MoslashJavob r={x.r || 4} c={x.c || 5} qiymat={javoblar[x.n] || ''} onChange={v => javobQoy(x.n, v)} />
                       ) : (
-                        <input inputMode="decimal" className="w-32 px-3 py-2 rounded-xl border border-chiziq bg-ichki text-[14px] text-matn outline-none focus:border-brand" value={javoblar[x.n] || ''} placeholder="javob"
-                          aria-label={`${x.y ?? x.n}-savol javobi`} onChange={e => javobQoy(x.n, e.target.value.slice(0, 12))} />
+                        <input inputMode={x.t === 'yozma' ? 'text' : 'decimal'} className={`${x.t === 'yozma' ? 'w-56' : 'w-32'} px-3 py-2 rounded-xl border border-chiziq bg-ichki text-[14px] text-matn outline-none focus:border-brand`} value={javoblar[x.n] || ''} placeholder="javob"
+                          aria-label={`${x.y ?? x.n}-savol javobi`} onChange={e => javobQoy(x.n, e.target.value.slice(0, x.t === 'yozma' ? 60 : 12))} />
                       )}
                     </div>
                   ))}
@@ -270,9 +271,9 @@ export default function OnlaynTest() {
               </div>
             ) : (
               <label className="block">
-                <span className="block text-[12.5px] font-semibold text-matn-sokin mb-1.5">Javob (son yoki kasr: 0,5 yoki 1/2)</span>
-                <input inputMode="decimal" className="w-full px-4 py-3 rounded-xl border-2 border-chiziq bg-ichki text-[16px] text-matn outline-none focus:border-brand raqam"
-                  value={javoblar[s.n] || ''} onChange={e => javobQoy(s.n, e.target.value.slice(0, 12))} />
+                <span className="block text-[12.5px] font-semibold text-matn-sokin mb-1.5">{s.t === 'yozma' ? 'Javobingizni yozing' : 'Javob (son yoki kasr: 0,5 yoki 1/2)'}</span>
+                <input inputMode={s.t === 'yozma' ? 'text' : 'decimal'} className="w-full px-4 py-3 rounded-xl border-2 border-chiziq bg-ichki text-[16px] text-matn outline-none focus:border-brand raqam"
+                  value={javoblar[s.n] || ''} onChange={e => javobQoy(s.n, e.target.value.slice(0, s.t === 'yozma' ? 60 : 12))} />
               </label>
             )}
           </section>

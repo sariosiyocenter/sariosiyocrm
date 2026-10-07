@@ -517,6 +517,8 @@ export function registerSavolBankiRoutes(app) {
   const guruhMalumoti = (body) => {
     const tur = Object.keys(GURUH_TURLARI).includes(body?.tur) ? body.tur : null;
     if (!tur) throw new XatoJavob(400, "Guruh turi noto'g'ri");
+    // Qoralama (AI importi): javoblar hali bo'lmasligi mumkin — bankda guruh oynasida to'ldiriladi.
+    const qoralama = body?.status === 'qoralama';
     const text = matnQisqa(body.text);
     if (!text.trim()) throw new XatoJavob(400, 'Umumiy shartni yozing');
     if (Array.isArray(body.savollar) && body.savollar.length > 10) throw new XatoJavob(400, "Bitta guruhda ko'pi bilan 10 ta savol");
@@ -528,6 +530,8 @@ export function registerSavolBankiRoutes(app) {
       throw new XatoJavob(400, "Skaner tekshiradigan qismning javobi son bo'lishi kerak (masalan 6 yoki 9,1) — son bo'lmasa «Ustoz tekshiradi» ni tanlang");
     }
     if (savollar.length < (tur === 'moslash' ? 2 : 1)) throw new XatoJavob(400, tur === 'moslash' ? 'Kamida 2 ta savol kerak' : 'Kamida bitta qism kerak');
+    // Imtihon varag'ida qismlar a–d bilan belgilanadi.
+    if (tur === 'qismli' && savollar.length > 4) throw new XatoJavob(400, "Qismli savolda ko'pi bilan 4 ta qism (a–d)");
     if (savollar.some(s => !s.text.trim())) throw new XatoJavob(400, "Bo'sh savol bor");
     let variantlar = null;
     if (tur === 'moslash') {
@@ -535,11 +539,12 @@ export function registerSavolBankiRoutes(app) {
       if (variantlar.length < 2 || variantlar.some(v => !v.trim())) throw new XatoJavob(400, "Javoblar ro'yxatida kamida 2 ta, bo'sh bo'lmagan javob kerak");
       for (const s of savollar) {
         const k = HARFLAR.indexOf(s.javob.toUpperCase());
+        if (qoralama && !s.javob) continue;
         if (k < 0 || k >= variantlar.length) throw new XatoJavob(400, "Har savolning to'g'ri javobi (harfi) belgilanishi kerak");
         s.javob = HARFLAR[k];
       }
-    } else if (savollar.some(s => !s.javob)) throw new XatoJavob(400, "Har qismning to'g'ri javobi yozilishi kerak");
-    return { tur, text, variantlar, savollar };
+    } else if (!qoralama && savollar.some(s => !s.javob)) throw new XatoJavob(400, "Har qismning to'g'ri javobi yozilishi kerak");
+    return { tur, text, variantlar, savollar, status: qoralama ? 'qoralama' : 'faol' };
   };
   /** Kichik savolning bazadagi shakli. */
   const guruhSavoli = (g, s, umumiy) => ({
@@ -572,7 +577,7 @@ export function registerSavolBankiRoutes(app) {
       const difficulty = yaqinDaraja(req.body.difficulty ?? 2, await qiyinlikSozlamasi(orgIds));
       const natija = await prisma.$transaction(async (tx) => {
         const p = await tx.passage.create({ data: { tur: g.tur, text: g.text, variantlar: g.variantlar ?? undefined, subject: mavzu.subject.name, schoolId } });
-        const umumiy = { passageId: p.id, bankTopicId: mavzu.id, subject: mavzu.subject.name, topic: mavzu.name, difficulty, status: 'faol', language: 'uz', source: nomi(req.body.source, 200) || null, schoolId, createdById: req.user.id || null };
+        const umumiy = { passageId: p.id, bankTopicId: mavzu.id, subject: mavzu.subject.name, topic: mavzu.name, difficulty, status: g.status, language: 'uz', source: nomi(req.body.source, 200) || null, schoolId, createdById: req.user.id || null };
         // Tartib saqlansin (a, b … id bo'yicha): bittalab yoziladi.
         const ids = [];
         for (const s of g.savollar) ids.push((await tx.question.create({ data: guruhSavoli(g, s, umumiy), select: { id: true } })).id);
@@ -588,7 +593,9 @@ export function registerSavolBankiRoutes(app) {
       const orgIds = await organizationSchoolIds(req.user);
       const p = await prisma.passage.findUnique({ where: { id: ANY_ID(req.params.id) || 0 }, include: { questions: { orderBy: { id: 'asc' } } } });
       if (!p || !orgIds.includes(p.schoolId) || !GURUH_TURLARI[p.tur]) return res.status(404).json({ error: 'Guruhli savol topilmadi' });
-      const g = guruhMalumoti({ ...req.body, tur: p.tur });
+      // Holat so'rovdan olinmaydi: qoralama guruh tahrirlanayotganda javoblar hali bo'lmasligi mumkin,
+      // faol guruhda esa hamma javob shart.
+      const g = guruhMalumoti({ ...req.body, tur: p.tur, status: p.questions.length && p.questions.every(q => q.status === 'qoralama') ? 'qoralama' : 'faol' });
       const bor = new Map(p.questions.map(q => [q.id, q]));
       if (g.savollar.some(s => s.id && !bor.has(s.id))) return res.status(400).json({ error: 'Bu guruhga tegishli bo\'lmagan savol bor' });
       const qoladi = new Set(g.savollar.map(s => s.id).filter(Boolean));
@@ -1192,7 +1199,9 @@ function andozaQatorlari(v) {
 function andozaQoidasi(r) {
   return {
     topic: '', ...(r.mavzuId ? { mavzuId: r.mavzuId } : {}), ...(r.bolim ? { section: r.bolim } : {}), ...(r.manba ? { source: r.manba } : {}),
-    ...(r.tagIds.length ? { tagIds: r.tagIds } : {}), ...(r.qiyinlik ? { difficulty: r.qiyinlik } : {}), type: r.tur, count: r.soni,
+    ...(r.tagIds.length ? { tagIds: r.tagIds } : {}), ...(r.qiyinlik ? { difficulty: r.qiyinlik } : {}), type: r.tur,
+    // Qismli savol: andozada savollar soni yoziladi — qoidada qismlar soni (har savol 2 qism, ustoz tekshiradi).
+    ...(r.tur === 'qismli' ? { count: r.soni * 2, qism: 2, tekshir: 'ustoz' } : { count: r.soni }),
   };
 }
 

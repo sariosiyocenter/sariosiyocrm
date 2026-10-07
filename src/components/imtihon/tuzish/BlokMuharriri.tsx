@@ -5,7 +5,7 @@ import { Tugma, INPUT, SELECT, Tanlov } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { QIYINLIK, QiyinlikYorligi, useQiyinlik } from '../bank/qiyinlik';
 import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
-import SavolTanlash from '../bank/SavolTanlash';
+import SavolTanlash, { type TanlovGuruhi } from '../bank/SavolTanlash';
 import { andozadanQoidalar } from './andozadan';
 import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul, qismSoni, qismTekshiruvi } from '../../../../lib/imtihon.js';
 import type { Andoza, BankDaraxt, BankFan, BelgiGuruhi, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
@@ -177,6 +177,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   const tQism = qismSoni({ qism: t.qismSoni });
   const fandaJuft = juftBor > 0 || tJuft > 0;
   const fandaQismli = qismBor > 0 || tQismli > 0;
+  const qoldaSavol = qolda.reduce((a, r) => a + tanlanganSavollar(r).length / (r.type === 'qismli' ? qismSoni(r) : 1), 0);
   // Qismli savolning qismlari bitta savol sanaladi.
   const jamiSavol = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) / (r.type === 'qismli' ? qismSoni(r) : 1), 0);
   const jamiBall = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) * qoidaBali(r, blok, scoring), 0);
@@ -185,21 +186,45 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
     || (tMoslash > 0 && tMoslash * kopaytma > moslashBor)
     || (tJuft > 0 && tJuft * kopaytma > juftBor) || (tQismli > 0 && tQismli * tQism * kopaytma > qismBor);
 
-  const qoldaTanlandi = (ids: number[], turlar: Record<number, SavolTuri>) => {
+  const guruhQoidasimi = (r: TopicRule) => r.type === 'juft' || r.type === 'qismli';
+  const qoldaTanlandi = (ids: number[], turlar: Record<number, SavolTuri>, guruhlar: Record<number, TanlovGuruhi> = {}) => {
     // Turi: tanlash oynasida yuklanganidan, bo'lmasa oldingi qoidadan.
     const eskiTur = new Map<number, SavolTuri>();
     for (const r of qolda) for (const id of tanlanganSavollar(r) as number[]) eskiTur.set(id, (r.type || 'yopiq') as SavolTuri);
-    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], juft: [], qismli: [], yozma: [] };
-    for (const id of ids) {
-      const tur = turlar[id] || eskiTur.get(id) || 'yopiq';
-      // Guruhli savollar qo'lda tanlanmaydi (guruh butun bo'lishi shart) — pastdagi «Moslashtirish guruhi» va «Qismli savol» sonlari bilan qo'shiladi.
-      if (tur === 'juft' || tur === 'qismli') continue;
-      guruh[tur].push(id);
+    const qoldi = new Set(ids);
+    // Guruhli savol — har guruh o'z qoidasi: butunligicha qo'shiladi va butunligicha olinadi.
+    // Oldin tanlangan guruh hamon to'liq tanlangan bo'lsa — qoidasi o'zicha qoladi.
+    const guruhQoidalari: TopicRule[] = [];
+    for (const r of qolda) {
+      if (!guruhQoidasimi(r)) continue;
+      const l = tanlanganSavollar(r) as number[];
+      if (l.every(id => qoldi.has(id))) { guruhQoidalari.push(r); l.forEach(id => qoldi.delete(id)); } else l.forEach(id => qoldi.delete(id));
     }
+    const yangiGuruhlar = new Map<number, number[]>();
+    for (const id of [...qoldi]) {
+      const tur = turlar[id] || eskiTur.get(id);
+      if (tur !== 'juft' && tur !== 'qismli') continue;
+      qoldi.delete(id);
+      const pa = guruhlar[id]?.pa;
+      if (pa) yangiGuruhlar.set(pa, [...(yangiGuruhlar.get(pa) || []), id]);
+    }
+    for (const azolar of yangiGuruhlar.values()) {
+      const l = [...azolar].sort((a, b) => a - b);
+      // Qismli savolda ko'pi bilan 4 qism (a–d) — ko'pi varaqqa sig'maydi (tanlash oynasi ham bunga yo'l qo'ymaydi).
+      if (turlar[l[0]] === 'qismli' && l.length > 4) continue;
+      if (turlar[l[0]] === 'juft') guruhQoidalari.push({ topic: '', type: 'juft', count: l.length, questionIds: l, ...(t.juftBal != null ? { points: t.juftBal } : {}) });
+      else {
+        // Skaner faqat hamma qismi son bo'lgan savolni tekshira oladi; aks holda — ustoz.
+        const son = qismTekshiruvi({ tekshir: t.qismTekshir }) === 'son' && l.every(id => guruhlar[id]?.son);
+        guruhQoidalari.push({ topic: '', type: 'qismli', count: l.length, qism: l.length, tekshir: son ? 'son' : 'ustoz', questionIds: l, ...(t.qismBal != null ? { points: t.qismBal } : {}) });
+      }
+    }
+    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], moslash: [], juft: [], qismli: [], yozma: [] };
+    for (const id of qoldi) guruh[turlar[id] || eskiTur.get(id) || 'yopiq'].push(id);
     const yangi: TopicRule[] = (Object.keys(guruh) as SavolTuri[]).filter(k => guruh[k].length).map(k => ({
       topic: '', type: k, count: guruh[k].length, questionIds: guruh[k], ...(k === 'yozma' && t.yozmaBal != null ? { points: t.yozmaBal } : {}),
     }));
-    qayta(t, t.aralash === 'qolda' ? jadval : undefined, yangi);
+    qayta(t, t.aralash === 'qolda' ? jadval : undefined, [...yangi, ...guruhQoidalari]);
   };
 
   return (
@@ -433,14 +458,16 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
           )}
 
           <QoldaTanlangan ids={qoldaIds} qulf={qulf} onTanla={() => setTanlashOchiq(true)} onOlib={id => {
-            const qoldi = qolda.map(r => ({ ...r, questionIds: tanlanganSavollar(r).filter(x => x !== id) })).filter(r => r.questionIds.length).map(r => ({ ...r, count: r.questionIds.length }));
+            // Guruhli savolning bo'lagi olinsa — butun guruh (o'z qoidasi) olinadi.
+            const qoldi = qolda.filter(r => !(guruhQoidasimi(r) && tanlanganSavollar(r).includes(id)))
+              .map(r => ({ ...r, questionIds: tanlanganSavollar(r).filter(x => x !== id) })).filter(r => r.questionIds.length).map(r => ({ ...r, count: r.questionIds.length }));
             qayta(t, t.aralash === 'qolda' ? jadval : undefined, qoldi);
           }} />
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-chiziq">
             <p className="text-[12.5px] text-matn">
               <b className="raqam">{jamiSavol}</b> ta savol
-              {qoldaIds.length > 0 && <span className="text-matn-xira"> ({jamiSavol - qoldaIds.length} tasodifiy + {qoldaIds.length} tanlangan)</span>}
+              {qoldaIds.length > 0 && <span className="text-matn-xira"> ({jamiSavol - qoldaSavol} tasodifiy + {qoldaSavol} tanlangan)</span>}
               {scoring === 'blok' && <> · <b className="raqam">{vergul(Math.round(jamiBall * 100) / 100)}</b> ball</>}
             </p>
             <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${kamchilik ? 'text-xato' : 'text-yaxshi'}`}>
@@ -459,7 +486,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
       )}
       {tanlashOchiq && fan && (
         <SavolTanlash fan={fan} daraxt={daraxt} tanlangan={qoldaIds} onYop={() => setTanlashOchiq(false)}
-          onTanla={(ids, turlar) => { setTanlashOchiq(false); qoldaTanlandi(ids, turlar); }} />
+          onTanla={(ids, turlar, guruhlar) => { setTanlashOchiq(false); qoldaTanlandi(ids, turlar, guruhlar); }} />
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import { Tugma, INPUT, SELECT, Tanlov } from '../ui';
 import {
   W, H, ANDOZA_MAYDONI, SAVOL_BLOKLARI, andozaSahifalari, andozaXatolari, blokOlchami, blokNomi, tuzilmadanAndoza,
   type AndozaBlok, type AndozaTuri, type VaraqParametrlari,
+  andozaDoiralari,
 } from '../../../lib/omr/layout';
 import { varaqSvg } from '../../../lib/omr/render';
 import type { VaraqAndozaYozuvi } from '../../../types';
@@ -72,7 +73,7 @@ export default function VaraqDizayner({ boshi, params, umumiy, onYop, onSaqlandi
   const rasmRef = useRef<HTMLInputElement>(null);
   const rasmUchun = useRef<string | null>(null);
 
-  const k = params?.optionCount || 4;
+  const k = params ? andozaDoiralari(params) : 4;
   const p: VaraqParametrlari = useMemo(() => params || { tuzilma: { bloklar: [], savollar: [], jami: 0 }, optionCount: 4, variantCount: 2, variantBubble: true }, [params]);
   const andoza = useMemo(() => ({ sahifalar, bloklar }), [sahifalar, bloklar]);
   const tekshiruv = useMemo(() => andozaXatolari(andoza, { tuzilma: params?.tuzilma || null, optionCount: k }), [andoza, params, k]);

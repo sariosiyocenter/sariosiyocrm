@@ -10,6 +10,7 @@ import { QiyinlikTanlov } from './qiyinlik';
 import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, htmlMatnga, xatoMatni, Korinish } from './aiUmumiy';
 import QoshRejimi, { type QoshRejim } from './QoshRejimi';
+import { AiGuruhKarta, guruhlarniSaqla, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
 import type { BankDaraxt } from '../../../types';
 
 // Mavzu bo'yicha AI savol tuzadi (egasi, 2026-10-06: "mavzuni aytaman, namuna bersam ham
@@ -21,7 +22,9 @@ import type { BankDaraxt } from '../../../types';
 /** Bitta so'rovda nechta savol tuziladi (server chegarasi). */
 const BOLAK = 10;
 const TEKSHIRUV_BOLAGI = 12;
-type Tur = 'yopiq' | 'raqamli';
+type Tur = 'yopiq' | 'raqamli' | 'moslash' | 'qismli';
+/** Guruhli savol turlari (Milliy sertifikat): bitta so'rovda tuziladi, bankka guruh bo'lib tushadi. */
+const guruhTurimi = (t: Tur): t is 'moslash' | 'qismli' => t === 'moslash' || t === 'qismli';
 interface Yangi extends AiSavol { kalit: number; tanlangan: boolean; tekshiruv: Tekshiruv | null }
 
 let keyingiKalit = 1;
@@ -65,8 +68,11 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
   const [qiyinlik, setQiyinlik] = useState<number>(2);
   const [holat, setHolat] = useState<string | null>(null);
   const [natijalar, setNatijalar] = useState<Yangi[] | null>(null);
+  const [guruhSoni, setGuruhSoni] = useState<2 | 3 | 5>(3);
+  const [guruhlar, setGuruhlar] = useState<AiGuruh[] | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const band = !!holat || saqlanmoqda;
+  const guruhli = guruhTurimi(tur);
 
   const tekshir = async (yangilar: Yangi[]): Promise<Yangi[]> => {
     const natija: Yangi[] = [];
@@ -84,9 +90,24 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
     return natija;
   };
 
+  const guruhTuz = async () => {
+    if (!fan || !mavzuNomi) return;
+    setHolat('AI guruhli savol tuzmoqda…');
+    try {
+      const r = await soro<{ guruhlar: Omit<AiGuruh, 'kalit' | 'tanlangan'>[] }>('POST', 'questions/ai/guruh-tuz', { fan: fan.name, mavzu: mavzuNomi, tavsif, namuna, soni: guruhSoni, tur, qiyinlik });
+      if (!r.guruhlar.length) return showNotification("AI mos guruhli savol tuza olmadi — talabni aniqroq yozib, qayta urinib ko'ring", 'error');
+      setGuruhlar(r.guruhlar.map(g => ({ ...g, kalit: keyingiKalit++, tanlangan: true })));
+    } catch (e: unknown) {
+      showNotification(xatoMatni(e), 'error');
+    } finally {
+      setHolat(null);
+    }
+  };
+
   const tuz = async () => {
     if (!fan) return showNotification('Fanni tanlang', 'error');
     if (!mavzuNomi) return showNotification('Mavzuni tanlang', 'error');
+    if (guruhli) return guruhTuz();
     const yig: Yangi[] = [];
     let bosh = 0;
     try {
@@ -117,6 +138,33 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
 
   const belgila = (kalit: number, tanlangan: boolean) => setNatijalar(l => (l || []).map(n => (n.kalit === kalit ? { ...n, tanlangan } : n)));
   const tanlanganlar = (natijalar || []).filter(n => n.tanlangan);
+
+  const tanlanganGuruhlar = (guruhlar || []).filter(g => g.tanlangan);
+  const guruhSaqla = async () => {
+    if (!fan || !mavzuNomi || !tanlanganGuruhlar.length) return;
+    setSaqlanmoqda(true);
+    try {
+      let mid = yangiMavzu === null ? mavzu?.id ?? (kutilgan ? mavzuId : null) : null;
+      const mavzuIdOl = async () => {
+        if (!mid) mid = await mavzuniTopYokiYarat(soro, fan.id, mavzuNomi);
+        return mid;
+      };
+      const r = await guruhlarniSaqla(soro, tanlanganGuruhlar, mavzuIdOl, 'AI tuzdi');
+      if (r.ids.length) onSaqlandi(r.ids);
+      // Yozilmaganlari oynada qoladi (qayta urinish uchun).
+      if (r.qolgan.length) {
+        showNotification(`${r.qolgan.length} ta guruhli savol yozilmadi: ${r.xatolar[0]}${r.soni ? ` (${r.soni} tasi bankka qo'shildi)` : ''}`, 'error');
+        setGuruhlar(r.qolgan);
+        return;
+      }
+      showNotification(`${r.soni} ta guruhli savol bankka qo'shildi — qoralama: javoblarini tekshirib, bankda faol qilasiz`, 'success');
+      onYop();
+    } catch (e: unknown) {
+      showNotification(xatoMatni(e), 'error');
+    } finally {
+      setSaqlanmoqda(false);
+    }
+  };
 
   const saqla = async () => {
     if (!fan || !mavzuNomi || !tanlanganlar.length) return;
@@ -151,7 +199,7 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> Savol qo'shish</h3>
             <p className="text-[12px] text-matn-xira">Mavzuni tanlang va nima kerakligini yozing — AI savollarni tuzadi, javoblarini qayta yechib tekshiradi.</p>
-            {onRejim && <QoshRejimi rejim="ai" onRejim={onRejim} band={band || (natijalar?.length ?? 0) > 0} />}
+            {onRejim && <QoshRejimi rejim="ai" onRejim={onRejim} band={band || (natijalar?.length ?? 0) > 0 || (guruhlar?.length ?? 0) > 0} />}
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
@@ -160,7 +208,7 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
           {ai && !ai.yoqilgan && (ai.sozlay ? <AiKalitKartasi ixcham />
             : <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">AI hali ulanmagan. Kalitni administrator Sozlamalar → Integratsiyalar da kiritadi.</p>)}
 
-          {!natijalar && (
+          {!natijalar && !guruhlar && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Maydon nom="Fan">
@@ -200,11 +248,13 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
               <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
                 <div>
                   <p className="mb-1 text-[12px] font-semibold text-matn-sokin">Nechta</p>
-                  <Tanlov qiymat={soni} onChange={setSoni} variantlar={[{ v: 5, nom: '5 ta' }, { v: 10, nom: '10 ta' }, { v: 20, nom: '20 ta' }]} />
+                  {guruhli
+                    ? <Tanlov qiymat={guruhSoni} onChange={setGuruhSoni} variantlar={[{ v: 2, nom: '2 ta' }, { v: 3, nom: '3 ta' }, { v: 5, nom: '5 ta' }]} />
+                    : <Tanlov qiymat={soni} onChange={setSoni} variantlar={[{ v: 5, nom: '5 ta' }, { v: 10, nom: '10 ta' }, { v: 20, nom: '20 ta' }]} />}
                 </div>
                 <div>
                   <p className="mb-1 text-[12px] font-semibold text-matn-sokin">Turi</p>
-                  <Tanlov qiymat={tur} onChange={setTur} variantlar={[{ v: 'yopiq', nom: 'Variantli' }, { v: 'raqamli', nom: 'Raqamli javob' }]} />
+                  <Tanlov qiymat={tur} onChange={setTur} variantlar={[{ v: 'yopiq', nom: 'Variantli' }, { v: 'raqamli', nom: 'Raqamli javob' }, { v: 'moslash', nom: 'Moslashtirish guruhi' }, { v: 'qismli', nom: 'Qismli savol (a, b)' }]} />
                 </div>
                 <div>
                   <p className="mb-1 text-[12px] font-semibold text-matn-sokin">Qiyinligi</p>
@@ -215,6 +265,16 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
           )}
 
           {holat && <p role="status" className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> {holat}</p>}
+
+          {guruhlar && (
+            <section aria-label="Tuzilgan guruhli savollar" className="space-y-2">
+              <p className="text-[13px] text-matn"><b>{guruhlar.length}</b> ta guruhli savol · <span className="text-matn-sokin">{fan?.name} › {mavzuNomi}</span></p>
+              <p className="text-[12px] text-matn-xira">Bankka qoralama bo'lib tushadi: javoblarini ko'zdan kechirib, bankda faol qilasiz.</p>
+              <ul className="space-y-2">
+                {guruhlar.map(g => <AiGuruhKarta key={g.kalit} g={g} band={band} onTanla={v => setGuruhlar(l => (l || []).map(x => (x.kalit === g.kalit ? { ...x, tanlangan: v } : x)))} />)}
+              </ul>
+            </section>
+          )}
 
           {natijalar && (
             <section aria-label="Tuzilgan savollar" className="space-y-2">
@@ -236,11 +296,15 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-chiziq">
-          {natijalar && !holat
-            ? <Tugma turi="oddiy" disabled={band} onClick={() => setNatijalar(null)}>Qaytadan</Tugma>
+          {(natijalar || guruhlar) && !holat
+            ? <Tugma turi="oddiy" disabled={band} onClick={() => { setNatijalar(null); setGuruhlar(null); }}>Qaytadan</Tugma>
             : <Tugma turi="oddiy" disabled={band} onClick={onYop}>Yopish</Tugma>}
-          {!natijalar || holat ? (
-            <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!holat} disabled={band || !ai?.yoqilgan} onClick={tuz}>{soni} ta savol tuzish</Tugma>
+          {guruhlar && !holat ? (
+            <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={!tanlanganGuruhlar.length || band} onClick={guruhSaqla}>
+              {tanlanganGuruhlar.length ? `${tanlanganGuruhlar.length} ta guruhli savolni bankka qo'shish` : "Bankka qo'shish"}
+            </Tugma>
+          ) : !natijalar || holat ? (
+            <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!holat} disabled={band || !ai?.yoqilgan} onClick={tuz}>{guruhli ? `${guruhSoni} ta ${tur === 'moslash' ? 'moslashtirish guruhi' : 'qismli savol'} tuzish` : `${soni} ta savol tuzish`}</Tugma>
           ) : (
             <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={!tanlanganlar.length || band} onClick={saqla}>
               {tanlanganlar.length ? `${tanlanganlar.length} ta savolni bankka qo'shish` : "Bankka qo'shish"}
