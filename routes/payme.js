@@ -383,6 +383,18 @@ export function registerPaymeRoutes(app) {
     } catch (e) { next(e); }
   });
 
+  // Kassa bitta (butun markaz) yoki har filialga alohida — administrator tanlaydi.
+  app.post('/api/payme/kassa-rejimi', authenticate, async (req, res, next) => {
+    try {
+      if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator' });
+      const schoolId = parseInt(req.body.schoolId);
+      if (!Number.isInteger(schoolId)) return res.status(400).json({ error: 'schoolId required' });
+      if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+      if (!payme.KASSA_REJIMLARI.includes(req.body.rejim)) return res.status(400).json({ error: "Kassa rejimi noto'g'ri" });
+      res.json(await payme.kassaRejiminiSaqla(schoolId, req.body.rejim));
+    } catch (e) { next(e); }
+  });
+
   // Webhook manzilining maxfiy qismini almashtirish. Yangi manzil Payme
   // kabinetiga ham kiritilishi kerak — eskisi darhol ishlamay qoladi.
   app.post('/api/payme/rotate-endpoint', authenticate, async (req, res, next) => {

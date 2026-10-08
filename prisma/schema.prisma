@@ -450,6 +450,13 @@ model Organization {
   // olinadi: aistudio.google.com/apikey). Faqat serverda o'qiladi, brauzerga
   // qaytmaydi (faqat oxirgi 4 belgisi). null — serverdagi GEMINI_API_KEY ishlaydi.
   aiKaliti String?
+
+  // Payme kassasi (egasi, 2026-10-08: "o'quv markaz admini o'zi belgilasin — markaz uchun
+  // bitta bo'ladimi yoki har bir filialga alohidami"):
+  //   umumiy  — bitta kassa butun markazga; to'lov o'quvchining o'z filialiga yoziladi;
+  //   alohida — har filial o'z Merchant ID va kalitini kiritadi, kiritmaganida Payme yo'q.
+  // services/payme.js kassaSozlamasi / kassaFiliallari.
+  paymeKassa String @default("umumiy")
 }
 
 model School {

@@ -61,6 +61,12 @@ export default function PaymeSettings() {
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
     const [txs, setTxs] = useState<Tx[]>([]);
+    const [rejimSaqlanmoqda, setRejimSaqlanmoqda] = useState(false);
+    // Kassa rejimi (bitta / alohida) — butun markazga tegishli tanlov; bitta filialli markazda ko'rsatilmaydi.
+    const kassaRejimi = settings.paymeKassa || 'umumiy';
+    const kopFilial = (settings.paymeFiliallar || 1) > 1;
+    // Bu filial markaz kassasidan foydalanyapti — o'z kalitlarini kiritish kerak emas.
+    const markazdan = kassaRejimi === 'umumiy' && !!settings.paymeKassaFilial;
 
     useEffect(() => {
         setForm(f => ({
@@ -107,6 +113,35 @@ export default function PaymeSettings() {
         }
     };
 
+    const rejimniOzgartir = async (rejim: 'umumiy' | 'alohida') => {
+        if (rejim === kassaRejimi || rejimSaqlanmoqda) return;
+        const ok = await confirm(rejim === 'alohida'
+            ? {
+                title: 'Har bir filialga alohida kassa',
+                message: "Har filial o'z Merchant ID va kalitini kiritadi. Kiritmagan filialda Payme tugmasi yo'qoladi va u yerdagi o'quvchilar Payme orqali to'lay olmaydi. Davom etilsinmi?",
+                confirmLabel: 'Alohida qilish', danger: true,
+            }
+            : {
+                title: 'Bitta kassa — butun markaz uchun',
+                message: "Hamma filial bitta Payme kassasidan foydalanadi (Payme sozlangan filialniki). To'lov o'quvchining o'z filialiga yoziladi. Davom etilsinmi?",
+                confirmLabel: 'Bitta qilish',
+            });
+        if (!ok) return;
+        setRejimSaqlanmoqda(true);
+        try {
+            const r = await fetch('/api/payme/kassa-rejimi', { method: 'POST', headers: auth(), body: JSON.stringify({ schoolId, rejim }) });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || 'Xatolik');
+            // Sozlama qayta o'qiladi: amaldagi rejim va kassa filiali yangilanadi.
+            await updateSettings({ ...settings });
+            showNotification(rejim === 'alohida' ? 'Endi har filialning kassasi alohida' : 'Endi kassa butun markazga bitta', 'success');
+        } catch (err: any) {
+            showNotification(err.message || 'Saqlashda xatolik', 'error');
+        } finally {
+            setRejimSaqlanmoqda(false);
+        }
+    };
+
     const copy = async () => {
         try {
             await navigator.clipboard.writeText(endpointUrl);
@@ -140,13 +175,44 @@ export default function PaymeSettings() {
                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Ota-onalar Payme orqali to'laydi — pul avtomatik o'quvchining hisobiga tushadi</p>
             </div>
 
-            {/* Kassa bitta — butun markazga: o'z sozlamasi yo'q filial markaznikidan foydalanadi. */}
-            {settings.paymeKassaFilial && (
+            {/* Kassa bitta (butun markaz) yoki har filialga alohida — markaz administratori tanlaydi. */}
+            {kopFilial && (
+                <div className={card}>
+                    <div>
+                        <p className="text-xs font-black text-matn tracking-wide">Payme kassasi</p>
+                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">Bu tanlov butun markazga tegishli — qaysi filialdan o'zgartirsangiz ham hammasida o'zgaradi</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {([
+                            { id: 'umumiy', nom: 'Bitta kassa — butun markaz uchun', izoh: "Hamma filial bitta Payme kassasidan foydalanadi. To'lov o'quvchining o'z filialiga yoziladi." },
+                            { id: 'alohida', nom: 'Har bir filialga alohida kassa', izoh: "Har filial o'z Merchant ID va kalitini kiritadi. Kiritmagan filialda Payme ishlamaydi." },
+                        ] as const).map(v => (
+                            <button key={v.id} type="button" disabled={rejimSaqlanmoqda} onClick={() => rejimniOzgartir(v.id)}
+                                aria-pressed={kassaRejimi === v.id}
+                                className={`text-left px-4 py-3 rounded-2xl border transition-colors cursor-pointer disabled:opacity-60 ${kassaRejimi === v.id ? 'border-brand bg-brand/10' : 'border-chiziq bg-ichki hover:border-chiziq-kuchli'}`}>
+                                <span className="flex items-center gap-2">
+                                    <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${kassaRejimi === v.id ? 'border-brand' : 'border-chiziq-kuchli'}`}>
+                                        {kassaRejimi === v.id && <span className="w-2 h-2 rounded-full bg-brand" />}
+                                    </span>
+                                    <span className="text-xs font-black text-matn">{v.nom}</span>
+                                </span>
+                                <span className="block text-[11px] font-bold text-matn-xira mt-1.5 ml-6">{v.izoh}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {markazdan && (
                 <div className="rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-[12px] text-matn leading-relaxed">
                     <b>Bu filialda Payme ishlayapti</b> — markazning umumiy kassasi orqali («{settings.paymeKassaFilial}»
-                    {settings.paymeAmalda === 'test' ? ', test rejim' : ''}). To'lovlar shu filialning hisobotiga yoziladi,
-                    bu yerda hech narsa kiritish shart emas. Pastdagi maydonlarni faqat shu filialga
-                    <b> alohida</b> Payme kassasi ochilgan bo'lsa to'ldiring.
+                    {settings.paymeAmalda === 'test' ? ', test rejim' : ''}). To'lovlar shu filialning hisobotiga yoziladi.
+                    Kassa sozlamalari (Merchant ID, kalitlar) «{settings.paymeKassaFilial}» filialida turadi — bu yerda hech narsa kiritish kerak emas.
+                </div>
+            )}
+            {kopFilial && kassaRejimi === 'umumiy' && !markazdan && (settings.paymeAmalda || 'off') === 'off' && (
+                <div className="rounded-xl border border-chiziq bg-ichki px-4 py-3 text-[12px] text-matn-xira leading-relaxed">
+                    Markazda hali Payme sozlanmagan. Pastdagi maydonlarni bitta filialda to'ldirsangiz — hamma filialda ishlaydi.
                 </div>
             )}
 
@@ -157,6 +223,8 @@ export default function PaymeSettings() {
                 </div>
             )}
 
+            {/* Markaz kassasidan foydalanayotgan filialda sozlama formasi ko'rsatilmaydi. */}
+            {!markazdan && (<>
             {/* Holat va manzil */}
             <div className={card}>
                 <div className="flex items-center justify-between gap-3">
@@ -296,6 +364,8 @@ export default function PaymeSettings() {
                     <Save size={14} />{saving ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
             </div>
+
+            </>)}
 
             {/* Oxirgi tranzaksiyalar */}
             <div className={card}>

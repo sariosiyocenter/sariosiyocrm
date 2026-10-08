@@ -149,73 +149,101 @@ export function checkoutUrl({ merchantId, mode, orderId, account, amount, return
 
 export const isConfigured = (s) => !!(s && s.paymeMerchantId && MODES.includes(s.paymeMode) && s.paymeMode !== 'off');
 
-// Bitta kassa — butun markaz (egasi, 2026-10-08: Langar filialida Payme chiqmasdi).
-// Ilgari Payme faqat sozlama kiritilgan filialda ishlardi: boshqa filial o'quvchisiga
-// havola ham chiqmasdi, Payme ilovasida uning ID si ham "topilmadi" bo'lardi.
-// Endi o'z Payme sozlamasi yo'q filial shu tashkilotdagi sozlangan filialning
-// kassasidan foydalanadi. Pul bitta kassaga tushadi, CRM da esa to'lov
-// o'quvchining O'Z filialiga yoziladi. Filialga keyin alohida kassa ochilsa
-// (o'z Merchant ID si kiritilsa) — u o'zinikiga o'tadi va umumiydan chiqadi.
+// Payme kassasi — bitta (butun markaz) yoki har filialga alohida. Administrator tanlaydi
+// (Sozlamalar → Payme, Organization.paymeKassa; egasi, 2026-10-08).
+//
+//   umumiy  — markazda bitta kassa: Payme sozlangan filial (bir nechta bo'lsa — raqami
+//             kichigi). Qolgan filiallar shu kassadan foydalanadi. Pul bitta kassaga
+//             tushadi, CRM da esa to'lov o'quvchining O'Z filialiga yoziladi.
+//   alohida — har filial faqat o'z sozlamasi bilan ishlaydi; kiritmagan filialda Payme
+//             yo'q, boshqa filial o'quvchisi bu kassadan to'lay olmaydi.
+//
+// Ilgari (2026-10-08 gacha) faqat "alohida" bor edi va Langar filialida Payme chiqmasdi.
 
-/** Shu filial tashkilotidagi hamma filiallar (o'zi ham). */
-async function tashkilotFiliallari(schoolId) {
+export const KASSA_REJIMLARI = ['umumiy', 'alohida'];
+
+/** Filialning tashkiloti: hamma filiallari (raqam bo'yicha) va kassa rejimi. */
+async function tashkilot(schoolId) {
   const id = Number(schoolId);
   const s = await prisma.school.findUnique({ where: { id }, select: { organizationId: true } });
-  if (!s?.organizationId) return [id];
-  const rows = await prisma.school.findMany({ where: { organizationId: s.organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
-  return rows.map(r => r.id);
+  if (!s?.organizationId) return { ids: [id], rejim: 'alohida', organizationId: null };
+  const [rows, org] = await Promise.all([
+    prisma.school.findMany({ where: { organizationId: s.organizationId }, select: { id: true }, orderBy: { id: 'asc' } }),
+    prisma.organization.findUnique({ where: { id: s.organizationId }, select: { paymeKassa: true } }),
+  ]);
+  return { ids: rows.map(r => r.id), rejim: KASSA_REJIMLARI.includes(org?.paymeKassa) ? org.paymeKassa : 'umumiy', organizationId: s.organizationId };
+}
+
+/** "Umumiy" rejimdagi markaz kassasi: tashkilotdagi sozlangan filiallardan raqami kichigi. */
+async function markazKassasi(ids) {
+  const rows = await prisma.setting.findMany({ where: { schoolId: { in: ids } }, orderBy: { schoolId: 'asc' } });
+  return rows.find(isConfigured) || null;
 }
 
 /**
  * Filial qaysi kassadan foydalanadi.
- * @returns {Promise<{ settings: object|null, ozi: boolean }>} ozi — filialning o'z kassasi
+ * @returns {Promise<{ settings: object|null, ozi: boolean, rejim: string, filiallar: number }>}
+ *          ozi — kassa shu filialning o'zida sozlangan
  */
 export async function kassaSozlamasi(schoolId) {
   const id = Number(schoolId);
+  const t = await tashkilot(id);
   const oz = await prisma.setting.findUnique({ where: { schoolId: id } });
-  if (isConfigured(oz)) return { settings: oz, ozi: true };
-  const boshqalar = (await tashkilotFiliallari(id)).filter(x => x !== id);
-  if (boshqalar.length) {
-    const rows = await prisma.setting.findMany({ where: { schoolId: { in: boshqalar } }, orderBy: { schoolId: 'asc' } });
-    const markaz = rows.find(isConfigured);
-    if (markaz) return { settings: markaz, ozi: false };
-  }
-  return { settings: oz, ozi: true };
+  const asos = { rejim: t.rejim, filiallar: t.ids.length };
+  if (t.rejim === 'alohida' || t.ids.length < 2) return { settings: oz, ozi: true, ...asos };
+  const markaz = await markazKassasi(t.ids);
+  if (!markaz) return { settings: oz, ozi: true, ...asos };
+  return { settings: markaz, ozi: markaz.schoolId === id, ...asos };
 }
 
 /**
  * Filial uchun amaldagi Payme sozlamasi (o'ziniki yoki markazniki).
- * Kesh yo'q — kalit almashtirilsa darhol kuchga kirsin.
+ * Kesh yo'q — kalit yoki rejim almashtirilsa darhol kuchga kirsin.
  */
 export async function loadSettings(schoolId) {
   return (await kassaSozlamasi(schoolId)).settings;
 }
 
-/** Brauzer uchun: shu filialda Payme amalda qaysi rejimda va kassa kimniki. */
+/**
+ * Brauzer uchun: shu filialda Payme amalda qaysi rejimda, kassa kimniki va markaz
+ * qaysi usulni tanlagan. Bu maydonlar faqat o'qiladi — Setting jadvaliga yozilmaydi.
+ */
 export async function kassaHolati(schoolId) {
   try {
-    const { settings, ozi } = await kassaSozlamasi(schoolId);
-    if (!isConfigured(settings)) return { paymeAmalda: 'off', paymeKassaFilial: null };
-    if (ozi) return { paymeAmalda: settings.paymeMode, paymeKassaFilial: null };
+    const { settings, ozi, rejim, filiallar } = await kassaSozlamasi(schoolId);
+    const umumiy = { paymeKassa: rejim, paymeFiliallar: filiallar };
+    if (!isConfigured(settings)) return { paymeAmalda: 'off', paymeKassaFilial: null, ...umumiy };
+    if (ozi) return { paymeAmalda: settings.paymeMode, paymeKassaFilial: null, ...umumiy };
     const f = await prisma.school.findUnique({ where: { id: settings.schoolId }, select: { name: true } });
-    return { paymeAmalda: settings.paymeMode, paymeKassaFilial: f?.name || 'markaz' };
-  } catch {
-    return { paymeAmalda: 'off', paymeKassaFilial: null };
+    return { paymeAmalda: settings.paymeMode, paymeKassaFilial: f?.name || 'markaz', ...umumiy };
+  } catch (e) {
+    console.error('[payme] kassa holati:', e.message);
+    return { paymeAmalda: 'off', paymeKassaFilial: null, paymeKassa: 'umumiy', paymeFiliallar: 1 };
   }
 }
 
+/** Markaz kassa rejimini saqlaydi (faqat administrator — marshrut tekshiradi). */
+export async function kassaRejiminiSaqla(schoolId, rejim) {
+  if (!KASSA_REJIMLARI.includes(rejim)) throw new Error("Kassa rejimi noto'g'ri");
+  const t = await tashkilot(schoolId);
+  if (!t.organizationId) throw new Error('Filial tashkilotga biriktirilmagan');
+  await prisma.organization.update({ where: { id: t.organizationId }, data: { paymeKassa: rejim } });
+  return kassaHolati(schoolId);
+}
+
 /**
- * Shu kassa xizmat qiladigan filiallar: kassaning o'z filiali va tashkilotdagi
- * o'z Payme sozlamasi yo'q filiallar. Payme'dan kelgan so'rov shu doirada
- * o'quvchi, buyurtma va tranzaksiyani qidiradi.
+ * Shu kassa xizmat qiladigan filiallar. Payme'dan kelgan so'rov shu doirada o'quvchi,
+ * buyurtma va tranzaksiyani qidiradi.
+ *   umumiy  — markaz kassasi: tashkilotning hamma filiali;
+ *   alohida (yoki bu markaz kassasi emas) — faqat o'z filiali.
  */
 export async function kassaFiliallari(settings) {
   const oz = Number(settings.schoolId);
-  const boshqalar = (await tashkilotFiliallari(oz)).filter(x => x !== oz);
-  if (!boshqalar.length) return [oz];
-  const rows = await prisma.setting.findMany({ where: { schoolId: { in: boshqalar } } });
-  const alohida = new Set(rows.filter(isConfigured).map(r => r.schoolId));
-  return [oz, ...boshqalar.filter(x => !alohida.has(x))];
+  const t = await tashkilot(oz);
+  if (t.rejim === 'alohida' || t.ids.length < 2) return [oz];
+  const markaz = await markazKassasi(t.ids);
+  if (!markaz || markaz.schoolId !== oz) return [oz];
+  return [oz, ...t.ids.filter(x => x !== oz)];
 }
 
 /** Joriy rejimga mos kalit. Test kaliti jonli rejimda hech qachon qabul qilinmaydi. */

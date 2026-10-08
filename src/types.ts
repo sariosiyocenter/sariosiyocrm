@@ -482,6 +482,10 @@ export interface CRMState {
         paymeAmalda?: 'off' | 'test' | 'live';
         /** Markaz kassasidan foydalanayotgan bo'lsa — o'sha filial nomi, aks holda null. Faqat o'qiladi. */
         paymeKassaFilial?: string | null;
+        /** Markaz tanlovi: bitta kassa butun markazga yoki har filialga alohida. Faqat o'qiladi (POST /api/payme/kassa-rejimi). */
+        paymeKassa?: 'umumiy' | 'alohida';
+        /** Tashkilotdagi filiallar soni. Faqat o'qiladi. */
+        paymeFiliallar?: number;
         /** Kassa hisob maydonlari: order_id yoki student_id + course_id. */
         paymeScheme?: 'order' | 'student' | 'student_only';
         paymeEndpointToken?: string | null;

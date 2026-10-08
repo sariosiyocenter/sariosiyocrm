@@ -4769,7 +4769,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     // sozlamaTahriri): profil, integratsiyalar, avtomatlashtirish alohida;
     // Payme va qolgan hamma narsa faqat administratorda.
     // Server boshqaradigan maydonlar mijozdan qabul qilinmaydi.
-    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, paymeAmalda, paymeKassaFilial, ...data } = req.body;
+    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, paymeAmalda, paymeKassaFilial, paymeKassa, paymeFiliallar, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     await rasmMaydoniniTozala(data, 'logo', 'logo');
 
