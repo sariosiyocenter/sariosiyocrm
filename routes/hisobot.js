@@ -204,9 +204,13 @@ async function qarz(schoolIds) {
     for (const g of s.groups) guruhNomi.set(g.id, g);
     const q = -s.balance;
     const t = allocate(qatorlar.get(s.id) || [], qoidalar.get(s.id));
-    const ochiq = (t.buckets || []).filter(b => b.remaining > 0.5 && b.month);
+    const ochiqHammasi = (t.buckets || []).filter(b => b.remaining > 0.5 && b.month);
+    // Kursga bog'lanmagan eski qoldiqning oyi yo'q ("eski") — u eng eski qarz. Ilgari
+    // shu chelakning o'zi qolgan o'quvchida oy farqi NaN chiqib, hisobot yiqilardi.
+    const ochiq = ochiqHammasi.filter(b => /^\d{4}-\d{2}$/.test(b.month));
+    const sanasiz = ochiqHammasi.length > ochiq.length;
     const eski = ochiq.length ? ochiq.map(b => b.month).sort()[0] : null;
-    const oylar = eski ? Math.max(0, oyFarqi(hozirgiOy, eski)) : 0;
+    const oylar = sanasiz ? 3 : eski ? Math.max(0, oyFarqi(hozirgiOy, eski)) : 0;
     const guruh = yosh[Math.min(3, oylar)];
     guruh.summa += q; guruh.soni++;
     const kursQarzi = (t.debtByGroup || []).filter(x => x.amount > 0.5).map(x => ({ id: x.groupId ?? null, nom: x.groupId ? (guruhNomi.get(x.groupId)?.name || `Kurs ${x.groupId}`) : 'Eski qoldiq', summa: yaxlit(x.amount) }));
@@ -265,6 +269,9 @@ async function ustozOyligi(schoolIds, oy, { kpiHisobla, filialXodimlariWhere }) 
     ustozlar: natija,
   };
 }
+
+// Telegram botdagi xodim hisobotlari ham aynan shu funksiyalardan oladi (src/bot/adminBot.js).
+export { kunlik as kunlikKassa, qarz as qarzdorlik };
 
 export function registerHisobotRoutes(app, deps) {
   const yol = (nom, ish) => app.get(`/api/hisobot/${nom}`, authenticate, async (req, res, next) => {

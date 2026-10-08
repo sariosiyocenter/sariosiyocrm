@@ -1678,3 +1678,79 @@ model QarzJavob {
   @@index([schoolId, holat])
   @@index([studentId])
 }
+
+// ---------------------------------------------------------------------------
+// Telegram bot: manzil, murojaat, telefon raqamni almashtirish (2026-10-08)
+// ---------------------------------------------------------------------------
+
+// O'quvchining bir kunlik manzili (egasi, 2026-10-08: "har darsda boshqa joyga
+// borishim mumkin"). O'quvchi yoki ota-ona botdan joylashuv yuborib "faqat
+// bugun" / "faqat ertaga" deydi. Shu kuni Student.location shu nuqtaga
+// almashtiriladi (logistika hamma joyda o'sha maydonni o'qiydi), kun o'tgach
+// `avvalgi` qaytariladi — services/oquvchiJoyi.js. Doimiy manzil bu yerga
+// yozilmaydi: u to'g'ridan-to'g'ri Student.location.
+model StudentJoy {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  schoolId  Int
+  sana      String   // YYYY-MM-DD — qaysi kun uchun
+  location  String   // "lat,lng"
+  avvalgi   String?  // qo'llangan paytdagi doimiy manzil (kun o'tgach qaytariladi)
+  // kutilmoqda (kuni kelmagan) | qollandi (bugun amalda) | tugadi | bekor
+  holat     String   @default("kutilmoqda")
+  kimdan    String?  // student | parent_father | parent_mother
+  tgChat    String?
+  createdAt DateTime @default(now())
+
+  @@index([studentId, sana])
+  @@index([holat, sana])
+}
+
+// Shikoyat va takliflar (egasi, 2026-10-08: "shikoyat o'qituvchiga ham borsin,
+// unga javob berish imkoniyati"). Ilgari matn rahbarlarga Telegram xabari bo'lib
+// ketardi va hech qayerda saqlanmasdi — javob yozib ham bo'lmasdi. Bog'lanishlar
+// ataylab yo'q: o'quvchi yoki ustoz o'chirilsa ham yozishma qoladi.
+model Murojaat {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int
+  studentId Int?
+  kimdan    String   // student | parent_father | parent_mother | teacher | admin | driver | guest
+  ism       String   // yozgan odam (nusxa): "Ota — Aliyev Ali"
+  telefon   String?
+  tgChat    String   // yozgan odamning Telegram chati — javob shu yerga boradi
+  teacherId Int?     // qaysi ustozga ham yuborilgan
+  matn      String
+  holat     String   @default("yangi") // yangi | javob_berildi
+  createdAt DateTime @default(now())
+  javoblar  MurojaatJavob[]
+
+  @@index([schoolId, createdAt])
+}
+
+model MurojaatJavob {
+  id         Int      @id @default(autoincrement())
+  murojaatId Int
+  murojaat   Murojaat @relation(fields: [murojaatId], references: [id], onDelete: Cascade)
+  kimdan     String   // xodim | ustoz | muallif
+  ism        String
+  tgChat     String?
+  matn       String
+  createdAt  DateTime @default(now())
+
+  @@index([murojaatId])
+}
+
+// Telefon raqamni botda SMS kod bilan almashtirish. Kodning o'zi saqlanmaydi
+// (faqat HMAC), urinishlar va kunlik SMS soni shu jadval orqali cheklanadi.
+model TelefonKod {
+  id        Int      @id @default(autoincrement())
+  tgChat    String
+  telefon   String   // 998XXXXXXXXX
+  kodHash   String
+  urinish   Int      @default(0)
+  holat     String   @default("kutilmoqda") // kutilmoqda | tasdiqlandi | bekor
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([tgChat, createdAt])
+}

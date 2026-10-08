@@ -147,12 +147,76 @@ export function checkoutUrl({ merchantId, mode, orderId, account, amount, return
 // Sozlamalar va autentifikatsiya
 // ---------------------------------------------------------------------------
 
-/** Kesh yo'q — kalit almashtirilsa darhol kuchga kirsin. */
-export async function loadSettings(schoolId) {
-  return prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
+export const isConfigured = (s) => !!(s && s.paymeMerchantId && MODES.includes(s.paymeMode) && s.paymeMode !== 'off');
+
+// Bitta kassa — butun markaz (egasi, 2026-10-08: Langar filialida Payme chiqmasdi).
+// Ilgari Payme faqat sozlama kiritilgan filialda ishlardi: boshqa filial o'quvchisiga
+// havola ham chiqmasdi, Payme ilovasida uning ID si ham "topilmadi" bo'lardi.
+// Endi o'z Payme sozlamasi yo'q filial shu tashkilotdagi sozlangan filialning
+// kassasidan foydalanadi. Pul bitta kassaga tushadi, CRM da esa to'lov
+// o'quvchining O'Z filialiga yoziladi. Filialga keyin alohida kassa ochilsa
+// (o'z Merchant ID si kiritilsa) — u o'zinikiga o'tadi va umumiydan chiqadi.
+
+/** Shu filial tashkilotidagi hamma filiallar (o'zi ham). */
+async function tashkilotFiliallari(schoolId) {
+  const id = Number(schoolId);
+  const s = await prisma.school.findUnique({ where: { id }, select: { organizationId: true } });
+  if (!s?.organizationId) return [id];
+  const rows = await prisma.school.findMany({ where: { organizationId: s.organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
+  return rows.map(r => r.id);
 }
 
-export const isConfigured = (s) => !!(s && s.paymeMerchantId && MODES.includes(s.paymeMode) && s.paymeMode !== 'off');
+/**
+ * Filial qaysi kassadan foydalanadi.
+ * @returns {Promise<{ settings: object|null, ozi: boolean }>} ozi — filialning o'z kassasi
+ */
+export async function kassaSozlamasi(schoolId) {
+  const id = Number(schoolId);
+  const oz = await prisma.setting.findUnique({ where: { schoolId: id } });
+  if (isConfigured(oz)) return { settings: oz, ozi: true };
+  const boshqalar = (await tashkilotFiliallari(id)).filter(x => x !== id);
+  if (boshqalar.length) {
+    const rows = await prisma.setting.findMany({ where: { schoolId: { in: boshqalar } }, orderBy: { schoolId: 'asc' } });
+    const markaz = rows.find(isConfigured);
+    if (markaz) return { settings: markaz, ozi: false };
+  }
+  return { settings: oz, ozi: true };
+}
+
+/**
+ * Filial uchun amaldagi Payme sozlamasi (o'ziniki yoki markazniki).
+ * Kesh yo'q — kalit almashtirilsa darhol kuchga kirsin.
+ */
+export async function loadSettings(schoolId) {
+  return (await kassaSozlamasi(schoolId)).settings;
+}
+
+/** Brauzer uchun: shu filialda Payme amalda qaysi rejimda va kassa kimniki. */
+export async function kassaHolati(schoolId) {
+  try {
+    const { settings, ozi } = await kassaSozlamasi(schoolId);
+    if (!isConfigured(settings)) return { paymeAmalda: 'off', paymeKassaFilial: null };
+    if (ozi) return { paymeAmalda: settings.paymeMode, paymeKassaFilial: null };
+    const f = await prisma.school.findUnique({ where: { id: settings.schoolId }, select: { name: true } });
+    return { paymeAmalda: settings.paymeMode, paymeKassaFilial: f?.name || 'markaz' };
+  } catch {
+    return { paymeAmalda: 'off', paymeKassaFilial: null };
+  }
+}
+
+/**
+ * Shu kassa xizmat qiladigan filiallar: kassaning o'z filiali va tashkilotdagi
+ * o'z Payme sozlamasi yo'q filiallar. Payme'dan kelgan so'rov shu doirada
+ * o'quvchi, buyurtma va tranzaksiyani qidiradi.
+ */
+export async function kassaFiliallari(settings) {
+  const oz = Number(settings.schoolId);
+  const boshqalar = (await tashkilotFiliallari(oz)).filter(x => x !== oz);
+  if (!boshqalar.length) return [oz];
+  const rows = await prisma.setting.findMany({ where: { schoolId: { in: boshqalar } } });
+  const alohida = new Set(rows.filter(isConfigured).map(r => r.schoolId));
+  return [oz, ...boshqalar.filter(x => !alohida.has(x))];
+}
 
 /** Joriy rejimga mos kalit. Test kaliti jonli rejimda hech qachon qabul qilinmaydi. */
 export function keyForMode(settings) {
@@ -404,7 +468,7 @@ export async function payIdFor(studentId) {
  * 1–4 xonali — ichki № (faqat eski havolalar uchun, ESKI_RAQAM_MUDDATI gacha).
  * Ichki № hozir 4 xonali, kodlar 10000 dan boshlanadi — ikkalasi aralashmaydi.
  */
-async function studentIdFromPayId(db, schoolId, raw, field, now = Date.now()) {
+async function studentIdFromPayId(db, _schoolIds, raw, field, now = Date.now()) {
   const digits = String(raw ?? '').trim().replace(/[\s+()-]/g, '');
   if (kodniOqi(digits) !== null) {
     const id = await kodEgasi(digits, db);
@@ -424,11 +488,11 @@ async function studentIdFromPayId(db, schoolId, raw, field, now = Date.now()) {
  * kursda o'qisa — o'sha kurs; bir nechta bo'lsa — "umumiy" to'lov
  * (groupId/courseId null, hamyon qoidasi).
  */
-async function loadCatalogAccount(db, { field, courseField, studentId, kursId }, schoolId, settings, amountTiyin) {
+async function loadCatalogAccount(db, { field, courseField, studentId, kursId }, schoolIds, settings, amountTiyin) {
   if (!Number.isInteger(studentId) || studentId <= 0) throw ERR.studentNotFound(field);
   const student = await db.student.findFirst({
-    where: { id: studentId, schoolId, NOT: { status: 'Ochirilgan' } },
-    select: { id: true, name: true, groups: { select: { id: true, courseId: true } } },
+    where: { id: studentId, schoolId: { in: schoolIds }, NOT: { status: 'Ochirilgan' } },
+    select: { id: true, name: true, schoolId: true, groups: { select: { id: true, courseId: true } } },
   });
   if (!student) throw ERR.studentNotFound(field);
 
@@ -446,6 +510,8 @@ async function loadCatalogAccount(db, { field, courseField, studentId, kursId },
   }
   return {
     kind: 'catalog', student, amount,
+    // To'lov o'quvchining o'z filialiga yoziladi (kassa qaysi filialniki bo'lishidan qat'i nazar).
+    schoolId: student.schoolId,
     studentId: student.id, groupId: group?.id ?? null, courseId: group?.courseId ?? null,
     test: settings.paymeMode === 'test',
   };
@@ -459,33 +525,34 @@ async function loadCatalogAccount(db, { field, courseField, studentId, kursId },
  * Format bilan aniq ajraladi. Kassada alohida `student_id`/`course_id`
  * maydonlari sozlansa, ular ham qabul qilinadi.
  */
-async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) {
+async function resolveAccount(db, params, schoolIds, settings, amountTiyin, now) {
   if (hasField(params, ACCOUNT_FIELD)) {
     const code = parseStudentCode(params.account[ACCOUNT_FIELD]);
     if (code) {
-      code.studentId = await studentIdFromPayId(db, schoolId, String(code.studentId), ACCOUNT_FIELD, now);
-      const acc = await loadCatalogAccount(db, { field: ACCOUNT_FIELD, courseField: ACCOUNT_FIELD, ...code }, schoolId, settings, amountTiyin);
+      code.studentId = await studentIdFromPayId(db, schoolIds, String(code.studentId), ACCOUNT_FIELD, now);
+      const acc = await loadCatalogAccount(db, { field: ACCOUNT_FIELD, courseField: ACCOUNT_FIELD, ...code }, schoolIds, settings, amountTiyin);
       acc.account = { [ACCOUNT_FIELD]: code.kursId !== null ? `${code.studentId}-${code.kursId}` : String(code.studentId) };
       return acc;
     }
     const orderId = requireOrderId(params);
-    const order = await loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, now);
+    const order = await loadPayableOrder(db, orderId, schoolIds, settings, amountTiyin, now);
     return {
       kind: 'order', order, amount: order.amount, account: { [ACCOUNT_FIELD]: orderId },
+      schoolId: order.schoolId,
       studentId: order.studentId, groupId: order.groupId, courseId: order.courseId, test: order.test,
     };
   }
   if (hasField(params, STUDENT_FIELD)) {
     const rawId = String(params.account[STUDENT_FIELD]).trim();
     // 5 xonali o'quvchi ID si (eski havolalarda — ichki №).
-    const studentId = await studentIdFromPayId(db, schoolId, rawId, STUDENT_FIELD, now);
+    const studentId = await studentIdFromPayId(db, schoolIds, rawId, STUDENT_FIELD, now);
     let kursId = null;
     if (hasField(params, COURSE_FIELD)) {
       const rawC = String(params.account[COURSE_FIELD]).trim();
       if (!/^\d{1,9}$/.test(rawC)) throw ERR.courseNotFound(COURSE_FIELD);
       kursId = Number(rawC);
     }
-    const acc = await loadCatalogAccount(db, { field: STUDENT_FIELD, courseField: COURSE_FIELD, studentId, kursId }, schoolId, settings, amountTiyin);
+    const acc = await loadCatalogAccount(db, { field: STUDENT_FIELD, courseField: COURSE_FIELD, studentId, kursId }, schoolIds, settings, amountTiyin);
     // Payme yuborgan qiymat o'zgarmasdan saqlanadi — GetStatement uni qaytaradi.
     acc.account = { [STUDENT_FIELD]: rawId };
     if (kursId !== null) acc.account[COURSE_FIELD] = String(kursId);
@@ -494,7 +561,7 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
     // /pay sahifasi va so'ragan chatga xabar avvalgidek ishlaydi.
     if (acc.groupId) {
       const match = await db.paymeOrder.findFirst({
-        where: { schoolId, studentId: acc.studentId, groupId: acc.groupId, amount: acc.amount, status: 'new', test: acc.test, expiresAt: { gt: new Date(now) } },
+        where: { schoolId: acc.schoolId, studentId: acc.studentId, groupId: acc.groupId, amount: acc.amount, status: 'new', test: acc.test, expiresAt: { gt: new Date(now) } },
         orderBy: { createdAt: 'asc' },
       });
       if (match) acc.order = match;
@@ -505,8 +572,8 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
 }
 
 /** Buyurtma bormi va shu summaga to'lasa bo'ladimi. */
-async function loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, now) {
-  const order = await db.paymeOrder.findFirst({ where: { id: orderId, schoolId } });
+async function loadPayableOrder(db, orderId, schoolIds, settings, amountTiyin, now) {
+  const order = await db.paymeOrder.findFirst({ where: { id: orderId, schoolId: { in: schoolIds } } });
   if (!order) throw ERR.orderNotFound();
   if (order.status === 'paid') throw ERR.orderPaid();
   if (order.status !== 'new') throw ERR.orderClosed();
@@ -544,11 +611,14 @@ async function receiptDetail(settings, { courseId, amount }) {
  * marshrut xabar yuborishi uchun (to'lov o'tdi / qaytarildi).
  */
 export async function handleRpc({ settings, method, params, now = Date.now() }) {
-  const schoolId = settings.schoolId;
+  // Kassa doirasi: o'z filiali va o'z kassasi yo'q qardosh filiallar. Yozuvlar
+  // (tranzaksiya, to'lov) o'quvchining filialiga tegishli — `bizniki` shu doirani tekshiradi.
+  const schoolIds = await kassaFiliallari(settings);
+  const bizniki = (sid) => schoolIds.includes(sid);
 
   switch (method) {
     case 'CheckPerformTransaction': {
-      const acc = await resolveAccount(prisma, params, schoolId, settings, params?.amount, now);
+      const acc = await resolveAccount(prisma, params, schoolIds, settings, params?.amount, now);
       const detail = await receiptDetail(settings, acc);
       // To'lovchi kim uchun va qaysi kurs uchun to'layotganini ko'rsin. Faqat
       // qisqa ism va kurs nomi — qarz, guruh, ustoz emas (katalogda ID ketma-ket
@@ -573,13 +643,13 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
 
         const existing = await db.paymeTransaction.findUnique({ where: { paymeId: id } });
         if (existing) {
-          if (existing.schoolId !== schoolId) throw ERR.notFound();
+          if (!bizniki(existing.schoolId)) throw ERR.notFound();
           if (existing.state !== STATE.CREATED) throw ERR.cannotPerform('Tranzaksiya faol emas', 'Транзакция не активна', 'Transaction is not active');
           if (expired(existing.paymeTime, now)) throw await expireTx(existing.id, now);
           return { create_time: toNum(existing.createTime), transaction: String(existing.id), state: STATE.CREATED };
         }
 
-        const acc = await resolveAccount(db, params, schoolId, settings, params.amount, now);
+        const acc = await resolveAccount(db, params, schoolIds, settings, params.amount, now);
         if (expired(time, now)) throw ERR.cannotPerform('Tranzaksiya muddati o\'tgan', 'Срок транзакции истёк', 'Transaction expired');
 
         if (acc.kind === 'order') {
@@ -591,7 +661,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
 
         const row = await db.paymeTransaction.create({
           data: {
-            paymeId: id, orderId: acc.order?.id ?? null, schoolId,
+            paymeId: id, orderId: acc.order?.id ?? null, schoolId: acc.schoolId,
             studentId: acc.studentId, groupId: acc.groupId, courseId: acc.courseId,
             test: acc.test, account: acc.account,
             amount: acc.amount, state: STATE.CREATED,
@@ -608,7 +678,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
       const id = requireId(params);
       const out = await prisma.$transaction(async (db) => {
         const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: { select: { chatId: true, source: true } } } });
-        if (!tx || tx.schoolId !== schoolId) throw ERR.notFound();
+        if (!tx || !bizniki(tx.schoolId)) throw ERR.notFound();
         if (tx.state === STATE.PERFORMED) {
           return { result: { transaction: String(tx.id), perform_time: toNum(tx.performTime), state: STATE.PERFORMED } };
         }
@@ -646,7 +716,8 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
               // o'quvchining taqsimot qoidasi bo'yicha yechiladi.
               groupId: null,
               courseId: null,
-              schoolId,
+              // O'quvchining o'z filiali: kassa markazniki bo'lsa ham to'lov shu filial hisobotida.
+              schoolId: tx.schoolId,
             },
           });
           await db.student.update({ where: { id: tx.studentId }, data: { balance: { increment: tx.amount } } });
@@ -669,7 +740,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
       const reason = Number.isInteger(params?.reason) ? params.reason : null;
       const out = await prisma.$transaction(async (db) => {
         const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: { select: { chatId: true, source: true } } } });
-        if (!tx || tx.schoolId !== schoolId) throw ERR.notFound();
+        if (!tx || !bizniki(tx.schoolId)) throw ERR.notFound();
 
         if (tx.state === STATE.CREATED) {
           const r = await db.paymeTransaction.updateMany({
@@ -710,7 +781,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
                 description: `Payme to'lovi bekor qilindi (${id})`,
                 groupId: null,
                 courseId: null,
-                schoolId,
+                schoolId: tx.schoolId,
               },
             });
             await db.student.update({ where: { id: tx.studentId }, data: { balance: { decrement: tx.amount } } });
@@ -733,7 +804,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
     case 'CheckTransaction': {
       const id = requireId(params);
       const tx = await prisma.paymeTransaction.findUnique({ where: { paymeId: id } });
-      if (!tx || tx.schoolId !== schoolId) throw ERR.notFound();
+      if (!tx || !bizniki(tx.schoolId)) throw ERR.notFound();
       return { result: txResult(tx), paymeId: id, orderId: tx.orderId };
     }
 
@@ -744,7 +815,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
       // from <= time <= to, o'sish tartibida. Yaratilmay qolgan (xato bilan
       // tugagan) tranzaksiyalar bazada yo'q, demak ro'yxatga tushmaydi.
       const rows = await prisma.paymeTransaction.findMany({
-        where: { schoolId, paymeTime: { gte: BigInt(from), lte: BigInt(to) } },
+        where: { schoolId: { in: schoolIds }, paymeTime: { gte: BigInt(from), lte: BigInt(to) } },
         orderBy: [{ paymeTime: 'asc' }, { id: 'asc' }],
         take: 5000,
       });
@@ -772,7 +843,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
         throw new PaymeError(-32602, "Noto'g'ri parametrlar (type yoki fiscal_data)", undefined, true);
       }
       const tx = await prisma.paymeTransaction.findUnique({ where: { paymeId: id } });
-      if (!tx || tx.schoolId !== schoolId) throw new PaymeError(-32001, 'Chek topilmadi', undefined, true);
+      if (!tx || !bizniki(tx.schoolId)) throw new PaymeError(-32001, 'Chek topilmadi', undefined, true);
       const fiscal = {};
       for (const k of ['receipt_id', 'status_code', 'message', 'terminal_id', 'fiscal_sign', 'qr_code_url', 'date']) {
         if (data[k] !== undefined) fiscal[k] = typeof data[k] === 'string' ? data[k].slice(0, 500) : data[k];

@@ -17,6 +17,7 @@ import { isLessonDay, toDateStr, toTimeStr } from '../lib/lessons.js';
 import { darsTugashi, daqiqaga, vaqtga, tolqinlarniBirlashtirish } from '../lib/jadval.js';
 import { reyalarniTuzish } from '../lib/rejalash.js';
 import { markazNuqtasi } from './logistics.js';
+import { kunlikJoylarniQolla } from './oquvchiJoyi.js';
 
 
 /**
@@ -36,6 +37,9 @@ export const DARSDA_YOQ = ['Kelmapdi', 'Kelmadi', 'Sababli', "Dars bo'lmadi", 'E
  *   jadvalsiz — tugash vaqti to'ldirilmagan guruhlar (admin to'ldirishi kerak)
  */
 export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
+  // Botdan kiritilgan bir kunlik manzillar reja tuzilishidan oldin amalga kiradi
+  // (kechagilari qaytadi) — reja Student.location ni o'qiydi.
+  if (date === toDateStr()) await kunlikJoylarniQolla(date).catch(e => console.error('[Kunlik manzil]', e.message));
   const guruhlar = await prisma.group.findMany({
     where: { schoolId },
     select: {

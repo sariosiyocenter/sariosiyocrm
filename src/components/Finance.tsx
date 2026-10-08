@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { paymeYoqilgan } from '../lib/paymeRejimi';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
@@ -223,7 +224,7 @@ export default function Finance() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     // Payme havola/QR — tanlangan o'quvchi uchun (pul webhook orqali o'zi tushadi).
     const [paymeFor, setPaymeFor] = useState<number | null>(null);
-    const paymeOn = settings.paymeMode === 'live' || settings.paymeMode === 'test';
+    const paymeOn = paymeYoqilgan(settings);
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
     // Klik: chekdagi vaqt va chek rasmi — administrator tasdig'i uchun (KlikChek.tsx).
     const [klikVaqt, setKlikVaqt] = useState('');

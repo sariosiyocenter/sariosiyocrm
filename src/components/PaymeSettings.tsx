@@ -140,6 +140,16 @@ export default function PaymeSettings() {
                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Ota-onalar Payme orqali to'laydi — pul avtomatik o'quvchining hisobiga tushadi</p>
             </div>
 
+            {/* Kassa bitta — butun markazga: o'z sozlamasi yo'q filial markaznikidan foydalanadi. */}
+            {settings.paymeKassaFilial && (
+                <div className="rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-[12px] text-matn leading-relaxed">
+                    <b>Bu filialda Payme ishlayapti</b> — markazning umumiy kassasi orqali («{settings.paymeKassaFilial}»
+                    {settings.paymeAmalda === 'test' ? ', test rejim' : ''}). To'lovlar shu filialning hisobotiga yoziladi,
+                    bu yerda hech narsa kiritish shart emas. Pastdagi maydonlarni faqat shu filialga
+                    <b> alohida</b> Payme kassasi ochilgan bo'lsa to'ldiring.
+                </div>
+            )}
+
             {settings.settingsEncryption === false && (
                 <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-[11px] font-bold text-rose-600 dark:text-rose-400">
                     Serverda <span className="font-mono">SETTINGS_KEY</span> o'rnatilmagan — Payme kalitlari shifrlanmasdan saqlanmaydi, saqlash rad etiladi.

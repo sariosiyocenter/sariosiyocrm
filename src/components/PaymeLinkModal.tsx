@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { paymeRejimi } from '../lib/paymeRejimi';
 import { X, Copy, Check, Send, Link2, Ban, ExternalLink } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
@@ -40,8 +41,9 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
     const [copied, setCopied] = useState(false);
     const [sending, setSending] = useState(false);
 
-    const mode = settings.paymeMode || 'off';
-    const configured = mode !== 'off' && !!settings.paymeMerchantId;
+    // Amaldagi rejim: filialning o'z kassasi yoki markazniki (src/lib/paymeRejimi.ts).
+    const mode = paymeRejimi(settings);
+    const configured = settings.paymeAmalda ? mode !== 'off' : (mode !== 'off' && !!settings.paymeMerchantId);
 
     const loadOrders = () =>
         fetch(`/api/payme/orders?studentId=${studentId}`, { headers: auth() })

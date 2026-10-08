@@ -369,11 +369,11 @@ export default function Messaging() {
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [useSmsFallback, setUseSmsFallback] = useState(true);
-  const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER'>('PARENT');
+  const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER' | 'ALL'>('PARENT');
   // "Qabul qiluvchi tomon" faqat o'quvchilar uchun ma'noga ega. Ilgari u
   // o'qituvchilarga o'tilganda ham "Otasi" bo'lib qolar va ro'yxat bo'shab
   // ketardi — o'qituvchida ota telefoni yo'q. Xabar ularning o'ziga boradi.
-  const oluvchiTomoni: 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER' =
+  const oluvchiTomoni: 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER' | 'ALL' =
     audience === 'STUDENTS' ? recipientTo : 'STUDENT';
 
   /** Auditoriya almashganda o'tgan auditoriyaga xos filtrlar tozalanadi:
@@ -733,7 +733,9 @@ export default function Messaging() {
       // "Telefoni borlar" filtri yoqilgani holda ro'yxatda "Raqam yo'q"
       // o'quvchilar turaverardi.
       if (filters.contact === 'phone') {
-        if (oluvchiTomoni === 'PARENT') {
+        if (oluvchiTomoni === 'ALL') {
+          if (!st.phone && !st.fatherPhone && !st.motherPhone) return false;
+        } else if (oluvchiTomoni === 'PARENT') {
           if (!st.fatherPhone && !st.motherPhone) return false;
         } else if (oluvchiTomoni === 'FATHER') {
           if (!st.fatherPhone) return false;
@@ -743,7 +745,9 @@ export default function Messaging() {
           if (!st.phone) return false;
         }
       } else if (filters.contact === 'telegram') {
-        if (oluvchiTomoni === 'PARENT') {
+        if (oluvchiTomoni === 'ALL') {
+          if (!st.telegramId && !st.fatherTelegramId && !st.motherTelegramId) return false;
+        } else if (oluvchiTomoni === 'PARENT') {
           if (!st.fatherTelegramId && !st.motherTelegramId) return false;
         } else if (oluvchiTomoni === 'FATHER') {
           if (!st.fatherTelegramId) return false;
@@ -753,7 +757,9 @@ export default function Messaging() {
           if (!st.telegramId) return false;
         }
       } else if (filters.contact === 'no_telegram') {
-        if (oluvchiTomoni === 'PARENT') {
+        if (oluvchiTomoni === 'ALL') {
+          if (st.telegramId || st.fatherTelegramId || st.motherTelegramId) return false;
+        } else if (oluvchiTomoni === 'PARENT') {
           if (st.fatherTelegramId || st.motherTelegramId) return false;
         } else if (oluvchiTomoni === 'FATHER') {
           if (st.fatherTelegramId) return false;
@@ -798,7 +804,35 @@ export default function Messaging() {
     const entries: RecipientEntry[] = [];
     for (const st of filteredRecipients) {
       const balance = Number(st.balance || 0);
-      if (oluvchiTomoni === 'PARENT') {
+      if (oluvchiTomoni === 'ALL') {
+        // Barchasi: o'quvchining o'zi, otasi va onasi — har biri alohida qator.
+        // Bitta raqam ikki kishiga yozilgan bo'lsa (bola ro'yxatga otasining
+        // raqami bilan olingan) xabar o'sha raqamga bir marta ketadi.
+        const oila: RecipientEntry[] = [
+          { key: `${st.id}-STUDENT`, studentId: st.id, displayName: ismniKorsat(st.name), displayPhone: st.phone, telegramId: st.telegramId, balance, gender: st.gender, entryType: 'STUDENT' },
+          { key: `${st.id}-FATHER`, studentId: st.id, displayName: `${ismniKorsat(st.name)} — Otasi`, qoshimchaIsm: st.fatherName || null, displayPhone: st.fatherPhone, telegramId: st.fatherTelegramId, balance, gender: 'Erkak', entryType: 'FATHER' },
+          { key: `${st.id}-MOTHER`, studentId: st.id, displayName: `${ismniKorsat(st.name)} — Onasi`, qoshimchaIsm: st.motherName || null, displayPhone: st.motherPhone, telegramId: st.motherTelegramId, balance, gender: 'Ayol', entryType: 'MOTHER' },
+        ];
+        const kalit = (e: RecipientEntry) => ({
+          raqam: String(e.displayPhone || '').replace(/\D/g, '').slice(-9),
+          tg: String(e.telegramId || '').trim(),
+        });
+        const tanlangan: RecipientEntry[] = [];
+        for (const e of oila) {
+          const k = kalit(e);
+          if (!k.raqam && !k.tg) continue;
+          const i = tanlangan.findIndex(t => {
+            const o = kalit(t);
+            return (!!k.raqam && o.raqam === k.raqam) || (!!k.tg && o.tg === k.tg);
+          });
+          if (i < 0) { tanlangan.push(e); continue; }
+          // Shu raqam (yoki Telegram) allaqachon ro'yxatda — bitta qator qoladi.
+          // Telegrami bori ustun: xabar bepul va aniq yetadi.
+          if (!kalit(tanlangan[i]).tg && k.tg) tanlangan[i] = e;
+        }
+        // Oilada hech qanday aloqa yo'q — o'quvchi ro'yxatda "yetib bormaydi" bo'lib ko'rinsin.
+        entries.push(...(tanlangan.length ? tanlangan : [oila[0]]));
+      } else if (oluvchiTomoni === 'PARENT') {
         // Father row — only if fatherPhone exists
         if (st.fatherPhone && st.fatherPhone.trim() !== '') {
           entries.push({
@@ -1341,7 +1375,7 @@ export default function Messaging() {
             {audience === 'STUDENTS' && (
               <div>
                 <label className={lbl}>Qabul qiluvchi tomon</label>
-                <div className="grid grid-cols-4 gap-1 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                <div className="grid grid-cols-5 gap-1 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
                   <button
                     onClick={() => setRecipientTo('STUDENT')}
                     className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
@@ -1365,6 +1399,13 @@ export default function Messaging() {
                     className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     Ota-ona
+                  </button>
+                  <button
+                    onClick={() => setRecipientTo('ALL')}
+                    title="O'quvchining o'zi, otasi va onasi"
+                    className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${recipientTo === 'ALL' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Barchasi
                   </button>
                 </div>
               </div>
@@ -2315,6 +2356,8 @@ export default function Messaging() {
                 <option value="Qarzdorlik">Qarzdorlik</option>
                 <option value="Tug'ilgan kun">Tug'ilgan kun</option>
                 <option value="Eslatma">Eslatma</option>
+                {/* Botda telefon raqamni almashtirish kodi (services/telefonKod.js) — {kod} o'zgaruvchisi shart. */}
+                <option value="Tasdiqlash kodi">Tasdiqlash kodi</option>
               </select>
             </div>
 

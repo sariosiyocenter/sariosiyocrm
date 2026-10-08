@@ -478,6 +478,10 @@ export interface CRMState {
         /** Serverda SETTINGS_KEY bormi — bo'lmasa kalitlar saqlanmaydi. */
         settingsEncryption?: boolean;
         paymeMode?: 'off' | 'test' | 'live';
+        /** Amaldagi rejim: o'ziniki yoki (o'zida yo'q bo'lsa) markaz kassasiniki. Faqat o'qiladi. */
+        paymeAmalda?: 'off' | 'test' | 'live';
+        /** Markaz kassasidan foydalanayotgan bo'lsa — o'sha filial nomi, aks holda null. Faqat o'qiladi. */
+        paymeKassaFilial?: string | null;
         /** Kassa hisob maydonlari: order_id yoki student_id + course_id. */
         paymeScheme?: 'order' | 'student' | 'student_only';
         paymeEndpointToken?: string | null;

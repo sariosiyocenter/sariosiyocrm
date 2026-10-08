@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { paymeYoqilgan } from '../lib/paymeRejimi';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
     Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap, ToggleLeft, ToggleRight, FileText
@@ -783,7 +784,7 @@ export default function StudentDetails() {
                             const cp = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, number>)[g.id] : undefined;
                             return s + (cp !== undefined ? Number(cp) : (g.coursePrice || 0));
                         }, 0);
-                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && tolovQabul;
+                        const paymeOn = paymeYoqilgan(settings) && tolovQabul;
                         return (
                             <div className="pt-4 border-t border-chiziq-mayin space-y-3">
                                 {balansKorinadi && (
@@ -2642,7 +2643,7 @@ export function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: numb
     const [type, setType] = useState('Naqd');
     // Payme orqali: havola/QR — pul Payme'dan webhook bilan o'zi tushadi, qo'lda yozilmaydi.
     const [showPayme, setShowPayme] = useState(false);
-    const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
+    const paymeOn = paymeYoqilgan(settings) && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
     // Klik: chekdagi vaqt va chek rasmi — administrator tasdig'i uchun (KlikChek.tsx).
     const [klikVaqt, setKlikVaqt] = useState('');

@@ -6,6 +6,7 @@ import type { Attendance, Group, Student } from '../types';
 import { lessonDatesBetween, isLessonDay } from '../../lib/lessons.js';
 import { allocate, groupRows, withOpening, shareOpts } from '../../lib/allocation.js';
 import { kursUstozIdlari, kursUstozlari } from '../lib/teacherState';
+import { displayName } from '../lib/displayName';
 
 /**
  * Kunlik ro'yxat — o'qituvchilar har kuni chop etadigan varaq.
@@ -17,6 +18,11 @@ import { kursUstozIdlari, kursUstozlari } from '../lib/teacherState';
  * va tepada "UMUMIY QARZDORLIK". Excel'dagi SINFI ustuni egasining so'zi bilan
  * olib tashlandi; GURUH ustuni o'rniga har kurs alohida varaqda chiqadi.
  *
+ * Varaq har doim A4, tik (vertikal) — egasi, 2026-10-08. Tug'ilgan kuni shu
+ * kunga to'g'ri kelgan va o'tgan darsni qoldirgan o'quvchilar qatori rang bilan
+ * ajratiladi; rangsiz printerda ham bilinsin deb tug'ilgan kunda ism yonida 🎂,
+ * qoldirilgan darsning katagi esa to'qroq.
+ *
  * Chop etish alohida iframe'da: varaq ilova ichida (#root) turadi va
  * `@media print` bilan qolganini yashirish oq varaq chiqarardi (lib/receipt.ts).
  */
@@ -26,7 +32,7 @@ const HAFTA = ['yakshanba', 'dushanba', 'seshanba', 'chorshanba', 'payshanba', '
 
 // Davomat belgisi — Excel'dagidek: + keldi, − kelmadi, x dars bo'lmadi.
 const BELGI: Record<string, string> = {
-    Keldi: '+', Kelmapdi: '−', Sababli: 'S', Kechikdi: 'K', ErtaKetdi: 'E', "Dars bo'lmadi": 'x',
+    Keldi: '+', Kelmapdi: '−', Kelmadi: '−', Sababli: 'S', Kechikdi: 'K', ErtaKetdi: 'E', "Dars bo'lmadi": 'x',
 };
 
 const HOLATLAR = [
@@ -36,6 +42,9 @@ const HOLATLAR = [
     { key: 'Muzlatilgan', label: 'Muzlatilganlar', match: (s: Student) => s.status === 'Muzlatilgan' },
     { key: 'hammasi', label: 'Hammasi', match: (_: Student) => true },
 ] as const;
+
+// O'tgan darsni qoldirgan deb sanaladigan holatlar (sababli bo'lsa ham dars o'tkazib yuborilgan).
+const QOLDIRDI = ['Kelmapdi', 'Kelmadi', 'Sababli'];
 
 const USTUNLAR = [
     { key: 'fan', label: 'Fan' },
@@ -68,43 +77,64 @@ function tel(p?: string | null): string {
     if (!n) return d ? String(p) : '';
     return `${n.slice(0, 2)} ${n.slice(2, 5)} ${n.slice(5, 7)} ${n.slice(7)}`;
 }
+/** Tug'ilgan sana matnidan oy va kun ("2012-10-08", "08.10.2012") → "10-08". */
+function oyKun(v?: string | null): string {
+    const s = String(v || '').trim();
+    let x = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+    if (x) return `${x[2].padStart(2, '0')}-${x[3].padStart(2, '0')}`;
+    x = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/.exec(s);
+    return x ? `${x[2].padStart(2, '0')}-${x[1].padStart(2, '0')}` : '';
+}
 const ball = (n: number | null) => (n === null ? '' : String(Math.round(n * 10) / 10));
 const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // Varaq uslubi ekrandagi ko'rinishda ham, chop etishda ham bir xil — ikkalasi shu CSS'dan.
 const SHEET_CSS = `
-.ks-sheet { background:#fff; color:#111; font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; padding: 8mm 7mm; box-sizing: border-box; width: 297mm; }
+.ks-sheet { background:#fff; color:#111; font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; padding: 8mm 6mm; box-sizing: border-box; width: 210mm; }
+.ks-sheet, .ks-sheet * { font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; }
 .ks-sheet + .ks-sheet { break-before: page; page-break-before: always; }
 .ks-top { display:grid; grid-template-columns: 1fr auto 1fr; align-items:end; border-bottom: 2px solid #111; padding-bottom: 3px; }
-.ks-org { font-size: 13px; font-weight: 700; letter-spacing: .3px; }
+.ks-org { font-size: 12px; font-weight: 700; letter-spacing: .3px; }
 .ks-branch { font-size: 10.5px; color:#444; font-weight: 400; }
-.ks-title { font-size: 19px; font-weight: 800; letter-spacing: 3px; text-align:center; }
-.ks-date { text-align:right; font-size: 12px; }
-.ks-meta { display:flex; justify-content:space-between; align-items:flex-end; gap: 12px; font-size: 11.5px; margin: 5px 0 5px; }
+.ks-title { font-size: 17px; font-weight: 800; letter-spacing: 2px; text-align:center; white-space: nowrap; }
+.ks-date { text-align:right; font-size: 11.5px; }
+.ks-meta { display:flex; justify-content:space-between; align-items:flex-end; gap: 12px; font-size: 11px; margin: 5px 0 5px; }
 .ks-meta b { font-weight: 700; }
 .ks-debt { font-size: 12px; font-weight: 700; white-space: nowrap; }
 .ks-debt span { font-weight: 400; color:#444; }
 table.ks-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size: 11px; }
 .ks-table th, .ks-table td { border: 1px solid #444; padding: 1px 4px; height: 6.3mm; vertical-align: middle; overflow:hidden; }
-.ks-table th { background:#e9eeec; font-size: 9.5px; font-weight: 700; text-align:center; line-height: 1.1; padding: 1px 2px; }
-.ks-table th .ks-d { display:block; font-size: 8px; font-weight: 400; letter-spacing: -0.2px; }
+.ks-table th { background:#e9eeec; font-size: 8.5px; font-weight: 700; text-align:center; line-height: 1.1; padding: 1px 1px; }
+.ks-table th .ks-d { display:block; font-size: 7.5px; font-weight: 400; letter-spacing: -0.3px; }
 .ks-table thead { display: table-header-group; }
 .ks-table tr { break-inside: avoid; page-break-inside: avoid; }
 .ks-c { text-align:center; }
 .ks-r { text-align:right; white-space:nowrap; }
-.ks-name { font-weight: 600; font-size: 10.5px; white-space:nowrap; text-overflow: ellipsis; letter-spacing: -0.1px; }
-.ks-tel { font-size: 9.5px; white-space:nowrap; text-overflow: ellipsis; letter-spacing: -0.2px; }
+.ks-name { font-weight: 600; font-size: 10.5px; letter-spacing: -0.1px; }
+.ks-nm { display:flex; align-items:center; gap: 3px; min-width: 0; }
+.ks-nt { flex: 1 1 auto; min-width: 0; overflow:hidden; white-space:nowrap; text-overflow: ellipsis; }
+.ks-tel { font-size: 9px; white-space:nowrap; text-overflow: ellipsis; letter-spacing: -0.2px; }
 .ks-mark { text-align:center; font-weight: 700; font-size: 12.5px; padding: 0 !important; }
 .ks-today { background:#fffbe6; }
 .ks-nowrap { white-space:nowrap; text-overflow: ellipsis; }
 .ks-small { font-size: 10px; }
+/* Va'da / izoh: tor ustunda bir qatorga sig'maydi — ikki qatorgacha o'raladi. */
+.ks-izoh { padding: 0 3px !important; }
+.ks-izoh > div { font-size: 8.5px; line-height: 1.12; max-height: 2.24em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
 .ks-debtcell { font-weight: 700; }
 .ks-zero { color:#999; font-weight: 400; }
-.ks-tag { font-size: 8.5px; font-weight: 700; color:#a86a00; margin-left: 4px; letter-spacing: .3px; }
-.ks-foot { display:flex; justify-content:space-between; font-size: 9.5px; color:#555; margin-top: 4px; }
+.ks-tag { flex: none; font-size: 8px; font-weight: 700; color:#a86a00; letter-spacing: .2px; white-space:nowrap; }
+.ks-tag-b { font-size: 11px; }
+/* Tug'ilgan kun — sarg'ish, o'tgan darsni qoldirgan — och qizil qator. */
+.ks-table tr.ks-bday td { background:#fff3c4; }
+.ks-table tr.ks-miss td { background:#fde7e4; }
+.ks-table tr.ks-bday td.ks-today, .ks-table tr.ks-miss td.ks-today { background:#fffbe6; }
+.ks-table td.ks-missmark { background:#f6bdb6 !important; }
+.ks-legend { display:inline-block; width: 9px; height: 9px; border: 1px solid #777; vertical-align: -1px; margin: 0 3px 0 8px; }
+.ks-foot { display:flex; justify-content:space-between; gap: 8px; font-size: 8.5px; color:#555; margin-top: 4px; }
 `;
 const PRINT_CSS = `
-@page { size: A4 landscape; margin: 5mm; }
+@page { size: A4 portrait; margin: 5mm; }
 html, body { margin: 0; padding: 0; background: #fff; }
 .ks-sheet { width: auto; padding: 0; }
 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -120,6 +150,8 @@ interface Qator {
     test: string;
     reyting: string;
     qarz: number;
+    tugilganKun: boolean;
+    qoldirdi: boolean;
 }
 
 export default function DailySheet() {
@@ -250,6 +282,12 @@ export default function DailySheet() {
 
     const varaqlar = tanlanganKurslar.map(g => {
         const darslar = oldingiDarslar(g);
+        // O'tgan dars — oldingi dars kunlaridan yo'qlama qilingan eng oxirgisi
+        // (belgilanmagan yoki "dars bo'lmadi" kunlar hisobga kirmaydi).
+        const otganDars = (darslar || []).findIndex(d => (g.studentIds || []).some(id => {
+            const h = davomatMap.get(`${id}|${g.id}|${d}`);
+            return !!h && h !== "Dars bo'lmadi";
+        }));
         const qatorlar: Qator[] = (g.studentIds || [])
             .map(id => studentById.get(id))
             .filter((s): s is Student => !!s && holatMatch(s))
@@ -272,9 +310,11 @@ export default function DailySheet() {
                     test: ball(nat?.test ?? null),
                     reyting: ball(nat?.reyting ?? null),
                     qarz: (q?.get(g.id) || 0) + (q?.get(null) || 0),
+                    tugilganKun: !!oyKun(s.birthDate) && oyKun(s.birthDate) === sana.slice(5),
+                    qoldirdi: otganDars >= 0 && QOLDIRDI.includes(davomatMap.get(`${s.id}|${g.id}|${darslar![otganDars]}`) || ''),
                 };
             });
-        return { g, darslar, qatorlar, jamiQarz: qatorlar.reduce((n, r) => n + r.qarz, 0) };
+        return { g, darslar, otganDars, qatorlar, jamiQarz: qatorlar.reduce((n, r) => n + r.qarz, 0) };
     });
 
     const orgNomi = (() => {
@@ -400,6 +440,7 @@ export default function DailySheet() {
                     <span>
                         Birinchi «Dav» ustuni bo'sh — darsda qo'lda belgilanadi; keyingi to'rttasi kursning oxirgi darslari.
                         Qarz — shu kurs bo'yicha va hech bir kursga bog'lanmagan eski qarz. Sinov — nomida «sinov» so'zi bor imtihon natijasi.
+                        Sarg'ish qator — shu kuni tug'ilgan kuni; och qizil qator — o'tgan darsni qoldirgan. Varaq A4, tik holatda chiqadi.
                     </span>
                 </p>
                 {davomatXato && <p className="text-[12px] text-xato">{davomatXato}</p>}
@@ -411,7 +452,7 @@ export default function DailySheet() {
                     <p className="py-12 text-center text-[13px] text-matn-sokin">Chop etish uchun kurs tanlang.</p>
                 ) : (
                     <div ref={previewRef} className="space-y-3 w-max mx-auto">
-                        {varaqlar.map(({ g, darslar, qatorlar, jamiQarz }) => (
+                        {varaqlar.map(({ g, darslar, otganDars, qatorlar, jamiQarz }) => (
                             <div key={g.id} className="ks-sheet shadow-sm">
                                 <div className="ks-top">
                                     <div className="ks-org">
@@ -435,16 +476,16 @@ export default function DailySheet() {
                                 <table className="ks-table">
                                     <colgroup>
                                         <col style={{ width: '3%' }} />
-                                        <col style={{ width: '25.5%' }} />
+                                        <col style={{ width: '21%' }} />
                                         <col style={{ width: '3.4%' }} />
-                                        {[0, 1, 2, 3].map(i => <col key={i} style={{ width: '3.3%' }} />)}
-                                        {ustunlar.fan && <col style={{ width: '4.2%' }} />}
-                                        {ustunlar.tel && <col style={{ width: '20%' }} />}
+                                        {[0, 1, 2, 3].map(i => <col key={i} style={{ width: '3.2%' }} />)}
+                                        {ustunlar.fan && <col style={{ width: '3.8%' }} />}
+                                        {ustunlar.tel && <col style={{ width: '23.5%' }} />}
                                         {ustunlar.izoh && <col style={{ width: '11%' }} />}
                                         {ustunlar.sinov && <col style={{ width: '4.2%' }} />}
-                                        {ustunlar.test && <col style={{ width: '4.2%' }} />}
-                                        {ustunlar.reyting && <col style={{ width: '4.4%' }} />}
-                                        {(balansKorinadi && ustunlar.qarz) && <col style={{ width: '7.8%' }} />}
+                                        {ustunlar.test && <col style={{ width: '4.5%' }} />}
+                                        {ustunlar.reyting && <col style={{ width: '4.8%' }} />}
+                                        {(balansKorinadi && ustunlar.qarz) && <col style={{ width: '8%' }} />}
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -456,7 +497,7 @@ export default function DailySheet() {
                                             {ustunlar.tel && <th>TEL NOMERLARI<br /><span className="ks-small">o'zi / otasi / onasi</span></th>}
                                             {ustunlar.izoh && <th>Vada / Kommentariya</th>}
                                             {ustunlar.sinov && <th>SINOV</th>}
-                                            {ustunlar.test && <th>OXIRGI TEST</th>}
+                                            {ustunlar.test && <th>OXIRGI<br />TEST</th>}
                                             {ustunlar.reyting && <th>Reyting</th>}
                                             {(balansKorinadi && ustunlar.qarz) && <th>QARZ</th>}
                                         </tr>
@@ -465,17 +506,20 @@ export default function DailySheet() {
                                         {qatorlar.length === 0 ? (
                                             <tr><td colSpan={20} className="ks-c">Bu kursda tanlangan holatdagi o'quvchi yo'q</td></tr>
                                         ) : qatorlar.map((r, i) => (
-                                            <tr key={r.student.id}>
+                                            <tr key={r.student.id} className={r.tugilganKun ? 'ks-bday' : r.qoldirdi ? 'ks-miss' : undefined}>
                                                 <td className="ks-c">{i + 1}</td>
                                                 <td className="ks-name">
-                                                    {r.student.name}
-                                                    {r.student.status === 'Sinov' && <span className="ks-tag">SINOV</span>}
+                                                    <div className="ks-nm">
+                                                        <span className="ks-nt">{displayName(r.student.name)}</span>
+                                                        {r.tugilganKun && <span className="ks-tag ks-tag-b" title="Tug'ilgan kuni">🎂</span>}
+                                                        {r.student.status === 'Sinov' && <span className="ks-tag">SINOV</span>}
+                                                    </div>
                                                 </td>
                                                 <td className="ks-today" />
-                                                {[0, 1, 2, 3].map(k => <td key={k} className="ks-mark">{r.marks[k] || ''}</td>)}
+                                                {[0, 1, 2, 3].map(k => <td key={k} className={`ks-mark${r.qoldirdi && k === otganDars ? ' ks-missmark' : ''}`}>{r.marks[k] || ''}</td>)}
                                                 {ustunlar.fan && <td className="ks-c">{r.fan}</td>}
                                                 {ustunlar.tel && <td className="ks-tel">{r.tel}</td>}
-                                                {ustunlar.izoh && <td className="ks-nowrap ks-small">{r.izoh}</td>}
+                                                {ustunlar.izoh && <td className="ks-izoh"><div>{r.izoh}</div></td>}
                                                 {ustunlar.sinov && <td className="ks-c">{r.sinov}</td>}
                                                 {ustunlar.test && <td className="ks-c">{r.test}</td>}
                                                 {ustunlar.reyting && <td className="ks-c">{r.reyting}</td>}
@@ -488,6 +532,8 @@ export default function DailySheet() {
                                 </table>
                                 <div className="ks-foot">
                                     <span>+ keldi &nbsp; − kelmadi &nbsp; S sababli &nbsp; K kechikdi &nbsp; E erta ketdi &nbsp; x dars bo'lmadi
+                                        <span className="ks-legend" style={{ background: '#fff3c4' }} />🎂 tug'ilgan kuni
+                                        <span className="ks-legend" style={{ background: '#fde7e4' }} />o'tgan darsni qoldirgan
                                         {darslar === null ? " · kurs kunlari belgilanmagan, oldingi darslar ko'rsatilmadi" : ''}</span>
                                     <span>{orgNomi} · {ddmmyyyy(sana)}</span>
                                 </div>

@@ -186,7 +186,8 @@ export function registerPaymeRoutes(app) {
         : { result: response.result },
       durationMs: Date.now() - started,
     });
-    if (meta.fresh && settings) await notify(meta.fresh, settings.schoolId);
+    // Xabar o'quvchining filiali nomidan: kassa markazniki bo'lsa ham to'lov shu filialga yozilgan.
+    if (meta.fresh && settings) await notify(meta.fresh, meta.fresh.tx?.schoolId || settings.schoolId);
 
     res.status(200).json(response);
   };

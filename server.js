@@ -10,9 +10,10 @@ import { registerZukkoRoutes } from './routes/zukko.js';
 import { registerHisobotRoutes } from './routes/hisobot.js';
 import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHisoboti } from './routes/imtihon.js';
 import { auditMiddleware } from './lib/audit.js';
+import { fonTozalash } from './lib/fonTozalash.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
-import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
+import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken, kassaHolati as paymeKassaHolati } from './services/payme.js';
 import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi, kirishTokeni } from './middleware/auth.js';
 import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI, toliqRuxsatli } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
@@ -50,6 +51,8 @@ import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon
 import { tolqinlarHolati, tolqinniSorash, javobniBelgilash, avtoniSaqlash, kerakEmaslargaAyt, logistikaAvtoJarayon } from './services/logistikaAvto.js';
 import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash, rejaNarxXabari } from './services/transportNotify.js';
+import { telefonSmsUlash, KOD_SHABLONI } from './services/telefonKod.js';
+import { kunlikJoylarniQolla } from './services/oquvchiJoyi.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -4529,7 +4532,11 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       leads, payments, courses, rooms,
       // Admins configure SMS/Telegram from the settings screen and need the real values;
       // every other role gets the masked copy.
-      settings: isAdmin(req.user) ? hidePaymeSecrets(sozlama) : stripSettingSecrets(sozlama),
+      // paymeAmalda / paymeKassaFilial: o'z Payme sozlamasi yo'q filial markaz kassasidan
+      // foydalanadi (services/payme.js) — tugmalar shu amaldagi rejimga qarab ko'rinadi.
+      settings: sozlama
+        ? { ...(isAdmin(req.user) ? hidePaymeSecrets(sozlama) : stripSettingSecrets(sozlama)), ...(targetSchoolIds.length ? await paymeKassaHolati(targetSchoolIds[0]) : {}) }
+        : sozlama,
       attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes: mappedRoutes, questions, exams: exams.map(e => imtihonJavobi(e, req)), examResults, schools,
       topics, syllabuses, directions,
@@ -4752,7 +4759,7 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
         data: { schoolId: parseInt(schoolId), ...(await markazBrendi(parseInt(schoolId))) }
       });
     }
-    res.json(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings));
+    res.json({ ...(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings)), ...(await paymeKassaHolati(parseInt(schoolId))) });
   } catch (error) { next(error); }
 });
 
@@ -4762,7 +4769,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     // sozlamaTahriri): profil, integratsiyalar, avtomatlashtirish alohida;
     // Payme va qolgan hamma narsa faqat administratorda.
     // Server boshqaradigan maydonlar mijozdan qabul qilinmaydi.
-    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, ...data } = req.body;
+    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, paymeAmalda, paymeKassaFilial, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     await rasmMaydoniniTozala(data, 'logo', 'logo');
 
@@ -4844,7 +4851,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
       else console.error(`Telegram webhook ro'yxatdan o'tmadi, filial ${schoolId}:`, r.reason);
     }
 
-    res.json(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings));
+    res.json({ ...(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings)), ...(await paymeKassaHolati(parseInt(schoolId))) });
   } catch (error) { next(error); }
 });
 
@@ -6671,14 +6678,10 @@ async function removeBackground(req, res) {
 
     console.log(`[Remove BG] Processing image of size ${image.length} chars...`);
 
-    // --- METHOD 1: Free Keyless Hugging Face BRIA RMBG-1.4 Gradio Queue API ---
+    // --- 1-usul: bepul Hugging Face Space'lari (lib/fonTozalash.js) ---
     try {
-      console.log('[Remove BG] Attempting free keyless HuggingFace BRIA RMBG-1.4 Space...');
-      
-      // Rasm baytlari. Profil sahifasi ilgari Storage havolasini yuborardi va u
-      // base64 deb o'qilib, xizmatga buzuq fayl ketardi — bepul yo'l ishlamay,
-      // har safar pullik fal.ai ga tushardi. Havola faqat o'zimizning
-      // Storage'dan qabul qilinadi (begona manzilni server ochmasin).
+      // Rasm baytlari. Havola faqat o'zimizning Storage'dan qabul qilinadi
+      // (begona manzilni server ochmasin).
       let buffer;
       let mime = 'image/jpeg';
       const dataMatch = /^data:(image\/[\w+.-]+);base64,(.*)$/s.exec(image);
@@ -6693,135 +6696,12 @@ async function removeBackground(req, res) {
       } else {
         throw new Error("Rasm formati noto'g'ri");
       }
-      const kengaytma = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
 
-      // 1. Upload to HuggingFace Space /upload
-      const blob = new Blob([buffer], { type: mime });
-      const form = new FormData();
-      form.append('files', blob, `input.${kengaytma}`);
-
-      const uploadResponse = await fetch('https://briaai-bria-rmbg-1-4.hf.space/upload', {
-        method: 'POST',
-        body: form
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`HF Space upload returned status ${uploadResponse.status}`);
+      const natija = await fonTozalash(buffer, mime);
+      if (natija) {
+        return res.json({ success: true, image: natija.image, message: `Background removed successfully (${natija.manba})` });
       }
-
-      const uploadJson = await uploadResponse.json();
-      const tempFilePath = uploadJson[0];
-      if (!tempFilePath) {
-        throw new Error('HF Space upload returned empty path');
-      }
-
-      console.log(`[Remove BG] Uploaded to HF successfully. Temp path: ${tempFilePath}`);
-
-      // 2. Join queue
-      const sessionHash = Math.random().toString(36).substring(2);
-      const joinResponse = await fetch('https://briaai-bria-rmbg-1-4.hf.space/queue/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: [
-            {
-              path: tempFilePath,
-              orig_name: `input.${kengaytma}`
-            }
-          ],
-          fn_index: 0,
-          session_hash: sessionHash
-        })
-      });
-
-      if (joinResponse.ok) {
-        const joinJson = await joinResponse.json();
-        const eventId = joinJson.event_id;
-
-        if (eventId) {
-          console.log(`[Remove BG] Joined queue, event: ${eventId}. Waiting for results via SSE...`);
-          
-          // Fetch the stream
-          const streamResponse = await fetch(`https://briaai-bria-rmbg-1-4.hf.space/queue/data?session_hash=${sessionHash}`);
-          if (streamResponse.ok) {
-            const reader = streamResponse.body.getReader();
-            const decoder = new TextDecoder();
-            let done = false;
-            let textBuffer = '';
-            
-            // Timeout after 15 seconds to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('HuggingFace queue timeout')), 15000)
-            );
-
-            const streamPromise = (async () => {
-              while (!done) {
-                const { value, done: readerDone } = await reader.read();
-                done = readerDone;
-                if (value) {
-                  const chunk = decoder.decode(value, { stream: !done });
-                  textBuffer += chunk;
-                  if (chunk.includes('process_completed')) {
-                    break;
-                  }
-                }
-              }
-            })();
-
-            await Promise.race([streamPromise, timeoutPromise]);
-
-            // Parse response buffer
-            const lines = textBuffer.split('\n');
-            let successResult = null;
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const parsed = JSON.parse(line.substring(6));
-                  if (parsed.msg === 'process_completed' && parsed.success && parsed.output) {
-                    successResult = parsed.output;
-                    break;
-                  }
-                } catch (e) {}
-              }
-            }
-
-            if (successResult && successResult.data && successResult.data[0]) {
-              const outputItem = successResult.data[0];
-              let resultBase64 = null;
-
-              if (typeof outputItem === 'string' && outputItem.startsWith('data:')) {
-                resultBase64 = outputItem;
-              } else if (outputItem.data && typeof outputItem.data === 'string' && outputItem.data.startsWith('data:')) {
-                resultBase64 = outputItem.data;
-              } else {
-                const filePath = outputItem.path || outputItem.name;
-                if (filePath) {
-                  const fileUrl = `https://briaai-bria-rmbg-1-4.hf.space/file=${filePath}`;
-                  console.log(`[Remove BG] Downloading processed image from ${fileUrl}...`);
-                  const fileRes = await fetch(fileUrl);
-                  if (fileRes.ok) {
-                    const arrayBuffer = await fileRes.arrayBuffer();
-                    const contentType = fileRes.headers.get('content-type') || 'image/png';
-                    const base64Str = Buffer.from(arrayBuffer).toString('base64');
-                    resultBase64 = `data:${contentType};base64,${base64Str}`;
-                  }
-                }
-              }
-
-              if (resultBase64) {
-                console.log('[Remove BG] Successfully processed background removal via free HuggingFace Space!');
-                return res.json({
-                  success: true,
-                  image: resultBase64,
-                  message: 'Background removed successfully (HuggingFace free)'
-                });
-              }
-            }
-          }
-        }
-      }
-      console.warn('[Remove BG] Free HuggingFace Space failed or returned unsuccessful status. Falling back to fal.ai...');
+      console.warn('[Remove BG] Bepul xizmatlarning birortasi javob bermadi. fal.ai ga o\'tilmoqda...');
     } catch (hfError) {
       console.error('[Remove BG] HuggingFace processing error:', hfError);
     }
@@ -7003,6 +6883,34 @@ function resolveRecipientPhone(student) {
 smsYuboruvchiniUlash((phone, message, type, studentId, schoolId) =>
   sendSms(phone, message, type, studentId, schoolId));
 
+// Botda telefon raqamni almashtirish kodi (services/telefonKod.js). Matn Shablonlar
+// ro'yxatida turadi: Eskiz tasdiqlanmagan matnni yubormaydi, shuning uchun birinchi
+// so'rovda shablon o'zi yaratiladi va moderatsiyaga ketadi — holati o'sha yerda ko'rinadi.
+telefonSmsUlash(async ({ telefon, kod, schoolId }) => {
+  const ids = await organizationSchoolIds({ schoolId });
+  let shablon = await prisma.messageTemplate.findFirst({
+    // Turi yoki nomi bo'yicha: shablon tahrirlanganda turi o'zgarib qolsa ham ikkinchisi ochilmasin.
+    where: { schoolId: { in: ids.length ? ids : [schoolId] }, OR: [{ category: KOD_SHABLONI.category }, { name: KOD_SHABLONI.name }] }, orderBy: { id: 'asc' },
+  });
+  if (!shablon) {
+    const eskiz = await eskizShablonYubor(KOD_SHABLONI.body, schoolId);
+    shablon = await prisma.messageTemplate.create({
+      data: { name: KOD_SHABLONI.name, body: KOD_SHABLONI.body, category: KOD_SHABLONI.category, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id, schoolId },
+    });
+  }
+  // Shablon tahrirlanib {kod} tushib qolgan bo'lsa — standart matn.
+  const andoza = /\{kod\}/i.test(shablon.body) ? shablon.body : KOD_SHABLONI.body;
+  const markaz = await markazNomi(schoolId);
+  const matn = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, kod);
+  // Kod SMS jurnalida ko'rinmaydi: tarixni ko'ra oladigan xodim uni o'qib, birovning raqamini tasdiqlab yubormasin.
+  const jurnalMatni = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, '*****');
+  if (!process.env.VERCEL && process.env.SMS_FAKE === '1') console.log(`[Telefon kodi] SMS_FAKE ${telefon}: ${kod}`);
+  const r = await sendSms('+' + telefon, matn, 'VERIFY', null, schoolId, null, { jurnalMatni });
+  if (r.success) return { success: true };
+  const sabab = String(r.data?.message || r.error || '');
+  return { success: false, moderatsiya: /модерац/i.test(sabab), xato: sabab.slice(0, 200) };
+});
+
 // Eskiz har bir SMS ning yetib borgan-bormaganini shu manzilga yuboradi
 // (callback_url). Manzildagi kalit — JWT_SECRET dan olingan, tashqaridan
 // soxta "yetkazildi" yozib bo'lmasin.
@@ -7017,6 +6925,8 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
   // Tutuq belgilari va bo'shliqlar Eskizdagi shablon bilan bir xil ko'rinishda
   // (lib/tolovXabari.js smsMatni) — shablon ham shu ko'rinishda yuboriladi.
   message = smsMatni(message);
+  // opts.jurnalMatni — SmsLog ga yoziladigan matn (tasdiqlash kodi jurnalda ochiq turmasin).
+  const jurnalMatni = opts.jurnalMatni ? smsMatni(opts.jurnalMatni) : message;
 
   // Lokal server production bazasi bilan ishlaydi: sinovlar haqiqiy ota-onaga
   // SMS yubormasin va Eskiz balansini yemasin. SMS_REAL=1 — haqiqatan yuborish,
@@ -7030,7 +6940,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
       }
       const id = 'fake-' + crypto.randomUUID();
       await prisma.smsLog.create({
-        data: { toPhone: phone, message, status: 'SENT', type, studentId: studentId || null, eskizId: id, errorMsg: 'SMS_FAKE: haqiqatda yuborilmadi', channel: 'SMS', campaignId: campaignId || null, schoolId },
+        data: { toPhone: phone, message: jurnalMatni, status: 'SENT', type, studentId: studentId || null, eskizId: id, errorMsg: 'SMS_FAKE: haqiqatda yuborilmadi', channel: 'SMS', campaignId: campaignId || null, schoolId },
       });
       return { success: true, data: { id, status: 'waiting' }, fake: true };
     }
@@ -7072,7 +6982,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
     await prisma.smsLog.create({
       data: {
         toPhone: phone,
-        message,
+        message: jurnalMatni,
         status: success ? 'SENT' : 'FAILED',
         type,
         studentId: studentId || null,
@@ -7090,7 +7000,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
     try {
       await prisma.smsLog.create({
         data: {
-          toPhone: phone, message, status: 'FAILED', type,
+          toPhone: phone, message: jurnalMatni, status: 'FAILED', type,
           studentId: studentId || null, errorMsg: err.message,
           channel: 'SMS', campaignId: campaignId || null, schoolId
         }
@@ -7304,7 +7214,7 @@ function parseRecipients(value) {
   const list = String(value || '')
     .split(',')
     .map(v => v.trim().toUpperCase())
-    .flatMap(v => (v === 'PARENT' ? ['FATHER', 'MOTHER'] : [v]))
+    .flatMap(v => (v === 'PARENT' ? ['FATHER', 'MOTHER'] : v === 'ALL' ? RECIPIENT_KINDS : [v]))
     .filter(v => RECIPIENT_KINDS.includes(v));
   return list.length ? [...new Set(list)] : ['FATHER', 'MOTHER'];
 }
@@ -7314,9 +7224,20 @@ const normalizeRecipients = (value) => parseRecipients(value).join(',');
 
 // telegramExtra — Telegram xabariga qo'shimcha (masalan, inline yoki Mini App
 // tugmasi); SMS ga ta'sir qilmaydi.
-async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId, telegramExtra }) {
+// korilgan — ixtiyoriy Set: «Barchasi» kampaniyasida bitta o'quvchining o'zi, otasi
+// va onasi alohida vazifa bo'lib keladi; bitta raqam (yoki Telegram) ikki kishiga
+// yozilgan bo'lsa xabar unga bir marta ketadi.
+async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId, telegramExtra, korilgan = null }) {
   let anySuccess = false;
   let attempted = false;
+  let takror = false;
+  let tgTakror = false;
+  const yangiManzil = (kalit) => {
+    if (!korilgan) return true;
+    if (korilgan.has(kalit)) { takror = true; return false; }
+    korilgan.add(kalit);
+    return true;
+  };
   // Oxirgi xato sababi — chaqiruvchi xodimga "nega yetib bormadi"ni aytishi uchun.
   let xato = null;
   const kinds = parseRecipients(recipientTo);
@@ -7325,7 +7246,9 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
   if (channel === 'TELEGRAM' || channel === 'BOTH') {
     const tids = [];
     const qoshTid = (id, name) => {
-      if (id && !tids.some(t => String(t.id) === String(id))) tids.push({ id, name });
+      if (!id || tids.some(t => String(t.id) === String(id))) return;
+      if (yangiManzil('tg:' + id)) tids.push({ id, name });
+      else tgTakror = true;   // shu Telegram oilaning boshqa qatorida xabar olgan
     };
     if (kinds.includes('STUDENT')) qoshTid(student.telegramId, student.name);
     if (kinds.includes('FATHER')) qoshTid(student.fatherTelegramId, `${student.name} (Otasi)`);
@@ -7360,9 +7283,11 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
   }
 
   // SMS
-  if (channel === 'SMS' || (channel === 'BOTH' && !anySuccess)) {
+  if (channel === 'SMS' || (channel === 'BOTH' && !anySuccess && !(tgTakror && !attempted))) {
     const phones = [];
-    const qoshRaqam = (raqam) => { if (raqam && !phones.includes(raqam)) phones.push(raqam); };
+    const qoshRaqam = (raqam) => {
+      if (raqam && !phones.includes(raqam) && yangiManzil('sms:' + String(raqam).replace(/\D/g, '').slice(-9))) phones.push(raqam);
+    };
     if (kinds.includes('STUDENT')) qoshRaqam(student.phone);
     if (kinds.includes('FATHER')) qoshRaqam(student.fatherPhone);
     if (kinds.includes('MOTHER')) qoshRaqam(student.motherPhone);
@@ -7381,7 +7306,7 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
     }
   }
 
-  return { attempted, success: anySuccess, xato: anySuccess ? null : xato };
+  return { attempted, success: anySuccess, xato: anySuccess ? null : xato, takror: takror && !attempted };
 }
 // Davomat xabari (services/davomatXabari.js) shu funksiya orqali yuboradi.
 davomatYuboruvchiniUlash(sendToOne);
@@ -7533,7 +7458,8 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
     if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: 'studentIds kerak' });
     if (!message || !message.trim()) return res.status(400).json({ error: 'Xabar matni kerak' });
     const ch = ['SMS', 'TELEGRAM', 'BOTH'].includes(channel) ? channel : 'SMS';
-    const to = ['STUDENT', 'FATHER', 'MOTHER', 'PARENT'].includes(recipientTo) ? recipientTo : 'PARENT';
+    // ALL — «Barchasi»: o'quvchining o'zi, otasi va onasi.
+    const to = ['STUDENT', 'FATHER', 'MOTHER', 'PARENT', 'ALL'].includes(recipientTo) ? recipientTo : 'PARENT';
 
     const totalCount = (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0)
       ? sendList.length
@@ -7597,6 +7523,13 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
     // anything after res.json() is frozen, so we must finish sending first.
     // 25-wide concurrency keeps even ~100 recipients well under 5s.
     let sentCount = 0, failedCount = 0;
+    // «Barchasi»: bir o'quvchining oilasidagi takror raqamga ikkinchi marta yozilmaydi.
+    const oilaManzillari = new Map();
+    const korilganSet = (id) => {
+      if (to !== 'ALL' || audience !== 'STUDENTS') return null;
+      if (!oilaManzillari.has(id)) oilaManzillari.set(id, new Set());
+      return oilaManzillari.get(id);
+    };
     const concurrencyLimit = 25;
     for (let i = 0; i < tasks.length; i += concurrencyLimit) {
       const chunk = tasks.slice(i, i + concurrencyLimit);
@@ -7609,9 +7542,10 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
           recipientTo: task.recipientTo,
           type: 'MANUAL',
           schoolId,
-          campaignId: campaign.id
+          campaignId: campaign.id,
+          korilgan: korilganSet(task.student.id)
         });
-        if (r.success) sentCount++; else failedCount++;
+        if (r.success) sentCount++; else if (!r.takror) failedCount++;
       }));
     }
 
@@ -7631,7 +7565,7 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
 // kerak edi — buni unutish oson va SMS "sababsiz" yetib bormasdi.
 
 // Raqamga aylanadigan o'zgaruvchilar: Eskizda ular %d bilan belgilanadi.
-const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'oxirgi_tolov', 'imtihon_ball', 'imtihon_foiz', 'bahosi'];
+const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'oxirgi_tolov', 'imtihon_ball', 'imtihon_foiz', 'bahosi', 'kod'];
 
 /**
  * CRM shablonini Eskiz andozasiga aylantiradi.
@@ -7945,6 +7879,8 @@ async function runAutoProcessJobs() {
   // Qarz eslatmasi: jadval (markazga kuniga bir marta) va navbat (services/qarzXabari.js).
   await avtoQarzEslatma().catch(e => console.error('[Qarz eslatmasi jadvali]', e.message));
   await qarzNavbati({ cheklov: 40, byudjetMs: 8000 }).catch(e => console.error('[Qarz eslatmasi navbati]', e.message));
+  // Botdan kiritilgan bir kunlik manzillar: bugungisi amalga kiradi, kechagisi doimiysiga qaytadi.
+  await kunlikJoylarniQolla().catch(e => console.error('[Kunlik manzil]', e.message));
   const nowUtc = new Date();
   // Uzbekistan offset is UTC+5
   const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
@@ -8216,7 +8152,9 @@ app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
         where: {
           id: { in: logIds.map(Number) },
           schoolId,
-          status: 'FAILED'
+          status: 'FAILED',
+          // Tasdiqlash kodi SMS i qayta yuborilmaydi (kod eskirgan, jurnaldagi matnda u yo'q).
+          type: { not: 'VERIFY' }
         }
       });
     } else if (startDate && endDate) {
@@ -8229,6 +8167,7 @@ app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
         where: {
           schoolId,
           status: 'FAILED',
+          type: { not: 'VERIFY' },
           sentAt: { gte: start, lte: end }
         }
       });

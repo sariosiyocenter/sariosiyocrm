@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { paymeYoqilgan } from '../lib/paymeRejimi';
 import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace, ArrowUpDown, Bus
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -33,7 +34,7 @@ export default function Students() {
     const { students, groups, teachers, transports, routes, attendances, directions, payments, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira, addPayment, settings } = useCRM();
     // Qatordan to'lov qabul qilish va Payme havolasi (egasi, 2026-09-30).
     const tolovQabul = ozgartira('oquvchilar.tolov');
-    const paymeOn = tolovQabul && (settings.paymeMode === 'live' || settings.paymeMode === 'test');
+    const paymeOn = tolovQabul && paymeYoqilgan(settings);
     const [tolovOquvchi, setTolovOquvchi] = useState<number | null>(null);
     const [paymeOquvchi, setPaymeOquvchi] = useState<number | null>(null);
     // Lavozim ruxsati (Sozlamalar → Ruxsatlar): qo'shish/import/havola, o'chirish, balans.

@@ -1,3 +1,5 @@
+import { niqobniQoy } from './niqob';
+
 /**
  * Client-side image compression utility.
  * Resizes and compresses any image base64 data URL to an optimized maximum width and height
@@ -142,6 +144,9 @@ const BG_RESULT_SIZE = 1200;
  * qaysisi fon) olinadi va u ASL rasmning o'z piksellariga qo'yiladi: rang va
  * aniqlik aslidagidek qoladi, faqat fon shaffof bo'ladi.
  *
+ * 2026-10-08: server endi yangi modellarni ham so'raydi (lib/fonTozalash.js) va
+ * niqobni kichik WebP qilib qaytaradi; niqob qo'yilishidan oldin tozalanadi.
+ *
  * `src` — data URL yoki Storage havolasi. Qaytaradi: shaffof WebP/PNG data URL.
  */
 export async function removeBackgroundHQ(src: string, endpoint = '/api/utils/remove-bg'): Promise<string> {
@@ -186,7 +191,9 @@ export async function removeBackgroundHQ(src: string, endpoint = '/api/utils/rem
         qx.drawImage(kesilgan, 0, 0, ow, oh);
         const alfa = qx.getImageData(0, 0, ow, oh).data;
 
-        for (let i = 3; i < piksel.data.length; i += 4) piksel.data[i] = alfa[i];
+        // Niqob shunchaki ko'chirilmaydi: tuman, uchib yurgan dog'lar va chetdagi
+        // eski fon rangi tozalanadi (lib/niqob.ts).
+        niqobniQoy(piksel.data, alfa, ow, oh);
         nx.putImageData(piksel, 0, 0);
         return exportWithAlpha(natija, 0.95);
     } catch {
