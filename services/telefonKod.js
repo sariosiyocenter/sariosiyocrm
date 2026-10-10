@@ -29,6 +29,16 @@ export const KOD_SHABLONI = {
   body: '{markaz}: telefon raqamni almashtirish kodi: {kod}. Kodni hech kimga aytmang.',
 };
 
+/**
+ * Eskizga ketadigan matn: markaz nomi ANIQ yoziladi. "{markaz}" Eskiz andozasida "%w{1,5}" (istalgan
+ * so'zlar) bo'lib qolardi — moderatsiya esa matnda tashkilot nomini ko'rishni xohlaydi (shu hisobdagi
+ * hamma tasdiqlangan shablonda nom yozilgan). Nom noma'lum bo'lsa matn o'zgarmaydi.
+ */
+export function kodShabloniMatni(body, markaz) {
+  const nom = String(markaz || '').replace(/\s+/g, ' ').trim();
+  return nom ? String(body || '').replace(/\{markaz\}/gi, nom) : String(body || '');
+}
+
 let kodYuboruvchi = null;
 /** server.js: ({ telefon, kod, schoolId }) => Promise<{ success, moderatsiya?, xato? }> */
 export function telefonSmsUlash(fn) { kodYuboruvchi = fn; }

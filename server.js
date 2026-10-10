@@ -24,7 +24,7 @@ import {
   tolovXabarlariRoyxati, qaytaYubor as tolovXabariniQaytaYubor, sinovXabari, eskizBalansi, eskizHolatlariniYangila,
   yetkazishHolati,
 } from './services/tolovXabari.js';
-import { smsMatni, turkchaHarflar } from './lib/tolovXabari.js';
+import { smsMatni, turkchaHarflar, eskizYuboradi } from './lib/tolovXabari.js';
 import {
   qarzXabariniUlash, qarzSozlamasi, qarzSozlamasiniSaqla, qarzdorlarRoyxati, qoldaYubor as qarzQoldaYubor,
   qarzNavbati, qarzXabariniQaytaYubor, qarzXabarlariRoyxati, avtoQarzEslatma, javoblarRoyxati as qarzJavoblari,
@@ -51,7 +51,7 @@ import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon
 import { tolqinlarHolati, tolqinniSorash, javobniBelgilash, avtoniSaqlash, kerakEmaslargaAyt, logistikaAvtoJarayon } from './services/logistikaAvto.js';
 import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash, rejaNarxXabari } from './services/transportNotify.js';
-import { telefonSmsUlash, KOD_SHABLONI } from './services/telefonKod.js';
+import { telefonSmsUlash, KOD_SHABLONI, kodShabloniMatni } from './services/telefonKod.js';
 import { kunlikJoylarniQolla } from './services/oquvchiJoyi.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
@@ -6892,15 +6892,24 @@ telefonSmsUlash(async ({ telefon, kod, schoolId }) => {
     // Turi yoki nomi bo'yicha: shablon tahrirlanganda turi o'zgarib qolsa ham ikkinchisi ochilmasin.
     where: { schoolId: { in: ids.length ? ids : [schoolId] }, OR: [{ category: KOD_SHABLONI.category }, { name: KOD_SHABLONI.name }] }, orderBy: { id: 'asc' },
   });
+  const markaz = await markazNomi(schoolId);
   if (!shablon) {
-    const eskiz = await eskizShablonYubor(KOD_SHABLONI.body, schoolId);
+    // Markaz nomi matnning o'ziga yoziladi (kodShabloniMatni) — Eskiz shunday matnni tasdiqlaydi.
+    const body = kodShabloniMatni(KOD_SHABLONI.body, markaz);
+    const eskiz = await eskizShablonYubor(body, schoolId);
     shablon = await prisma.messageTemplate.create({
-      data: { name: KOD_SHABLONI.name, body: KOD_SHABLONI.body, category: KOD_SHABLONI.category, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id, schoolId },
+      data: { name: KOD_SHABLONI.name, body, category: KOD_SHABLONI.category, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id, schoolId },
+    });
+  } else if (/\{markaz\}/i.test(shablon.body) && !eskizYuboradi(shablon.eskizStatus) && kodShabloniMatni(shablon.body, markaz) !== shablon.body) {
+    // Oldin "{markaz}" bilan yuborilgan va hali tasdiqlanmagan shablon: nom aniq yozilib, qayta yuboriladi.
+    const body = kodShabloniMatni(shablon.body, markaz);
+    const eskiz = await eskizShablonYubor(body, schoolId);
+    shablon = await prisma.messageTemplate.update({
+      where: { id: shablon.id }, data: { body, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id ?? shablon.eskizTemplateId },
     });
   }
   // Shablon tahrirlanib {kod} tushib qolgan bo'lsa — standart matn.
   const andoza = /\{kod\}/i.test(shablon.body) ? shablon.body : KOD_SHABLONI.body;
-  const markaz = await markazNomi(schoolId);
   const matn = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, kod);
   // Kod SMS jurnalida ko'rinmaydi: tarixni ko'ra oladigan xodim uni o'qib, birovning raqamini tasdiqlab yubormasin.
   const jurnalMatni = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, '*****');
