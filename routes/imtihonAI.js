@@ -15,6 +15,7 @@ import { savolVariantlari, varaqTuzilmasi, turi, qiyinlikDarajasi, HARFLAR } fro
 import {
   aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn, matnIzi,
   savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, savollarniMavzula, savollarniTuz, guruhlarniTuz, tarjimaQil, yozmaBaho,
+  yozmalarniYech, FAYL_TURLARI, mavzuRasmlimi,
 } from '../lib/imtihonAI.js';
 
 // AI so'rovi pullik va sekin: xodim boshiga soatiga 120 ta.
@@ -33,7 +34,7 @@ function aiXatosi(err, res, next) {
   return next(err);
 }
 
-const AI_YOQILMAGAN = "AI yoqilmagan: administrator Sozlamalar → Integratsiyalar bo'limida AI kalitini kiritishi kerak";
+const AI_YOQILMAGAN = "AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo'limida AI kalitini kiritishi kerak";
 
 const tayyormi = (res) => {
   if (aiSozlanganmi()) return true;
@@ -126,19 +127,21 @@ export function registerImtihonAIRoutes(app) {
     } catch (err) { next(err); }
   });
 
-  // Fayl sahifalari (rasm) yoki matndan savollar — bankka hali yozilmaydi.
   // Fayl sahifalari (rasm) yoki matndan savollar — bankka hali yozilmaydi. `mavzular` —
   // fanning mavzulari (AI savolni shularga ajratadi); bankda allaqachon bor savol
-  // (matni aynan bir xil, shu fanda) `takrorId` bilan qaytadi.
+  // (matni aynan bir xil, shu fanda) `takrorId` bilan qaytadi. `tur` — fayl turi (4 variantli,
+  // MS-33-35, MS-36-45, yozma): faqat shu tuzilmadagi savollar olinadi; `mavzula: false` —
+  // mavzuga ajratilmaydi (xodim bankda o'zi taqsimlaydi).
   app.post('/api/questions/ai/import', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
       if (!tayyormi(res)) return;
-      const { matn = '', rasmlar = [], fan = '', mavzu = '', mavzular = [], til = 'uz' } = req.body || {};
+      const { matn = '', rasmlar = [], fan = '', mavzu = '', mavzular = [], til = 'uz', tur = '' } = req.body || {};
       if (!String(fan).trim()) return res.status(400).json({ error: 'Fanni kiriting' });
       if (!String(matn).trim() && !(Array.isArray(rasmlar) && rasmlar.length)) return res.status(400).json({ error: 'Fayl yoki matn kerak' });
       const natija = await savollarniAjrat({
         matn: String(matn), rasmlar: Array.isArray(rasmlar) ? rasmlar : [], fan: String(fan), mavzu: String(mavzu),
         mavzular: Array.isArray(mavzular) ? mavzular : [], til: ['uz', 'ru', 'en', 'auto'].includes(til) ? til : 'uz',
+        tur: FAYL_TURLARI.includes(tur) ? tur : '', mavzula: req.body?.mavzula !== false,
       });
       if (natija.savollar.length) {
         const orgIds = await organizationSchoolIds(req.user);
@@ -173,10 +176,12 @@ export function registerImtihonAIRoutes(app) {
       const klonlar = await klonlarYasa(q, savolVariantlari(q), { soni: req.body?.soni });
       const yaratildi = [];
       for (const k of klonlar) {
-        const { xato, matnId, tekshirildi, aslBilanBir, raqam, javobManbasi, ...d } = k; // eslint-disable-line no-unused-vars
+        // Bazada yo'q maydonlar (ko'rib chiqish uchun belgilar) tashlanadi; bo'sh JSON maydonlari yozilmaydi.
+        const { xato, matnId, tekshirildi, aslBilanBir, raqam, javobManbasi, yechimManbasi, options, answers, ...d } = k; // eslint-disable-line no-unused-vars
         const yangi = await prisma.question.create({
           data: {
             ...d,
+            ...(options ? { options } : {}), ...(answers ? { answers } : {}),
             source: tekshirildi === false ? "AI klon (tekshiruvdan o'tmadi)" : 'AI klon',
             parentId: q.id, passageId: q.passageId, grade: q.grade, section: q.section, points: q.points,
             schoolId: q.schoolId, createdById: req.user.id || null,
@@ -200,7 +205,10 @@ export function registerImtihonAIRoutes(app) {
       if (kamchilik) return res.status(400).json({ error: kamchilik });
       const usul = req.body?.usul === 'vaziyat' ? 'vaziyat' : 'sonlar';
       const daraja = ['oson', 'qiyin'].includes(req.body?.daraja) ? req.body.daraja : null;
-      const klonlar = await klonlarYasa(q, q.options, { soni: req.body?.soni, usul, tur: req.body?.tur || null, tekshir: false, daraja });
+      // Asl masalaning chizmasi bor (mijoz aytadi — imageUrl; yoki matnida rasm / «[rasm]» belgisi): yangilari ham
+      // chizmali tuziladi — matnda «[rasm]» qoladi, mijoz uni vektor qilib chizdiradi (POST /api/ai/rasm).
+      const rasmli = req.body?.rasmli === true || /<img\b|\[rasm(?:\s*\d+)?\]/i.test(q.text);
+      const klonlar = await klonlarYasa(q, q.options, { soni: req.body?.soni, usul, tur: req.body?.tur || null, tekshir: false, daraja, rasmli });
       res.json({ klonlar: klonlar.map(({ matnId, ...k }) => k) }); // eslint-disable-line no-unused-vars
     } catch (err) { aiXatosi(err, res, next); }
   });
@@ -215,36 +223,60 @@ export function registerImtihonAIRoutes(app) {
     } catch (err) { aiXatosi(err, res, next); }
   });
 
+  // Yozma masalalarni yechish: har biriga batafsil (qadamma-qadam, izohli) yechim — 4 tagacha. Hech narsa
+  // saqlanmaydi: yechim savol bilan birga bankka QORALAMA bo'lib tushadi (ustoz tasdiqlaydi). `rasmlar` —
+  // masalalar olingan sahifalar (matnda [rasm] bo'lsa, chizma o'sha yerdan ko'rinadi).
+  app.post('/api/ai/yech', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!tayyormi(res)) return;
+      // `javob` — ustoz bergan yakuniy javob (bo'lsa): yechim shunga olib kelishi kerak. Kalit emas — erkin matn.
+      const royxat = (Array.isArray(req.body?.savollar) ? req.body.savollar : []).slice(0, 4)
+        .map(s => ({ ...kelganSavol({ ...s, type: 'yozma' }), correctAnswer: String(s?.javob ?? '').replace(/\s+/g, ' ').trim().slice(0, 300) }));
+      if (!royxat.length) return res.status(400).json({ error: "Savollar ro'yxati bo'sh" });
+      const kamchilik = royxat.map(savolKamchiligi).find(Boolean);
+      if (kamchilik) return res.status(400).json({ error: kamchilik });
+      const rasmlar = (Array.isArray(req.body?.rasmlar) ? req.body.rasmlar : []).slice(0, 3);
+      res.json({ natijalar: await yozmalarniYech(royxat, { fan: String(req.body?.fan ?? '').trim().slice(0, 120), rasmlar }) });
+    } catch (err) { aiXatosi(err, res, next); }
+  });
+
+  /** «AI tuzadi» so'rovining umumiy qismi: fan, mavzu, talab, namuna (`oxshash` — namunaga qanchalik o'xshasin), qiyinlik. */
+  const tuzishSorovi = (body) => {
+    const qisqa = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+    const fan = qisqa(body?.fan, 120), mavzu = qisqa(body?.mavzu, 200), tavsif = qisqa(body?.tavsif, 1000);
+    const namuna = String(body?.namuna ?? '').trim().slice(0, 4000);
+    return {
+      fan, mavzu, tavsif, namuna, oxshash: ['sonlar', 'vaziyat'].includes(body?.oxshash) ? body.oxshash : '',
+      // Chizma («[rasm]» belgisi): namunaning chizmasi bo'lsa (mijoz aytadi) — yangilari ham chizmali; namunasiz —
+      // faqat mavzu chizma talab qilsa (geometriya, grafik, sxema) va faqat zarur masalada; aks holda chizmasiz.
+      rasmli: body?.rasmli === true ? true : !namuna && mavzuRasmlimi(fan, mavzu, tavsif) ? 'mavzu' : false,
+      soni: body?.soni, tur: body?.tur, qiyinlik: body?.qiyinlik, darajaNomi: qisqa(body?.darajaNomi, 60),
+      til: ['uz', 'ru', 'en'].includes(body?.til) ? body.til : 'uz',
+      bor: (Array.isArray(body?.bor) ? body.bor : []).slice(0, 40).map(b => qisqa(b, 160)).filter(Boolean),
+    };
+  };
+
   // Mavzu bo'yicha yangi savollar (ustozning talabi va namunasi ixtiyoriy); hech narsa saqlanmaydi —
-  // ustoz ko'rib, tanlab, o'zi bankka qo'shadi.
+  // ustoz ko'rib, tanlab, o'zi bankka qo'shadi. `tur: 'yozma'` — batafsil yechimi bilan.
   app.post('/api/questions/ai/tuz', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
       if (!tayyormi(res)) return;
-      const qisqa = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-      const fan = qisqa(req.body?.fan, 120), mavzu = qisqa(req.body?.mavzu, 200);
-      if (!fan) return res.status(400).json({ error: 'Fanni tanlang' });
-      if (!mavzu) return res.status(400).json({ error: 'Mavzuni tanlang' });
-      const savollar = await savollarniTuz({
-        fan, mavzu, tavsif: qisqa(req.body?.tavsif, 1000), namuna: String(req.body?.namuna ?? '').trim().slice(0, 3000),
-        soni: req.body?.soni, tur: req.body?.tur, qiyinlik: req.body?.qiyinlik, til: ['uz', 'ru', 'en'].includes(req.body?.til) ? req.body.til : 'uz',
-        bor: (Array.isArray(req.body?.bor) ? req.body.bor : []).slice(0, 40).map(b => qisqa(b, 160)).filter(Boolean),
-      });
+      const s = tuzishSorovi(req.body);
+      if (!s.fan) return res.status(400).json({ error: 'Fanni tanlang' });
+      if (!s.mavzu) return res.status(400).json({ error: 'Mavzuni tanlang' });
+      const savollar = await savollarniTuz(s);
       res.json({ savollar: savollar.map(({ matnId, ...k }) => k) }); // eslint-disable-line no-unused-vars
     } catch (err) { aiXatosi(err, res, next); }
   });
 
-  // Mavzu bo'yicha guruhli savollar (moslashtirish guruhi yoki qismli savol) — bankka hali yozilmaydi.
+  // Mavzu bo'yicha guruhli savollar (MS-33-35 — moslashtirish guruhi yoki MS-36-45 — qismli savol) — bankka hali yozilmaydi.
   app.post('/api/questions/ai/guruh-tuz', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
       if (!tayyormi(res)) return;
-      const qisqa = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-      const fan = qisqa(req.body?.fan, 120), mavzu = qisqa(req.body?.mavzu, 200);
-      if (!fan) return res.status(400).json({ error: 'Fanni tanlang' });
-      if (!mavzu) return res.status(400).json({ error: 'Mavzuni tanlang' });
-      res.json({ guruhlar: await guruhlarniTuz({
-        fan, mavzu, tavsif: qisqa(req.body?.tavsif, 1000), namuna: String(req.body?.namuna ?? '').trim().slice(0, 3000),
-        soni: req.body?.soni, tur: req.body?.tur, qiyinlik: req.body?.qiyinlik, til: ['uz', 'ru', 'en'].includes(req.body?.til) ? req.body.til : 'uz',
-      }) });
+      const { bor, ...s } = tuzishSorovi(req.body); // eslint-disable-line no-unused-vars
+      if (!s.fan) return res.status(400).json({ error: 'Fanni tanlang' });
+      if (!s.mavzu) return res.status(400).json({ error: 'Mavzuni tanlang' });
+      res.json({ guruhlar: await guruhlarniTuz(s) });
     } catch (err) { aiXatosi(err, res, next); }
   });
 

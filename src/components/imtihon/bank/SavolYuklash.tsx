@@ -1,129 +1,67 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Sparkles, Camera, FileUp, Trash2, Pencil, CheckCircle2, AlertTriangle, Loader2, Copy, FileSpreadsheet, FileText, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Camera, FileUp, Trash2, Pencil, Loader2, FileText, RotateCcw } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
 import AiKalitKartasi from '../AiKalitKartasi';
-import { Tugma, Tanlov, INPUT, SELECT, Yorliq, Maydon } from '../ui';
-import { HARFLAR, savolXatosi, raqamniTozala } from '../../../../lib/imtihon.js';
-import { QiyinlikTanlov } from './qiyinlik';
-import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
-import { type AiSavol, type Tekshiruv, sahifaRasmlari, matniBor, izi, xatoMatni, Korinish, Tahrir } from './aiUmumiy';
-import { exceldanSavollar, type ExcelSavol } from './excel';
+import { Tugma, Tanlov, SELECT, Yorliq, Maydon } from '../ui';
+import { savolXatosi } from '../../../../lib/imtihon.js';
+import { DarajaTanlov, darajaMaydonlari } from './qiyinlik';
+import { useDarajalar } from './useDarajalar';
+import { fanniTop, mavzuniTop } from './useBankDaraxt';
+import { type Tekshiruv, sahifaRasmlari, mazmuniBor, xatoMatni, Korinish, Tahrir, yechimSora, YECHISH_BOLAGI } from './aiUmumiy';
+import { exceldanSavollar } from './excel';
 import QrShablonTugma from './QrShablonTugma';
 import QoshRejimi, { type QoshRejim } from './QoshRejimi';
-import { AiGuruhKarta, guruhlarniSaqla, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
-import { wordniOqi, wordJadvalSavollari, ESKI_DOC, type WordNatija, type JadvalSavol } from './word';
+import { AiGuruhKarta, guruhlarniSaqla, guruhFaolmi, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
+import { wordniOqi, ESKI_DOC } from './word';
+import { wordShablonSavollari } from './wordShablon';
+import { FAYL_TURLARI, faylTuriNomi, guruhTurimi, NOMALUM_MAVZU, type FaylTuri } from './faylTuri';
+import {
+  type Manba, type Natija, type AiMatn, type MavzuRejimi, DOCX, PARTIYA, MAKS_SAHIFA, TEKSHIRUV_BOLAGI, MAVZULASH_BOLAGI, KICHIK_SELECT,
+  toplamNomi, bolaklar, javobQatori, shablonYechimi, kalitniUla, jadvalSoni, savolIzi, Belgilar, ManbalarRoyxati,
+} from './yuklashQismlari';
+import { useRasmNavbati, RasmJarayoni, SavolRasmi, rasmIshi, rasmNatijasiniQoy, rasmKerakmi, rasmYetishmaydi, ichkiRasm } from './rasmNavbati';
+import { rasmBelgisiBor, type RasmIshi, type RasmNatijasi } from '../../../lib/svgRasm';
 import { compressAndUpload } from '../../../lib/image';
 import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
 
-// Savol qo'shish — bankka savol kiritishning yagona yo'li (egasi, 2026-09-29:
-// "qo'lda savol kiritish — eng eski usul; fayldan yoki kameradan bo'lsin, fanlar
-// bo'yicha, qisqa va aniq"). Manba: kamera (ketma-ket sahifalar), fayl (PDF,
-// rasm, Excel) yoki joylangan matn. AI o'qiydi, har savolni fanning mavzulariga
-// va qiyinlikka ajratadi, boshqa sahifadagi javoblar kalitini raqam bo'yicha
-// ulaydi, bankda bori belgilanadi, har javobni AI kalitni ko'rmay qayta yechib
-// tekshiradi. Tekshirilgani (yoki ustoz tuzatgani) — faol, qolgani — qoralama.
-
-type Manba =
-  | { kalit: number; tur: 'sahifa'; nom: string; rasm: string }
-  | { kalit: number; tur: 'excel'; nom: string; savollar: ExcelSavol[]; xatolar: number }
-  | ({ kalit: number; tur: 'word'; nom: string } & WordNatija)
-  // Addmen QR jadvali (№ | savol | A–E | javob) — AI siz o'qiladi.
-  | { kalit: number; tur: 'jadval'; nom: string; savollar: JadvalSavol[]; oqilmagan: number };
-
-const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-interface Natija extends AiSavol {
-  kalit: number;
-  tanlangan: boolean;
-  subject: string;
-  topic: string;
-  manba: 'ai' | 'excel' | 'jadval';
-  /** To'plam — qaysi fayldan (Addmen "QR file name"). */
-  toplam?: string | null;
-  tarjima?: JadvalSavol['tarjima'];
-  raqam?: string | null;
-  javobManbasi?: 'material' | 'ai' | null;
-  /** Javob boshqa sahifadagi kalitdan olindi. */
-  kalitdan?: boolean;
-  takrorId?: number | null;
-  matnId?: string | null;
-  /** AI tekshiruviga yuborildi; natijasi `tekshiruv` da (undefined — kutilmoqda). */
-  tekshiriladi?: boolean;
-  tekshiruv?: Tekshiruv;
-  tahrirlandi?: boolean;
-  excel?: ExcelSavol;
-}
-interface AiMatn { id: string; sarlavha: string; matn: string }
-
-// Bitta so'rovda nechta sahifa: Vercel so'rov chegarasi 4,5 MB va vaqt chegarasi.
-const PARTIYA = 3;
-const MAKS_SAHIFA = 40;
-const TEKSHIRUV_BOLAGI = 12;
-/** AI bir so'rovda nechta savolni mavzuga ajratadi. */
-const MAVZULASH_BOLAGI = 40;
-const ARALASH = 'Aralash';
-const KICHIK_SELECT = 'max-w-full px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] text-matn outline-none focus:border-brand cursor-pointer';
+// Savol qo'shish → «Fayldan»: bankka savol kiritishning asosiy yo'li (egasi, 2026-09-29:
+// "qo'lda savol kiritish — eng eski usul; fayldan yoki kameradan bo'lsin"; 2026-10-10: "savollarni
+// qo'lda qo'shmaymiz, fayldan qo'shamiz, faqat fayl turi har doim bo'lsin: 4 variantli, MS-33-35,
+// MS-36-45, yozma"). Xodim fanni, FAYL TURINI va mavzuni kim ajratishini (AI yoki «Noma'lum» —
+// keyin bankda o'zi taqsimlaydi) tanlaydi. Manba: kamera (ketma-ket sahifalar), PDF, rasm, Word
+// yoki Excel. To'ldirilgan Word shablon AI siz o'qiladi; qolganini AI o'qiydi: mavzu va
+// qiyinlikka ajratadi, boshqa sahifadagi javoblar kalitini raqam bo'yicha ulaydi, bankda borini
+// belgilaydi, har javobni kalitni ko'rmay qayta yechib tekshiradi; yozma masalalarni yechib,
+// batafsil yechim yozadi. AI hech narsani o'zi faol qilmaydi: tekshirilgani (yoki ustoz tuzatgani)
+// — faol, qolgani — qoralama; AI o'qigan guruhli va yozma savollar — doim qoralama.
 
 let keyingi = 1;
-/** To'plam nomi — fayl nomi kengaytmasiz (Addmen'da "QR file name"). */
-const toplamNomi = (nom: string) => nom.replace(/\.(docx?|xlsx?)$/i, '').trim().slice(0, 200);
-const bolaklar = <T,>(l: T[], n: number) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n));
 
-/** Materialdagi javoblar kaliti (boshqa sahifada bo'lsa ham) — savol raqami bo'yicha. */
-function kalitniUla(royxat: Natija[], kalitlar: { raqam: string; javob: string }[]) {
-  const map = new Map<string, string | null>();
-  for (const k of kalitlar) {
-    const eski = map.get(k.raqam);
-    if (eski === undefined) map.set(k.raqam, k.javob);
-    else if (eski !== null && eski.toUpperCase() !== k.javob.toUpperCase()) map.set(k.raqam, null);   // ziddiyat — tegmaymiz
-  }
-  let soni = 0;
-  const yangi = royxat.map((q) => {
-    if (q.manba !== 'ai' || !q.raqam || q.type === 'yozma' || q.javobManbasi === 'material') return q;
-    const j = map.get(q.raqam);
-    if (!j) return q;
-    let javob = '';
-    if (q.type === 'yopiq') {
-      const h = j.toUpperCase().replace(/[^A-F]/g, '').slice(0, 1);
-      if (h && HARFLAR.indexOf(h) < (q.options || []).length) javob = h;
-    } else javob = raqamniTozala(j);
-    if (!javob) return q;
-    soni++;
-    const xato = (q.xato || '').split(', ').filter(x => x && x !== "to'g'ri javob topilmadi").join(', ') || null;
-    return { ...q, correctAnswer: javob, javobManbasi: 'material' as const, kalitdan: true, xato };
-  });
-  return { yangi, soni };
-}
-
-/** Belgilar: tekshiruv, kalit, takror, kamchilik. */
-function Belgilar({ n }: { n: Natija }) {
-  return (
-    <>
-      {n.takrorId ? <Yorliq rang="ogoh"><Copy size={11} /> Bankda bor (#{n.takrorId})</Yorliq> : null}
-      {n.manba === 'excel' && <Yorliq><FileSpreadsheet size={11} /> Excel</Yorliq>}
-      {n.manba === 'jadval' && <Yorliq><FileText size={11} /> Word jadvali</Yorliq>}
-      {n.manba === 'jadval' && n.xato && <Yorliq rang="ogoh"><AlertTriangle size={11} /> {n.xato}</Yorliq>}
-      {n.tahrirlandi ? <Yorliq rang="brand"><Pencil size={11} /> Tuzatildi</Yorliq>
-        : n.tekshiriladi && !n.tekshiruv ? <Yorliq><Loader2 size={11} className="animate-spin" /> Tekshirilmoqda</Yorliq>
-        : n.tekshiruv?.tekshirildi === true ? <Yorliq rang="yaxshi"><CheckCircle2 size={11} /> Javob to'g'ri</Yorliq>
-        : n.tekshiruv?.tekshirildi === false ? <Yorliq rang="ogoh"><AlertTriangle size={11} /> AI boshqa javob chiqardi{n.tekshiruv.aiJavobi ? ` (${n.tekshiruv.aiJavobi})` : ''}</Yorliq>
-        : null}
-      {n.kalitdan && <Yorliq>Javob — kalitdan</Yorliq>}
-      {n.manba === 'ai' && n.type !== 'yozma' && !n.correctAnswer && <Yorliq rang="ogoh"><AlertTriangle size={11} /> Javob topilmadi</Yorliq>}
-    </>
-  );
+/**
+ * Savol chizmasining manbai — o'zi o'qilgan AI so'rovining rasmlari: sahifa suratlari (3 tagacha) yoki,
+ * Word'dan o'qilganda, matndagi «[rasm N]» raqami bo'yicha aynan o'sha rasm.
+ */
+function aslRasmlar(matn: string, partiya: number | undefined, rasmlar: string[][]): string[] {
+  const hammasi = partiya == null ? [] : rasmlar[partiya] || [];
+  const raqamli = [...matn.matchAll(/\[rasm\s*(\d+)\]/gi)].map(m => hammasi[Number(m[1]) - 1]).filter(Boolean);
+  return (raqamli.length ? raqamli : hammasi).slice(0, 3);
 }
 
 /** Saqlash natijasi — Zukko faol savollarni imtihonga qo'shishi uchun. */
 export interface SaqlashNatijasi { soni: number; ids: number[]; faolIds: number[] }
 
 export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, mavzuNomi: boshMavzuNomi, onRejim, onYop, onSaqlandi, boshFayllar, avto = false, yuqorida = false }: {
-  daraxt: BankDaraxt; fanId?: number | null; mavzuId?: number | null;
+  daraxt: BankDaraxt; fanId?: number | null;
+  /**
+   * Oldindan berilgan mavzu — faqat Zukko dan (xodim o'zi aytgan mavzu). Bank oynasi bermaydi: u yerda
+   * mavzuni AI ajratadi yoki savollar «Noma'lum» ga tushadi (egasi: "mavzu nomi turmasin").
+   */
+  mavzuId?: number | null;
   /** `mavzuId` ning nomi — mavzu hozirgina yaratilgan bo'lib, daraxtda hali ko'rinmasa ham savollar o'shanga tushsin. */
   mavzuNomi?: string;
-  /** Berilsa — sarlavhada «Fayldan | O'xshashini tuzish» almashtirgichi chiqadi. */
+  /** Berilsa — sarlavhada «Fayldan | AI tuzadi» almashtirgichi chiqadi. */
   onRejim?: (rejim: QoshRejim) => void;
   onYop: () => void; onSaqlandi: (natija?: SaqlashNatijasi) => void;
   /** Zukko dan: biriktirilgan fayllar; avto — yuklangach ajratish o'zi boshlanadi; yuqorida — Zukko panelining ustida. */
@@ -132,19 +70,25 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const { showNotification } = useCRM();
   const { soro, filial } = useImtihonApi();
   const ai = useAiHolat();
+  const aiBor = !!ai?.yoqilgan;
+  useDarajalar();
+  // Savol chizmalarini AI vektor qilib chizadi — navbat bilan (bir vaqtda 2 ta), to'xtatsa bo'ladi.
+  const rasmNavbati = useRasmNavbati();
 
   const [fanId, setFanId] = useState<number | null>(() => boshFan ?? daraxt.fanlar.find(f => f.mavzular.some(m => m.id === boshMavzu))?.id ?? (daraxt.fanlar.length === 1 ? daraxt.fanlar[0].id : null));
-  const [mavzuId, setMavzuId] = useState<number | null>(boshMavzu);
-  const [yangiMavzu, setYangiMavzu] = useState<string | null>(null);
+  const ilkFan = useRef(fanId);
   const fan = fanniTop(daraxt, fanId);
-  const mavzu = mavzuniTop(fan, mavzuId);
-  // Bank ro'yxatidan kelgan mavzu daraxtda hali yo'q (hozirgina yaratilgan) — nomi bilan ishlaymiz.
-  const kutilgan = !mavzu && mavzuId != null && mavzuId === boshMavzu && boshMavzuNomi ? boshMavzuNomi : '';
-  // Qat'iy mavzu (tanlangan yoki yangi) — bo'lmasa AI o'zi ajratadi.
-  const qatiyMavzu = yangiMavzu !== null ? yangiMavzu.trim() : mavzu?.name || kutilgan;
+  // Fayl turi har doim tanlanadi: AI ko'rsatmasi, Word jadvalini o'qish va shablon shunga qarab.
+  const [tur, setTur] = useState<FaylTuri>('yopiq');
+  // Berilgan mavzu (Zukko): daraxtdagi nomi; hozirgina yaratilgan bo'lsa — kelgan nomi.
+  const berilgan = boshMavzu != null ? mavzuniTop(fan, boshMavzu)?.name || (fanId === ilkFan.current ? boshMavzuNomi || '' : '') : '';
+  const [mavzuRejimi, setMavzuRejimi] = useState<MavzuRejimi>(boshMavzu != null ? 'qatiy' : 'ai');
+  // Amaldagi rejim: berilgan mavzu shu fanda bo'lmasa — AI; AI ulanmagan bo'lsa — «Noma'lum».
+  const rejim: MavzuRejimi = mavzuRejimi === 'qatiy' && !berilgan ? 'ai' : mavzuRejimi === 'ai' && ai && !aiBor ? 'nomalum' : mavzuRejimi;
+  /** Hamma savolga qo'yiladigan mavzu ('' — AI har savolga o'zi topadi). */
+  const qatiyMavzu = rejim === 'qatiy' ? berilgan : rejim === 'nomalum' ? NOMALUM_MAVZU : '';
 
   const [manbalar, setManbalar] = useState<Manba[]>([]);
-  const [matn, setMatn] = useState('');
   const [ustida, setUstida] = useState(false);
   const kameraRef = useRef<HTMLInputElement>(null);
   const faylRef = useRef<HTMLInputElement>(null);
@@ -152,8 +96,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const [jarayon, setJarayon] = useState<{ matn: string; i: number; jami: number } | null>(null);
   const [natijalar, setNatijalar] = useState<Natija[] | null>(null);
   const [matnlar, setMatnlar] = useState<AiMatn[]>([]);
-  // AI materialdan topgan guruhli savollar (moslashtirish guruhi, qismli savol) — alohida ro'yxat.
+  // Guruhli savollar (MS-33-35, MS-36-45) — alohida ro'yxat: bankka guruh bo'lib tushadi.
   const [aiGuruhlar, setAiGuruhlar] = useState<AiGuruh[]>([]);
+  // Har AI so'rovining sahifalari — yozma masalani (qayta) yechishda chizma shu yerdan ko'rinadi.
+  const [partiyaRasmlari, setPartiyaRasmlari] = useState<string[][]>([]);
   const [filtr, setFiltr] = useState<'hammasi' | 'tekshirish' | 'takror'>('hammasi');
   const [tahrirda, setTahrirda] = useState<number | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
@@ -163,42 +109,61 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const excellar = manbalar.filter((m): m is Extract<Manba, { tur: 'excel' }> => m.tur === 'excel');
   const wordlar = manbalar.filter((m): m is Extract<Manba, { tur: 'word' }> => m.tur === 'word');
   const jadvallar = manbalar.filter((m): m is Extract<Manba, { tur: 'jadval' }> => m.tur === 'jadval');
-  const aiSiz = excellar.reduce((a, e) => a + e.savollar.length, 0) + jadvallar.reduce((a, j) => a + j.savollar.length, 0);
-  const aiKerak = sahifalar.length > 0 || wordlar.length > 0 || !!matn.trim();
+  const aiSiz = excellar.reduce((a, e) => a + e.savollar.length, 0) + jadvallar.reduce((a, j) => a + jadvalSoni(j.shablon), 0);
+  const aiKerak = sahifalar.length > 0 || wordlar.length > 0;
+  // AI siz o'qilgan fayllar shu turga bog'langan — tur faqat ular olib tashlangach almashadi.
+  const turQulf = excellar.length > 0 || jadvallar.length > 0;
+  const turMalumoti = FAYL_TURLARI.find(t => t.v === tur)!;
 
-  /** Fan mavzusining aniq nomi (katta-kichik harfsiz mos kelsa) — bo'lmasa AI bergan yangi nom. */
+  /** Fan mavzusining aniq nomi (katta-kichik harfsiz mos kelsa) — bo'lmasa AI bergan yangi nom; bo'sh — «Noma'lum». */
   const mavzuNomi = (nom: string | null | undefined) => {
     const t = String(nom || '').trim();
-    if (!t) return ARALASH;
+    if (!t) return NOMALUM_MAVZU;
     return fan?.mavzular.find(m => m.name.toLowerCase() === t.toLowerCase())?.name || t;
   };
 
   const fayllarniQosh = async (fayllar: File[]) => {
+    // Bir nechta fayl ketma-ket: tur va manbalar soni shu sikl ichida ham o'zgaradi.
+    let joriyTur = tur;
+    let bor = manbalar.length;
+    let sahifaSoni = sahifalar.length;
     for (const f of fayllar) {
       try {
         if (/\.xlsx?$/i.test(f.name)) {
-          const r = await exceldanSavollar(f, { fan: fan?.name, mavzu: qatiyMavzu || undefined });
+          if (guruhTurimi(joriyTur)) { showNotification(`${f.name}: «${faylTuriNomi(joriyTur)}» turi Excel dan o'qilmaydi — Word shablonini to'ldiring yoki rasm/PDF yuklang`, 'error'); continue; }
+          const r = await exceldanSavollar(f, { fan: fan?.name, mavzu: rejim === 'qatiy' ? berilgan : NOMALUM_MAVZU, yozma: joriyTur === 'yozma' });
           if (!r.yaroqli.length) { showNotification(r.xatolar.length ? `${f.name}: ${r.xatolar.length} ta qatorda xato (${r.xatolar[0].qator}-qator: ${r.xatolar[0].xato})` : `${f.name}: savol topilmadi`, 'error'); continue; }
           setManbalar(l => [...l, { kalit: keyingi++, tur: 'excel', nom: f.name, savollar: r.yaroqli, xatolar: r.xatolar.length }]);
+          bor++;
           if (r.xatolar.length) showNotification(`${f.name}: ${r.xatolar.length} ta qator o'tkazib yuborildi (${r.xatolar[0].qator}-qator: ${r.xatolar[0].xato})`, 'info');
         } else if (/\.docx$/i.test(f.name) || f.type === DOCX) {
           setJarayon({ matn: "Word hujjati o'qilmoqda", i: 0, jami: 0 });
-          // Avval Addmen QR jadvali (№ | savol | A–E | javob): bo'lsa — AI siz, rasmlar saqlanadi.
-          const j = await wordJadvalSavollari(f, (d, nom) => compressAndUpload(d, nom, 1400, 1400, 0.85));
-          if (j?.savollar.length) {
-            setManbalar(l => [...l, { kalit: keyingi++, tur: 'jadval', nom: f.name, savollar: j.savollar, oqilmagan: j.oqilmagan }]);
+          // Avval Word shablon jadvali: bo'lsa — AI siz, rasmlar saqlanadi. Turi jadvalning o'zidan taniladi.
+          const j = await wordShablonSavollari(f, (d, nom) => compressAndUpload(d, nom, 1400, 1400, 0.85), joriyTur);
+          if (j) {
+            if (j.tur !== joriyTur) {
+              if (bor > 0) { showNotification(`${f.name}: bu «${faylTuriNomi(j.tur)}» shabloni, fayl turi esa «${faylTuriNomi(joriyTur)}» — uni alohida yuklang`, 'error'); continue; }
+              joriyTur = j.tur;
+              setTur(j.tur);
+              showNotification(`${f.name}: «${faylTuriNomi(j.tur)}» shabloni ekan — fayl turi shunga o'zgartirildi`, 'info');
+            }
+            setManbalar(l => [...l, { kalit: keyingi++, tur: 'jadval', nom: f.name, shablon: j }]);
+            bor++;
             continue;
           }
           const w = await wordniOqi(f);
           setManbalar(l => [...l, { kalit: keyingi++, tur: 'word', nom: f.name, ...w }]);
+          bor++;
         } else if (/\.doc$/i.test(f.name) || f.type === 'application/msword') {
           showNotification(`${f.name}: ${ESKI_DOC}`, 'error');
         } else if (/^image\//.test(f.type) || /\.(pdf|jpe?g|png|webp|heic)$/i.test(f.name) || f.type === 'application/pdf') {
-          const qoldi = MAKS_SAHIFA - sahifalar.length;
+          const qoldi = MAKS_SAHIFA - sahifaSoni;
           if (qoldi <= 0) { showNotification(`Bir martada ${MAKS_SAHIFA} sahifagacha`, 'error'); break; }
           setJarayon({ matn: 'Sahifalar tayyorlanmoqda', i: 0, jami: 0 });
           const rasmlar = await sahifaRasmlari(f, qoldi, n => setJarayon({ matn: 'Sahifalar tayyorlanmoqda', i: n, jami: 0 }));
           setManbalar(l => [...l, ...rasmlar.map((rasm, i) => ({ kalit: keyingi++, tur: 'sahifa' as const, nom: rasmlar.length > 1 ? `${f.name} · ${i + 1}` : f.name, rasm }))]);
+          bor += rasmlar.length;
+          sahifaSoni += rasmlar.length;
         } else {
           showNotification(`${f.name}: bu turdagi fayl o'qilmaydi — PDF, Word (.docx), rasm yoki Excel yuklang`, 'error');
         }
@@ -224,7 +189,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     setAvtoKutadi(false);
     // Rasm/PDF uchun fan va AI kerak — bo'lmasa xodim o'zi tanlab, tugmani bosadi.
     if (natijalar || !manbalar.length || (jadvallar.length > 0 && !fan) || ((sahifalar.length > 0 || wordlar.length > 0) && (!fan || !ai.yoqilgan))) return;
-    ajrat();
+    // Zukko faylni o'zi yuboradi — turini xodim hali tanlamagan: AI materialdagi hamma turni o'zi ajratadi.
+    ajrat(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avtoKutadi, jarayon, ai]);
 
@@ -233,32 +199,73 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     if (natijalar) return;
     const f = (e: ClipboardEvent) => {
       const rasmlar = Array.from(e.clipboardData?.files || []).filter(x => x.type.startsWith('image/'));
-      if (rasmlar.length) { e.preventDefault(); fayllarniQosh(rasmlar); }
+      // Ish ketayotganda (o'qish, ajratish) yangi fayl qabul qilinmaydi — band belgisi chalkashmasin.
+      if (rasmlar.length && !band) { e.preventDefault(); fayllarniQosh(rasmlar); }
     };
     window.addEventListener('paste', f);
     return () => window.removeEventListener('paste', f);
   });
 
-  const ajrat = async () => {
-    if (!aiKerak && !aiSiz) return showNotification("Rasm, fayl yoki matn qo'shing", 'error');
+  /**
+   * Yozma masalalarni AI yechadi (batafsil yechim): har so'rovda YECHISH_BOLAGI ta, ikki so'rov yonma-yon.
+   * Chizmali masala («[rasm]») o'zi olingan sahifalar bilan birga yuboriladi.
+   */
+  const yozmalarniYech = async (royxat: Natija[], rasmlar: string[][]) => {
+    const guruhlar = new Map<number, Natija[]>();
+    for (const q of royxat) guruhlar.set(q.partiya ?? -1, [...(guruhlar.get(q.partiya ?? -1) || []), q]);
+    const navbat = [...guruhlar.entries()].flatMap(([p, l]) => bolaklar(l, YECHISH_BOLAGI).map(b => ({ b, rasmlar: b.some(q => /\[rasm/.test(q.aslMatn ?? q.text)) ? rasmlar[p] || [] : [] })));
+    const kalitlar = new Set(royxat.map(q => q.kalit));
+    setNatijalar(l => (l || []).map(q => (kalitlar.has(q.kalit) ? { ...q, yechilmoqda: true, yechilmadi: false } : q)));
+    let tugadi = 0;
+    setJarayon({ matn: 'AI yozma masalalarni yechmoqda (batafsil yechim)', i: 0, jami: royxat.length });
+    const ishchi = async () => {
+      for (let ish = navbat.shift(); ish; ish = navbat.shift()) {
+        const { b, rasmlar: r } = ish;
+        let yechimlar: { yechim: string; javob: string }[] = b.map(() => ({ yechim: '', javob: '' }));
+        try { yechimlar = await yechimSora(soro, b, b[0].subject, r); } catch { /* yechilmadi — kartada «AI bilan yechish» tugmasi qoladi */ }
+        const map = new Map(b.map((q, j) => [q.kalit, yechimlar[j]?.yechim || '']));
+        setNatijalar(l => (l || []).map((q) => {
+          if (!map.has(q.kalit)) return q;
+          const y = map.get(q.kalit);
+          return y ? { ...q, solution: y, yechimManbasi: 'ai' as const, yechilmoqda: false, yechilmadi: false } : { ...q, yechilmoqda: false, yechilmadi: true };
+        }));
+        tugadi += b.length;
+        setJarayon({ matn: 'AI yozma masalalarni yechmoqda (batafsil yechim)', i: tugadi, jami: royxat.length });
+      }
+    };
+    await Promise.all([ishchi(), ishchi()]);
+  };
+
+  /** `aralash` — fayl turi tanlanmagan (Zukko o'zi boshlagan): AI materialdagi hamma turdagi savolni oladi. */
+  const ajrat = async (aralash = false) => {
+    if (!aiKerak && !aiSiz) return showNotification("Rasm yoki fayl qo'shing", 'error');
     if ((aiKerak || jadvallar.length) && !fan) return showNotification('Fanni tanlang', 'error');
-    if (aiKerak && !ai?.yoqilgan) return showNotification("Rasm, PDF va Word ni o'qish uchun avval AI ni ulang (yuqorida)", 'error');
+    if (aiKerak && !aiBor) return showNotification("Rasm, PDF va Word ni o'qish uchun avval AI ni ulang (yuqorida)", 'error');
     const yig: Natija[] = [];
     const matnYig: AiMatn[] = [];
     const kalitYig: { raqam: string; javob: string }[] = [];
     const guruhYig: AiGuruh[] = [];
     const xatolar: string[] = [];
+    let partiyalar: { rasmlar: string[]; matn: string }[] = [];
+    // Chizmasi bor savollar (AI matnda «[rasm]» qoldirgan) — ajratish tugagach navbat bilan chiziladi.
+    let rasmIshlari: RasmIshi<number>[] = [];
     try {
       for (const e of excellar) {
         for (const q of e.savollar) {
+          // «Yozma» turidagi fayl: yakuniy javob («Javob» ustuni) yechimdan alohida — yechim bo'lmasa AI yechadi.
+          const javob = q.ustozJavobi || '';
           yig.push({
-            kalit: keyingi++, manba: 'excel', excel: q, tanlangan: true, subject: q.subject, topic: q.topic,
-            type: q.type, text: q.text, options: q.options, correctAnswer: q.correctAnswer, difficulty: q.difficulty,
-            language: q.language, solution: q.solution, solutionStatus: q.solutionStatus, toplam: toplamNomi(e.nom),
+            // Mavzu ustuni bo'sh qator — oynadagi tanlov bo'yicha (fayl yuklangandan keyin o'zgargan bo'lishi mumkin).
+            // Fan ustuni bo'sh qator ham shunday — oynada hozir tanlangan fanga.
+            kalit: keyingi++, manba: 'excel', excel: q, tanlangan: true, subject: q.fansiz && fan ? fan.name : q.subject, topic: q.mavzusiz ? qatiyMavzu || NOMALUM_MAVZU : q.topic,
+            type: q.type, text: q.text, options: q.options, difficulty: q.difficulty, language: q.language, toplam: toplamNomi(e.nom),
+            correctAnswer: q.correctAnswer, ustozJavobi: javob || undefined,
+            solution: q.solution && javob && !/javob\s*:/i.test(q.solution) ? `${q.solution}\n\n${javobQatori(javob)}` : q.solution,
+            solutionStatus: q.solutionStatus, yechimManbasi: q.type === 'yozma' && q.solution ? 'ustoz' : null,
           });
         }
       }
-      // Word jadvali: shu nomli to'plam bankda bo'lsa — qayta qo'shilmasin (belgilanmaydi).
+      // Word shablon: shu nomli to'plam bankda bo'lsa — qayta qo'shilmasin (belgilanmaydi).
       let bankdagi: BankFiltrMalumoti['toplamlar'] = [];
       if (jadvallar.length && fan) {
         try { bankdagi = (await soro<BankFiltrMalumoti>('GET', `bank/filtr?fanId=${fan.id}`)).toplamlar; } catch { /* tekshiruvsiz davom etadi */ }
@@ -267,25 +274,43 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         const toplam = toplamNomi(j.nom);
         const bor = bankdagi.find(t => t.nom === toplam);
         if (bor) showNotification(`«${toplam}» to'plami bankda bor (${bor.soni} ta savol) — savollar belgilanmadi, qayta qo'shilsa takrorlanadi`, 'info');
-        for (const q of j.savollar) {
+        const umumiy = { manba: 'jadval' as const, tanlangan: !bor, subject: fan!.name, topic: qatiyMavzu || NOMALUM_MAVZU, difficulty: 2, language: 'uz', toplam };
+        for (const q of j.shablon.savollar) {
           yig.push({
-            kalit: keyingi++, manba: 'jadval', tanlangan: !bor, subject: fan!.name, topic: qatiyMavzu || ARALASH, raqam: q.raqam,
-            type: 'yopiq', text: q.text, options: q.options, correctAnswer: q.correctAnswer, difficulty: 2,
-            language: 'uz', solution: null, solutionStatus: 'yoq', xato: q.xato, toplam, tarjima: q.tarjima || null,
+            ...umumiy, kalit: keyingi++, raqam: q.raqam, type: 'yopiq', text: q.text, options: q.options, correctAnswer: q.correctAnswer,
+            solution: null, solutionStatus: 'yoq', xato: q.xato, tarjima: q.tarjima || null,
+          });
+        }
+        for (const y of j.shablon.yozmalar) {
+          yig.push({
+            ...umumiy, kalit: keyingi++, raqam: y.raqam, type: 'yozma', text: y.text, options: null,
+            // Ustozning yakuniy javobi AI ga ham beriladi: yechim shu javobga olib kelishi kerak.
+            correctAnswer: '', ustozJavobi: y.javob,
+            solution: shablonYechimi(y), yechimManbasi: y.yechim ? 'ustoz' : null, xato: y.xato,
+          });
+        }
+        for (const g of j.shablon.guruhlar) {
+          guruhYig.push({
+            tur: g.tur, text: g.text, variantlar: g.variantlar, savollar: g.savollar, topic: qatiyMavzu || NOMALUM_MAVZU, difficulty: 2, raqam: g.raqam,
+            javobManbasi: g.savollar.every(s => s.javob) ? 'material' : 'yoq', xato: g.xato, chala: g.chala, manba: 'shablon', toplam,
+            kalit: keyingi++, tanlangan: !g.xato && !bor,
           });
         }
       }
-      // Mavzu tanlanmagan Word jadvali: AI har savolni fanning mavzulariga ajratadi (mos mavzu
-      // bo'lmasa — yangi nom taklif qiladi). AI ulanmagan yoki javob bermasa — «Aralash».
-      const mavzusiz = qatiyMavzu ? [] : yig.filter(q => q.manba === 'jadval');
-      if (mavzusiz.length && fan && ai?.yoqilgan) {
-        const nomlar = fan.mavzular.map(m => m.name);
+      // «AI ajratsin»: AI siz o'qilgan savollar (Word shablon; Excel ning mavzusiz qatorlari) ham mavzularga
+      // ajratiladi — mos mavzu bo'lmasa AI yangi nom taklif qiladi. Javob bermasa — «Noma'lum» da qoladi.
+      const mavzusiz = rejim !== 'ai' ? [] : [
+        ...yig.filter(q => q.manba === 'jadval' || q.excel?.mavzusiz).map(q => ({ kalit: q.kalit, matn: q.text })),
+        ...guruhYig.map(g => ({ kalit: g.kalit, matn: `${g.text} ${g.savollar[0]?.text || ''}` })),
+      ];
+      if (mavzusiz.length && fan && aiBor) {
+        const nomlar = fan.mavzular.map(m => m.name).filter(n => n !== NOMALUM_MAVZU);
         const mavzular = new Map<number, string>();
         for (let i = 0; i < mavzusiz.length; i += MAVZULASH_BOLAGI) {
           setJarayon({ matn: 'AI savollarni mavzularga ajratmoqda', i, jami: mavzusiz.length });
           const bolak = mavzusiz.slice(i, i + MAVZULASH_BOLAGI);
           try {
-            const r = await soro<{ mavzular: string[] }>('POST', 'questions/ai/mavzula', { fan: fan.name, mavzular: nomlar, savollar: bolak.map(q => q.text) });
+            const r = await soro<{ mavzular: string[] }>('POST', 'questions/ai/mavzula', { fan: fan.name, mavzular: nomlar, savollar: bolak.map(q => q.matn) });
             bolak.forEach((q, k) => {
               const taklif = String(r.mavzular?.[k] || '').trim();
               if (!taklif) return;
@@ -299,31 +324,30 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           }
         }
         for (let i = 0; i < yig.length; i++) if (mavzular.has(yig[i].kalit)) yig[i] = { ...yig[i], topic: mavzular.get(yig[i].kalit)! };
+        for (let i = 0; i < guruhYig.length; i++) if (mavzular.has(guruhYig[i].kalit)) guruhYig[i] = { ...guruhYig[i], topic: mavzular.get(guruhYig[i].kalit)! };
       }
       if (aiKerak && fan) {
-        // So'rovlar: sahifa suratlari 3 tadan, Word — o'qilganda bo'lingan qismlar,
-        // joylangan matn — birinchi so'rov bilan (bo'lmasa alohida).
-        const partiyalar: { rasmlar: string[]; matn: string }[] = [
+        // So'rovlar: sahifa suratlari 3 tadan, Word — o'qilganda bo'lingan qismlar.
+        partiyalar = [
           ...bolaklar(sahifalar.map(s => s.rasm), PARTIYA).map(rasmlar => ({ rasmlar, matn: '' })),
           ...wordlar.flatMap(w => w.qismlar),
         ];
-        if (matn.trim()) {
-          if (partiyalar[0] && !partiyalar[0].matn) partiyalar[0] = { ...partiyalar[0], matn };
-          else partiyalar.unshift({ rasmlar: [], matn });
-        }
         for (let i = 0; i < partiyalar.length; i++) {
-          setJarayon({ matn: `AI o'qimoqda${yig.length ? ` · ${yig.length} ta savol` : ''}`, i, jami: partiyalar.length });
+          const topildi = yig.length + guruhYig.length;
+          setJarayon({ matn: `AI o'qimoqda${topildi ? ` · ${topildi} ta savol` : ''}`, i, jami: partiyalar.length });
           try {
             const r = await soro<{ savollar: any[]; guruhlar?: Omit<AiGuruh, 'kalit' | 'tanlangan'>[]; matnlar: AiMatn[]; kalit: { raqam: string; javob: string }[] }>('POST', 'questions/ai/import', {
-              fan: fan.name, mavzu: qatiyMavzu, mavzular: fan.mavzular.map(m => m.name), til: 'auto',
-              rasmlar: partiyalar[i].rasmlar, matn: partiyalar[i].matn,
+              fan: fan.name, tur: aralash ? '' : tur, til: 'auto', rasmlar: partiyalar[i].rasmlar, matn: partiyalar[i].matn,
+              // Mavzu: berilgan (Zukko), AI ajratadi (fanning mavzulari bilan) yoki umuman ajratilmaydi («Noma'lum»).
+              mavzu: rejim === 'qatiy' ? berilgan : '', mavzula: rejim === 'ai',
+              mavzular: rejim === 'ai' ? fan.mavzular.map(m => m.name).filter(n => n !== NOMALUM_MAVZU) : [],
             });
             matnYig.push(...(r.matnlar || []).map(m => ({ ...m, id: `p${i}-${m.id}` })));
             kalitYig.push(...(r.kalit || []));
-            for (const g of r.guruhlar || []) guruhYig.push({ ...g, kalit: keyingi++, tanlangan: !g.xato, topic: qatiyMavzu || mavzuNomi(g.topic) });
+            for (const g of r.guruhlar || []) guruhYig.push({ ...g, manba: 'ai', kalit: keyingi++, tanlangan: !g.xato, topic: qatiyMavzu || mavzuNomi(g.topic), partiya: i });
             for (const q of r.savollar || []) {
               yig.push({
-                ...q, kalit: keyingi++, manba: 'ai', tanlangan: false, subject: fan.name,
+                ...q, kalit: keyingi++, manba: 'ai', tanlangan: false, subject: fan.name, partiya: i,
                 topic: qatiyMavzu || mavzuNomi(q.topic), matnId: q.matnId ? `p${i}-${q.matnId}` : null,
               });
             }
@@ -338,17 +362,20 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       const korilgan = new Set<string>();
       let ichki = 0;
       const royxat = yangi.filter((q) => {
-        const iz = izi(q.text);
+        const iz = savolIzi(q);
         if (!iz) return false;
         if (korilgan.has(iz)) { ichki++; return false; }
         korilgan.add(iz);
         return true;
-      }).map(q => (q.manba === 'ai' ? { ...q, tanlangan: !q.takrorId && matniBor(q.text) } : q));
+      }).map(q => (q.manba === 'ai' ? { ...q, tanlangan: !q.takrorId && mazmuniBor(q.text) } : q));
       if (!royxat.length && !guruhYig.length) {
-        showNotification(xatolar.length ? `O'qib bo'lmadi: ${xatolar[0]}` : 'Savol topilmadi — aniqroq surat oling yoki boshqa fayl tanlang', 'error');
+        showNotification(xatolar.length ? `O'qib bo'lmadi: ${xatolar[0]}`
+          : aralash ? 'Savol topilmadi — aniqroq surat oling yoki boshqa fayl tanlang'
+          : `«${turMalumoti.nom}» turidagi savol topilmadi — fayl turi to'g'ri tanlanganini tekshiring yoki aniqroq surat oling`, 'error');
         return;
       }
       setAiGuruhlar(guruhYig);
+      setPartiyaRasmlari(partiyalar.map(p => p.rasmlar));
       // Mustaqil tekshiruv: AI javobni ko'rmay qayta yechadi (yozma, takror va javobsizlar — yo'q).
       const tek = royxat.filter(q => q.manba === 'ai' && q.type !== 'yozma' && q.correctAnswer && !q.takrorId);
       const tekKalit = new Set(tek.map(q => q.kalit));
@@ -375,25 +402,80 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         };
         await Promise.all([ishchi(), ishchi()]);
       }
+      // Yozma masalalar: faylda o'z yechimi bo'lmasa — AI yechadi (o'zi qisqa yozib qo'ygani ham batafsiliga almashadi).
+      const yechiladi = holatlar.filter(q => q.type === 'yozma' && !q.takrorId && mazmuniBor(q.text) && (!q.solution || (q.manba === 'ai' && q.yechimManbasi !== 'material')));
+      if (yechiladi.length && aiBor) await yozmalarniYech(yechiladi, partiyalar.map(p => p.rasmlar));
+      // Chizmalar: AI o'qigan, matnida «[rasm]» qolgan savollar va guruh shartlari (bankda bori — yo'q).
+      const manbaRasmlari = partiyalar.map(p => p.rasmlar);
+      if (aiBor) {
+        rasmIshlari = [
+          ...holatlar.filter(q => q.manba === 'ai' && !q.takrorId && rasmBelgisiBor(q.text)).map(q => rasmIshi(q.kalit, q, savolRasmSorovi(q, manbaRasmlari))),
+          ...guruhYig.filter(g => g.manba === 'ai' && !g.xato && rasmBelgisiBor(g.text)).map(g => rasmIshi(g.kalit, g, guruhRasmSorovi(g, manbaRasmlari))),
+        ];
+      }
+    } finally {
+      setJarayon(null);
+    }
+    // Chizish — alohida, to'xtatsa bo'ladigan bosqich: ro'yxat allaqachon ko'rinib turadi.
+    if (rasmIshlari.length) await rasmlarniChizdir(rasmIshlari);
+  };
+
+  /** Savol chizmasi so'rovi: variantlar va javob (nisbatlar uchun), manba — o'zi o'qilgan sahifa(lar) yoki ichki rasmi. */
+  const savolRasmSorovi = (n: Natija, rasmlar: string[][]) => ({
+    variantlar: n.options, javob: n.type === 'yozma' ? null : n.correctAnswer, fan: n.subject, raqam: n.raqam,
+    aslRasm: n.manba === 'jadval' ? [ichkiRasm(n.aslMatn ?? n.text)].filter((x): x is string => !!x) : aslRasmlar(n.aslMatn ?? n.text, n.partiya, rasmlar),
+  });
+  const guruhRasmSorovi = (g: AiGuruh, rasmlar: string[][]) => ({ fan: fan?.name, raqam: g.raqam, aslRasm: aslRasmlar(g.aslMatn ?? g.text, g.partiya, rasmlar) });
+
+  /** Navbatdan kelgan chizma savolga yoki guruh shartiga qo'yiladi (kalitlar umumiy sanoqdan — takrorlanmaydi). */
+  const rasmKeldi = (kalit: number, n: RasmNatijasi) => {
+    setNatijalar(l => l && l.map(q => (q.kalit === kalit ? rasmNatijasiniQoy(q, n) : q)));
+    setAiGuruhlar(l => l.map(g => (g.kalit === kalit ? rasmNatijasiniQoy(g, n) : g)));
+  };
+  const rasmlarniChizdir = async (ishlar: RasmIshi<number>[]) => {
+    const kalitlar = new Set(ishlar.map(i => i.kalit));
+    setNatijalar(l => l && l.map(q => (kalitlar.has(q.kalit) ? { ...q, rasm: { band: true } } : q)));
+    setAiGuruhlar(l => l.map(g => (kalitlar.has(g.kalit) ? { ...g, rasm: { band: true } } : g)));
+    const h = await rasmNavbati.chiz(ishlar, rasmKeldi);
+    // Chizilmagani saqlashga to'sqinlik qilmaydi: belgi matnda qoladi, savol qoralama bo'lib tushadi.
+    if (h.chizilmadi) showNotification(`${h.chizildi} ta rasm chizildi, ${h.chizilmadi} tasi chizilmadi: ${h.xato}. Kartadagi «Vektor qilib chizish» bilan qayta urinasiz`, 'error');
+    else if (h.chizildi) showNotification(`${h.chizildi} ta rasm chizildi — ko'zdan kechiring`, 'success');
+  };
+
+  const ozgartir = (kalit: number, d: Partial<Natija>) => setNatijalar(l => (l || []).map(n => (n.kalit === kalit ? { ...n, ...d } : n)));
+
+  /** Bitta yozma masalani (qayta) yechtirish — kartadagi tugma. */
+  const birniYech = async (n: Natija) => {
+    try {
+      await yozmalarniYech([n], partiyaRasmlari);
     } finally {
       setJarayon(null);
     }
   };
 
-  const ozgartir = (kalit: number, d: Partial<Natija>) => setNatijalar(l => (l || []).map(n => (n.kalit === kalit ? { ...n, ...d } : n)));
-
-  // Holat: AI tasdiqlagan, ustoz tuzatgan yoki yozma — faol; Excel — faylidagi holat; qolgani qoralama.
+  // Holat: AI tasdiqlagan yoki ustoz tuzatgan — faol; Excel — faylidagi holat; Word shablon — to'liq
+  // bo'lsa faol (markazning o'z savoli); qolgani qoralama. Yozma masalada tekshiradigan kalit yo'q:
+  // AI o'qigani ustoz tuzatmaguncha qoralama (AI yozgan yechim esa doim qoralama yechim bo'lib tushadi).
   const holatiQanday = (n: Natija): string => {
     if (n.manba === 'excel' && !n.tahrirlandi) return n.excel?.status || 'faol';
-    // Markazning o'z banki (Addmen) — to'liq bo'lsa faol, kamchiligi bo'lsa qoralama.
+    // Chizmasi kerak, lekin yo'q («[rasm]» belgisi matnda qolgan) — kitobchaga shu holicha chiqmasin.
+    if (rasmYetishmaydi(n)) return 'qoralama';
     if (n.manba === 'jadval' && !n.tahrirlandi) return !n.xato && !savolXatosi(n as any) ? 'faol' : 'qoralama';
-    const ishonchli = n.tahrirlandi || n.type === 'yozma' || n.tekshiruv?.tekshirildi === true;
+    const ishonchli = n.tahrirlandi || (n.type !== 'yozma' && n.tekshiruv?.tekshirildi === true);
     return ishonchli && !savolXatosi(n as any) ? 'faol' : 'qoralama';
+  };
+  /** Yechim holati: ustozning o'z yechimi — tasdiqlangan; AI yozgani yoki ko'chirgani — qoralama. */
+  const yechimHolati = (n: Natija): string => {
+    if (!n.solution) return 'yoq';
+    if (n.yechimManbasi === 'ustoz') return 'tasdiqlangan';
+    if (n.manba === 'excel' && n.yechimManbasi !== 'ai') return n.excel?.solutionStatus || 'qoralama';
+    return 'qoralama';
   };
 
   const tanlanganlar = (natijalar || []).filter(n => n.tanlangan);
   const faolSoni = tanlanganlar.filter(n => holatiQanday(n) === 'faol').length;
   const tanlanganGuruhlar = aiGuruhlar.filter(g => g.tanlangan && !g.xato);
+  const faolGuruhlar = tanlanganGuruhlar.filter(guruhFaolmi).length;
 
   const saqla = async () => {
     if (!tanlanganlar.length && !tanlanganGuruhlar.length) return;
@@ -406,17 +488,21 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       }
       const questions = tanlanganlar.map((n, i) => {
         const bank = n.subject === fan?.name ? fan?.mavzular.find(m => m.name === n.topic) : undefined;
-        const kutilganId = !bank && kutilgan && n.subject === fan?.name && n.topic === kutilgan ? mavzuId : null;
-        const asos = n.manba === 'excel' && n.excel ? (({ qator, ...e }) => e)(n.excel) : n.manba === 'jadval' ? {} : { source: 'AI import' };   // eslint-disable-line @typescript-eslint/no-unused-vars
+        // Zukko bergan mavzu daraxtda hali ko'rinmasa ham — savollar o'shanga tushadi.
+        const berilganId = !bank && berilgan && n.subject === fan?.name && n.topic === berilgan ? boshMavzu : null;
+        const asos = n.manba === 'excel' && n.excel ? (({ qator, mavzusiz, fansiz, ustozJavobi, ...e }) => e)(n.excel) : n.manba === 'jadval' ? {} : { source: 'AI import' };   // eslint-disable-line @typescript-eslint/no-unused-vars
+        // Yozma masalada ustozning yakuniy javobi yechim oxirida turadi (yechim bo'lmasa — yolg'iz o'zi).
+        const yechim = n.solution || (n.type === 'yozma' && n.ustozJavobi ? javobQatori(n.ustozJavobi) : null);
         return {
           ...asos,
           toplam: n.toplam || null,
           ...(n.tarjima ? { tarjima: n.tarjima } : {}),
-          subject: n.subject, topic: n.topic || ARALASH, bankTopicId: bank?.id ?? kutilganId ?? null,
+          ...(n.imageUrl ? { imageUrl: n.imageUrl } : {}),
+          subject: n.subject, topic: n.topic || NOMALUM_MAVZU, bankTopicId: bank?.id ?? berilganId ?? null,
           type: n.type, text: n.text, options: n.type === 'yopiq' || n.type === 'moslash' ? n.options : null,
-          correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, difficulty: n.difficulty, language: n.language || 'uz',
-          solution: n.solution || null,
-          solutionStatus: n.manba === 'excel' ? n.excel?.solutionStatus : n.solution ? 'qoralama' : 'yoq',
+          correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, ...darajaMaydonlari({ d: n.difficulty as 1 | 2 | 3, darajaId: n.darajaId ?? null }), language: n.language || 'uz',
+          solution: yechim,
+          solutionStatus: n.solution ? yechimHolati(n) : yechim ? 'tasdiqlangan' : 'yoq',
           passageId: n.matnId ? matnIdlari.get(n.matnId) ?? null : null,
           status: holatiQanday(n), qator: i + 1,
         };
@@ -438,8 +524,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       if (tanlanganGuruhlar.length && fan) {
         const mavzuIdlari = new Map<string, number>();
         const mavzuIdOl = async (nom: string) => {
-          const t = nom || ARALASH;
-          const bor = mavzuIdlari.get(t) ?? fan.mavzular.find(m => m.name.toLowerCase() === t.toLowerCase())?.id ?? (kutilgan && t === kutilgan && mavzuId ? mavzuId : undefined);
+          const t = nom || NOMALUM_MAVZU;
+          const bor = mavzuIdlari.get(t) ?? fan.mavzular.find(m => m.name.toLowerCase() === t.toLowerCase())?.id ?? (berilgan && t === berilgan && boshMavzu ? boshMavzu : undefined);
           if (bor) return bor;
           // Mavzu hozirgina (shu faylning oddiy savollari bilan) yaratilgan bo'lishi mumkin.
           const yangi = await mavzuniTopYokiYarat(soro, fan.id, t);
@@ -449,7 +535,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         setJarayon({ matn: 'Guruhli savollar yozilmoqda', i: 0, jami: tanlanganGuruhlar.length });
         const g = await guruhlarniSaqla(soro, tanlanganGuruhlar, mavzuIdOl, 'AI import');
         r.ids.push(...g.ids);
-        guruhXabari = g.soni ? `${g.soni} ta guruhli savol (qoralama — bankda ko'rib, faol qilasiz)` : '';
+        const qoralamaGuruh = g.soni - g.faolSoni;
+        guruhXabari = g.soni ? `${g.soni} ta guruhli savol${qoralamaGuruh ? ` (${qoralamaGuruh} tasi qoralama — bankda ko'rib, faol qilasiz)` : ''}` : '';
         guruhQolgan = g.qolgan;
         guruhXato = g.xatolar[0] || '';
       }
@@ -476,7 +563,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   };
 
   // Ko'rib chiqish: filtr va mavzular bo'yicha guruhlar.
-  const tekshirishKerak = (n: Natija) => n.tekshiruv?.tekshirildi === false || (n.type !== 'yozma' && !n.correctAnswer) || !!n.xato;
+  const tekshirishKerak = (n: Natija) => n.tekshiruv?.tekshirildi === false || (n.type !== 'yozma' && !n.correctAnswer) || !!n.xato || (n.type === 'yozma' && !n.yechilmoqda && !n.solution);
   const korinadi = (natijalar || []).filter(n => (filtr === 'hammasi' ? true : filtr === 'takror' ? !!n.takrorId : tekshirishKerak(n)));
   const guruhlar = useMemo(() => {
     const m = new Map<string, Natija[]>();
@@ -490,7 +577,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const mavzuVariantlari = useMemo(() => {
     const s = new Set<string>((fan?.mavzular || []).map(m => m.name));
     (natijalar || []).forEach(n => { if (n.subject === fan?.name && n.topic) s.add(n.topic); });
-    s.add(ARALASH);
+    s.add(NOMALUM_MAVZU);
     return [...s];
   }, [fan, natijalar]);
   const sanoq = useMemo(() => {
@@ -498,13 +585,25 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     return {
       jami: l.length,
       togri: l.filter(n => n.tekshiruv?.tekshirildi === true).length,
+      yechildi: l.filter(n => n.type === 'yozma' && n.yechimManbasi === 'ai' && n.solution).length,
       tekshirish: l.filter(tekshirishKerak).length,
       takror: l.filter(n => n.takrorId).length,
-      tekshirilmoqda: l.filter(n => n.tekshiriladi && !n.tekshiruv).length,
+      kutilmoqda: l.filter(n => (n.tekshiriladi && !n.tekshiruv) || n.yechilmoqda).length,
     };
   }, [natijalar]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const yangiMavzuBelgisi = (nom: string) => !!fan && nom !== ARALASH && !fan.mavzular.some(m => m.name === nom);
+  /**
+   * Kartada chizma bloki ko'rinadimi: AI o'qigan savolda — chizma kerak bo'lsa («[rasm]» belgisi) yoki bor
+   * bo'lsa; Word shablonidan kelgan savolda — yagona ichki rasmi bo'lsa (xohlasa vektor qilib chizdiradi).
+   */
+  const chizmaBloki = (n: Natija) => (!!n.imageUrl || aiBor) && (n.manba === 'ai' ? rasmKerakmi(n) : n.manba === 'jadval' && (!!n.imageUrl || !!ichkiRasm(n.text)));
+
+  const yangiMavzuBelgisi = (nom: string) => !!fan && nom !== NOMALUM_MAVZU && !fan.mavzular.some(m => m.name === nom);
+  const mavzuVariantlar: { v: MavzuRejimi; nom: React.ReactNode }[] = [
+    ...(berilgan ? [{ v: 'qatiy' as const, nom: berilgan }] : []),
+    { v: 'ai', nom: 'AI ajratsin' },
+    { v: 'nomalum', nom: NOMALUM_MAVZU },
+  ];
 
   // ---- Oyna ------------------------------------------------------------------
 
@@ -515,8 +614,8 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Sparkles size={15} className="text-brand shrink-0" /> Savol qo'shish</h3>
-            <p className="text-[12px] text-matn-xira">Rasm, PDF, Word yoki Excel — AI o'qiydi, mavzu va qiyinlikka ajratadi, javoblarini tekshiradi.</p>
-            {onRejim && <QoshRejimi rejim="fayl" onRejim={onRejim} band={band} />}
+            <p className="text-[12px] text-matn-xira">Rasm, PDF, Word yoki Excel — fayl turini tanlang: AI o'qiydi, javoblarini tekshiradi, yozma masalalarni yechadi.</p>
+            {onRejim && <QoshRejimi rejim="fayl" onRejim={onRejim} band={band || !!natijalar} />}
           </div>
           <button aria-label="Yopish" disabled={band} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
@@ -525,40 +624,34 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
           <div className="p-4 sm:p-5 space-y-4">
             {ai && !ai.yoqilgan && (
               ai.sozlay ? <AiKalitKartasi ixcham />
-                : <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">AI hali ulanmagan — rasm va PDF o'qilmaydi (Excel ishlaydi). Kalitni administrator Sozlamalar → Integratsiyalar da kiritadi.</p>
+                : <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">AI hali ulanmagan — rasm va PDF o'qilmaydi (to'ldirilgan Word shablon va Excel ishlaydi). Kalitni administrator Imtihonlar → Sozlamalar da kiritadi.</p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Maydon nom="Fan">
-                <select className={SELECT} value={fan?.id ?? ''} aria-label="Fan" disabled={band}
-                  onChange={e => { setFanId(Number(e.target.value) || null); setMavzuId(null); setYangiMavzu(null); }}>
+                <select className={SELECT} value={fan?.id ?? ''} aria-label="Fan" disabled={band} onChange={e => setFanId(Number(e.target.value) || null)}>
                   <option value="">Fanni tanlang</option>
                   {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
               </Maydon>
-              <Maydon nom="Mavzu">
-                {yangiMavzu !== null ? (
-                  <div className="flex items-center gap-1.5">
-                    <input autoFocus className={INPUT} value={yangiMavzu} placeholder="Yangi mavzu nomi" aria-label="Yangi mavzu nomi" onChange={e => setYangiMavzu(e.target.value)} />
-                    <Tugma kichik turi="oddiy" ikonka={<X size={13} />} onClick={() => setYangiMavzu(null)} aria-label="Bekor" />
-                  </div>
-                ) : (
-                  <select className={SELECT} value={mavzu?.id ?? (kutilgan ? mavzuId ?? '' : '')} disabled={!fan || band} aria-label="Mavzu"
-                    onChange={e => (e.target.value === 'yangi' ? setYangiMavzu('') : setMavzuId(Number(e.target.value) || null))}>
-                    {/* Word jadvali va Excel AI siz o'qiladi — mavzu tanlanmasa «Aralash» ga tushadi. */}
-                    <option value="">{!fan ? 'Avval fanni tanlang' : jadvallar.length > 0 && !aiKerak && !ai?.yoqilgan ? `Tanlanmagan — «${ARALASH}» mavzusiga tushadi` : 'AI o\'zi mavzularga ajratsin'}</option>
-                    {kutilgan && mavzuId != null && <option value={mavzuId}>{kutilgan}</option>}
-                    {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
-                      ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
-                      : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
-                    {fan && <option value="yangi">+ Yangi mavzu…</option>}
-                  </select>
-                )}
+              <Maydon div nom="Mavzu" izoh={rejim === 'ai' ? 'AI har savolni fanning mavzulariga o\'zi ajratadi (mos mavzu bo\'lmasa — yangisini taklif qiladi).'
+                : rejim === 'nomalum' ? `Savollar «${NOMALUM_MAVZU}» mavzusiga tushadi — bankda o'zingiz kerakli mavzularga ko'chirasiz.${ai && !aiBor ? ' (AI ulanmagan — ajrata olmaydi.)' : ''}`
+                : `Hamma savol «${berilgan}» mavzusiga tushadi.`}>
+                <Tanlov qiymat={rejim} variantlar={mavzuVariantlar}
+                  onChange={v => (v === 'ai' && ai && !aiBor ? showNotification("AI ulanmagan — mavzuga ajrata olmaydi. Savollar «Noma'lum» ga tushadi", 'info') : setMavzuRejimi(v))} />
               </Maydon>
             </div>
+            <Maydon div nom="Fayl turi" izoh={turQulf ? `${turMalumoti.izoh} Turni almashtirish uchun avval yuklangan Word/Excel faylni olib tashlang.` : turMalumoti.izoh}>
+              <div role="radiogroup" aria-label="Fayl turi" className="inline-flex flex-wrap rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5">
+                {FAYL_TURLARI.map(t => (
+                  <button key={t.v} type="button" role="radio" aria-checked={t.v === tur} disabled={band || (turQulf && t.v !== tur)} onClick={() => setTur(t.v)}
+                    className={`px-3.5 py-1.5 rounded-[10px] text-[12.5px] font-bold cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${t.v === tur ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{t.nom}</button>
+                ))}
+              </div>
+            </Maydon>
 
             <div
               onDragOver={e => { e.preventDefault(); setUstida(true); }} onDragLeave={() => setUstida(false)}
-              onDrop={e => { e.preventDefault(); setUstida(false); fayllarniQosh(Array.from(e.dataTransfer.files || [])); }}
+              onDrop={e => { e.preventDefault(); setUstida(false); if (!band) fayllarniQosh(Array.from(e.dataTransfer.files || [])); }}
               className={`rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${ustida ? 'border-brand bg-brand-fon dark:bg-brand/10' : 'border-chiziq-kuchli bg-ichki'}`}>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                 <Tugma turi="asosiy" ikonka={<Camera size={15} />} disabled={band} onClick={() => kameraRef.current?.click()}>{sahifalar.length ? 'Yana suratga olish' : 'Suratga olish'}</Tugma>
@@ -569,71 +662,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
               <input ref={faylRef} type="file" multiple accept={`image/*,application/pdf,.pdf,.docx,.doc,${DOCX},.xlsx,.xls`} className="hidden" onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; fayllarniQosh(f); }} />
             </div>
 
-            {(sahifalar.length > 0 || excellar.length > 0 || wordlar.length > 0 || jadvallar.length > 0) && (
-              <div className="space-y-2">
-                {sahifalar.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {sahifalar.map((s, i) => (
-                      <div key={s.kalit} className="relative rounded-lg border border-chiziq bg-white overflow-hidden aspect-[3/4]">
-                        <img src={s.rasm} alt={`${i + 1}-sahifa`} className="w-full h-full object-contain" />
-                        <span className="absolute left-1 top-1 rounded-md bg-black/60 px-1.5 text-[11px] font-semibold text-white raqam">{i + 1}</span>
-                        <button type="button" aria-label={`${i + 1}-sahifani olib tashlash`} disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== s.kalit))}
-                          className="absolute right-1 top-1 w-6 h-6 rounded-md bg-black/60 text-white flex items-center justify-center cursor-pointer"><X size={13} /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {excellar.map(e => (
-                  <div key={e.kalit} className="flex items-center justify-between gap-2 rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
-                    <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileSpreadsheet size={15} className="text-yaxshi shrink-0" /><span className="truncate">{e.nom}</span>
-                      <span className="text-matn-xira shrink-0">· {e.savollar.length} ta savol{e.xatolar ? `, ${e.xatolar} ta xato qator` : ''}</span></span>
-                    <button type="button" aria-label="Olib tashlash" onClick={() => setManbalar(l => l.filter(x => x.kalit !== e.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
-                  </div>
-                ))}
-                {jadvallar.map(j => {
-                  const chala = j.savollar.filter(q => q.xato).length;
-                  return (
-                    <div key={j.kalit} className="rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileText size={15} className="text-brand shrink-0" />
-                          <span className="min-w-0">
-                            <span className="block truncate">{j.nom}</span>
-                            <span className="block text-[11.5px] text-matn-xira">Word jadvali · {j.savollar.length} ta savol{chala ? ` · ${chala} tasi chala (qoralama bo'ladi)` : ''}</span>
-                          </span>
-                        </span>
-                        <button type="button" aria-label="Olib tashlash" disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== j.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
-                      </div>
-                      {j.oqilmagan > 0 && (
-                        <p className="mt-1.5 flex gap-1.5 text-[12px] text-ogoh"><AlertTriangle size={13} className="mt-[2px] shrink-0" />
-                          <span>{j.oqilmagan} ta formula yoki rasm eski formatda (MathType, WMF) — shu savollar qoralama bo'ladi. Word'da formulalarni yangi formatga o'tkazib qayta yuklang.</span></p>
-                      )}
-                    </div>
-                  );
-                })}
-                {wordlar.map(w => (
-                  <div key={w.kalit} className="rounded-xl border border-chiziq bg-sirt px-3 py-2 text-[12.5px]">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-2 min-w-0 text-matn"><FileText size={15} className="text-brand shrink-0" />
-                        <span className="min-w-0">
-                          <span className="block truncate">{w.nom}</span>
-                          <span className="block text-[11.5px] text-matn-xira">Word{w.formulaSoni ? ` · ${w.formulaSoni} ta formula` : ''}{w.rasmSoni ? ` · ${w.rasmSoni} ta rasm` : ''}</span>
-                        </span>
-                      </span>
-                      <button type="button" aria-label="Olib tashlash" disabled={band} onClick={() => setManbalar(l => l.filter(x => x.kalit !== w.kalit))} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>
-                    </div>
-                    {(w.oqilmagan > 0 || w.tashlangan > 0) && (
-                      <p className="mt-1.5 flex gap-1.5 text-[12px] text-ogoh">
-                        <AlertTriangle size={13} className="mt-[2px] shrink-0" />
-                        <span>
-                          {w.oqilmagan > 0 && <>{w.oqilmagan} ta formula yoki rasm eski formatda (MathType, WMF) — ular o'qilmaydi. Muhim bo'lsa, Word'da «Fayl → Saqlash → PDF» qilib, PDF ni yuklang. </>}
-                          {w.tashlangan > 0 && <>{w.tashlangan} ta rasm chegaradan oshdi — AI ga bormaydi.</>}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <ManbalarRoyxati manbalar={manbalar} band={band} aiBor={aiBor} onOl={kalit => setManbalar(l => l.filter(x => x.kalit !== kalit))} />
 
             {jarayon && (
               <div className="space-y-1.5" role="status">
@@ -644,16 +673,18 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
 
             <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <QrShablonTugma />
+                <QrShablonTugma tur={tur} />
               </span>
               <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !aiSiz}
-                onClick={ajrat}>
+                onClick={() => ajrat()}>
                 {sahifalar.length ? `Savollarni ajratish (${sahifalar.length} sahifa)` : aiSiz && !aiKerak ? `${aiSiz} ta savolni ko'rish` : 'Savollarni ajratish'}
               </Tugma>
             </div>
             <p className="text-[11.5px] text-matn-xira">
-              AI har savolni {qatiyMavzu ? <>«<b>{qatiyMavzu}</b>» mavzusiga</> : 'fanning mavzulariga'} va qiyinlikka ajratadi, alohida sahifadagi javoblar kalitini raqam bo'yicha topadi,
-              bankda borini belgilaydi va har javobni qayta yechib tekshiradi.
+              Fayldan faqat «<b>{turMalumoti.nom}</b>» turidagi savollar olinadi. To'ldirilgan Word shablon AI siz o'qiladi; rasm, PDF va oddiy Word ni AI o'qiydi
+              {tur === 'yozma' ? ' va har masalani yechib, batafsil (qadamma-qadam, izohli) yechim yozadi.'
+                : guruhTurimi(tur) ? ' — bunday savollar bankka qoralama bo\'lib tushadi (javoblarini ko\'rib, faol qilasiz).'
+                : ', alohida sahifadagi javoblar kalitini raqam bo\'yicha topadi, bankda borini belgilaydi va har javobni qayta yechib tekshiradi.'}
             </p>
           </div>
         ) : (
@@ -661,20 +692,25 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             <div className="p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[13px] text-matn">
-                  <b>{sanoq.jami}</b> ta savol
+                  {sanoq.jami > 0 || !aiGuruhlar.length ? <><b>{sanoq.jami}</b> ta savol</> : null}
+                  {aiGuruhlar.length > 0 && <>{sanoq.jami > 0 ? ' · ' : ''}<b>{aiGuruhlar.length}</b> ta guruhli savol</>}
                   {sanoq.togri > 0 && <> · <span className="text-yaxshi font-semibold">{sanoq.togri} tasi javobi tekshirildi</span></>}
+                  {sanoq.yechildi > 0 && <> · <span className="text-brand font-semibold">{sanoq.yechildi} tasini AI yechdi</span></>}
                   {sanoq.takror > 0 && <> · <span className="text-ogoh">{sanoq.takror} tasi bankda bor</span></>}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <Tanlov kichik qiymat={filtr} onChange={setFiltr} variantlar={[
-                    { v: 'hammasi', nom: 'Hammasi' },
-                    { v: 'tekshirish', nom: `Tekshirish kerak ${sanoq.tekshirish}` },
-                    ...(sanoq.takror ? [{ v: 'takror' as const, nom: `Bankda bor ${sanoq.takror}` }] : []),
-                  ]} />
-                  <Tugma kichik turi="oddiy" disabled={band} onClick={() => setNatijalar(l => (l || []).map(n => ({ ...n, tanlangan: !n.takrorId })))}>Hammasini tanlash</Tugma>
-                  <Tugma kichik turi="oddiy" ikonka={<RotateCcw size={13} />} disabled={band} onClick={() => { setNatijalar(null); setMatnlar([]); setAiGuruhlar([]); setFiltr('hammasi'); }}>Boshqa fayl</Tugma>
+                  {sanoq.jami > 0 && (
+                    <Tanlov kichik qiymat={filtr} onChange={setFiltr} variantlar={[
+                      { v: 'hammasi', nom: 'Hammasi' },
+                      { v: 'tekshirish', nom: `Tekshirish kerak ${sanoq.tekshirish}` },
+                      ...(sanoq.takror ? [{ v: 'takror' as const, nom: `Bankda bor ${sanoq.takror}` }] : []),
+                    ]} />
+                  )}
+                  {sanoq.jami > 0 && <Tugma kichik turi="oddiy" disabled={band} onClick={() => setNatijalar(l => (l || []).map(n => ({ ...n, tanlangan: !n.takrorId })))}>Hammasini tanlash</Tugma>}
+                  <Tugma kichik turi="oddiy" ikonka={<RotateCcw size={13} />} disabled={band} onClick={() => { rasmNavbati.toxtat(); setNatijalar(null); setMatnlar([]); setAiGuruhlar([]); setPartiyaRasmlari([]); setFiltr('hammasi'); }}>Boshqa fayl</Tugma>
                 </div>
               </div>
+              <RasmJarayoni holat={rasmNavbati.holat} onToxtat={rasmNavbati.toxtat} />
               {jarayon && (
                 <div className="space-y-1.5" role="status">
                   <p className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> {jarayon.matn} — {jarayon.i} / {jarayon.jami}</p>
@@ -685,7 +721,13 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                 <section aria-label="Guruhli savollar" className="space-y-2">
                   <h4 className="text-[12.5px] font-bold text-matn">Guruhli savollar <span className="font-normal text-matn-xira">· {aiGuruhlar.length} ta — bankka guruh bo'lib tushadi (umumiy shart bir marta)</span></h4>
                   <ul className="space-y-2">
-                    {aiGuruhlar.map(g => <AiGuruhKarta key={g.kalit} g={g} band={band} onTanla={v => setAiGuruhlar(l => l.map(x => (x.kalit === g.kalit ? { ...x, tanlangan: v } : x)))} />)}
+                    {aiGuruhlar.map(g => (
+                      <AiGuruhKarta key={g.kalit} g={g} band={band} onTanla={v => setAiGuruhlar(l => l.map(x => (x.kalit === g.kalit ? { ...x, tanlangan: v } : x)))}
+                        /* Umumiy shartning chizmasi (AI o'qigan guruhda): shart ostida, qayta chizsa bo'ladi. */
+                        rasm={g.manba === 'ai' && rasmKerakmi(g) && (aiBor || g.imageUrl) ? (
+                          <SavolRasmi q={g} sorov={guruhRasmSorovi(g, partiyaRasmlari)} band={band} onOzgar={f => setAiGuruhlar(l => l.map(x => (x.kalit === g.kalit ? f(x) : x)))} />
+                        ) : undefined} />
+                    ))}
                   </ul>
                 </section>
               )}
@@ -695,6 +737,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                   <h4 className="flex flex-wrap items-center gap-2 pt-2 text-[13px] font-bold text-matn">
                     {nom}<span className="raqam font-semibold text-matn-xira">{royxat.length}</span>
                     {yangiMavzuBelgisi(nom) && <Yorliq rang="brand">yangi mavzu</Yorliq>}
+                    {nom === NOMALUM_MAVZU && <span className="text-[11.5px] font-normal text-matn-xira">— bankda kerakli mavzularga ko'chirasiz</span>}
                   </h4>
                   {royxat.map(n => (
                     <div key={n.kalit} className={`rounded-xl border p-3 transition-colors ${n.tanlangan ? 'border-brand/40 bg-sirt' : 'border-chiziq bg-ichki/60'}`}>
@@ -708,14 +751,25 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                             {n.matnId && <Yorliq rang="brand"><FileText size={11} /> {matnlar.find(m => m.id === n.matnId)?.sarlavha || 'Umumiy matn'}</Yorliq>}
                           </div>
                           {tahrirda === n.kalit
-                            ? <Tahrir q={n} onBekor={() => setTahrirda(null)} onSaqla={q => { ozgartir(n.kalit, { ...q, tahrirlandi: true, tanlangan: true, xato: null }); setTahrirda(null); }} />
-                            : <Korinish q={n} onJavob={band ? undefined : j => ozgartir(n.kalit, { correctAnswer: j, tahrirlandi: true, tanlangan: true })} />}
+                            ? <Tahrir q={n} onBekor={() => setTahrirda(null)} onSaqla={q => {
+                              // Yechimni ustoz o'zi yozgan yoki tuzatgan bo'lsa — endi uniki.
+                              ozgartir(n.kalit, { ...q, tahrirlandi: true, tanlangan: true, xato: null, yechilmadi: false, ...(q.solution !== n.solution ? { yechimManbasi: q.solution ? 'ustoz' as const : null } : {}) });
+                              setTahrirda(null);
+                            }} />
+                            : <Korinish q={n} rasmsiz={chizmaBloki(n)} onJavob={band ? undefined : j => ozgartir(n.kalit, { correctAnswer: j, tahrirlandi: true, tanlangan: true })} />}
+                          {tahrirda !== n.kalit && chizmaBloki(n) && (
+                            <SavolRasmi q={n} ichki={n.manba === 'jadval'} sorov={savolRasmSorovi(n, partiyaRasmlari)} band={band} onOzgar={f => setNatijalar(l => (l || []).map(x => (x.kalit === n.kalit ? f(x) : x)))} />
+                          )}
+                          {tahrirda !== n.kalit && n.type === 'yozma' && n.ustozJavobi && <p className="text-[13px] text-matn"><b>Ustoz bergan javob:</b> {n.ustozJavobi}</p>}
                           {tahrirda !== n.kalit && n.type !== 'yozma' && !n.correctAnswer && n.tekshiruv?.aiJavobi && (
                             <Tugma kichik onClick={() => ozgartir(n.kalit, { correctAnswer: n.tekshiruv!.aiJavobi, tahrirlandi: true, tanlangan: true })}>AI javobini qo'yish: {n.tekshiruv.aiJavobi}</Tugma>
                           )}
+                          {tahrirda !== n.kalit && n.type === 'yozma' && !n.yechilmoqda && aiBor && n.yechimManbasi !== 'ustoz' && (
+                            <Tugma kichik ikonka={<Sparkles size={13} />} disabled={band} onClick={() => birniYech(n)}>{n.solution ? 'Qayta yechish (AI)' : 'AI bilan yechish'}</Tugma>
+                          )}
                           {tahrirda !== n.kalit && (
                             <div className="flex flex-wrap items-center gap-2">
-                              <QiyinlikTanlov kichik qiymat={n.difficulty} onChange={d => ozgartir(n.kalit, { difficulty: d })} />
+                              <DarajaTanlov kichik qiymat={{ d: n.difficulty as 1 | 2 | 3, darajaId: n.darajaId ?? null }} onChange={d => ozgartir(n.kalit, { difficulty: d.d, darajaId: d.darajaId })} />
                               {n.subject === fan?.name && (
                                 <select aria-label="Mavzu" className={KICHIK_SELECT} value={n.topic} disabled={band}
                                   onChange={e => ozgartir(n.kalit, { topic: e.target.value })}>
@@ -727,7 +781,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                         </div>
                         {tahrirda !== n.kalit && (
                           <div className="flex flex-col gap-1 shrink-0">
-                            <button aria-label="Tuzatish" disabled={band} onClick={() => setTahrirda(n.kalit)} className="p-1.5 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki cursor-pointer disabled:opacity-40"><Pencil size={14} /></button>
+                            <button aria-label="Tuzatish" disabled={band || !!n.rasm?.band} onClick={() => setTahrirda(n.kalit)} className="p-1.5 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki cursor-pointer disabled:opacity-40"><Pencil size={14} /></button>
                             <button aria-label="Olib tashlash" disabled={band} onClick={() => setNatijalar(l => (l || []).filter(x => x.kalit !== n.kalit))} className="p-1.5 rounded-lg text-matn-xira hover:text-xato hover:bg-ichki cursor-pointer disabled:opacity-40"><Trash2 size={14} /></button>
                           </div>
                         )}
@@ -740,11 +794,13 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             <div className="sticky bottom-0 z-10 bg-sirt rounded-b-2xl border-t border-chiziq px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <p className="text-[12px] text-matn-sokin">
                 {tanlanganlar.length || tanlanganGuruhlar.length
-                  ? <>Tanlandi: <b className="text-matn">{tanlanganlar.length}</b> · faol {faolSoni}{tanlanganlar.length - faolSoni ? ` · qoralama ${tanlanganlar.length - faolSoni}` : ''}{tanlanganGuruhlar.length ? ` · guruhli savol ${tanlanganGuruhlar.length} (qoralama)` : ''}</>
+                  ? <>Tanlandi: <b className="text-matn">{tanlanganlar.length + tanlanganGuruhlar.length}</b>
+                    {tanlanganlar.length > 0 && <> · faol {faolSoni}{tanlanganlar.length - faolSoni ? ` · qoralama ${tanlanganlar.length - faolSoni}` : ''}</>}
+                    {tanlanganGuruhlar.length > 0 && <> · guruhli savol {tanlanganGuruhlar.length}{faolGuruhlar ? ` (faol ${faolGuruhlar}${tanlanganGuruhlar.length - faolGuruhlar ? `, qoralama ${tanlanganGuruhlar.length - faolGuruhlar}` : ''})` : ' (qoralama)'}</>}</>
                   : 'Savollarni belgilang'}
-                {sanoq.tekshirilmoqda > 0 && <span className="block text-[11px] text-matn-xira">Tekshiruv tugagach — tasdiqlanganlari faol bo'ladi</span>}
+                {sanoq.kutilmoqda > 0 && <span className="block text-[11px] text-matn-xira">AI ishi tugagach — tasdiqlanganlari faol bo'ladi</span>}
               </p>
-              <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={(!tanlanganlar.length && !tanlanganGuruhlar.length) || !!jarayon || tahrirda !== null} onClick={saqla}>
+              <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={(!tanlanganlar.length && !tanlanganGuruhlar.length) || !!jarayon || rasmNavbati.band || tahrirda !== null} onClick={saqla}>
                 {tanlanganlar.length ? `${tanlanganlar.length} ta savol${tanlanganGuruhlar.length ? ` va ${tanlanganGuruhlar.length} ta guruhni` : 'ni'} bankka qo'shish` : tanlanganGuruhlar.length ? `${tanlanganGuruhlar.length} ta guruhli savolni bankka qo'shish` : "Bankka qo'shish"}
               </Tugma>
             </div>

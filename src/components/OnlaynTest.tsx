@@ -234,11 +234,12 @@ export default function OnlaynTest() {
               <div className="rounded-xl bg-ichki p-3 space-y-2">
                 {matn.title && <p className="text-[12.5px] font-bold text-matn">{matn.title}</p>}
                 <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(matn.text) }} />
-                {matn.imageUrl && <img src={matn.imageUrl} alt="" className="max-h-72 rounded-lg" />}
+                {/* bg-white: foni shaffof rasm (PNG chizma) qorong'i mavzuda ko'rinmay qolmasin. */}
+                {matn.imageUrl && <img src={matn.imageUrl} alt="" className="max-h-72 rounded-lg bg-white" />}
               </div>
             )}
             <div className={`${SAVOL_MATNI} text-[15px] text-matn break-words`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.matn) }} />
-            {s.rasm && <img src={s.rasm} alt="" className="max-h-80 rounded-lg mx-auto" />}
+            {s.rasm && <img src={s.rasm} alt="" className="max-h-80 rounded-lg mx-auto bg-white" />}
             {s.t === 'yopiq' ? (
               <div className="space-y-2" role="radiogroup" aria-label="Javob">
                 {s.variantlar.map((v, i) => {

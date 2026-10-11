@@ -1,22 +1,23 @@
 import React, { memo, useMemo } from 'react';
-import { Folder, Layers, MoreHorizontal } from 'lucide-react';
+import { Folder, Layers, Lightbulb, MoreHorizontal } from 'lucide-react';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
+import { TUR_IZOHI, TUR_NOMI } from '../../../lib/savolTuri';
 import { HARFLAR } from '../../../../lib/imtihon.js';
 import { Yorliq } from '../ui';
+import { CHIP, CHIP_BOR, CHIP_BOSH } from './bankTurlari';
 import type { BelgiGuruhi, GuruhTuri, Question } from '../../../types';
 
 // Guruhli savol kartasi (Milliy sertifikat): umumiy shart bir marta, ostida kichik savollar.
-// Moslashtirishda — o'ngda umumiy javoblar ro'yxati (to'g'ri javoblar qaysi savolniki ekani
-// bilan); qismli savolda — a), b) qismlari, har birining javobi va kim tekshirishi.
-// Yorliqlar (mavzu, qiyinlik, filtrlar) guruhdagi hamma savolga birdaniga qo'yiladi.
+// MS-33-35 (moslashtirish guruhi) — o'ngda umumiy javoblar ro'yxati (to'g'ri javoblar qaysi
+// savolniki ekani bilan); MS-36-45 (qismli savol) — a), b) qismlari, har birining javobi va kim
+// tekshirishi. Yorliqlar (mavzu, qiyinlik, filtrlar) guruhdagi hamma savolga birdaniga qo'yiladi;
+// yechim esa har kichik savolniki alohida — qatoridagi «Yechim» tugmasi.
 
-export type GuruhSavoli = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'tagIds' | 'correctAnswer' | 'answers' | 'usedCount'>;
-/** Guruh kartasidan ochiladigan menyular. */
-export type GuruhMenyusi = 'mavzu' | 'daraja' | 'guruh' | 'guruhkarta';
+export type GuruhSavoli = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'tagIds' | 'correctAnswer' | 'answers' | 'usedCount'>
+  & { /** Yechimi bor (matni ro'yxatda kelmaydi). */ yechimBor?: boolean };
+/** Guruh kartasidan ochiladigan menyular. 'yechim' — bitta kichik savolning yechimi (ids — o'sha savol). */
+export type GuruhMenyusi = 'mavzu' | 'daraja' | 'guruh' | 'guruhkarta' | 'yechim';
 
-const CHIP = 'inline-flex items-center gap-1 max-w-full px-1.5 py-0.5 rounded-md border text-[11.5px] font-semibold whitespace-nowrap';
-const CHIP_BOR = `${CHIP} border-chiziq bg-ichki text-matn`;
-const CHIP_BOSH = `${CHIP} border-dashed border-chiziq-kuchli text-matn-xira`;
 const QISM_HARFI = 'abcdefghij';
 
 interface GuruhKartaProps {
@@ -40,11 +41,13 @@ interface GuruhKartaProps {
   darajaNom: string;
   darajaNuqta: string;
   guruhlar: BelgiGuruhi[];
+  /** Har kichik savol qatorida «Yechim» tugmasi (yechimni ko'rish huquqi bo'lsa). */
+  yechim?: boolean;
   onTanla: (ids: number[], tanlansin: boolean) => void;
   onMenyu: (tur: GuruhMenyusi, el: HTMLElement, ids: number[], guruh?: number) => void;
 }
 
-export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart, variantlar, boshRaqam, tanlangan, tanlanadi, tahrir, yangi, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onMenyu }: GuruhKartaProps) {
+export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart, variantlar, boshRaqam, tanlangan, tanlanadi, tahrir, yangi, mavzu, darajaNom, darajaNuqta, guruhlar, yechim, onTanla, onMenyu }: GuruhKartaProps) {
   /** Bo'lakning guruhdagi o'rni (0 dan) — sahifada hammasi ko'rinmasa ham harfi va raqami to'g'ri chiqadi. */
   const orni = (id: number) => Math.max(0, ids.indexOf(id));
   const shartHtml = useMemo(() => formulaliHtml(shart || ''), [shart]);
@@ -57,6 +60,13 @@ export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart,
     : <span key={`${m}${guruh || ''}`} title={nom} className={sinf}>{ichi}</span>);
   /** Harf → shu javob qaysi kichik savol(lar)niki. */
   const egalari = (harf: string) => savollar.map(q => (String(q.correctAnswer || '').toUpperCase() === harf ? orni(q.id) + 1 : 0)).filter(Boolean);
+  /** Kichik savolning yechimi: bori — to'liq chiziqli, yo'g'i — punktir (kartadagi boshqa yorliqlar kabi). Bosilsa — ko'rish / o'zgartirish. */
+  const yechimTugma = (q: GuruhSavoli, nom: string) => (yechim ? (
+    <button type="button" aria-haspopup="menu" aria-label={`${nom}: yechim${q.yechimBor ? '' : " (yo'q)"}`} title={q.yechimBor ? "Yechimi bor — ko'rish yoki o'zgartirish" : "Yechimi yo'q — AI yechib beradi"}
+      onClick={e => onMenyu('yechim', e.currentTarget, [q.id])} className={`${q.yechimBor ? CHIP_BOR : CHIP_BOSH} shrink-0 cursor-pointer hover:border-brand`}>
+      <Lightbulb size={11} className="shrink-0" />Yechim
+    </button>
+  ) : null);
 
   return (
     <li aria-label={`Guruhli savol ${raqamlar}`}
@@ -68,7 +78,7 @@ export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart,
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
           <span className="raqam text-[13px] font-bold text-matn mr-0.5">{raqamlar}</span>
           {yangi && <span className="px-1.5 py-0.5 rounded-md bg-yaxshi-fon text-yaxshi text-[10.5px] font-bold">yangi</span>}
-          <span className={`${CHIP} border-transparent bg-brand-fon text-brand-dark dark:bg-brand/20 dark:text-brand-accent`}><Layers size={12} className="shrink-0" />{tur === 'moslash' ? `Moslashtirish · ${ids.length} ta savol` : `Qismli savol · ${ids.length} ta qism`}</span>
+          <span title={tur === 'moslash' ? TUR_IZOHI.juft : TUR_IZOHI.qismli} className={`${CHIP} border-transparent bg-brand-fon text-brand-dark dark:bg-brand/20 dark:text-brand-accent`}><Layers size={12} className="shrink-0" />{tur === 'moslash' ? `${TUR_NOMI.juft} · ${ids.length} ta savol` : `${TUR_NOMI.qismli} · ${ids.length} ta qism`}</span>
           {yorliq('mavzu', mavzu ? CHIP_BOR : CHIP_BOSH, mavzu ? `mavzu — ${mavzu}` : "mavzusi yo'q", <><Folder size={12} className="shrink-0" /><span className="truncate max-w-56">{mavzu || 'mavzu?'}</span></>)}
           {yorliq('daraja', CHIP_BOR, `qiyinlik — ${darajaNom}`, <><span className={`w-2 h-2 rounded-full shrink-0 ${darajaNuqta}`} /><span className="truncate max-w-40">{darajaNom}</span></>)}
           {guruhlar.map(g => {
@@ -95,6 +105,7 @@ export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart,
                   <b className="shrink-0 text-matn-xira raqam">{orni(q.id) + 1}.</b>
                   <span className={`${SAVOL_MATNI} min-w-0 flex-1 [&_p]:my-0`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text || '') }} />
                   <span className="shrink-0 inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md bg-yaxshi-fon text-yaxshi text-[12.5px] font-bold" title="To'g'ri javob">{q.correctAnswer || '?'}</span>
+                  {yechimTugma(q, `${orni(q.id) + 1}-savol`)}
                 </li>
               ))}
             </ol>
@@ -124,6 +135,7 @@ export default memo(function GuruhKarta({ savollar, hammaIdlar: ids, tur, shart,
                   <span className="shrink-0 inline-flex items-center gap-2">
                     <span className="text-matn-sokin">Javob: <b className="text-yaxshi raqam">{q.correctAnswer || '—'}</b></span>
                     <span className="px-1.5 py-0.5 rounded-md border border-chiziq bg-sirt text-[11px] font-semibold text-matn-sokin" title="Bu qismni kim tekshiradi">{son ? 'skaner (son)' : 'ustoz'}</span>
+                    {yechimTugma(q, `${QISM_HARFI[orni(q.id)]}) qism`)}
                   </span>
                 </li>
               );

@@ -583,8 +583,9 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     botInstance.on('contact', async (ctx) => {
         const schoolId = await filial(ctx);
         // Faqat o'z raqami: begona kontaktni yuborib, boshqaning farzandiga
-        // (to'lovlari, davomati) ulanib olish mumkin edi.
-        if (ctx.message.contact.user_id && ctx.message.contact.user_id !== ctx.from.id) {
+        // (to'lovlari, davomati) ulanib olish mumkin edi. Telegramda yo'q odamning
+        // kontaktida user_id umuman bo'lmaydi — u ham begona raqam.
+        if (ctx.message.contact.user_id !== ctx.from.id) {
             return ctx.reply("Iltimos, pastdagi «📱 Telefon raqamni yuborish» tugmasi bilan o'z raqamingizni yuboring.", Markup.keyboard([
                 [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
             ]).resize());

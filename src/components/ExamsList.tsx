@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronRight, ChevronDown, Lock, ScanLine, ClipboardCheck, BarChart3, Printer, History, KeyRound, Check, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
+import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronRight, ChevronDown, Lock, ScanLine, ClipboardCheck, BarChart3, Printer, History, KeyRound, Check, Settings, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -14,6 +14,7 @@ import SkanerTab from './imtihon/SkanerTab';
 import TekshirishTab from './imtihon/TekshirishTab';
 import NatijalarTab from './imtihon/NatijalarTab';
 import TarixBolimi from './imtihon/TarixBolimi';
+import ImtihonSozlamalari from './imtihon/ImtihonSozlamalari';
 import { sanaMatni } from './imtihon/format';
 import { toDateStr } from '../../lib/lessons.js';
 import type { Exam } from '../types';
@@ -25,6 +26,9 @@ import type { ImtihonTafsil, TabId } from './imtihon/turlar';
 // 4 Chop etish · 5 Skaner (skanerlash va tekshirish) · 6 Natijalar (va tarix).
 // 2–6-tablar tepadagi paneldagi imtihon bilan ishlaydi (URL da `imtihon=`),
 // har tabda o'sha imtihonning shu bosqichdagi holati ko'rinadi.
+// Tablar qatorining oxirida — «Sozlamalar» (?tab=sozlama): butun modulning umumiy
+// sozlamasi (yangi imtihon standartlari, xabar matnlari, AI kaliti). Bitta imtihonning
+// o'z sozlamasi — imtihon panelidagi «Imtihon sozlamasi» tugmasi.
 
 // Imtihon qanday o'tadi — bo'sh holatda ko'rsatiladigan qisqa yo'riqnoma.
 const QADAMLAR = [
@@ -60,8 +64,11 @@ function bosqichBelgisi(tab: TabId, e: ImtihonTafsil | null): { tayyor?: boolean
   return null;
 }
 
+/** Bosqich tablari va modul sozlamasi. */
+type Bolim = TabId | 'sozlama';
+
 export default function ExamsList() {
-  const { exams, kora } = useCRM();
+  const { exams, kora, ozgartira } = useCRM();
   const [params, setParams] = useSearchParams();
   // Telefonda tablar gorizontal suriladi — faol tab ko'rinib tursin.
   const faolRef = useRef<HTMLButtonElement>(null);
@@ -74,13 +81,18 @@ export default function ExamsList() {
     { id: 'skaner', nom: 'Skaner', ikonka: ScanLine, ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar va tarix', ikonka: BarChart3, ochiq: kora('imtihonlar.natija') },
   ].filter(t => t.ochiq) as { id: TabId; nom: string; ikonka: typeof BookOpen }[];
-  const tab = (TABLAR.find(t => t.id === params.get('tab'))?.id || (params.has('imtihon') && TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
+  // Modul sozlamasi — imtihon tuzuvchiga (yangi imtihon standartlarini o'sha belgilaydi).
+  const sozlamaKorinadi = ozgartira('imtihonlar.imtihon');
+  const tab: Bolim = params.get('tab') === 'sozlama' && sozlamaKorinadi ? 'sozlama'
+    : (TABLAR.find(t => t.id === params.get('tab'))?.id || (params.has('imtihon') && TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
   const k = params.get('k');
   const ozgartir = (patch: Record<string, string | null>) => setParams(p => {
     for (const [kalit, v] of Object.entries(patch)) { if (v === null) p.delete(kalit); else p.set(kalit, v); }
     return p;
   }, { replace: true });
-  const tabga = (t: TabId) => ozgartir({ tab: t === 'imtihonlar' ? null : t, k: null });
+  // Tab URL da doim aniq yoziladi: tabsiz /exams — birinchi tab (Savollar banki), shuning uchun
+  // «Imtihonlar» ham `tab=imtihonlar` (ilgari null edi va imtihon tanlanmagan bo'lsa bankka qaytarardi).
+  const tabga = (t: Bolim) => ozgartir({ tab: t, k: null });
   useEffect(() => { faolRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [tab]);
 
   // Tanlangan imtihon — tablar orasida URL da saqlanadi. 3–6-tablarda
@@ -89,7 +101,7 @@ export default function ExamsList() {
   const bosqichTabi = tab === 'orin' || tab === 'chop' || tab === 'skaner' || tab === 'natija';
   useEffect(() => {
     if (tanlangan || !bosqichTabi || !exams.length) return;
-    const id = standartImtihon(tab, exams);
+    const id = standartImtihon(tab as TabId, exams);
     if (id) ozgartir({ imtihon: String(id) });
   }, [tab, tanlangan, bosqichTabi, exams]); // eslint-disable-line react-hooks/exhaustive-deps
   const { exam, xato, yangila } = useImtihonTafsil(tanlangan);
@@ -103,7 +115,7 @@ export default function ExamsList() {
   const tarix = tab === 'natija' && k === 'tarix';
   const tuzilmaKorinadi = kora('imtihonlar.imtihon');
   const royxatKorinadi = tab === 'imtihonlar' && (!tanlangan || !tuzilmaKorinadi);
-  const panelKerak = tab !== 'savollar' && !tarix && !royxatKorinadi;
+  const panelKerak = tab !== 'savollar' && tab !== 'sozlama' && !tarix && !royxatKorinadi;
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-16">
@@ -124,9 +136,19 @@ export default function ExamsList() {
             </button>
           );
         })}
+        {/* Bosqich emas — raqamsiz, keng ekranda o'ng chetda. */}
+        {sozlamaKorinadi && (
+          <button ref={tab === 'sozlama' ? faolRef : undefined} onClick={() => tabga('sozlama')} aria-current={tab === 'sozlama' ? 'page' : undefined}
+            title="Butun imtihon moduli uchun: yangi imtihon qanday boshlanadi, xabar matnlari, AI yordamchi"
+            className={`ml-auto flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${tab === 'sozlama' ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
+            <Settings size={14} /> Sozlamalar
+          </button>
+        )}
       </nav>
 
       {tab === 'savollar' && <QuestionsList />}
+
+      {tab === 'sozlama' && <ImtihonSozlamalari onBankSozlama={ozgartira('imtihonlar.savollar') ? () => ozgartir({ tab: 'savollar', bolim: 'sozlama', k: null }) : undefined} />}
 
       {royxatKorinadi && <ImtihonlarRoyxati tanlangan={tanlangan} onTanla={id => ozgartir({ imtihon: String(id) })} />}
 
@@ -141,14 +163,14 @@ export default function ExamsList() {
           : xato ? (
             <Karta>
               <BoshHolat sarlavha="Imtihon ochilmadi" izoh={xato}>
-                <Tugma ikonka={<List size={14} />} onClick={() => ozgartir({ tab: null, imtihon: null, k: null })}>Barcha imtihonlar</Tugma>
+                <Tugma ikonka={<List size={14} />} onClick={() => ozgartir({ tab: 'imtihonlar', imtihon: null, k: null })}>Barcha imtihonlar</Tugma>
               </BoshHolat>
             </Karta>
           )
             : !exam || exam.id !== tanlangan ? <Yuklanmoqda />
               : (
                 <>
-                  <ImtihonPaneli exam={exam} onTanla={id => ozgartir({ imtihon: String(id) })} onRoyxat={() => ozgartir({ tab: null, imtihon: null, k: null })} />
+                  <ImtihonPaneli exam={exam} onTanla={id => ozgartir({ imtihon: String(id) })} onRoyxat={() => ozgartir({ tab: 'imtihonlar', imtihon: null, k: null })} />
                   {tab === 'skaner' && (
                     <Tanlov qiymat={k === 'tekshirish' ? 'tekshirish' : 'skaner'} onChange={v => ozgartir({ k: v === 'tekshirish' ? 'tekshirish' : null })}
                       variantlar={[
@@ -227,7 +249,8 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
         <Tugma kichik turi="oddiy" ikonka={<List size={14} />} onClick={onRoyxat} aria-label="Barcha imtihonlar"><span className="hidden sm:inline">Barcha imtihonlar</span></Tugma>
         {ozgartira('imtihonlar.imtihon') && (
           <>
-            <Tugma kichik ikonka={<Settings2 size={14} />} onClick={() => navigate(`/exams/${exam.id}/edit`)} aria-label="Sozlamalar"><span className="hidden sm:inline">Sozlamalar</span></Tugma>
+            {/* «Sozlamalar» — tepadagi tab (butun modul); bu — shu imtihonning o'zi. */}
+            <Tugma kichik ikonka={<Settings2 size={14} />} onClick={() => navigate(`/exams/${exam.id}/edit`)} aria-label="Imtihon sozlamasi"><span className="hidden sm:inline">Imtihon sozlamasi</span></Tugma>
             <Tugma kichik ikonka={<Copy size={14} />} onClick={nusxa} aria-label="Nusxa olish"><span className="hidden sm:inline">Nusxa</span></Tugma>
             {ozgartira('imtihonlar.ochirish') && <Tugma kichik turi="xavfli" ikonka={<Trash2 size={14} />} onClick={ochir} aria-label="Imtihonni o'chirish"><span className="hidden sm:inline">O'chirish</span></Tugma>}
           </>

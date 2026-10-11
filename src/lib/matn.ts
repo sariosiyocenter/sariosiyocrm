@@ -8,8 +8,11 @@
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-/** innerHTML bilan chiqadigan savol matni uchun (paragraf, ro'yxat, rasm). */
-export const SAVOL_MATNI = '[&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_img]:max-h-64 [&_img]:rounded-lg [&_table]:border-collapse [&_td]:border [&_td]:border-chiziq [&_td]:px-2 leading-relaxed';
+/**
+ * innerHTML bilan chiqadigan savol matni uchun (paragraf, ro'yxat, rasm).
+ * Rasm oq fonda: foni shaffof chizma (PNG, SVG) qorong'i mavzuda ko'rinmay qolmasin.
+ */
+export const SAVOL_MATNI = '[&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_img]:max-h-64 [&_img]:rounded-lg [&_img]:bg-white [&_table]:border-collapse [&_td]:border [&_td]:border-chiziq [&_td]:px-2 leading-relaxed';
 
 const TEGLAR = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'SUB', 'SUP', 'P', 'BR', 'DIV', 'SPAN', 'UL', 'OL', 'LI', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'IMG', 'BLOCKQUOTE', 'CODE', 'PRE', 'H3', 'H4']);
 const ATRIBUTLAR: Record<string, string[]> = { IMG: ['src', 'alt', 'width', 'height'], TD: ['colspan', 'rowspan'], TH: ['colspan', 'rowspan'] };
@@ -55,7 +58,10 @@ function formula(tex: string, blok: boolean): string {
   try {
     return katex.renderToString(tex, { displayMode: blok, throwOnError: false, output: 'html', strict: 'ignore' });
   } catch {
-    return tex;
+    // Sintaksis xatosini KaTeX o'zi chizadi (throwOnError: false); bu yerga boshqa xato tushadi (masalan
+    // juda chuqur ichma-ich qavs — RangeError). Natija innerHTML ga yoziladi, shuning uchun formulaning
+    // xom matni teg bo'lib ishlamasligi kerak — ekranlanib qaytadi.
+    return tex.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }
 

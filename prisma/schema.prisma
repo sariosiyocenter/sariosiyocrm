@@ -457,6 +457,12 @@ model Organization {
   //   alohida — har filial o'z Merchant ID va kalitini kiritadi, kiritmaganida Payme yo'q.
   // services/payme.js kassaSozlamasi / kassaFiliallari.
   paymeKassa String @default("umumiy")
+
+  // Imtihon modulining umumiy sozlamasi (egasi, 2026-10-10: «imtihonlarni o'zini
+  // sozlamasi bo'lsin» — Imtihonlar → Sozlamalar). lib/imtihonSozlama.js shakli:
+  // { yangi: { duration, scoring, settings } } — yangi imtihon boshlanadigan qiymatlar
+  // va xabar matnlari. null — hali saqlanmagan: tizim standarti (lib/imtihon.js).
+  imtihonSozlama Json?
 }
 
 model School {
@@ -1105,16 +1111,23 @@ model QuestionTag {
   @@index([groupId])
 }
 
-// Andoza (Addmen "Blueprint"): fan va qatorlar — har qatorda filtr (bo'lim, mavzu,
-// qiyinlik, manba, belgilar, tur) va nechta savol. Imtihon blokiga nusxa bo'lib tushadi.
+// Andoza (Addmen "Blueprint"): nomi va savollar soni bilan yaratiladi, keyin unga bankdan
+// aniq savollar qo'shiladi — imtihonga aynan shular tushadi (sof qoidalari: lib/andoza.js).
+// `rows` — «Qoidalar bo'yicha avtomatik to'ldirish» retsepti: har qatorda filtr (bo'lim, mavzu,
+// qiyinlik, manba, belgilar, tur) va nechta savol. Savoli yo'q eski andozalarda — tuzilmaning
+// o'zi (imtihon blokiga qoida bo'lib tushadi, savollar har safar tasodifiy olinadi).
 model QuestionBlueprint {
-  id        Int      @id @default(autoincrement())
-  name      String
-  subjectId Int?
-  rows      Json     // [{bolim?, mavzuId?, qiyinlik?, manba?, tagIds?, tur, soni}]
-  schoolId  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String
+  subjectId   Int?     // qoidalar (rows) qaysi fanga; blok fani savollardan aniqlanadi
+  // Nechta savol kerak (0 — eski, qoidali andoza: soni qatorlar yig'indisi).
+  soni        Int      @default(0)
+  // Qo'shilgan savollar (Question id lari) — qog'ozdagi tartibda; guruhli savol butun turadi.
+  questionIds Int[]    @default([])
+  rows        Json     // [{bolim?, mavzuId?, qiyinlik?, manba?, tagIds?, tur, soni}]
+  schoolId    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([schoolId])
 }

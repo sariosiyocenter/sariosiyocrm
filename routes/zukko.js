@@ -73,7 +73,7 @@ async function kontekst(req) {
 }
 
 const KONTEKST_YOQ = "Zukko o'quv markazi xodimlari uchun";
-const AI_YOQILMAGAN = "AI yoqilmagan: administrator Sozlamalar → Integratsiyalar → «AI yordamchi» bo'limida Gemini kalitini kiritishi kerak. Tezkor tugmalar AI siz ishlaydi.";
+const AI_YOQILMAGAN = "AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo'limida Gemini kalitini kiritishi kerak. Tezkor tugmalar AI siz ishlaydi.";
 
 /** 12 400 000 → "12,4 mln" — puls kartochkalari uchun. */
 function qisqa(n) {

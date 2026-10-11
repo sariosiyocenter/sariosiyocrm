@@ -12,7 +12,6 @@ import { compressAndUpload } from '../lib/image';
 import MapPicker from './MapPicker';
 import PaymeSettings from './PaymeSettings';
 import RuxsatlarJadvali from './RuxsatlarJadvali';
-import AiKalitKartasi from './imtihon/AiKalitKartasi';
 import { ROL_NOMLARI } from '../../lib/ruxsatlar.js';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
@@ -425,8 +424,14 @@ export default function Settings() {
                     </div>
                 </div>
 
-                {/* AI (Gemini) kaliti — o'z tugmasi bilan saqlanadi (sinab ko'riladi), profil formasi bilan emas. */}
-                {isAdmin && <AiKalitKartasi />}
+                {/* AI (Gemini) kaliti imtihon modulining o'z sozlamasiga ko'chdi (egasi, 2026-10-10) — bu yerda faqat yo'l. */}
+                {isAdmin && (
+                    <button type="button" onClick={() => navigate('/exams?tab=sozlama')}
+                        className="w-full flex items-center justify-between gap-3 p-4 bg-ichki/30 border border-chiziq rounded-2xl text-left hover:border-brand/40 transition-colors cursor-pointer">
+                        <span className="text-xs font-bold text-matn">AI yordamchi kaliti endi «Imtihonlar → Sozlamalar» bo'limida</span>
+                        <ChevronRight size={14} className="text-matn-xira shrink-0" />
+                    </button>
+                )}
 
                 {/* Instagram */}
                 <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-4">

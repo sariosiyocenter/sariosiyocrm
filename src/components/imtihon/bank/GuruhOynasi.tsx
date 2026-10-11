@@ -1,90 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, Plus, Trash2, Layers } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Tanlov, Maydon, Yuklanmoqda, INPUT, SELECT } from '../ui';
 import { HARFLAR } from '../../../../lib/imtihon.js';
-import { QiyinlikTanlov } from './qiyinlik';
-import { fanniTop, mavzuniTop, bolimlarga } from './useBankDaraxt';
-import { htmlMatnga, matnHtmlga, xatoMatni } from './aiUmumiy';
-import QoshRejimi, { type QoshRejim } from './QoshRejimi';
+import { TUR_IZOHI } from '../../../lib/savolTuri';
+import { htmlMatnga, tahrirHtml, xatoMatni } from './aiUmumiy';
+import { guruhNomi } from './faylTuri';
 import type { BankDaraxt, GuruhTuri } from '../../../types';
 
-// Guruhli savol (Milliy sertifikat): bitta umumiy shart va uning ostida kichik savollar.
-//   moslash — savollar bitta umumiy javoblar ro'yxatidan (A–F) javob oladi (33–35 kabi);
-//   qismli  — bitta raqam ostida a), b) qismlari, har birining o'z javobi (36 kabi).
-// Yangi guruh yaratadi yoki borini tahrirlaydi (`guruhId`).
+// Bankdagi guruhli savolni TAHRIRLASH (Milliy sertifikat): bitta umumiy shart va uning ostida kichik savollar.
+//   MS-33-35 (moslash) — savollar bitta umumiy javoblar ro'yxatidan (A–F) javob oladi;
+//   MS-36-45 (qismli)  — bitta raqam ostida a), b) qismlari, har birining o'z javobi.
+// Yangi guruh bu yerda yaratilmaydi (egasi, 2026-10-10: "savollarni qo'lda qo'shmaymiz, fayldan qo'shamiz"):
+// «Savol qo'shish → Fayldan» (fayl turi MS-33-35 yoki MS-36-45) yoki «AI tuzadi».
 
 const MAKS_SAVOL = 6;
 /** Qismli savolda ko'pi bilan 4 qism: imtihon varag'ida a–d bilan belgilanadi. */
 const MAKS_QISM = 4;
 interface KichikSavol { id?: number; text: string; javob: string; son: boolean; ishlatilgan?: boolean }
 interface GuruhJavobi { id: number; tur: GuruhTuri; text: string; variantlar: string[]; mavzuId: number | null; difficulty: number; savollar: (KichikSavol & { id: number })[] }
-const BOSH_SAVOL = (tur: GuruhTuri): KichikSavol => ({ text: '', javob: tur === 'moslash' ? '' : '', son: true });
+const BOSH_SAVOL: KichikSavol = { text: '', javob: '', son: true };
 const QISM_HARFI = 'abcdefghij';
 /** Skaner tekshira oladigan javob: butun, o'nli yoki oddiy kasr son. */
 const SON_JAVOB = /^-?\d+([.,]\d+)?(\/\d+)?$/;
 
 interface GuruhOynasiProps {
-  daraxt: BankDaraxt;
-  fanId?: number | null;
-  mavzuId?: number | null;
-  /** `mavzuId` ning nomi — mavzu hozirgina yaratilgan bo'lib, daraxtda hali ko'rinmasa. */
-  mavzuNomi?: string;
-  /** Tahrir: mavjud guruh (umumiy shart) id si. */
-  guruhId?: number | null;
-  onRejim?: (rejim: QoshRejim) => void;
+  /** Ishlatilmaydi (avvalgi chaqiruvlar bilan mos bo'lishi uchun qoldirilgan). */
+  daraxt?: BankDaraxt;
+  /** Mavjud guruh (umumiy shart) id si. */
+  guruhId: number;
   onYop: () => void;
-  /** Bankka qo'shilgan yangi savollar (tahrirda — bo'sh ro'yxat). */
+  /** Saqlandi (tahrirda yangi savol id lari qaytmaydi — bo'sh ro'yxat). */
   onSaqlandi: (ids: number[]) => void;
 }
 
-export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: boshMavzu = null, mavzuNomi: boshMavzuNomi, guruhId = null, onRejim, onYop, onSaqlandi }: GuruhOynasiProps) {
+export default function GuruhOynasi({ guruhId, onYop, onSaqlandi }: GuruhOynasiProps) {
   const { showNotification } = useCRM();
   const { soro } = useImtihonApi();
-  const tahrir = guruhId != null;
-
-  const [fanId, setFanId] = useState<number | null>(() => boshFan ?? daraxt.fanlar.find(f => f.mavzular.some(m => m.id === boshMavzu))?.id ?? (daraxt.fanlar.length === 1 ? daraxt.fanlar[0].id : null));
-  const [mavzuId, setMavzuId] = useState<number | null>(boshMavzu);
-  const fan = fanniTop(daraxt, fanId);
-  const mavzu = mavzuniTop(fan, mavzuId);
-  const kutilgan = !mavzu && mavzuId != null && mavzuId === boshMavzu && boshMavzuNomi ? boshMavzuNomi : '';
 
   const [tur, setTur] = useState<GuruhTuri>('moslash');
   const [shart, setShart] = useState('');
   const [variantlar, setVariantlar] = useState<string[]>(['', '', '', '', '', '']);
-  const [savollar, setSavollar] = useState<KichikSavol[]>([BOSH_SAVOL('moslash'), BOSH_SAVOL('moslash'), BOSH_SAVOL('moslash')]);
-  const [qiyinlik, setQiyinlik] = useState<number>(2);
-  const [yuklanmoqda, setYuklanmoqda] = useState(tahrir);
+  const [savollar, setSavollar] = useState<KichikSavol[]>([]);
+  const [yuklanmoqda, setYuklanmoqda] = useState(true);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
+  // Asl HTML: tahrir maydonlari oddiy matn — o'zgarmagan bo'lak asl holida (rasmlari bilan) qaytib yoziladi.
+  const asl = useRef<{ shart: string; variantlar: string[]; savollar: Map<number, string> }>({ shart: '', variantlar: [], savollar: new Map() });
 
-  // Tahrir: guruhni serverdan olish.
   useEffect(() => {
-    if (!tahrir) return;
     let bekor = false;
     soro<GuruhJavobi>('GET', `bank/guruhlar/${guruhId}`).then(g => {
       if (bekor) return;
+      asl.current = { shart: g.text, variantlar: g.variantlar, savollar: new Map(g.savollar.map(s => [s.id, s.text])) };
       setTur(g.tur);
       setShart(htmlMatnga(g.text));
       setVariantlar(HARFLAR.map((_: string, i: number) => htmlMatnga(g.variantlar[i] || '')));
       setSavollar(g.savollar.map(s => ({ ...s, text: htmlMatnga(s.text) })));
-      setQiyinlik(g.difficulty);
     }).catch((e: unknown) => { if (!bekor) { showNotification(xatoMatni(e), 'error'); onYop(); } })
       .finally(() => { if (!bekor) setYuklanmoqda(false); });
     return () => { bekor = true; };
   }, [guruhId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const turniAlmashtir = (t: GuruhTuri) => {
-    setTur(t);
-    setSavollar(l => l.map(s => ({ ...s, javob: '' })));
-  };
   const savolni = (i: number, d: Partial<KichikSavol>) => setSavollar(l => l.map((s, j) => (j === i ? { ...s, ...d } : s)));
   const toliqVariantlar = variantlar.map(v => v.trim());
   const variantSoni = toliqVariantlar.reduce((oxirgi, v, i) => (v ? i + 1 : oxirgi), 0);
 
   const saqla = async () => {
-    if (!shart.trim()) return showNotification('Umumiy shartni yozing', 'error');
-    if (!tahrir && !mavzu && !kutilgan) return showNotification('Mavzuni tanlang', 'error');
+    // Shart faqat chizmadan iborat bo'lishi mumkin (Word shablonidan) — u matn maydonida ko'rinmaydi.
+    if (!shart.trim() && !/<img\b/i.test(asl.current.shart)) return showNotification('Umumiy shartni yozing', 'error');
     const kichik = savollar.filter(s => s.text.trim() || s.id);
     if (kichik.some(s => !s.text.trim())) return showNotification("Bo'sh savol bor — matnini yozing yoki o'chiring", 'error');
     if (kichik.some(s => !s.javob.trim())) return showNotification("Har savolning to'g'ri javobini belgilang", 'error');
@@ -93,16 +77,13 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
     if (sonEmas >= 0) return showNotification(`${QISM_HARFI[sonEmas]}) qismning javobi son emas — skaner faqat sonni tekshiradi. «Ustoz tekshiradi» ni tanlang`, 'error');
     setSaqlanmoqda(true);
     try {
-      const tana = {
-        tur, text: matnHtmlga(shart), mavzuId, difficulty: qiyinlik,
-        variantlar: tur === 'moslash' ? toliqVariantlar.slice(0, variantSoni).map(v => matnHtmlga(v)) : undefined,
-        savollar: kichik.map(s => ({ id: s.id, text: matnHtmlga(s.text), javob: s.javob.trim(), son: tur === 'qismli' && s.son })),
-      };
-      const r = tahrir
-        ? await soro<{ id: number }>('PUT', `bank/guruhlar/${guruhId}`, tana)
-        : await soro<{ id: number; ids: number[] }>('POST', 'bank/guruhlar', tana);
-      showNotification(tahrir ? 'Guruhli savol saqlandi' : `Guruhli savol bankka qo'shildi (${kichik.length} ta savol)`, 'success');
-      onSaqlandi('ids' in r ? (r as { ids: number[] }).ids : []);
+      await soro<{ id: number }>('PUT', `bank/guruhlar/${guruhId}`, {
+        tur, text: tahrirHtml(asl.current.shart, shart),
+        variantlar: tur === 'moslash' ? toliqVariantlar.slice(0, variantSoni).map((v, i) => tahrirHtml(asl.current.variantlar[i], v)) : undefined,
+        savollar: kichik.map(s => ({ id: s.id, text: tahrirHtml(s.id ? asl.current.savollar.get(s.id) : '', s.text), javob: s.javob.trim(), son: tur === 'qismli' && s.son })),
+      });
+      showNotification('Guruhli savol saqlandi', 'success');
+      onSaqlandi([]);
       onYop();
     } catch (e: unknown) {
       showNotification(xatoMatni(e), 'error');
@@ -117,9 +98,8 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
       <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-3xl border border-chiziq my-2">
         <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
-            <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Layers size={15} className="text-brand shrink-0" /> {tahrir ? 'Guruhli savolni tahrirlash' : "Savol qo'shish"}</h3>
+            <h3 className="text-[14px] font-bold text-matn flex items-center gap-1.5"><Layers size={15} className="text-brand shrink-0" /> Guruhli savolni tahrirlash</h3>
             <p className="text-[12px] text-matn-xira">Milliy sertifikatdagidek: bitta umumiy shart va uning ostida bir nechta savol.</p>
-            {onRejim && !tahrir && <QoshRejimi rejim="guruh" onRejim={onRejim} band={saqlanmoqda} />}
           </div>
           <button aria-label="Yopish" disabled={saqlanmoqda} onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-40"><X size={16} /></button>
         </div>
@@ -128,33 +108,11 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
           <div className="px-4 sm:px-5 py-4 space-y-4">
             <div>
               <p className="mb-1 text-[12px] font-semibold text-matn-sokin">Turi</p>
-              {tahrir
-                ? <p className="text-[13px] font-semibold text-matn">{tur === 'moslash' ? 'Moslashtirish guruhi' : 'Qismli savol (a, b)'}</p>
-                : <Tanlov qiymat={tur} onChange={turniAlmashtir} variantlar={[{ v: 'moslash', nom: 'Moslashtirish guruhi' }, { v: 'qismli', nom: 'Qismli savol (a, b)' }]} />}
+              <p className="text-[13px] font-semibold text-matn">{guruhNomi(tur)} <span className="font-normal text-matn-sokin">— {tur === 'moslash' ? TUR_IZOHI.juft : TUR_IZOHI.qismli}</span></p>
               <p className="mt-1 text-[11.5px] text-matn-xira">{tur === 'moslash'
                 ? "Bir nechta savol bitta umumiy javoblar ro'yxatidan (A–F) javob oladi. Ortiqcha javoblar chalg'ituvchi bo'ladi."
                 : "Bitta savol, ichida a), b) qismlari — imtihonda bitta raqam oladi (36a, 36b). Har qismning o'z javobi bor."}</p>
             </div>
-
-            {!tahrir && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Maydon nom="Fan">
-                  <select className={SELECT} value={fan?.id ?? ''} aria-label="Fan" onChange={e => { setFanId(Number(e.target.value) || null); setMavzuId(null); }}>
-                    <option value="">Fanni tanlang</option>
-                    {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  </select>
-                </Maydon>
-                <Maydon nom="Mavzu">
-                  <select className={SELECT} value={mavzu?.id ?? (kutilgan ? mavzuId ?? '' : '')} disabled={!fan} aria-label="Mavzu" onChange={e => setMavzuId(Number(e.target.value) || null)}>
-                    <option value="">{fan ? 'Mavzuni tanlang' : 'Avval fanni tanlang'}</option>
-                    {kutilgan && mavzuId != null && <option value={mavzuId}>{kutilgan}</option>}
-                    {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
-                      ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
-                      : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
-                  </select>
-                </Maydon>
-              </div>
-            )}
 
             <Maydon nom="Umumiy shart" izoh="Formulani $...$ ichida yozing, masalan: $\frac{6x-k}{x-1}$">
               <textarea rows={3} className={INPUT} value={shart} maxLength={8000} onChange={e => setShart(e.target.value)} aria-label="Umumiy shart"
@@ -193,7 +151,7 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
                   ))}
                 </ul>
                 {savollar.length < (tur === 'qismli' ? MAKS_QISM : MAKS_SAVOL) && (
-                  <button type="button" onClick={() => setSavollar(l => [...l, BOSH_SAVOL(tur)])} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:underline cursor-pointer">
+                  <button type="button" onClick={() => setSavollar(l => [...l, { ...BOSH_SAVOL }])} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:underline cursor-pointer">
                     <Plus size={13} strokeWidth={2.6} />{tur === 'moslash' ? 'savol' : 'qism'}
                   </button>
                 )}
@@ -215,19 +173,12 @@ export default function GuruhOynasi({ daraxt, fanId: boshFan = null, mavzuId: bo
                 </div>
               )}
             </div>
-
-            {!tahrir && (
-              <div>
-                <p className="mb-1 text-[12px] font-semibold text-matn-sokin">Qiyinligi</p>
-                <QiyinlikTanlov qiymat={qiyinlik} onChange={setQiyinlik} />
-              </div>
-            )}
           </div>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-chiziq">
           <Tugma turi="oddiy" disabled={saqlanmoqda} onClick={onYop}>Bekor qilish</Tugma>
-          <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={yuklanmoqda || saqlanmoqda} onClick={saqla}>{tahrir ? 'Saqlash' : "Bankka qo'shish"}</Tugma>
+          <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={yuklanmoqda || saqlanmoqda} onClick={saqla}>Saqlash</Tugma>
         </div>
       </div>
     </div>

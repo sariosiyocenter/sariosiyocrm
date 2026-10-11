@@ -9,6 +9,8 @@ import { Tugma, INPUT, Yorliq } from './ui';
 // AI kaliti (Google Gemini) — administrator CRM ning o'zida kiritadi (Vercel
 // sozlamalariga kirmasdan). Kalit bepul: aistudio.google.com/apikey. Server
 // saqlashdan oldin uni sinab ko'radi; brauzerga faqat oxirgi 4 belgisi qaytadi.
+// Joyi: Imtihonlar → Sozlamalar va Savollar banki → Sozlamalar (to'liq karta); AI
+// kerak bo'lgan oynalarda (savol yuklash, o'xshash masala) — `ixcham` ko'rinishi.
 
 const KALIT_SAYTI = 'https://aistudio.google.com/apikey';
 
@@ -47,7 +49,7 @@ export default function AiKalitKartasi({ ixcham, onUlandi }: { ixcham?: boolean;
   const kiritish = holat.sozlay && (holat.manba !== 'markaz' || almashtir);
 
   return (
-    <div className={`border border-chiziq rounded-2xl space-y-4 ${ixcham ? 'p-4 bg-ichki/40' : 'p-5 bg-ichki/30'}`}>
+    <div className={`border border-chiziq rounded-2xl space-y-4 p-4 ${ixcham ? 'bg-ichki/40' : 'bg-sirt shadow-sm'}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 shrink-0 rounded-xl bg-brand-fon text-brand border border-brand/20 flex items-center justify-center dark:bg-brand/20">
@@ -79,7 +81,7 @@ export default function AiKalitKartasi({ ixcham, onUlandi }: { ixcham?: boolean;
       )}
 
       {!holat.sozlay && !holat.yoqilgan && (
-        <p className="text-[12.5px] text-matn-sokin">AI hali yoqilmagan. Kalitni administrator shu bo'limda kiritadi (Sozlamalar → Integratsiyalar).</p>
+        <p className="text-[12.5px] text-matn-sokin">AI hali yoqilmagan. Kalitni administrator kiritadi: Imtihonlar → Sozlamalar.</p>
       )}
 
       {kiritish && (

@@ -532,7 +532,7 @@ export interface Question {
     solutionStatus?: 'yoq' | 'qoralama' | 'tasdiqlangan';
     status?: 'qoralama' | 'faol' | 'arxiv';
     passageId?: number | null;
-    passage?: { id: number; title?: string | null; tur?: string | null; text?: string; variantlar?: string[] | null; /** Guruhli savol: hamma bo'laklari (id bo'yicha). */ questions?: { id: number }[] } | null;
+    passage?: { id: number; title?: string | null; tur?: string | null; text?: string; imageUrl?: string | null; variantlar?: string[] | null; /** Guruhli savol: hamma bo'laklari (id bo'yicha). */ questions?: { id: number }[] } | null;
     /** Izoh (Addmen REMARK). */
     remark?: string | null;
     /** Javob variantlari kitobchada nechta ustunda (Addmen DISPLAY CHOICES; null — o'zi). */
@@ -578,6 +578,10 @@ export interface BankFiltrMalumoti {
     izohlar: { nom: string; soni: number }[];
     /** Matnga bog'langan (passage) va bog'lanmagan savollar soni. */
     matnli: { bor: number; yoq: number };
+    /** Rasmli / rasmsiz savollar soni (rasm savolning o'zida, matni yoki variantlarida, yoki umumiy shartida); null — sanab bo'lmadi. */
+    rasmli?: { bor: number; yoq: number } | null;
+    /** Yechimi bor / yo'q savollar soni; null — sanab bo'lmadi. */
+    yechimli?: { bor: number; yoq: number } | null;
     /** Variantlar joylashuvi: 0 — avtomatik, 1/2/4 ustun. */
     joylashuv: Record<'0' | '1' | '2' | '4', number>;
     /** belgi id → savollar soni */
@@ -591,7 +595,7 @@ export interface BankFiltrMalumoti {
     guruhlar: BelgiGuruhi[];
 }
 
-/** Andoza (Addmen "Blueprint") qatori. */
+/** Andoza qoidasi («Qoidalar bo'yicha avtomatik to'ldirish» qatori; eski andozalarda — tuzilmaning o'zi). */
 export interface AndozaQatori {
     bolim: string | null;
     mavzuId: number | null;
@@ -601,7 +605,30 @@ export interface AndozaQatori {
     tur: SavolTuri;
     soni: number;
 }
-export interface Andoza { id: number; name: string; subjectId: number | null; rows: AndozaQatori[]; updatedAt?: string }
+/**
+ * Andoza (Addmen "Blueprint"): nomi va savollar soni bilan yaratiladi, keyin unga bankdan aniq
+ * savollar qo'shiladi — imtihonga aynan shular tushadi.
+ */
+export interface Andoza {
+    id: number;
+    name: string;
+    /** Nechta savol kerak. */
+    soni: number;
+    /** Qo'shilgan savollar (bank id lari) — qog'ozdagi tartibda. Bo'sh, `rows` bor — eski, qoidali andoza. */
+    questionIds: number[];
+    /** Nechta savol qo'shilgan — imtihon sanaganidek (qismli savol bitta, guruh butun). */
+    savolSoni: number;
+    /** Blok fani: savollarning ko'pchiligi qaysi fandan (savol yo'q — qoidalar fani). */
+    fanId: number | null;
+    /** Qoidalar qaysi fanga yozilgan. */
+    subjectId: number | null;
+    rows: AndozaQatori[];
+    updatedAt?: string;
+}
+/** Andozadagi savol: `tushmaydi` — qog'ozga tushmaslik sababi (faol emas, chala, guruhi butun emas) yoki null. */
+export type AndozaSavoli = Question & { tushmaydi?: string | null };
+/** GET /api/bank/andozalar/:id — savollari bilan (`?qisqa=1` da savolning faqat id, type, passageId, status, tushmaydi). */
+export interface AndozaTafsil extends Andoza { savollar: AndozaSavoli[] }
 
 /** Savol qiyinligi: 1 — oson, 2 — o'rta, 3 — qiyin. */
 export type Qiyinlik = 1 | 2 | 3;

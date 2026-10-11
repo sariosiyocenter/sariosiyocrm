@@ -6,16 +6,17 @@ import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Yorliq, Tanlov, SELECT } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
+import { TUR_NOMI } from '../../../lib/savolTuri';
 import { natijaQiyinligi, qiyinlikMosEmas } from '../../../../lib/imtihon.js';
 import SavolKorinishi from './SavolKorinishi';
 import OxshashSavollar from './OxshashSavollar';
-import { QiyinlikTanlov, QiyinlikYorligi, qiyinlikDaraja } from './qiyinlik';
+import { DarajaTanlov, QiyinlikYorligi, qiyinlikDaraja, darajaBandi, type DarajaQiymati } from './qiyinlik';
+import { useDarajalar } from './useDarajalar';
 import type { BankDaraxt, Question } from '../../../types';
 
 // Mavzu ichidagi savol kartasi (formulalar bilan) va savol oynasi: to'liq
 // ko'rinish, qiyinlik, mavzu va holatni shu yerning o'zida o'zgartirish.
 
-const TUR_QISQA: Record<string, string> = { raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma' };
 const HOLAT_NOMI: Record<string, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 
 export function SavolKartasi({ q, onOch, tanlash, tanlangan, onTanla, sudrash }: {
@@ -42,7 +43,7 @@ export function SavolKartasi({ q, onOch, tanlash, tanlangan, onTanla, sudrash }:
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1 mb-1">
               <span className="text-[10.5px] text-matn-xira raqam">#{q.id}</span>
-              {TUR_QISQA[q.type] && <Yorliq rang="brand">{TUR_QISQA[q.type]}</Yorliq>}
+              {q.type !== 'yopiq' && TUR_NOMI[q.type] && <Yorliq rang="brand">{TUR_NOMI[q.type]}</Yorliq>}
               {q.status && q.status !== 'faol' && <Yorliq rang="ogoh">{HOLAT_NOMI[q.status]}</Yorliq>}
               {q.xato && <Yorliq rang="xato"><AlertTriangle size={10} /> {q.xato}</Yorliq>}
               {q.passage && <Yorliq><FileText size={10} /> {q.passage.title || 'Matn'}</Yorliq>}
@@ -94,6 +95,26 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
     }
   };
 
+  // Qiyinlik — HAMMA darajalar: asosiylari va foydalanuvchi bankda qo'shganlari («Juda qiyin»…). Foydalanuvchi
+  // darajasi savolda belgi bo'lib turadi (tagIds); server uni `darajaId` bilan qo'yadi, asosiy daraja tanlansa — oladi.
+  const darajalar = useDarajalar();
+  const darajaIdlari = darajalar.filter(b => b.darajaId).map(b => b.darajaId as number);
+  const daraja: DarajaQiymati = { d: qiyinlikDaraja(q.difficulty).d, darajaId: (q.tagIds || []).find(t => darajaIdlari.includes(t)) ?? null };
+  const darajaniOzgartir = async (yangi: DarajaQiymati, xabar?: string) => {
+    if (yangi.d === daraja.d && yangi.darajaId === daraja.darajaId) return;
+    setBand(true);
+    try {
+      await soro('PUT', 'questions/bulk', { ids: [q.id], ...(yangi.darajaId ? { darajaId: yangi.darajaId } : { difficulty: yangi.d }) });
+      setQ(x => ({ ...x, difficulty: yangi.d, tagIds: [...(x.tagIds || []).filter(t => !darajaIdlari.includes(t)), ...(yangi.darajaId ? [yangi.darajaId] : [])] }));
+      showNotification(xabar || `Qiyinlik: ${darajaBandi(yangi).nom.toLowerCase()}`, 'success');
+      onOzgardi();
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      setBand(false);
+    }
+  };
+
   const ochir = async () => {
     if (!(await confirm("Savol o'chirilsinmi?"))) return;
     try {
@@ -125,7 +146,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
               {q.pCorrect != null && <span className="raqam">· {Math.round(q.pCorrect * 100)}% to'g'ri topgan</span>}
               {natija && <span className="inline-flex items-center gap-1">· natijaga ko'ra <QiyinlikYorligi d={natija} /></span>}
               {tahrir && natija && qiyinlikMosEmas(q.difficulty, q.pCorrect) && (
-                <Tugma kichik turi="oddiy" ikonka={<TrendingUp size={13} />} disabled={band} onClick={() => ozgartir({ difficulty: natija }, 'Qiyinlik natijaga moslandi')}>Natijaga moslash</Tugma>
+                <Tugma kichik turi="oddiy" ikonka={<TrendingUp size={13} />} disabled={band} onClick={() => darajaniOzgartir({ d: natija, darajaId: null }, 'Qiyinlik natijaga moslandi')}>Natijaga moslash</Tugma>
               )}
             </div>
           )}
@@ -133,7 +154,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-chiziq p-3">
               <div className="sm:col-span-2">
                 <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">Qiyinlik</p>
-                <QiyinlikTanlov qiymat={qiyinlikDaraja(q.difficulty).d} onChange={d => d !== qiyinlikDaraja(q.difficulty).d && ozgartir({ difficulty: d }, `Qiyinlik: ${qiyinlikDaraja(d).nom.toLowerCase()}`)} />
+                <DarajaTanlov qiymat={daraja} band={band} onChange={darajaniOzgartir} />
               </div>
               <label className="block">
                 <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Mavzu</span>

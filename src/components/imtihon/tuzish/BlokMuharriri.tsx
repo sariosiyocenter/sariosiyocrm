@@ -6,9 +6,10 @@ import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { QIYINLIK, QiyinlikYorligi, useQiyinlik } from '../bank/qiyinlik';
 import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
 import SavolTanlash, { type TanlovGuruhi } from '../bank/SavolTanlash';
-import { andozadanQoidalar } from './andozadan';
+import { andozaBlokQoidalari, andozaQoidali, qoidalarSoni } from '../bank/andoza';
+import { TUR_NOMI, TUR_IZOHI } from '../../../lib/savolTuri';
 import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul, qismSoni, qismTekshiruvi } from '../../../../lib/imtihon.js';
-import type { Andoza, BankDaraxt, BankFan, BelgiGuruhi, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
+import type { Andoza, AndozaTafsil, BankDaraxt, BankFan, BelgiGuruhi, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
 
 // Imtihonning bitta fan bloki (bank rejimi). Odatiy yo'l: fan → savollar soni →
 // qiyinlik (oson ko'proq / muvozanatli / qiyin ko'proq) → mavzular — taqsimot
@@ -258,7 +259,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
           <Tugma kichik turi={blok.andoza ? 'ikkinchi' : 'oddiy'} ikonka={<LayoutList size={13} />} onClick={() => setAndozaOchiq(true)}>
             {blok.andoza ? 'Boshqa andoza' : 'Andozadan'}
           </Tugma>
-          {!blok.andoza && <span className="text-[11.5px] text-matn-xira">Savollar banki → Andoza (Blueprint) da saqlangan tuzilma</span>}
+          {!blok.andoza && <span className="text-[11.5px] text-matn-xira">Savollar banki → Andoza dagi tayyor savollar to'plami</span>}
         </div>
       )}
 
@@ -410,25 +411,25 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                 </label>
               )}
               {fandaJuft && (
-                <div className="flex items-end gap-2" role="group" aria-label="Moslashtirish guruhi">
+                <div className="flex items-end gap-2" role="group" aria-label={TUR_NOMI.juft}>
                   <label>
-                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title="Bir nechta savol bitta umumiy javoblar ro'yxatidan (A–F) javob oladi. Guruh butunligicha olinadi.">Moslashtirish guruhi</span>
-                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tJuft} aria-label="Moslashtirish guruhi savollari soni"
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title={`${TUR_NOMI.juft} — ${TUR_IZOHI.juft}: bir nechta savol bitta umumiy javoblar ro'yxatidan (A–F) javob oladi. Guruh butunligicha olinadi.`}>{TUR_NOMI.juft}</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tJuft} aria-label={`${TUR_NOMI.juft} savollari soni`}
                       onChange={e => qayta({ ...t, juft: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
                   </label>
                   <label>
                     <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">har biri, ball</span>
-                    <input className={`${INPUT} w-20`} inputMode="decimal" disabled={qulf} value={t.juftBal ?? ''} placeholder={String(blok.pointsPerQuestion)} aria-label="Moslashtirish guruhi savoli bali"
+                    <input className={`${INPUT} w-20`} inputMode="decimal" disabled={qulf} value={t.juftBal ?? ''} placeholder={String(blok.pointsPerQuestion)} aria-label={`${TUR_NOMI.juft} savoli bali`}
                       onChange={e => qayta({ ...t, juftBal: e.target.value === '' ? null : Number(e.target.value.replace(',', '.')) || 0 }, t.aralash === 'qolda' ? jadval : undefined)} />
                   </label>
                   <span className={`pb-2.5 text-[11.5px] ${tJuft * kopaytma > juftBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {juftBor} · guruh butun olinadi</span>
                 </div>
               )}
               {fandaQismli && (
-                <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Qismli savol">
+                <div className="flex flex-wrap items-end gap-2" role="group" aria-label={TUR_NOMI.qismli}>
                   <label>
-                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title="Bitta raqam ostida a), b) qismlari: 36a, 36b.">Qismli savol (a, b)</span>
-                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tQismli} aria-label="Qismli savollar soni"
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5" title={`${TUR_NOMI.qismli} — ${TUR_IZOHI.qismli}: bitta raqam ostida a), b) qismlari (36a, 36b).`}>{TUR_NOMI.qismli}</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={tQismli} aria-label={`${TUR_NOMI.qismli} savollari soni`}
                       onChange={e => qayta({ ...t, qismli: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
                   </label>
                   <label>
@@ -479,9 +480,10 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
       {andozaOchiq && (
         <AndozaTanlash daraxt={daraxt} onYop={() => setAndozaOchiq(false)} onTanla={(a, guruhlar) => {
           setAndozaOchiq(false);
-          const f = daraxt.fanlar.find(x => x.id === a.subjectId);
+          // Blok fani — andozadagi savollarning fani; qoidalar — andoza savollari (yoki eski andozaning qatorlari).
+          const f = daraxt.fanlar.find(x => x.id === (a.fanId ?? a.subjectId));
           if (!f) return;
-          onChange({ ...blok, fanId: f.id, subject: f.name, taqsimot: undefined, andoza: { id: a.id, nomi: a.name }, topicRules: andozadanQoidalar(a, f, guruhlar, t.yozmaBal) });
+          onChange({ ...blok, fanId: f.id, subject: f.name, taqsimot: undefined, andoza: { id: a.id, nomi: a.name }, topicRules: andozaBlokQoidalari(a, f, guruhlar, t.yozmaBal).topicRules });
         }} />
       )}
       {tanlashOchiq && fan && (
@@ -526,27 +528,50 @@ function QoldaTanlangan({ ids, qulf, onTanla, onOlib }: { ids: number[]; qulf: b
   );
 }
 
-/** Andozadan olingan blok: qatorlar va har biriga bankda nechta savol borligi. */
+/**
+ * Andozadan olingan blok. Andozadagi savollar (qo'lda tanlangan savollar kabi — har variantga
+ * aynan shular) ro'yxat bo'lib ko'rinadi; eski, qoidali andozada — qatorlar va har biriga bankda
+ * nechta savol borligi.
+ */
 function AndozaBloki({ blok, fan, kopaytma, scoring, qulf, onChiqish }: {
   blok: ExamBlock; fan: BankFan; kopaytma: number; scoring: 'blok' | 'foiz'; qulf: boolean; onChiqish: () => void;
 }) {
   const { soro } = useImtihonApi();
   const [hisob, setHisob] = useState<{ boshQolgan: number }[] | null>(null);
   const kalit = JSON.stringify(blok.topicRules);
+  const savolIdlari = blok.topicRules.flatMap(r => tanlanganSavollar(r) as number[]);
+  const savolli = savolIdlari.length > 0;
   useEffect(() => {
+    if (savolli) return;
     const rows = blok.topicRules.map(r => ({
       bolim: r.section || null, mavzuId: r.mavzuId || null, qiyinlik: r.difficulty || 0, manba: r.source || null,
       tagIds: r.tagIds || [], tur: r.type || 'yopiq', soni: (Number(r.count) || 0) * kopaytma,
     }));
     soro<{ qatorlar: { boshQolgan: number }[] }>('POST', 'bank/andozalar/hisob', { subjectId: fan.id, rows }).then(r => setHisob(r.qatorlar)).catch(() => setHisob(null));
   }, [kalit, fan.id, kopaytma, soro]); // eslint-disable-line react-hooks/exhaustive-deps
-  const jami = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
+  // Qismli savolning qismlari bitta savol sanaladi.
+  const jami = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) / (r.type === 'qismli' ? qismSoni(r) : 1), 0);
   const ball = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) * qoidaBali(r, blok, scoring), 0);
   const yetmaydi = hisob?.some((h, i) => (Number(blok.topicRules[i]?.count) || 0) * kopaytma > h.boshQolgan);
+  if (savolli) {
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[12.5px] text-matn">Andoza: <b>{blok.andoza?.nomi}</b> <span className="text-matn-xira">· andozadagi savollarning o'zi tushadi</span></p>
+          {!qulf && <button className="text-[11.5px] text-matn-sokin hover:text-xato hover:underline cursor-pointer" onClick={onChiqish}>Andozani olib tashlash</button>}
+        </div>
+        <SavollarRoyxati ids={savolIdlari} />
+        <p className="pt-1 border-t border-chiziq text-[12.5px] text-matn">
+          <b className="raqam">{jami}</b> ta savol{scoring === 'blok' && <> · <b className="raqam">{vergul(Math.round(ball * 100) / 100)}</b> ball</>}
+          <span className="text-matn-xira"> · savollarni «Savollar banki → Andoza» da o'zgartirib, andozani qayta tanlang</span>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[12.5px] text-matn">Andoza: <b>{blok.andoza?.nomi}</b> <span className="text-matn-xira">· {blok.topicRules.length} qator</span></p>
+        <p className="text-[12.5px] text-matn">Andoza: <b>{blok.andoza?.nomi}</b> <span className="text-matn-xira">· {blok.topicRules.length} qoida, savollar bankdan tasodifiy</span></p>
         {!qulf && <button className="text-[11.5px] text-matn-sokin hover:text-xato hover:underline cursor-pointer" onClick={onChiqish}>Andozani olib tashlash</button>}
       </div>
       <div className="overflow-x-auto rounded-xl border border-chiziq bg-sirt">
@@ -565,7 +590,7 @@ function AndozaBloki({ blok, fan, kopaytma, scoring, qulf, onChiqish }: {
               return (
                 <tr key={i}>
                   <td className="px-3 py-1.5 text-matn">{r.label || r.topic || 'Istalgan'}</td>
-                  <td className="px-2 py-1.5 text-matn-sokin">{r.type === 'raqamli' ? 'Raqamli' : r.type === 'moslash' ? 'Moslashtirish' : r.type === 'yozma' ? 'Yozma' : r.type === 'juft' ? 'Moslashtirish guruhi' : r.type === 'qismli' ? `Qismli savol (${qismTekshiruvi(r) === 'son' ? 'skaner' : 'ustoz'})` : 'Variantli'}</td>
+                  <td className="px-2 py-1.5 text-matn-sokin">{TUR_NOMI[r.type || 'yopiq']}{r.type === 'qismli' ? ` (${qismTekshiruvi(r) === 'son' ? 'skaner' : 'ustoz'})` : ''}</td>
                   <td className="px-2 py-1.5 text-center font-bold raqam">{r.count}</td>
                   <td className={`px-2 py-1.5 text-center raqam ${kam ? 'text-xato font-bold' : 'text-matn-sokin'}`}>
                     {hisob ? hisob[i]?.boshQolgan ?? 0 : <Loader2 size={12} className="inline animate-spin" />}
@@ -586,16 +611,60 @@ function AndozaBloki({ blok, fan, kopaytma, scoring, qulf, onChiqish }: {
   );
 }
 
-/** Andoza tanlash oynasi (Savollar banki → Andoza da saqlanganlar). */
-function AndozaTanlash({ daraxt, onYop, onTanla }: { daraxt: BankDaraxt; onYop: () => void; onTanla: (a: Andoza, guruhlar: BelgiGuruhi[]) => void }) {
+/** Andozadagi savollar — qisqa ro'yxat (faqat ko'rish uchun). */
+function SavollarRoyxati({ ids }: { ids: number[] }) {
+  const { soro } = useImtihonApi();
+  const [savollar, setSavollar] = useState<Question[] | null>(null);
+  const kalit = ids.join(',');
+  useEffect(() => {
+    setSavollar(null);
+    // Bir so'rovda 200 tagacha savol keladi.
+    const bolaklar = Array.from({ length: Math.ceil(ids.length / 200) }, (_, i) => ids.slice(i * 200, i * 200 + 200));
+    Promise.all(bolaklar.map(b => soro<{ items: Question[] }>('GET', `questions?ids=${b.join(',')}&soni=200`))).then(l => {
+      const byId = new Map(l.flatMap(r => r.items).map(q => [q.id, q]));
+      setSavollar(ids.map(id => byId.get(id)).filter(Boolean) as Question[]);
+    }).catch(() => setSavollar([]));
+  }, [kalit, soro]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!savollar) return <p className="rounded-xl border border-chiziq bg-sirt px-3 py-3 text-[12.5px] text-matn-xira"><Loader2 size={13} className="inline animate-spin" /> Savollar yuklanmoqda</p>;
+  return (
+    <ol className="rounded-xl border border-chiziq bg-sirt divide-y divide-chiziq max-h-72 overflow-y-auto">
+      {savollar.map((q, i) => (
+        <li key={q.id} className="flex items-center gap-2 px-3 py-1.5 text-[12.5px]">
+          <span className="w-6 shrink-0 text-right raqam text-matn-xira">{i + 1}.</span>
+          <QiyinlikYorligi d={q.difficulty} />
+          {q.type !== 'yopiq' && <span className="shrink-0 text-[11px] font-semibold text-brand-dark dark:text-brand-accent">{TUR_NOMI[q.type]}</span>}
+          <span className="text-matn-xira shrink-0 truncate max-w-[30%]">{q.bankTopic?.name || q.topic}</span>
+          <span className={`${SAVOL_MATNI} flex-1 min-w-0 line-clamp-1 text-matn [&_p]:inline [&_p]:my-0`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text) }} />
+        </li>
+      ))}
+      {savollar.length < ids.length && <li className="px-3 py-1.5 text-[11.5px] text-xato">{ids.length - savollar.length} ta savol bankda topilmadi</li>}
+    </ol>
+  );
+}
+
+/**
+ * Andoza tanlash oynasi (Savollar banki → Andoza da saqlanganlar). Andoza savollari bilan qaytadi:
+ * blokka aynan shular qo'yiladi (eski, qoidali andozada — qatorlari qoida bo'ladi).
+ */
+function AndozaTanlash({ daraxt, onYop, onTanla }: { daraxt: BankDaraxt; onYop: () => void; onTanla: (a: AndozaTafsil, guruhlar: BelgiGuruhi[]) => void }) {
   const { soro } = useImtihonApi();
   const [royxat, setRoyxat] = useState<Andoza[] | null>(null);
   const [guruhlar, setGuruhlar] = useState<BelgiGuruhi[]>([]);
   const [xato, setXato] = useState<string | null>(null);
+  const [yuklanmoqda, setYuklanmoqda] = useState<number | null>(null);
   useEffect(() => {
     Promise.all([soro<Andoza[]>('GET', 'bank/andozalar'), soro<BelgiGuruhi[]>('GET', 'bank/belgilar')])
       .then(([a, g]) => { setRoyxat(a); setGuruhlar(g); }).catch(e => setXato(e.message));
   }, [soro]);
+  const tanla = async (a: Andoza) => {
+    if (andozaQoidali(a)) return onTanla({ ...a, savollar: [] }, guruhlar);
+    setYuklanmoqda(a.id);
+    try {
+      const t = await soro<AndozaTafsil>('GET', `bank/andozalar/${a.id}?qisqa=1`);
+      if (!t.savollar.some(q => !q.tushmaydi)) return setXato(`«${a.name}» da imtihonga tushadigan (faol, to'liq) savol yo'q`);
+      onTanla(t, guruhlar);
+    } catch (e: any) { setXato(e.message); } finally { setYuklanmoqda(null); }
+  };
   return (
     <div className="fixed inset-0 z-[260] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4" role="dialog" aria-modal="true" aria-label="Andoza tanlash">
       <div className="fixed inset-0 bg-black/50" onClick={onYop} />
@@ -603,23 +672,31 @@ function AndozaTanlash({ daraxt, onYop, onTanla }: { daraxt: BankDaraxt; onYop: 
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-chiziq">
           <div>
             <h3 className="text-[14px] font-bold text-matn">Andozadan</h3>
-            <p className="text-[12px] text-matn-xira">Blokning fani va qoidalari andozadan olinadi</p>
+            <p className="text-[12px] text-matn-xira">Blokka andozadagi savollar qo'yiladi — har variantga aynan shular tushadi</p>
           </div>
           <button aria-label="Yopish" onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>
         </div>
         <div className="p-3">
           {xato ? <p className="px-2 py-4 text-[12.5px] text-xato">{xato}</p>
             : !royxat ? <p className="px-2 py-6 text-center text-[12.5px] text-matn-xira"><Loader2 size={14} className="inline animate-spin" /> Yuklanmoqda</p>
-            : !royxat.length ? <p className="px-2 py-6 text-center text-[12.5px] text-matn-xira">Andoza yo'q — Savollar banki → «Andoza (Blueprint)» da yarating</p>
+            : !royxat.length ? <p className="px-2 py-6 text-center text-[12.5px] text-matn-xira">Andoza yo'q — Savollar banki → «Andoza» da yarating</p>
             : (
               <ul className="divide-y divide-chiziq max-h-[60vh] overflow-y-auto">
                 {royxat.map(a => {
-                  const f = daraxt.fanlar.find(x => x.id === a.subjectId);
+                  const f = daraxt.fanlar.find(x => x.id === (a.fanId ?? a.subjectId));
+                  const qoidali = andozaQoidali(a);
+                  const bosh = !qoidali && !a.savolSoni;
                   return (
                     <li key={a.id}>
-                      <button disabled={!f} onClick={() => onTanla(a, guruhlar)} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-50 disabled:cursor-default">
-                        <span className="block text-[13px] font-semibold text-matn"><span className="text-matn-xira raqam">{a.id}-</span>{a.name}</span>
-                        <span className="block text-[11.5px] text-matn-xira">{f?.name || 'fan topilmadi'} · {a.rows.length} qator · {a.rows.reduce((s, r) => s + r.soni, 0)} savol</span>
+                      <button disabled={!f || bosh || yuklanmoqda != null} onClick={() => tanla(a)} className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg hover:bg-ichki cursor-pointer disabled:opacity-50 disabled:cursor-default">
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[13px] font-semibold text-matn truncate">{a.name}</span>
+                          <span className="block text-[11.5px] text-matn-xira">
+                            {bosh ? "bo'sh — avval savol qo'shing"
+                              : <>{f?.name || 'fan topilmadi'} · {qoidali ? <>qoidali · <span className="raqam">{qoidalarSoni(a)}</span> savol</> : <><span className="raqam">{a.savolSoni} / {a.soni}</span> savol</>}</>}
+                          </span>
+                        </span>
+                        {yuklanmoqda === a.id && <Loader2 size={14} className="shrink-0 animate-spin text-matn-xira" />}
                       </button>
                     </li>
                   );

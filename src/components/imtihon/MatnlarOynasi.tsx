@@ -97,7 +97,7 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
                 <label className="inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt hover:bg-ichki px-2.5 py-1.5 text-[12px] font-semibold text-matn cursor-pointer">
                   Rasm qo'shish <input type="file" accept="image/*" className="hidden" onChange={rasmTanla} />
                 </label>
-                {forma.imageUrl && <><img src={forma.imageUrl} alt="" className="h-14 rounded-lg border border-chiziq" /><Tugma kichik turi="oddiy" onClick={() => setForma({ ...forma, imageUrl: null })}>Olib tashlash</Tugma></>}
+                {forma.imageUrl && <><img src={forma.imageUrl} alt="" className="h-14 rounded-lg border border-chiziq bg-white" /><Tugma kichik turi="oddiy" onClick={() => setForma({ ...forma, imageUrl: null })}>Olib tashlash</Tugma></>}
               </div>
               <div className="flex justify-end gap-2">
                 <Tugma onClick={() => setForma(null)}>Bekor qilish</Tugma>

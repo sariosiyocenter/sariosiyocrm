@@ -1,19 +1,43 @@
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
-import { Tugma, INPUT, Maydon } from '../ui';
+import { Check, X } from 'lucide-react';
+import { Tugma, INPUT, SELECT, Maydon } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { HARFLAR } from '../../../../lib/imtihon.js';
-import type { SavolTuri } from '../../../types';
+import { bolimlarga } from './useBankDaraxt';
+import type { BankFan, SavolTuri } from '../../../types';
 
 // AI bilan savol kiritish oynalari uchun umumiy bo'laklar (SavolYuklash —
-// fayl/kameradan savollar, OxshashSavollar — o'xshash masalalar): rasm
-// tayyorlash, bank HTML ↔ oddiy matn, savol ko'rinishi va tuzatish shakli.
+// fayldan savollar, AiTuzish — AI tuzadi, OxshashSavollar — bankdagi savolga
+// o'xshashlar): rasm tayyorlash, bank HTML ↔ oddiy matn, savol ko'rinishi va
+// tuzatish shakli, yozma masalani yechtirish.
 
 export interface AiSavol {
   type: SavolTuri; text: string; options: string[] | null; correctAnswer: string; difficulty: number;
   language?: string; solution: string | null; solutionStatus?: string; xato?: string | null;
+  /**
+   * Savolning chizmasi (havola) — bankka `Question.imageUrl` bo'lib yoziladi. AI rasm o'rniga matnda
+   * «[rasm]» belgisini qoldiradi; chizmani AI vektor qilib chizadi (rasmNavbati.tsx) — chizilgach
+   * belgi matndan olinadi va havola shu maydonga tushadi.
+   */
+  imageUrl?: string | null;
 }
 export type Tekshiruv = { tekshirildi: boolean | null; aiJavobi: string };
+export type Soro = <T = any>(usul: string, yol: string, body?: any) => Promise<T>;
+
+/** Yozma masalalar bitta so'rovda nechtadan yechiladi (batafsil yechim uzun — so'rov qisqa qolsin). */
+export const YECHISH_BOLAGI = 2;
+/**
+ * Yozma masalalarni AI ga yechtiradi (bitta qisqa so'rov): har biriga batafsil, qadamma-qadam yechim.
+ * `rasmlar` — masalalar olingan sahifalar (matnda «[rasm]» bo'lsa, chizma o'sha yerdan ko'rinadi).
+ * Yechilmagani — bo'sh yechim bilan qaytadi.
+ */
+export async function yechimSora(soro: Soro, savollar: (AiSavol & { /** Ustoz bergan yakuniy javob — yechim shunga olib kelishi kerak. */ ustozJavobi?: string })[], fan: string, rasmlar: string[] = []): Promise<{ yechim: string; javob: string }[]> {
+  const r = await soro<{ natijalar: { yechim: string; javob: string }[] }>('POST', 'ai/yech', {
+    fan, rasmlar: rasmlar.slice(0, 3),
+    savollar: savollar.map(q => ({ type: 'yozma', text: q.text, javob: q.ustozJavobi || '', language: q.language || 'uz' })),
+  });
+  return savollar.map((_, i) => r.natijalar?.[i] || { yechim: '', javob: '' });
+}
 
 /** Rasm yoki PDF ning 1-sahifasi → JPEG data URL (1600px gacha) — so'rov kichik bo'lsin. */
 export async function rasmTayyorla(fayl: File): Promise<string> {
@@ -45,7 +69,19 @@ export function matnHtmlga(s: string): string {
   const t = s.replace(/\r\n/g, '\n').trim();
   return t ? t.split(/\n{2,}/).map(p => `<p>${esc(p.trim()).replace(/\n/g, '<br>')}</p>`).join('') : '';
 }
+/**
+ * Tahrirdan keyingi HTML. Tahrir maydoni oddiy matn — rasm (<img>) unda ko'rinmaydi, shuning uchun: matn
+ * o'zgarmagan bo'lsa asl HTML qaytadi (rasmlari o'z joyida); o'zgargan bo'lsa — yangi matn va asl rasmlar
+ * (oxirida). Aks holda Word shablonidan kelgan chizma savolni bir marta tahrirlash bilan yo'qolib qolardi.
+ */
+export function tahrirHtml(asl: string | null | undefined, matn: string): string {
+  const a = String(asl || '');
+  if (matn.trim() === htmlMatnga(a)) return a;
+  return matnHtmlga(matn) + (a.match(/<img\b[^>]*>/gi) || []).join('');
+}
 export const matniBor = (html: string | null | undefined) => !!htmlMatnga(html);
+/** Mazmuni bor: matn yoki rasm (savol faqat chizmadan iborat bo'lishi mumkin). */
+export const mazmuniBor = (html: string | null | undefined) => matniBor(html) || /<img\b/i.test(String(html || ''));
 export const izi = (html: string) => htmlMatnga(html).toLowerCase().replace(/\s+/g, '');
 
 /** Server xatosi → tushunarli matn (Vercel vaqt chegarasi, katta rasm). */
@@ -55,12 +91,20 @@ export function xatoMatni(e: any): string {
   return e?.message || 'Xatolik';
 }
 
-/** Savol ko'rinishi: formulalar, variantlar (to'g'risi yashil), javob, yechim. */
-export function Korinish({ q, onJavob }: { q: AiSavol; onJavob?: (javob: string) => void }) {
+/**
+ * Savol ko'rinishi: formulalar, (bo'lsa) chizma, variantlar (to'g'risi yashil), javob, yechim.
+ * Yozma masalada yechim — asosiy narsa: ochiq turadi (boshqa turlarda — yopiq).
+ */
+export function Korinish({ q, onJavob, rasmsiz }: {
+  q: AiSavol; onJavob?: (javob: string) => void;
+  /** Chizmani karta o'zi ko'rsatadi (chizma bloki — rasmNavbati.tsx SavolRasmi): bu yerda takrorlanmaydi. */
+  rasmsiz?: boolean;
+}) {
   const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
   return (
     <div className="space-y-2 min-w-0">
       <div className={`${SAVOL_MATNI} text-[14px] text-matn break-words`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text) }} />
+      {q.imageUrl && !rasmsiz && <img src={q.imageUrl} alt="Savol chizmasi" className="max-h-64 max-w-full rounded-lg border border-chiziq bg-white" />}
       {q.type === 'yopiq' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {(q.options || []).map((o, i) => {
@@ -75,11 +119,54 @@ export function Korinish({ q, onJavob }: { q: AiSavol; onJavob?: (javob: string)
       )}
       {q.type === 'raqamli' && <p className="text-[13px] text-matn"><b>Javob:</b> <span className="raqam">{q.correctAnswer || '—'}</span></p>}
       {q.solution && (
-        <details className="rounded-lg border border-chiziq bg-sirt px-3 py-2 group">
-          <summary className="text-[12px] font-semibold text-matn-sokin cursor-pointer select-none">Yechim</summary>
-          <div className={`${SAVOL_MATNI} text-[13px] text-matn mt-1.5 break-words`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.solution) }} />
+        <details open={q.type === 'yozma'} className="rounded-lg border border-chiziq bg-sirt px-3 py-2 group">
+          <summary className="text-[12px] font-semibold text-matn-sokin cursor-pointer select-none">{q.type === 'yozma' ? 'Yechim (batafsil)' : 'Yechim'}</summary>
+          <div className={`${SAVOL_MATNI} text-[13px] text-matn mt-1.5 break-words [&_p]:my-1.5`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.solution) }} />
         </details>
       )}
+    </div>
+  );
+}
+
+/**
+ * Fan va mavzu tanlash (AI tuzadigan oynalarda — savollar qaysi mavzuga tushishi): fanning mavzulari
+ * bo'limlari bilan, «+ Yangi mavzu…». `kutilgan` — bank ro'yxatidan kelgan, daraxtda hali ko'rinmagan
+ * (hozirgina yaratilgan) mavzu.
+ */
+export function FanMavzuTanlov({ fanlar, fan, mavzuId, yangiMavzu, kutilgan, band, onFan, onMavzu, onYangiMavzu }: {
+  fanlar: BankFan[]; fan: BankFan | null; mavzuId: number | null;
+  /** null — ro'yxatdan tanlanadi; matn — yangi mavzu nomi yozilmoqda. */
+  yangiMavzu: string | null;
+  kutilgan?: { id: number; nom: string } | null; band?: boolean;
+  onFan: (id: number | null) => void; onMavzu: (id: number | null) => void; onYangiMavzu: (nom: string | null) => void;
+}) {
+  const tanlangan = fan?.mavzular.some(m => m.id === mavzuId) || (kutilgan && kutilgan.id === mavzuId) ? mavzuId ?? '' : '';
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <Maydon nom="Fan">
+        <select className={SELECT} value={fan?.id ?? ''} aria-label="Fan" disabled={band} onChange={e => onFan(Number(e.target.value) || null)}>
+          <option value="">Fanni tanlang</option>
+          {fanlar.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+      </Maydon>
+      <Maydon nom="Mavzu">
+        {yangiMavzu !== null ? (
+          <div className="flex items-center gap-1.5">
+            <input autoFocus className={INPUT} value={yangiMavzu} placeholder="Yangi mavzu nomi" aria-label="Yangi mavzu nomi" maxLength={200} onChange={e => onYangiMavzu(e.target.value)} />
+            <Tugma kichik turi="oddiy" ikonka={<X size={13} />} onClick={() => onYangiMavzu(null)} aria-label="Bekor" />
+          </div>
+        ) : (
+          <select className={SELECT} value={tanlangan} disabled={!fan || band} aria-label="Mavzu"
+            onChange={e => (e.target.value === 'yangi' ? onYangiMavzu('') : onMavzu(Number(e.target.value) || null))}>
+            <option value="">{fan ? 'Mavzuni tanlang' : 'Avval fanni tanlang'}</option>
+            {kutilgan && !fan?.mavzular.some(m => m.id === kutilgan.id) && <option value={kutilgan.id}>{kutilgan.nom}</option>}
+            {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
+              ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
+              : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
+            {fan && <option value="yangi">+ Yangi mavzu…</option>}
+          </select>
+        )}
+      </Maydon>
     </div>
   );
 }
@@ -90,9 +177,10 @@ export function Tahrir({ q, onSaqla, onBekor }: { q: AiSavol; onSaqla: (q: AiSav
   const [variantlar, setVariantlar] = useState(() => (q.options || []).map(htmlMatnga));
   const [javob, setJavob] = useState(q.correctAnswer || '');
   const [yechim, setYechim] = useState(() => htmlMatnga(q.solution));
+  // Rasmlar (Word shablonidan kelgan chizmalar) tahrirda yo'qolmaydi — tahrirHtml.
   const tayyor: AiSavol = {
-    ...q, text: matnHtmlga(matn), options: q.type === 'yopiq' ? variantlar.map(matnHtmlga) : null,
-    correctAnswer: javob.trim(), solution: yechim.trim() ? matnHtmlga(yechim) : null,
+    ...q, text: tahrirHtml(q.text, matn), options: q.type === 'yopiq' ? variantlar.map((v, i) => tahrirHtml(q.options?.[i], v)) : null,
+    correctAnswer: javob.trim(), solution: yechim.trim() ? tahrirHtml(q.solution, yechim) : null,
   };
   return (
     <div className="space-y-3">
@@ -114,8 +202,10 @@ export function Tahrir({ q, onSaqla, onBekor }: { q: AiSavol; onSaqla: (q: AiSav
       {q.type === 'raqamli' && (
         <Maydon nom="To'g'ri javob"><input className={`${INPUT} max-w-40`} value={javob} onChange={e => setJavob(e.target.value)} inputMode="decimal" /></Maydon>
       )}
-      <Maydon nom="Yechim"><textarea rows={3} className={INPUT} value={yechim} onChange={e => setYechim(e.target.value)} aria-label="Yechim" /></Maydon>
-      {matniBor(tayyor.text) && (
+      <Maydon nom="Yechim" izoh={q.type === 'yozma' ? "Bo'sh qator — yangi qadam (xatboshi)" : undefined}>
+        <textarea rows={q.type === 'yozma' ? 10 : 3} className={INPUT} value={yechim} onChange={e => setYechim(e.target.value)} aria-label="Yechim" />
+      </Maydon>
+      {mazmuniBor(tayyor.text) && (
         <div className="rounded-xl border border-dashed border-chiziq p-3">
           <p className="text-[11px] font-semibold text-matn-xira mb-1.5">Ko'rinishi</p>
           <Korinish q={tayyor} />
@@ -123,7 +213,7 @@ export function Tahrir({ q, onSaqla, onBekor }: { q: AiSavol; onSaqla: (q: AiSav
       )}
       <div className="flex justify-end gap-2">
         <Tugma kichik onClick={onBekor}>Bekor</Tugma>
-        <Tugma kichik turi="asosiy" ikonka={<Check size={13} />} disabled={!matniBor(tayyor.text)} onClick={() => onSaqla(tayyor)}>Tayyor</Tugma>
+        <Tugma kichik turi="asosiy" ikonka={<Check size={13} />} disabled={!mazmuniBor(tayyor.text)} onClick={() => onSaqla(tayyor)}>Tayyor</Tugma>
       </div>
     </div>
   );

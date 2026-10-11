@@ -5,15 +5,23 @@ import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
 import AiKalitKartasi from '../AiKalitKartasi';
 import { Tugma, Tanlov, Yorliq } from '../ui';
-import { savolXatosi, qiyinlikDarajasi } from '../../../../lib/imtihon.js';
+import { savolXatosi, qiyinlikDarajasi, guruhSavolimi } from '../../../../lib/imtihon.js';
+import { TUR_NOMI } from '../../../lib/savolTuri';
 import { type AiSavol, type Tekshiruv, htmlMatnga, izi, xatoMatni, Korinish } from './aiUmumiy';
+import { useDarajalar } from './useDarajalar';
+import { useRasmNavbati, RasmJarayoni, SavolRasmi, rasmIshi, rasmNatijasiniQoy, rasmKerakmi, rasmYetishmaydi, ichkiRasmlar, type RasmHolati } from './rasmNavbati';
+import { rasmBelgisiBor, type RasmIshi, type RasmNatijasi } from '../../../lib/svgRasm';
 import type { Question } from '../../../types';
 
 // Bankdagi tayyor savollardan o'xshash masalalar (egasi, 2026-10-06: "bankdagi bor
 // masalalarni ham olib, ularga o'xshash masala qo'shish"). Bank ro'yxatida belgilangan
 // (yoki bitta) savol(lar) uchun AI har biriga N ta o'xshashini tuzadi, kalitni ko'rmay
 // qayta yechib tekshiradi. Yangi savol asl savolning mavzusiga tushadi; tekshiruvdan
-// o'tgani — faol, o'tmagani — qoralama.
+// o'tgani — faol, o'tmagani (va kaliti yo'q yozma masala) — qoralama. Qiyinligi «O'sha»
+// bo'lsa — asl savolning darajasi (foydalanuvchi qo'shgan daraja ham) saqlanadi.
+// Asl savolning chizmasi bo'lsa — yangilari ham chizmali tuziladi (matnda «[rasm]») va AI ularni asl chizma
+// uslubida vektor qilib chizadi. Bu yerda savol ko'p bo'lishi mumkin, shuning uchun o'zi faqat tekshiruvdan
+// o'tib belgilangan masalalar chiziladi — qolganiga kartada «Vektor qilib chizish» tugmasi.
 
 /** Bir martada nechta savoldan tuziladi (har biri 2 ta AI so'rovi: tuzish va tekshirish). */
 export const OXSHASH_MAKS_MANBA = 20;
@@ -23,15 +31,22 @@ interface Yangi extends AiSavol {
   kalit: number; tanlangan: boolean; tekshiruv: Tekshiruv | null;
   /** Server belgisi: javobi asl savolniki bilan bir xil chiqqan (deyarli takror). */
   aslBilanBir?: boolean;
+  /** Chizma qo'yilishidan oldingi matn («[rasm]» belgisi bilan) va chizma holati — rasmNavbati.tsx. */
+  aslMatn?: string;
+  rasm?: RasmHolati;
 }
 interface Guruh { asl: Question | null; id: number; yangilar: Yangi[]; xato?: string }
 
 let keyingiKalit = 1;
 const suril = (d: number, daraja: Daraja) => Math.min(3, Math.max(1, qiyinlikDarajasi(d || 2) + (daraja === 'oson' ? -1 : daraja === 'qiyin' ? 1 : 0)));
+/** Asl savolning chizmasi (rasmi yoki matn ichidagi rasmlari) — yangi masalalar chizmasiga namuna. */
+const aslRasmlari = (asl: Question): string[] => [asl.imageUrl, ...ichkiRasmlar(asl.text)].filter((x): x is string => !!x).slice(0, 2);
 const xatoHolati = (e: unknown) => (typeof e === 'object' && e !== null && 'status' in e ? Number((e as { status: unknown }).status) : 0);
 
 function Belgi({ n }: { n: Yangi }) {
-  if (n.type === 'yozma') return <Yorliq>Yozma — ustoz baholaydi</Yorliq>;
+  // Chizmasi kerak, lekin hali yo'q («[rasm]» belgisi matnda): chizilmaguncha savol faol bo'lmaydi.
+  if (rasmYetishmaydi(n) && !n.rasm?.band) return <Yorliq rang="ogoh"><AlertTriangle size={11} /> Rasmi yo'q — qoralama bo'ladi</Yorliq>;
+  if (n.type === 'yozma') return <Yorliq>{n.solution ? 'Yozma — batafsil yechimi bilan' : "Yozma — yechimi yo'q"} · qoralama bo'lib tushadi</Yorliq>;
   if (n.aslBilanBir) return <Yorliq rang="ogoh"><AlertTriangle size={11} /> Javobi asl masaladagidek</Yorliq>;
   if (n.tekshiruv?.tekshirildi === true) return <Yorliq rang="yaxshi"><CheckCircle2 size={11} /> AI qayta yechdi — javob to'g'ri</Yorliq>;
   if (n.tekshiruv?.tekshirildi === false) return <Yorliq rang="ogoh"><AlertTriangle size={11} /> AI boshqa javob chiqardi{n.tekshiruv.aiJavobi ? ` (${n.tekshiruv.aiJavobi})` : ''} — tekshiring</Yorliq>;
@@ -48,6 +63,9 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
   const { showNotification } = useCRM();
   const { soro, filial } = useImtihonApi();
   const ai = useAiHolat();
+  const darajalar = useDarajalar();
+  // Chizmalarni AI vektor qilib chizadi — navbat bilan (bir vaqtda 2 ta), to'xtatsa bo'ladi.
+  const rasmNavbati = useRasmNavbati();
   const manbalar = ids.slice(0, OXSHASH_MAKS_MANBA);
 
   const [soni, setSoni] = useState<1 | 3 | 5>(3);
@@ -60,14 +78,16 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
 
   const bittaSavol = async (id: number): Promise<Guruh> => {
     const asl = await soro<Question>('GET', `questions/${id}`);
-    // Guruhli savolning bitta bo'lagi umumiy shartsiz ma'nosiz — unga o'xshashini tuzib bo'lmaydi.
-    if (asl.type === 'juft' || asl.type === 'qismli') throw new Error("Guruhli savolga o'xshashini tuzish hali yo'q");
+    // Guruhli savolning bitta bo'lagi umumiy shartsiz ma'nosiz — o'xshashi «AI tuzadi» da, butun guruh bo'lib tuziladi.
+    if (guruhSavolimi(asl.type)) throw new Error(`Guruhli savol (${TUR_NOMI[asl.type]}) — o'xshashini «Savol qo'shish → AI tuzadi» da shu turni tanlab tuzasiz`);
     const a: AiSavol = {
       type: asl.type, text: asl.text, options: asl.options || null, correctAnswer: asl.correctAnswer || '',
       difficulty: qiyinlikDarajasi(asl.difficulty || 2), language: asl.language || 'uz', solution: asl.solution || null,
     };
     const r = await soro<{ klonlar: (AiSavol & { aslBilanBir?: boolean })[] }>('POST', 'ai/oxshash', {
       savol: { ...a, subject: asl.subject, topic: asl.topic }, soni, usul, daraja: daraja === 'osha' ? null : daraja,
+      // Asl savolning chizmasi bor — yangilari ham chizmali tuziladi (matnda «[rasm]» belgisi).
+      rasmli: aslRasmlari(asl).length > 0,
     });
     const bor = new Set([izi(a.text)]);
     const toza = r.klonlar.filter(k => { const z = izi(k.text); if (!z || bor.has(z)) return false; bor.add(z); return true; });
@@ -82,9 +102,25 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
       asl, id,
       yangilar: toza.map((k, j) => {
         const t = tekshiruv[j] || null;
-        return { ...k, kalit: keyingiKalit++, tekshiruv: t, tanlangan: (t?.tekshirildi === true || k.type === 'yozma') && !k.aslBilanBir };
+        return { ...k, kalit: keyingiKalit++, tekshiruv: t, tanlangan: (t?.tekshirildi === true || (k.type === 'yozma' && !!k.solution)) && !k.aslBilanBir };
       }),
     };
+  };
+
+  /** Yangi masala chizmasi so'rovi: matni bo'yicha, asl savolning chizmasi — uslub uchun namuna. */
+  const rasmSorovi = (asl: Question, n: AiSavol) => {
+    const namuna = aslRasmlari(asl);
+    return { variantlar: n.options, javob: n.type === 'yozma' ? null : n.correctAnswer, fan: asl.subject, namuna: namuna.length ? namuna : null };
+  };
+  const yangiSavolni = (kalit: number, f: (n: Yangi) => Yangi) =>
+    setGuruhlar(l => l && l.map(g => (g.yangilar.some(n => n.kalit === kalit) ? { ...g, yangilar: g.yangilar.map(n => (n.kalit === kalit ? f(n) : n)) } : g)));
+  const rasmlarniChizdir = async (ishlar: RasmIshi<number>[]) => {
+    const kalitlar = new Set(ishlar.map(i => i.kalit));
+    setGuruhlar(l => l && l.map(g => ({ ...g, yangilar: g.yangilar.map(n => (kalitlar.has(n.kalit) ? { ...n, rasm: { band: true } } : n)) })));
+    const h = await rasmNavbati.chiz(ishlar, (kalit: number, natija: RasmNatijasi) => yangiSavolni(kalit, n => rasmNatijasiniQoy(n, natija)));
+    // Chizilmagani saqlashga to'sqinlik qilmaydi: belgi matnda qoladi, savol qoralama bo'lib tushadi.
+    if (h.chizilmadi) showNotification(`${h.chizildi} ta rasm chizildi, ${h.chizilmadi} tasi chizilmadi: ${h.xato}. Kartadagi «Vektor qilib chizish» bilan qayta urinasiz`, 'error');
+    else if (h.chizildi) showNotification(`${h.chizildi} ta rasm chizildi — ko'zdan kechiring`, 'success');
   };
 
   const tuz = async () => {
@@ -105,6 +141,9 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
     } finally {
       setHolat(null);
     }
+    // Chizmalar: tekshiruvdan o'tib belgilangan, matnida «[rasm]» qolgan masalalar (tejab — hammasi emas).
+    const ishlar = yig.flatMap(g => (g.asl ? g.yangilar.filter(n => n.tanlangan && rasmBelgisiBor(n.text)).map(n => rasmIshi(n.kalit, n, rasmSorovi(g.asl!, n))) : []));
+    if (ishlar.length) await rasmlarniChizdir(ishlar);
   };
 
   const belgila = (kalit: number, tanlangan: boolean) =>
@@ -114,13 +153,18 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
   const saqla = async () => {
     setSaqlanmoqda(true);
     try {
+      // «O'sha» qiyinlik: asl savolda foydalanuvchi darajasi (belgisi) bo'lsa — yangilariga ham qo'yiladi.
+      const darajaBelgisi = (asl: Question) => (daraja === 'osha' ? darajalar.find(b => b.darajaId && (asl.tagIds || []).includes(b.darajaId))?.darajaId : null);
       const questions = (guruhlar || []).flatMap(g => (g.asl ? g.yangilar.filter(n => n.tanlangan).map(n => {
-        const joy = { subject: g.asl!.subject, topic: g.asl!.topic, bankTopicId: g.asl!.bankTopicId ?? null, difficulty: suril(g.asl!.difficulty, daraja), language: g.asl!.language || 'uz' };
+        const belgi = darajaBelgisi(g.asl!);
+        const joy = { subject: g.asl!.subject, topic: g.asl!.topic, bankTopicId: g.asl!.bankTopicId ?? null, difficulty: suril(g.asl!.difficulty, daraja), ...(belgi ? { tagIds: [belgi] } : {}), language: g.asl!.language || 'uz' };
         const maydon = {
           type: n.type, text: n.text, options: n.type === 'yopiq' ? n.options : null,
           correctAnswer: n.type === 'yozma' ? '' : n.correctAnswer, solution: n.solution || null, solutionStatus: n.solution ? 'qoralama' : 'yoq',
+          ...(n.imageUrl ? { imageUrl: n.imageUrl } : {}),
         };
-        const ishonchli = (n.tekshiruv?.tekshirildi === true || n.type === 'yozma') && !n.aslBilanBir;
+        // Yozma masalada tekshiradigan kalit yo'q — qoralama bo'lib tushadi.
+        const ishonchli = n.type !== 'yozma' && n.tekshiruv?.tekshirildi === true && !n.aslBilanBir && !rasmYetishmaydi(n);
         const faol = ishonchli && !savolXatosi({ ...maydon, ...joy } as never);
         return { ...maydon, ...joy, parentId: g.asl!.id, status: faol ? 'faol' : 'qoralama', source: "AI o'xshash" };
       }) : []));
@@ -151,7 +195,7 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
 
         <div className="px-4 sm:px-5 py-4 space-y-4">
           {ai && !ai.yoqilgan && (ai.sozlay ? <AiKalitKartasi ixcham />
-            : <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">AI hali ulanmagan. Kalitni administrator Sozlamalar → Integratsiyalar da kiritadi.</p>)}
+            : <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">AI hali ulanmagan. Kalitni administrator Imtihonlar → Sozlamalar da kiritadi.</p>)}
           {ids.length > manbalar.length && (
             <p className="rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2 text-[12.5px] text-matn">{ids.length} ta savol belgilangan — bir martada birinchi {manbalar.length} tasidan tuziladi.</p>
           )}
@@ -174,6 +218,7 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
           )}
 
           {holat && <p role="status" className="flex items-center gap-2 text-[12.5px] text-matn-sokin"><Loader2 size={14} className="animate-spin" /> {holat}</p>}
+          <RasmJarayoni holat={rasmNavbati.holat} onToxtat={rasmNavbati.toxtat} />
 
           {(guruhlar || []).map((g, i) => (
             <section key={g.id} aria-label={`${i + 1}-asl savol`} className="space-y-2">
@@ -191,7 +236,10 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
                       checked={n.tanlangan} disabled={band} onChange={e => belgila(n.kalit, e.target.checked)} />
                     <div className="min-w-0 flex-1 space-y-2">
                       <Belgi n={n} />
-                      <Korinish q={n} />
+                      <Korinish q={n} rasmsiz={rasmKerakmi(n)} />
+                      {g.asl && rasmKerakmi(n) && (
+                        <SavolRasmi q={n} sorov={rasmSorovi(g.asl, n)} band={band} onOzgar={f => yangiSavolni(n.kalit, f)} />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -207,7 +255,7 @@ export default function OxshashKop({ ids, onYop, onSaqlandi }: {
               {manbalar.length * soni} ta o'xshash masala tuzish
             </Tugma>
           ) : (
-            <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={!tanlanganSoni || band} onClick={saqla}>
+            <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={!tanlanganSoni || band || rasmNavbati.band} onClick={saqla}>
               {tanlanganSoni ? `${tanlanganSoni} ta savolni bankka qo'shish` : "Bankka qo'shish"}
             </Tugma>
           )}

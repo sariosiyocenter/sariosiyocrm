@@ -145,7 +145,8 @@ export default function NatijaSahifasi() {
                     <div className="bg-sirt rounded-2xl border border-chiziq p-4">
                       {matn.title && <p className="text-[12.5px] font-semibold text-matn mb-1">{matn.title}</p>}
                       <div className={`${SAVOL_MATNI} text-[13.5px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(matn.text) }} />
-                      {matn.imageUrl && <img src={matn.imageUrl} alt="" className="mt-2 max-h-72 rounded-lg" />}
+                      {/* bg-white: foni shaffof rasm (PNG chizma) qorong'i mavzuda ko'rinmay qolmasin. */}
+                      {matn.imageUrl && <img src={matn.imageUrl} alt="" className="mt-2 max-h-72 rounded-lg bg-white" />}
                     </div>
                   )}
                   <article className="bg-sirt rounded-2xl border border-chiziq p-4">
@@ -154,7 +155,7 @@ export default function NatijaSahifasi() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11.5px] font-semibold ${h.cls}`}><h.Ikonka size={12} />{h.nom}</span>
                     </div>
                     {s.matn && <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.matn) }} />}
-                    {s.rasm && <img src={s.rasm} alt="" className="mt-2 max-h-72 rounded-lg" />}
+                    {s.rasm && <img src={s.rasm} alt="" className="mt-2 max-h-72 rounded-lg bg-white" />}
                     {/* "Faqat kalit" imtihoni: savol matni kitobchada — faqat javoblar. */}
                     {s.t === 'yopiq' && !s.variantlar.length && (
                       <p className="text-[13.5px] text-matn">Sizning javobingiz: <b>{s.javob || '—'}</b> · To'g'ri javob: <b className="text-yaxshi">{(s.togri || []).join(' yoki ')}</b></p>

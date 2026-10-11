@@ -53,6 +53,7 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .savol .bosh > b { min-width: 6mm; }
 .savol .matn p { margin: 0 0 1mm; }
 .savol img { max-width: 100%; max-height: 58mm; display: block; margin: 1.2mm 0; }
+.matn-quti img { max-width: 100%; max-height: 80mm; display: block; margin: 1.2mm 0; }
 .javoblar { list-style: none; padding: 0; margin: 1.2mm 0 0 7.6mm; }
 .javoblar li { margin: 0.6mm 0; display: flex; gap: 1.4mm; }
 .javoblar.ikki { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; }

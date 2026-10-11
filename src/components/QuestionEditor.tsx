@@ -207,10 +207,14 @@ export default function QuestionEditor() {
   };
   const aiYechim = () => aiIsh('yechim', async () => {
     if (q.solution && !(await confirm("Hozirgi yechim AI qoralamasi bilan almashtirilsinmi? (Saqlamaguningizcha bazada o'zgarmaydi)"))) return;
-    const r = await soro<{ yechim: string; aiJavobi: string; mos: boolean | null }>('POST', `questions/${id}/ai/yechim`, {});
+    // Bank kartasidagi «Yechimni o'zgartirish» bilan bitta yo'l: yozma savol — batafsil, har qadam izohi
+    // bilan; qolganlari — qisqa. (Yechim qanday bo'lishini aytish — bankdagi o'sha oynada.)
+    const r = await soro<{ yechim: string; aiJavobi: string; mos: boolean | null; rasmKerak?: boolean; rasm?: { jami: number; berildi: number } }>('POST', `questions/${id}/yechim/ai`, {});
     setQ(s => ({ ...s, solution: r.yechim, solutionStatus: 'qoralama' }));
     setMuharrirKaliti(k => k + 1);
     if (r.mos === false) showNotification(`AI boshqa javob chiqardi (${r.aiJavobi}) — kalitni yoki yechimni tekshiring`, 'error');
+    // Savoldagi rasm AI ga yetib bormagan bo'lsa — yechim taxmin bo'lishi mumkin.
+    else if (r.rasmKerak || (r.rasm && r.rasm.jami > r.rasm.berildi)) showNotification("Yechim qoralamasi tayyor, lekin AI savoldagi rasmni ko'ra olmadi — albatta tekshiring", 'error');
     else showNotification(r.mos ? `Yechim qoralamasi tayyor — AI javobi kalit bilan mos (${r.aiJavobi})` : 'Yechim qoralamasi tayyor — tekshirib saqlang', 'success');
   });
   // "Ikkinchi til" maydonini AI tarjimasi bilan to'ldirish (saqlanmaydi — tekshirib saqlaysiz).

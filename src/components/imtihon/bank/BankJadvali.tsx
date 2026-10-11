@@ -1,21 +1,24 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, Check, SlidersHorizontal, Pencil, Folder, MoreHorizontal } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
-import { Tugma, Yorliq, Yuklanmoqda, BoshHolat } from '../ui';
-import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
-import { HARFLAR } from '../../../../lib/imtihon.js';
+import { Tugma, Yuklanmoqda, BoshHolat } from '../ui';
+import { TUR_NOMI } from '../../../lib/savolTuri';
 import { BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
-import MoslashJadvali from './MoslashJadvali';
 import OxshashKop from './OxshashKop';
+import AndozagaQoshish from './AndozagaQoshish';
 import FanKartalari from './FanKartalari';
 import GuruhKarta, { type GuruhMenyusi } from './GuruhKarta';
 import GuruhOynasi from './GuruhOynasi';
+import BankSavolKarta from './BankSavolKarta';
+import BoshqaFiltrlar, { boshqaFiltrSoni } from './BoshqaFiltrlar';
+import YechimOynasi, { type YechimNatijasi } from './YechimOynasi';
 import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
-import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question, SavolTuri } from '../../../types';
+import { almashtirRoyxat, BOSH_SARALASH as BOSH, HOLAT_NOMI, JOYLASHUV_NOMI, RASM_NOMI, TABLETKA, YECHIM_NOMI, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi } from './bankTurlari';
+import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question } from '../../../types';
 
 // Savollar banki (egasi bilan maketda kelishilgan ko'rinish, 2026-10-03).
 // Fan — tepada yorliq; pastdagi hamma narsa shu fanniki. Chapda tuzilma (bo'lim → mavzu) va
@@ -27,32 +30,20 @@ import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Qu
 // Amallar ekranda darhol ko'rinadi (mahalliy holat), serverga fonda, navbat bilan
 // yoziladi; navbat bo'shagach ro'yxat va sonlar jimgina qayta olinadi. Xato bo'lsa —
 // xabar chiqadi va ekran serverdagi holatga qaytadi.
+//
+// Ekran bo'laklari alohida fayllarda: savol kartasi — BankSavolKarta, guruhli savol kartasi —
+// GuruhKarta, «Boshqa filtrlar» paneli — BoshqaFiltrlar, yechim oynasi — YechimOynasi; umumiy
+// turlar va saralashning boshlang'ich holati — bankTurlari.
 
 const SAHIFA = 40;
-type Holat = '' | 'faol' | 'qoralama' | 'arxiv';
 /** Chapdagi tuzilmada nima tanlangan. */
 type Tanlov = { tur: 'hamma' } | { tur: 'bolim'; nom: string } | { tur: 'mavzu'; id: number };
-interface Saralash {
-  qiyinlik: number[]; darajalar: number[]; belgilar: Record<number, number[]>; manbalar: string[];
-  toplam: string | null; holat: Holat; tur: '' | SavolTuri; qidiruv: string; qidDan: string; qidGacha: string;
-  izohlar: string[]; matnli: '' | 'bor' | 'yoq'; joylashuv: number[];
-}
-const BOSH: Saralash = { qiyinlik: [], darajalar: [], belgilar: {}, manbalar: [], toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '', izohlar: [], matnli: '', joylashuv: [] };
-const JOYLASHUV_NOMI: Record<number, string> = { 0: 'Avtomatik', 1: '1 ustun', 2: '2 ustun', 4: '4 ustun' };
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Variantli', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
-const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
-const almashtirRoyxat = <K,>(l: K[], k: K) => (l.includes(k) ? l.filter(x => x !== k) : [...l, k]);
-const TABLETKA = (faol: boolean) => `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust border-brand' : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn hover:border-chiziq-kuchli'}`;
-const CHIP = 'inline-flex items-center gap-1 max-w-full px-1.5 py-0.5 rounded-md border text-[11.5px] font-semibold whitespace-nowrap';
-const CHIP_BOR = `${CHIP} border-chiziq bg-ichki text-matn`;
-const CHIP_BOSH = `${CHIP} border-dashed border-chiziq-kuchli text-matn-xira`;
 
-type Qator_ = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points' | 'remark' | 'passageId' | 'joylashuv' | 'passage'>;
+type Qator_ = BankQatori;
 type Kesim = NonNullable<BankFiltrMalumoti['kesim']>;
 /** Savol(lar)ga qo'yiladigan narsa: mavzu, asosiy daraja, foydalanuvchi darajasi yoki filtr qiymati (null — olib tashlash). */
 type Amal = { mavzu: number } | { daraja: number } | { darajaId: number } | { guruh: number; tag: number | null };
 type Qosh = { tur: 'fan' } | { tur: 'bolim' } | { tur: 'mavzu'; bolim: string } | { tur: 'daraja' } | { tur: 'filtr' } | { tur: 'qiymat'; guruh: number } | null;
-type MenyuTuri = 'fan' | 'savol' | 'mavzu' | 'daraja' | 'guruh' | 'yana' | 'guruhkarta';
 interface MenyuHolati { tur: MenyuTuri; rect: DOMRect; ids: number[]; guruh?: number }
 interface Daraja { kalit: string; nom: string; nuqta: string; d: number; id?: number }
 
@@ -70,10 +61,13 @@ function hissa(kesim: Kesim, q: Pick<Qator_, 'bankTopicId' | 'difficulty' | 'tag
   for (const g of guruhlar) if (!teglar.some(t => g.idlar.has(t))) k.y[g.id] = Math.max(0, (k.y[g.id] || 0) + ishora);
 }
 
-export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, onTuzilma, savolTahrir, yangilash = 0, yangi, onYangi, onTanlov }: {
+export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQosh, savolTahrir, yangilash = 0, yangi, onYangi, onTanlov }: {
   daraxt: BankDaraxt; fanId: number | null; onFan: (id: number) => void; yangilaDaraxt: () => Promise<unknown> | void;
   /** «Savol qo'shish» — tanlangan mavzu oldindan qo'yiladi (nomi bilan: hozirgina yaratilgan mavzu daraxtda hali bo'lmasligi mumkin). */
-  onQosh?: (mavzu: { id: number; nom: string } | null) => void; onTuzilma: () => void; savolTahrir: boolean;
+  onQosh?: (mavzu: { id: number; nom: string } | null) => void;
+  /** Ishlatilmaydi: bankda «Statistika» ko'rinishi olib tashlangan (egasi, 2026-10-10) — eski chaqiruvlar buzilmasligi uchun qoldi. */
+  onTuzilma?: () => void;
+  savolTahrir: boolean;
   /** Tashqarida bank o'zgardi (savol qo'shildi) — ro'yxat jimgina qayta olinadi. */
   yangilash?: number;
   /** Hozirgina qo'shilgan savollar: ro'yxat ularga o'tadi, «yangi» belgisi bilan. */
@@ -83,8 +77,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   /** Chapda tanlangan mavzu (yo'q bo'lsa null) — tepadagi «Savol qo'shish» shu mavzuga ochilishi uchun. */
   onTanlov?: (mavzu: { id: number; nom: string } | null) => void;
 }) {
-  const { ozgartira, showNotification } = useCRM();
+  const { ozgartira, kora, showNotification } = useCRM();
   const ochiradi = ozgartira('imtihonlar.ochirish');
+  // Yechim to'g'ri javobni ochib beradi — faqat savollar bo'limini ko'ra oladigan xodimga.
+  const yechimKoradi = kora('imtihonlar.savollar');
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
   const fan = daraxt.fanlar.find(f => f.id === fanId) || daraxt.fanlar[0] || null;
@@ -102,8 +98,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const [belgilash, setBelgilash] = useState(false);
   // Bankdagi savol(lar)ga o'xshash masala tuzish oynasi — asl savollar id lari.
   const [oxshash, setOxshash] = useState<number[] | null>(null);
+  // Tanlangan savollarni andozaga qo'shish oynasi — savollar id lari.
+  const [andozaga, setAndozaga] = useState<number[] | null>(null);
   // Tahrirlanayotgan guruhli savol (umumiy shart id si).
   const [guruhTahrir, setGuruhTahrir] = useState<number | null>(null);
+  // Yechim oynasi: qaysi savol va qaysi rejimda (ko'rish yoki o'zgartirish).
+  const [yechim, setYechim] = useState<{ id: number; rejim: YechimRejimi } | null>(null);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   const [band, setBand] = useState<string | null>(null);
   // Serverga yozilayotgan yangi qatorlar (nomi darhol ko'rinadi).
@@ -179,7 +179,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     bolimlar: tanlov.tur === 'bolim' ? [tanlov.nom] : undefined, mavzular: tanlov.tur === 'mavzu' ? [tanlov.id] : [],
     qiyinlik: s.qiyinlik, darajalar: s.darajalar, qiyinlikSof: true, manbalar: s.manbalar, belgilar: s.belgilar,
     toplam: s.toplam ?? undefined, tur: s.tur || undefined, qidiruv: s.qidiruv.trim() || undefined,
-    izohlar: s.izohlar, matnli: s.matnli || undefined, joylashuv: s.joylashuv,
+    izohlar: s.izohlar, matnli: s.matnli || undefined, joylashuv: s.joylashuv, rasm: s.rasm || undefined, yechim: s.yechim || undefined,
   })), [fan?.id, tanlov, s]);
 
   useEffect(() => { setSahifa(1); }, [sorov, tartib]);
@@ -406,6 +406,27 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const guruhMenyu = useCallback((tur: GuruhMenyusi, el: HTMLElement, idlar: number[], guruh?: number) => setMenyu({ tur, rect: el.getBoundingClientRect(), ids: idlar, guruh }), []);
   const kartaMenyu = useCallback((tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => setMenyu({ tur, rect: el.getBoundingClientRect(), ids: [id], guruh }), []);
   const tanla = (t: Tanlov) => { setTanlov(t); setYonOchiq(false); };
+
+  // Yechim: kartadagi sokin «Yechim» belgisi — ko'rish; «⋯» menyusidan — ko'rish yoki o'zgartirish
+  // (o'zgartirish — matn muharriri emas: ustoz qanday bo'lishini aytadi, AI yozadi — YechimOynasi).
+  // Oyna ochiq turganda boshqasi ochilmaydi (ichidagi saqlanmagan yechim jim yo'qolmasin).
+  const yechimKor = useCallback((id: number) => setYechim(x => x ?? { id, rejim: 'korish' }), []);
+  const yechimOch = (id: number, rejim: YechimRejimi) => { setMenyu(null); setYechim(x => x ?? { id, rejim }); };
+  /** Yechim saqlandi: kartadagi belgi darhol yangilanadi; filtr sonlari va ro'yxat — jimgina. */
+  const yechimSaqlandi = useCallback((id: number, n: YechimNatijasi) => {
+    setRoyxat(r => r && ({ ...r, items: r.items.map(q => (q.id === id ? { ...q, yechimBor: n.yechimBor, solutionStatus: n.solutionStatus } : q)) }));
+    // Fondagi amallar navbati band bo'lsa — u bo'shagach o'zi qayta oladi (ekrandagi holatni bosib ketmaslik uchun).
+    if (navbatSoni.current) return;
+    jim.current = true;
+    setQayta(x => x + 1);
+  }, []);
+  /** Menyudagi yechim amallari: ko'rish — savollar bo'limini ko'ra oladiganga, o'zgartirish — tahrirlay oladiganga. */
+  const yechimBandlari = (id: number) => (
+    <>
+      {yechimKoradi && <MenyuBand ikonka={<Lightbulb size={14} />} onClick={() => yechimOch(id, 'korish')}>Yechimni ko'rish</MenyuBand>}
+      {savolTahrir && <MenyuBand ikonka={<Wand2 size={14} />} onClick={() => yechimOch(id, 'ozgartirish')}>Yechimni o'zgartirish</MenyuBand>}
+    </>
+  );
 
   // --- Fan -------------------------------------------------------------------------
   const fanQosh = (nom: string) => {
@@ -661,6 +682,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       l.push({ k: `b${g}_${id}`, nom: id ? guruh?.tags.find(x => x.id === id)?.name || `#${id}` : `${guruh?.name || 'Filtr'}: qo'yilmagan`, ol: () => setS(x => ({ ...x, belgilar: { ...x.belgilar, [g]: (x.belgilar[Number(g)] || []).filter(y => y !== id) } })) });
     }
     if (s.tur) l.push({ k: 'tur', nom: TUR_NOMI[s.tur], ol: () => setS(x => ({ ...x, tur: '' })) });
+    if (s.rasm) l.push({ k: 'rasm', nom: `${RASM_NOMI[s.rasm]} savollar`, ol: () => setS(x => ({ ...x, rasm: '' })) });
+    if (s.yechim) l.push({ k: 'yechim', nom: YECHIM_NOMI[s.yechim], ol: () => setS(x => ({ ...x, yechim: '' })) });
     for (const m of s.manbalar) l.push({ k: `s${m}`, nom: m || 'Manbasiz', ol: () => setS(x => ({ ...x, manbalar: x.manbalar.filter(y => y !== m) })) });
     if (s.toplam !== null) l.push({ k: 'toplam', nom: `Fayl: ${s.toplam || "to'plamsiz"}`, ol: () => setS(x => ({ ...x, toplam: null })) });
     if (s.holat) l.push({ k: 'holat', nom: HOLAT_NOMI[s.holat], ol: () => setS(x => ({ ...x, holat: '' })) });
@@ -670,7 +693,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     if (s.qidDan || s.qidGacha) l.push({ k: 'qid', nom: yangiIdlar.size && s.qidDan && s.qidGacha ? 'Hozirgina qo\'shilganlar' : `QID ${s.qidDan || '…'}–${s.qidGacha || '…'}`, ol: () => setS(x => ({ ...x, qidDan: '', qidGacha: '' })) });
     return l;
   }, [s, filtr, yangiIdlar]);
-  const boshqaSoni = (s.tur ? 1 : 0) + (s.holat ? 1 : 0) + s.manbalar.length + (s.toplam !== null ? 1 : 0) + s.izohlar.length + (s.matnli ? 1 : 0) + s.joylashuv.length + (s.qidDan || s.qidGacha ? 1 : 0);
+  const boshqaSoni = boshqaFiltrSoni(s);
   const saralangan = yorliqlar.length > 0 || !!s.qidiruv.trim();
 
   const jamiSahifa = royxat ? Math.max(1, Math.ceil(royxat.total / SAHIFA)) : 1;
@@ -707,9 +730,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             )}
           </BoshHolat>
         ) : (
-          <BoshHolat sarlavha="Bankda hali fan yo'q" izoh="Savollar bankini to'ldirish huquqi bor xodim fan va savollarni qo'shadi.">
-            <Tugma onClick={onTuzilma}>Statistika</Tugma>
-          </BoshHolat>
+          <BoshHolat sarlavha="Bankda hali fan yo'q" izoh="Savollar bankini to'ldirish huquqi bor xodim fan va savollarni qo'shadi." />
         )}
       </div>
     );
@@ -883,87 +904,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             </button>
           </div>
 
-          {/* Kam ishlatiladigan saralashlar: tartib, turi, holati, manba, fayl, izoh, matn, joylashuv, QID. */}
-          {boshqa && filtr && (
-            <section aria-label="Boshqa filtrlar" className="bg-sirt border border-chiziq rounded-2xl grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 [&>section]:border-b [&>section]:border-chiziq">
-              <Bolim nom="Tartib">
-                <div className="flex flex-wrap gap-1.5">
-                  {([['asc', 'Raqami bo\'yicha'], ['desc', 'Yangilari avval']] as const).map(([v, nom]) => (
-                    <button key={v} type="button" aria-pressed={tartib === v} onClick={() => setTartib(v)} className={TABLETKA(tartib === v)}>{nom}</button>
-                  ))}
-                </div>
-              </Bolim>
-              <Bolim nom="Savol turi" tanlangan={s.tur ? 1 : 0}>
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(TUR_NOMI) as SavolTuri[]).filter(k => filtr.turlar[k] || s.tur === k).map(k => (
-                    <button key={k} type="button" aria-pressed={s.tur === k} onClick={() => setS(x => ({ ...x, tur: x.tur === k ? '' : k }))} className={TABLETKA(s.tur === k)}>
-                      {TUR_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.turlar[k]}</span>
-                    </button>
-                  ))}
-                  {!(Object.keys(TUR_NOMI) as SavolTuri[]).some(k => filtr.turlar[k]) && <span className="text-[12px] text-matn-xira">Savol yo'q</span>}
-                </div>
-              </Bolim>
-              <Bolim nom="Holati" tanlangan={s.holat ? 1 : 0}>
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(HOLAT_NOMI) as Exclude<Holat, ''>[]).map(k => (
-                    <button key={k} type="button" aria-pressed={s.holat === k} onClick={() => setS(x => ({ ...x, holat: x.holat === k ? '' : k }))} className={TABLETKA(s.holat === k)}>
-                      {HOLAT_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.holat[k]}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[11px] text-matn-xira">Tanlanmasa — faol va qoralama (arxiv yashirin)</p>
-              </Bolim>
-              {filtr.manbalar.some(m => m.nom) && (
-                <Bolim nom="Manba" tanlangan={s.manbalar.length}>
-                  <Belgilar qiymatlar={filtr.manbalar.map(m => ({ k: m.nom, nom: m.nom || <i className="text-matn-xira">Manbasiz</i>, soni: m.soni }))}
-                    tanlangan={s.manbalar} onChange={v => setS(x => ({ ...x, manbalar: v }))} />
-                </Bolim>
-              )}
-              {filtr.toplamlar.some(m => m.nom) && (
-                <Bolim nom="To'plam (fayl)" tanlangan={s.toplam !== null ? 1 : 0}>
-                  <Belgilar qiymatlar={filtr.toplamlar.map(x => ({ k: x.nom, nom: x.nom || <i className="text-matn-xira">To'plamsiz</i>, soni: x.soni }))}
-                    tanlangan={s.toplam !== null ? [s.toplam] : []} onChange={v => setS(x => ({ ...x, toplam: v.length ? v[v.length - 1] : null }))} />
-                </Bolim>
-              )}
-              {filtr.izohlar.some(x => x.nom) && (
-                <Bolim nom="Izoh (remark)" tanlangan={s.izohlar.length}>
-                  <Belgilar qiymatlar={filtr.izohlar.map(x => ({ k: x.nom, nom: x.nom || <i className="text-matn-xira">Izohsiz</i>, soni: x.soni }))}
-                    tanlangan={s.izohlar} onChange={v => setS(x => ({ ...x, izohlar: v }))} />
-                </Bolim>
-              )}
-              {filtr.matnli.bor > 0 && (
-                <Bolim nom="Matnli savollar (passage)" tanlangan={s.matnli ? 1 : 0}>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(['bor', 'yoq'] as const).map(k => (
-                      <button key={k} type="button" aria-pressed={s.matnli === k} onClick={() => setS(x => ({ ...x, matnli: x.matnli === k ? '' : k }))} className={TABLETKA(s.matnli === k)}>
-                        {k === 'bor' ? "Matnga bog'langan" : 'Matnsiz'}<span className="raqam text-[11px] opacity-70">{filtr.matnli[k]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </Bolim>
-              )}
-              {(filtr.joylashuv['1'] + filtr.joylashuv['2'] + filtr.joylashuv['4']) > 0 && (
-                <Bolim nom="Variantlar joylashuvi" tanlangan={s.joylashuv.length}>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[0, 1, 2, 4].filter(j => filtr.joylashuv[String(j) as '0'] || s.joylashuv.includes(j)).map(j => (
-                      <button key={j} type="button" aria-pressed={s.joylashuv.includes(j)} onClick={() => setS(x => ({ ...x, joylashuv: almashtirRoyxat(x.joylashuv, j) }))} className={TABLETKA(s.joylashuv.includes(j))}>
-                        {JOYLASHUV_NOMI[j]}<span className="raqam text-[11px] opacity-70">{filtr.joylashuv[String(j) as '0']}</span>
-                      </button>
-                    ))}
-                  </div>
-                </Bolim>
-              )}
-              <Bolim nom="Savol raqami (QID) oralig'i" tanlangan={s.qidDan || s.qidGacha ? 1 : 0}>
-                <div className="flex items-center gap-2">
-                  <input className="w-full min-w-0 px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] raqam focus:border-brand" style={{ outline: 'none' }} inputMode="numeric" placeholder="dan" aria-label="QID dan"
-                    value={s.qidDan} onChange={e => setS(x => ({ ...x, qidDan: e.target.value.replace(/\D/g, '') }))} />
-                  <span className="text-matn-xira">–</span>
-                  <input className="w-full min-w-0 px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] raqam focus:border-brand" style={{ outline: 'none' }} inputMode="numeric" placeholder="gacha" aria-label="QID gacha"
-                    value={s.qidGacha} onChange={e => setS(x => ({ ...x, qidGacha: e.target.value.replace(/\D/g, '') }))} />
-                </div>
-              </Bolim>
-            </section>
-          )}
+          {/* Kam ishlatiladigan saralashlar: tartib, turi, rasm, yechim, holati, manba, fayl, izoh, matn, joylashuv, QID. */}
+          {boshqa && filtr && <BoshqaFiltrlar filtr={filtr} s={s} setS={setS} tartib={tartib} setTartib={setTartib} />}
 
           <div className="flex flex-wrap items-center gap-1.5 px-1 min-h-7">
             <span className="text-[13px] text-matn-sokin mr-1">
@@ -1025,13 +967,13 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                     <GuruhKarta key={`g${gp.id}`} savollar={azolar} hammaIdlar={hammasi} tur={gp.tur as GuruhTuri} shart={gp.text || ''} variantlar={gp.variantlar || []}
                       boshRaqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={hammasi.every(id => tanlangan.has(id))} yangi={azolar.some(x => yangiIdlar.has(x.id))}
                       tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir} mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''}
-                      darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar} onTanla={guruhTanla} onMenyu={guruhMenyu} />
+                      darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar} yechim={yechimKoradi} onTanla={guruhTanla} onMenyu={guruhMenyu} />
                   );
                 }
                 return (
-                  <SavolKarta key={q.id} q={q} raqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
+                  <BankSavolKarta key={q.id} q={q} raqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
                     mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''} darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar}
-                    onTanla={almashtir} onKor={korish} onSudra={savolTahrir ? sudra : undefined} onMenyu={kartaMenyu} />
+                    onTanla={almashtir} onKor={korish} onSudra={savolTahrir ? sudra : undefined} onMenyu={kartaMenyu} onYechim={yechimKoradi ? yechimKor : undefined} />
                 );
               })}
             </ul>
@@ -1054,6 +996,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                         <PanelTugma key={g.id} onClick={e => setMenyu({ tur: 'guruh', rect: e.currentTarget.getBoundingClientRect(), ids, guruh: g.id })}>{g.name}</PanelTugma>
                       ))}
                       <PanelTugma ikonka={<Sparkles size={14} />} title="AI shu savollarning har biriga o'xshash masalalar tuzadi" onClick={() => setOxshash(ids)}>O'xshashini tuzish</PanelTugma>
+                      <PanelTugma ikonka={<LayoutList size={14} />} title="Tanlangan savollarni andozaga qo'shish" onClick={() => setAndozaga(ids)}>Andozaga</PanelTugma>
                       <PanelTugma ikonka={<MoreHorizontal size={14} />} aria-label="Boshqa amallar" title="Boshqa amallar" onClick={e => setMenyu({ tur: 'yana', rect: e.currentTarget.getBoundingClientRect(), ids })} />
                     </>
                   )}
@@ -1078,8 +1021,15 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       {menyu && menyu.tur === 'savol' && (
         <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`#${menyu.ids[0]} savol`}>
           <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>{savolTahrir ? 'Ochish va tahrirlash' : "Ko'rish"}</MenyuBand>
+          {yechimBandlari(menyu.ids[0])}
           {savolTahrir && <MenyuBand ikonka={<Sparkles size={14} />} onClick={() => { setOxshash(menyu.ids); setMenyu(null); }}>O'xshashini tuzish (AI)</MenyuBand>}
           {ochiradi && <MenyuBand ikonka={<Trash2 size={14} />} xavfli onClick={() => ochir(menyu.ids)}>Savolni o'chirish</MenyuBand>}
+        </Menyu>
+      )}
+      {/* Guruhli savolning bitta kichik savoli: yechimi (guruhning o'zi — «guruhkarta» menyusida). */}
+      {menyu && menyu.tur === 'yechim' && (
+        <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`#${menyu.ids[0]} savol yechimi`}>
+          {yechimBandlari(menyu.ids[0])}
         </Menyu>
       )}
       {menyu && menyu.tur === 'mavzu' && (
@@ -1148,6 +1098,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       {menyu && menyu.tur === 'yana' && (
         <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom="Boshqa amallar">
           {menyu.ids.length === 1 && <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>Ochish va tahrirlash</MenyuBand>}
+          {menyu.ids.length === 1 && yechimBandlari(menyu.ids[0])}
           <MenyuBand ikonka={<Tags size={14} />} onClick={() => { setMenyu(null); setBelgilash(true); }}>Manba, izoh, holat…</MenyuBand>
           <MenyuBand ikonka={<RotateCcw size={14} />} onClick={() => ishlatilishNol(menyu.ids)}>Ishlatilishini nolga</MenyuBand>
         </Menyu>
@@ -1156,6 +1107,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       {belgilash && filtr && <BelgilashOynasi ids={ids} filtr={filtr} boshi={belgilashBoshi()} onYop={() => setBelgilash(false)} onSaqlandi={ozgardi} />}
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {guruhTahrir != null && <GuruhOynasi daraxt={daraxt} guruhId={guruhTahrir} onYop={() => setGuruhTahrir(null)} onSaqlandi={ozgardi} />}
+      {yechim && <YechimOynasi key={yechim.id} id={yechim.id} rejim={yechim.rejim} onYop={() => setYechim(null)} onSaqlandi={yechimSaqlandi} />}
+      {andozaga && <AndozagaQoshish ids={andozaga} onYop={() => setAndozaga(null)} onQoshildi={() => setTanlangan(new Set())} />}
       {oxshash && (
         <OxshashKop ids={oxshash} onYop={() => setOxshash(null)}
           onSaqlandi={yangiIds => { setTanlangan(new Set()); ozgardi(); if (yangiIds.length) onYangi?.(yangiIds); }} />
@@ -1172,117 +1125,3 @@ function PanelTugma({ ikonka, children, className = '', ...qolgan }: React.Butto
     </button>
   );
 }
-
-/** "Boshqa filtrlar" bo'limi: sarlavha va ichidagi qiymatlar. */
-function Bolim({ nom, tanlangan = 0, children }: { nom: string; tanlangan?: number; children: React.ReactNode }) {
-  return (
-    <section className="p-3">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[12.5px] font-semibold text-matn">{nom}</span>
-        {tanlangan > 0 && <span className="raqam text-[11px] font-bold min-w-5 text-center px-1.5 rounded-md bg-brand text-brand-ust">{tanlangan}</span>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Belgilash ro'yxati: har qatorda qiymat va nechta savol. */
-function Belgilar<K extends string | number>({ qiymatlar, tanlangan, onChange }: {
-  qiymatlar: { k: K; nom: React.ReactNode; soni?: number }[]; tanlangan: K[]; onChange: (v: K[]) => void;
-}) {
-  return (
-    <ul className="max-h-44 overflow-y-auto -mx-1.5">
-      {qiymatlar.map(q => {
-        const b = tanlangan.includes(q.k);
-        return (
-          <li key={String(q.k)}>
-            <label className={`flex items-center gap-2 px-1.5 py-1 rounded-lg text-[12.5px] cursor-pointer select-none ${b ? 'bg-brand-fon/70 dark:bg-brand/10' : 'hover:bg-ichki'}`}>
-              <input type="checkbox" className="w-3.5 h-3.5 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={b} onChange={() => onChange(almashtirRoyxat(tanlangan, q.k))} />
-              <span className={`flex-1 min-w-0 truncate ${b ? 'font-semibold text-matn' : 'text-matn'}`}>{q.nom}</span>
-              {q.soni !== undefined && <span className={`shrink-0 raqam text-[11px] ${q.soni ? 'text-matn-xira' : 'text-matn-xira/50'}`}>{q.soni}</span>}
-            </label>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-/**
- * Savol kartasi: matn (formulalar bilan), variantlar va to'g'ri javob ochmasdan ko'rinadi.
- * Yorliqlar (mavzu, qiyinlik, filtrlar) bosilsa — shu yerning o'zida o'zgartiriladi; karta
- * chapdagi mavzu yoki filtr qatoriga sudrab tashlanadi.
- */
-const SavolKarta = memo(function SavolKarta({ q, raqam, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu }: {
-  q: Qator_;
-  /** Ro'yxatdagi tartib raqami — har ko'rinishda (fan, bo'lim, mavzu, filtr) 1 dan boshlanadi. */
-  raqam: number;
-  tanlangan: boolean; yangi: boolean; tanlanadi: boolean; tahrir: boolean; mavzu: string; darajaNom: string; darajaNuqta: string; guruhlar: BelgiGuruhi[];
-  onTanla: (id: number) => void; onKor: (id: number) => void; onSudra?: (id: number, e: React.DragEvent) => void;
-  onMenyu: (tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => void;
-}) {
-  const html = useMemo(() => formulaliHtml(q.text || ''), [q.text]);
-  const variantlar = useMemo(() => (q.options || []).map(o => formulaliHtml(o)), [q.options]);
-  const qisqa = useMemo(() => (q.options || []).every(o => oddiyMatn(o).length <= 22 && !/<img/i.test(o)), [q.options]);
-  const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
-  const raqamliJavob = q.type === 'raqamli' ? [...new Set([q.correctAnswer, ...(q.answers || [])].filter(Boolean))].join(' · ') : '';
-  const teglar = q.tagIds || [];
-  /** Yorliq: tahrir huquqi bo'lsa — tugma (menyu ochadi), bo'lmasa oddiy yozuv. */
-  const yorliq = (tur: MenyuTuri, sinf: string, nom: string, ichi: React.ReactNode, guruh?: number) => (tahrir
-    ? <button key={`${tur}${guruh || ''}`} type="button" title={nom} aria-label={`#${q.id}: ${nom}`} aria-haspopup="menu" className={`${sinf} cursor-pointer hover:border-brand`} onClick={e => onMenyu(tur, e.currentTarget, q.id, guruh)}>{ichi}</button>
-    : <span key={`${tur}${guruh || ''}`} title={nom} className={sinf}>{ichi}</span>);
-
-  return (
-    <li draggable={!!onSudra} onDragStart={onSudra ? e => onSudra(q.id, e) : undefined} onDoubleClick={() => onKor(q.id)}
-      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 pl-2.5 pr-3 py-3 rounded-xl border transition-colors ${tanlangan ? 'border-brand bg-brand-fon/50 dark:bg-brand/10' : 'border-chiziq bg-sirt'} ${onSudra ? 'cursor-grab' : ''} ${q.status === 'arxiv' ? 'opacity-60' : ''}`}>
-      <div className="pt-0.5">
-        {tanlanadi ? <input type="checkbox" aria-label={`#${q.id} savolni tanlash`} className="w-[17px] h-[17px] accent-[var(--color-brand)] cursor-pointer" checked={tanlangan} onChange={() => onTanla(q.id)} /> : <span className="block w-1" />}
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span className="raqam text-[13px] font-bold text-matn mr-0.5">{raqam}.</span>
-          {yangi && <span className="px-1.5 py-0.5 rounded-md bg-yaxshi-fon text-yaxshi text-[10.5px] font-bold">yangi</span>}
-          {yorliq('mavzu', mavzu ? CHIP_BOR : CHIP_BOSH, mavzu ? `mavzu — ${mavzu}` : 'mavzusi yo\'q', <><Folder size={12} className="shrink-0" /><span className="truncate max-w-56">{mavzu || 'mavzu?'}</span></>)}
-          {yorliq('daraja', CHIP_BOR, `qiyinlik — ${darajaNom}`, <><span className={`w-2 h-2 rounded-full shrink-0 ${darajaNuqta}`} /><span className="truncate max-w-40">{darajaNom}</span></>)}
-          {guruhlar.map(g => {
-            const t = g.tags.find(x => teglar.includes(x.id));
-            if (t) return yorliq('guruh', CHIP_BOR, `${g.name} — ${t.name}`, <span className="truncate max-w-40">{t.name}</span>, g.id);
-            return g.tags.length && tahrir ? yorliq('guruh', CHIP_BOSH, `${g.name} qo'yilmagan`, <span className="truncate max-w-40">{g.name.toLowerCase()}?</span>, g.id) : null;
-          })}
-          {q.type !== 'yopiq' && <Yorliq rang="brand">{TUR_NOMI[q.type]}</Yorliq>}
-          {q.status === 'qoralama' && <Yorliq rang="ogoh">Qoralama</Yorliq>}
-          {q.status === 'arxiv' && <Yorliq>Arxiv</Yorliq>}
-          {q.passageId && <Yorliq>matnli</Yorliq>}
-          <span className="ml-auto flex items-center gap-1.5 text-[11.5px] text-matn-xira">
-            {!!q.usedCount && <span>{q.usedCount} marta ishlatilgan</span>}
-            <span className="raqam" title="Savolning bankdagi doimiy raqami (ID) — qaysi mavzuda turishidan qat'i nazar o'zgarmaydi">ID {q.id}</span>
-            <button type="button" aria-label={`#${q.id} — amallar`} title="Ochish, o'chirish" aria-haspopup="menu" onClick={e => onMenyu('savol', e.currentTarget, q.id)}
-              className="p-1 -mr-1 rounded-lg text-matn-sokin hover:bg-ichki hover:text-matn cursor-pointer"><MoreHorizontal size={16} /></button>
-          </span>
-        </div>
-        <div className={`${SAVOL_MATNI} mt-1.5 text-[14px] text-matn [&_p]:my-0.5`} dangerouslySetInnerHTML={{ __html: html || '<p>—</p>' }} />
-        {q.imageUrl && <img src={q.imageUrl} alt="" loading="lazy" draggable={false} className="mt-2 max-h-40 rounded-lg border border-chiziq bg-white" />}
-        {q.type === 'yopiq' && variantlar.length > 0 && (
-          <ol className={`mt-2 grid gap-1.5 ${q.joylashuv === 1 ? 'grid-cols-1' : q.joylashuv === 2 ? 'grid-cols-2' : q.joylashuv === 4 || qisqa ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'}`}>
-            {variantlar.map((h, i) => (
-              <li key={i} className={`flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] border ${i === togri ? 'bg-yaxshi-fon border-yaxshi/40 text-matn' : 'bg-ichki border-chiziq text-matn'}`}>
-                <b className={`shrink-0 ${i === togri ? 'text-yaxshi' : 'text-matn-xira'}`}>{HARFLAR[i]})</b>
-                <span className={`${SAVOL_MATNI} min-w-0 flex-1 [&_p]:my-0 [&_img]:max-h-24`} dangerouslySetInnerHTML={{ __html: h }} />
-                {i === togri && <Check size={14} strokeWidth={3} className="shrink-0 mt-0.5 text-yaxshi" aria-label="to'g'ri javob" />}
-              </li>
-            ))}
-          </ol>
-        )}
-        {q.type === 'yopiq' && togri < 0 && <p className="mt-1.5 text-[11.5px] font-semibold text-xato">To'g'ri javob belgilanmagan</p>}
-        {q.type === 'raqamli' && (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-yaxshi-fon ring-1 ring-yaxshi/35 px-2.5 py-1 text-[12.5px]">
-            <span className="text-matn-sokin">Javob:</span><b className="text-yaxshi raqam">{raqamliJavob || '—'}</b>
-          </p>
-        )}
-        {q.type === 'moslash' && <div className="mt-2"><MoslashJadvali ixcham chap={q.options || []} ong={q.answers || []} kalit={q.correctAnswer || ''} /></div>}
-        {q.type === 'yozma' && <p className="mt-2 text-[12px] text-matn-xira">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}</p>}
-        {(q.source || q.toplam || q.remark) && <p className="mt-1.5 text-[11px] text-matn-xira">{[q.source, q.toplam && `fayl: ${q.toplam}`, q.remark && `izoh: ${q.remark}`].filter(Boolean).join(' · ')}</p>}
-      </div>
-    </li>
-  );
-});

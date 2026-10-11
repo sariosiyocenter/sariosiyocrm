@@ -6,11 +6,13 @@ import { Karta, Yuklanmoqda, BoshHolat } from './ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { HARFLAR } from '../../../lib/imtihon.js';
 import { qiyinlikDaraja } from './bank/qiyinlik';
+import { TUR_NOMI } from '../../lib/savolTuri';
 import type { ImtihonTafsil } from './turlar';
 
 // Addmen QPG "Find questions / Align questions" jadvali: qulflangan imtihonga
-// tushgan savollar. Natija kelguncha har birini almashtirish mumkin —
-// avtomatik (o'sha mavzu va qiyinlikdan kam ishlatilgani) yoki QID bilan.
+// tushgan savollar (andozadan tuzilganida — andozadagi savollarning o'zi). Natija
+// kelguncha har birini almashtirish mumkin — avtomatik (o'sha mavzu va qiyinlikdan
+// kam ishlatilgani) yoki QID bilan; andozaning o'zi bundan o'zgarmaydi.
 
 interface Qator {
   q: number; session: number; n: number; y?: string; g?: string; b: number; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; p: number; pa: number | null;
@@ -101,7 +103,7 @@ export default function TanlanganSavollar({ exam, onOzgardi }: { exam: ImtihonTa
                             {x.options.map((o, oi) => <span key={oi} className={`mr-2.5 ${javob(x) === HARFLAR[oi] ? 'text-yaxshi font-semibold' : ''}`}>{HARFLAR[oi]}) <span dangerouslySetInnerHTML={{ __html: formulaliHtml(o).replace(/<\/?p>/g, '') }} /></span>)}
                           </div>
                         )}
-                        {x.pa && <span className="text-[11px] text-matn-xira">matnga bog'langan</span>}
+                        {x.pa && <span className="text-[11px] text-matn-xira">{x.g === 'juft' || x.g === 'qismli' ? `${TUR_NOMI[x.g]} — guruhli savol, butunligicha turadi` : "matnga bog'langan"}</span>}
                       </td>
                       <td className="px-2 py-2 align-top text-matn-sokin hidden md:table-cell">{x.topic}</td>
                       <td className="px-2 py-2 align-top text-center font-bold text-yaxshi raqam">{javob(x) ?? '—'}</td>

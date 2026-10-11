@@ -15,8 +15,9 @@ import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabar
 import { TransportQoidaKartasi, TransportQoidaFormasi } from './TransportXabari';
 import { QoidaKartasi } from './QoidaKartasi';
 import { kursUstozlari } from '../lib/teacherState';
-import { smsMatni, ESKI_QIMMAT_HARF } from '../../lib/tolovXabari.js';
+import { smsMatni, ESKI_QIMMAT_HARF, eskizRadEtdi, eskizYuboradi, kodShabloniMi } from '../../lib/tolovXabari.js';
 import { SmsHisobi, smsHisobla } from './SmsHisobi';
+import { EskizBalansi, useEskizBalansi, balansMatni, pulMatni, SMS_ORTACHA_NARX } from './EskizBalansi';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -162,6 +163,8 @@ interface MessageTemplate {
   // Eskiz moderatsiyasi: moderation | confirmed | rejected | service | xato matni
   eskizStatus?: string | null;
   eskizTemplateId?: string | null;
+  /** Faqat «Tasdiqlash kodi» shablonida: server hisoblagan standart matn (markaz nomi bilan). */
+  standartMatn?: string;
 }
 
 interface MessageCampaign {
@@ -475,6 +478,7 @@ export default function Messaging() {
         showNotification(`Qayta jo'natish yakunlandi! Jami: ${data.total}, Muvaffaqiyatli: ${data.successCount}, Xato: ${data.failCount}`, data.failCount > 0 ? 'info' : 'success');
         setSelectedLogIds({});
         fetchLogs();
+        eskiz.yangila();
       } else {
         showNotification("Xatolik: " + (data.error || "Xabarlarni qayta jo'natib bo'lmadi"), 'error');
       }
@@ -505,20 +509,32 @@ export default function Messaging() {
     return () => clearTimeout(t);
   }, [selectedSchoolId, selectedCampaignId, statusLogFilter, channelLogFilter, searchLogQuery]);
 
+  /** Shablon Eskizga yuborilgach (yoki saqlangach) qaytgan holat — odam tushunadigan bildirishnoma. */
+  const eskizNatijasi = (holat: string, yuborildi = "Eskiz moderatsiyasiga yuborildi") => {
+    if (holat.startsWith('xato')) return showNotification(`Eskiz: ${holat.slice(6)}`, 'error');
+    // Eskiz aynan shu matnni avval rad etgan: server uni qayta yubormaydi (kuniga 10 ta shablon cheklovi).
+    if (eskizRadEtdi(holat)) return showNotification("Eskiz aynan shu matnni rad etgan — qayta yuborilmadi. Matnni o'zgartirib saqlang.", 'error');
+    if (eskizYuboradi(holat)) return showNotification("Eskiz bu matnni tasdiqlagan — SMS yuborish mumkin", 'success');
+    return showNotification(yuborildi, 'success');
+  };
+
   // Eskizga qayta yuborish (moderatsiyaga bormagan yoki xato bilan qaytgan shablon).
+  // standart — «Tasdiqlash kodi» shabloni standart matnga qaytarilib yuboriladi.
   const [eskizYuborilmoqda, setEskizYuborilmoqda] = useState<number | null>(null);
-  const eskizgaQaytaYuborish = async (id: number) => {
+  const eskizgaQaytaYuborish = async (id: number, standart = false) => {
     setEskizYuborilmoqda(id);
     try {
       const res = await fetch(`/api/messaging/templates/${id}/eskiz`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ standart }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { showNotification(d.error || "Yuborib bo'lmadi", 'error'); return; }
-      const holat = String(d.eskizStatus || '');
-      showNotification(holat.startsWith('xato') ? `Eskiz: ${holat.slice(6)}` : "Eskiz moderatsiyasiga yuborildi", holat.startsWith('xato') ? 'error' : 'success');
+      eskizNatijasi(String(d.eskizStatus || ''));
       fetchTemplates();
+    } catch (e: any) {
+      showNotification("Xatolik: " + e.message, 'error');
     } finally {
       setEskizYuborilmoqda(null);
     }
@@ -536,8 +552,7 @@ export default function Messaging() {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { showNotification(d.error || "Saqlab bo'lmadi", 'error'); return; }
-      const holat = String(d.eskizStatus || '');
-      showNotification(holat.startsWith('xato') ? `Eskiz: ${holat.slice(6)}` : "Matn tuzatildi va Eskiz tasdig'iga yuborildi", holat.startsWith('xato') ? 'error' : 'success');
+      eskizNatijasi(String(d.eskizStatus || ''), "Matn tuzatildi va Eskiz tasdig'iga yuborildi");
       fetchTemplates();
     } finally {
       setEskizYuborilmoqda(null);
@@ -953,14 +968,15 @@ export default function Messaging() {
   const smsInfo = smsHisobla(messageText, settings?.orgName);
   const smsKetadi = channel !== 'TELEGRAM' || useSmsFallback;
 
-  // Tasdiqlash oynasida Eskiz balansi — pul yetmasa oldindan ko'rinsin.
-  const [eskizBalans, setEskizBalans] = useState<number | null | undefined>(undefined);
+  // Eskiz balansi sarlavhada doim ko'rinadi (EskizBalansi). Tasdiqlash oynasi ham shu
+  // qiymatni ko'rsatadi; oyna ochilganda yangilab olinadi — pul yetmasa oldindan ko'rinsin.
+  const eskiz = useEskizBalansi(selectedSchoolId);
   useEffect(() => {
-    if (!confirmModalOpen || !smsKetadi) return;
-    setEskizBalans(undefined);
-    fetch('/api/sms/balans', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
-      .then(r => r.ok ? r.json() : null).then(d => setEskizBalans(d?.balans ?? null)).catch(() => setEskizBalans(null));
+    if (confirmModalOpen && smsKetadi) eskiz.yangila();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmModalOpen]);
+  // Hammasiga SMS ketsa taxminan qancha pul kerak (Telegram'i borlarga ketmaydi — yuqori chegara).
+  const kampaniyaNarxi = smsInfo.soni * activeSelectedCount * SMS_ORTACHA_NARX;
 
   // Template placeholders replacement mockup for Preview panel
   const getPersonalizedPreview = () => {
@@ -1057,6 +1073,8 @@ export default function Messaging() {
       showNotification("Xatolik yuz berdi: " + e.message, 'error');
     } finally {
       setIsSending(false);
+      // Kampaniya balansni kamaytirdi (yarmida to'xtagan bo'lsa ham).
+      if (smsKetadi) eskiz.yangila();
     }
   };
 
@@ -1215,6 +1233,11 @@ export default function Messaging() {
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateForm.name.trim() || !templateForm.body.trim()) return;
+    // Tasdiqlash kodi shabloni: matn erkin, lekin kod qo'yiladigan {kod} qolishi shart (server ham tekshiradi).
+    if (kodShabloniMi(templateForm) && !/\{kod\}/i.test(templateForm.body)) {
+      showNotification("«Tasdiqlash kodi» shablonida {kod} bo'lishi shart — kod shu yerga qo'yiladi.", 'error');
+      return;
+    }
     const h = smsHisobla(templateForm.body, settings?.orgName);
     if (h.qimmat && !(await confirm({
       title: `Har bir kishiga ${h.soni} ta SMS`,
@@ -1246,8 +1269,11 @@ export default function Messaging() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const saqlangan = await res.json().catch(() => ({}));
         setTemplateModalOpen(false);
         fetchTemplates();
+        // Saqlandi, lekin Eskiz aynan shu matnni avval rad etgan — SMS ketmaydi, xodim bilsin.
+        if (eskizRadEtdi(saqlangan.eskizStatus)) eskizNatijasi(String(saqlangan.eskizStatus));
       } else {
         const err = await res.json();
         showNotification("Xatolik: " + err.error, 'error');
@@ -1299,6 +1325,12 @@ export default function Messaging() {
           </p>
         </div>
 
+        {/* Eskiz balansi — qaysi tab ochiq bo'lsa ham ko'rinadi (egasi, 2026-10-10) */}
+        <div className="flex flex-wrap items-center sm:justify-end gap-2">
+        {!eskiz.ruxsatYoq && (
+          <EskizBalansi balans={eskiz.balans} yuklanmoqda={eskiz.yuklanmoqda} onYangila={eskiz.yangila} />
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 bg-slate-55 dark:bg-slate-800/60 p-1 rounded-2xl border border-slate-100 dark:border-slate-700/50">
           {yuborishOchiq && (
@@ -1333,6 +1365,7 @@ export default function Messaging() {
             Tarix
           </button>
           )}
+        </div>
         </div>
       </div>
 
@@ -1836,13 +1869,36 @@ export default function Messaging() {
                 <div className="text-[11px] font-bold pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 space-y-2">
                   {(() => {
                     const h = eskizHolatBelgisi(t.eskizStatus);
+                    const rad = eskizRadEtdi(t.eskizStatus);
+                    // «Tasdiqlash kodi» shabloni: xodim matni rad etilgan bo'lsa — tayyor standart matnga qaytarish mumkin.
+                    const standartBor = !!t.standartMatn && t.standartMatn.trim() !== t.body.trim();
                     return (
                       <>
                         <span className={`flex items-start gap-1.5 ${h.rang}`}>
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${h.nuqta}`} />
                           <span className="break-words" title={t.eskizStatus || undefined}>{h.matn}</span>
                         </span>
-                        {shablonTahrir && !ESKI_QIMMAT_HARF.test(t.body) && (!t.eskizStatus || t.eskizStatus.startsWith('xato') || !t.eskizTemplateId) && (
+                        {rad && (
+                          <div role="alert" className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 space-y-1.5">
+                            <p className="leading-relaxed">
+                              Bu shablon bilan SMS ketmaydi. Eskiz rad etish sababini bu yerga bildirmaydi — odatda matnda markaz nomi yo'q yoki xabar nima haqidaligi aniq emas (aniq sababni Eskiz yordamidan so'rash mumkin: Telegram @eskizhelp).
+                              {' '}Matnni o'zgartirib saqlang — Eskizga o'zi qayta yuboriladi. Aynan shu matn qayta yuborilmaydi.
+                            </p>
+                            {shablonTahrir && standartBor && (
+                              <button onClick={() => eskizgaQaytaYuborish(t.id, true)} disabled={eskizYuborilmoqda === t.id} title={t.standartMatn}
+                                className="w-full py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 text-[11px] font-bold cursor-pointer transition-colors">
+                                {eskizYuborilmoqda === t.id ? 'Yuborilmoqda…' : 'Standart matnni Eskizga yuborish'}
+                              </button>
+                            )}
+                            {shablonTahrir && (
+                              <button onClick={() => openTemplateModal(t)}
+                                className={`w-full py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${standartBor ? 'border border-rose-300 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-950/50' : 'bg-rose-600 hover:bg-rose-700 text-white'}`}>
+                                Matnni o'zgartirish
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {shablonTahrir && !rad && !ESKI_QIMMAT_HARF.test(t.body) && (!t.eskizStatus || t.eskizStatus.startsWith('xato') || !t.eskizTemplateId) && (
                           <button onClick={() => eskizgaQaytaYuborish(t.id)} disabled={eskizYuborilmoqda === t.id}
                             className="w-full py-1.5 rounded-lg border border-brand/40 text-brand hover:bg-brand/10 disabled:opacity-50 text-[11px] font-bold cursor-pointer transition-colors">
                             {eskizYuborilmoqda === t.id ? 'Yuborilmoqda…' : 'Eskizga qayta yuborish'}
@@ -1875,7 +1931,9 @@ export default function Messaging() {
                       </>
                     );
                   })()}
-                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>
+                  {kodShabloniMi(t)
+                    ? <span className="block">Botda telefon raqamni almashtirish kodi shu matn bilan ketadi. {"{kod}"} — 5 xonali kod (bo'lishi shart).</span>
+                    : <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>}
                 </div>
               </div>
             ))}
@@ -2261,8 +2319,13 @@ export default function Messaging() {
                 <div>Har bir kishiga: {smsInfo.soni} ta SMS{smsInfo.qimmat ? ` (lotin bo'lmagan belgi: ${smsInfo.belgilar.slice(0, 5).join(' ')})` : ''}</div>
                 <div>Jami: {(smsInfo.soni * activeSelectedCount).toLocaleString()} ta SMS gacha{channel !== 'SMS' ? " (Telegram'i borlarga SMS ketmaydi)" : ''}</div>
                 <div className="text-slate-500 dark:text-slate-400">
-                  Eskiz balansi: {eskizBalans === undefined ? '…' : eskizBalans === null ? "bilib bo'lmadi" : `${eskizBalans.toLocaleString()} so'm`}
+                  Eskiz balansi: {balansMatni(eskiz.balans)}
                 </div>
+                {typeof eskiz.balans === 'number' && kampaniyaNarxi > eskiz.balans && (
+                  <div role="alert" className="text-rose-600 dark:text-rose-400">
+                    Balans yetmasligi mumkin: hammasiga SMS ketsa taxminan <span className="whitespace-nowrap">{pulMatni(kampaniyaNarxi)} so'm</span> kerak. Avval Eskiz hisobini to'ldiring — aks holda xabar yarmida to'xtaydi.
+                  </div>
+                )}
               </div>
             )}
 
@@ -2372,9 +2435,16 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <SmsHisobi matn={templateForm.body} orgName={settings?.orgName} className="mt-1.5" />
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}
-              </div>
+              {kodShabloniMi(templateForm) ? (
+                <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1 leading-relaxed">
+                  Bu matn botda telefon raqamni almashtirish kodi bilan ketadi. {"{kod}"} — 5 xonali kod, matnda qolishi shart.
+                  Eskiz tasdiqlashi uchun matnda markaz nomi va kod nima uchunligi yozilsin; bitta SMS ga sig'sin.
+                </div>
+              ) : (
+                <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
+                  O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">

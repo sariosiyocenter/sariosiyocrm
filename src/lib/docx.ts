@@ -1,5 +1,6 @@
 import { zipYasa } from './zip';
 import { texDanOmml, xmlEsc } from './omml';
+import { svgmi, svgniPngga } from './svgRasm';
 
 // Kichik .docx yasovchi (kutubxonasiz): hujjat XML i, rasmlar va uslublar —
 // bitta ZIP. Savol matni HTML (p, b, i, u, sub, sup, ro'yxat, rasm, $formula$)
@@ -17,11 +18,18 @@ export async function rasmlarniYukla(urllar: string[]): Promise<Map<string, Yukl
   const ishchi = async () => {
     for (let url = navbat.shift(); url; url = navbat.shift()) {
       try {
-        const blob = await (await fetch(url)).blob();
+        // Vektor chizma (AI chizgan SVG): Word uni tanimaydi — chop sifatidagi (300 dpi) PNG ga
+        // o'giriladi; o'lcham (w, h) — chizmaning tabiiy o'lchami, PNG nuqtalari emas.
+        const blob = svgmi(url) ? null : await (await fetch(url)).blob();
+        if (!blob || /svg/i.test(blob.type)) {
+          const { blob: png, w, h } = await svgniPngga(blob ? await blob.text() : url);
+          natija.set(url, { data: new Uint8Array(await png.arrayBuffer()), tur: 'png', w, h });
+          continue;
+        }
         let tur: YuklanganRasm['tur'] = blob.type.includes('png') ? 'png' : blob.type.includes('gif') ? 'gif' : 'jpeg';
         let data = new Uint8Array(await blob.arrayBuffer());
         const bm = await createImageBitmap(blob);
-        // Word webp/svg ni tanimaydi — PNG ga o'giriladi.
+        // Word webp ni tanimaydi — PNG ga o'giriladi.
         if (!/png|jpe?g|gif/.test(blob.type)) {
           const c = document.createElement('canvas');
           c.width = bm.width; c.height = bm.height;

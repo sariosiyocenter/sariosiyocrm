@@ -17,6 +17,22 @@ export function requestedSchoolId(req) {
   return isNaN(id) ? null : id;
 }
 
+// So'rov filialni uch joyda nomlashi mumkin (query, body, yo'ldagi :schoolId), handlerlar
+// esa har xil joydan o'qiydi: GET — query dan, POST/PUT — ko'pincha body dan. Shuning uchun
+// berilgan HAR qiymat tekshiriladi: aks holda query da o'z filiali, body da begona filial
+// kelsa, tekshiruv birinchisini ko'rib o'tkazar, handler esa ikkinchisiga yozardi.
+export function requestedSchoolIds(req) {
+  const ids = new Set();
+  for (const manba of [req.query?.schoolId, req.body?.schoolId, req.params?.schoolId]) {
+    for (const raw of Array.isArray(manba) ? manba : [manba]) {
+      if (raw === undefined || raw === null || raw === '') continue;
+      const id = parseInt(raw);
+      if (!isNaN(id)) ids.add(id);
+    }
+  }
+  return [...ids];
+}
+
 // Filiallar orasida yuradigan rol. Egasi (2026-09-16) "Faqat o'z filiali"ni tanladi:
 // filial almashtirish, "To'liq o'quv markazi" va boshqa filial xodimlarini boshqarish
 // faqat ADMIN'da. Menejer, resepshn, o'qituvchi faqat o'z filialida ishlaydi — ilgari
@@ -261,8 +277,13 @@ export async function recordAccessError(req) {
   const parts = req.path.split('/').filter(Boolean);   // ['api','students','42', ...]
   if (parts[0] !== 'api' || parts.length < 3) return null;
 
+  // Handler id ni parseInt bilan o'qiydi ("042" → 42, "42abc" → 42), shuning uchun
+  // bu yerda ham aynan shunday o'qib, har qanday musbat butun son uchun egalik
+  // tekshiriladi — ilgari aniq kanonik satrdan (String(id) === parts[2]) farq qilsa
+  // tekshiruv o'tkazib yuborilardi (fail-open) va "/api/students/042" filial
+  // chegarasini chetlab o'tardi.
   const id = parseInt(parts[2]);
-  if (isNaN(id) || String(id) !== parts[2]) return null;
+  if (!Number.isInteger(id) || id <= 0) return null;
 
   // A school id addresses the tenant directly rather than a row inside one.
   if (parts[1] === 'schools') {
@@ -336,8 +357,10 @@ export const authenticate = (req, res, next) => {
 
       req.user = user;
       const wanted = requestedSchoolId(req);
-      if (!(await canAccessSchool(user, wanted))) {
-        return res.status(403).json({ error: 'Bu filial ma\'lumotlariga ruxsatingiz yo\'q' });
+      for (const sid of requestedSchoolIds(req)) {
+        if (!(await canAccessSchool(user, sid))) {
+          return res.status(403).json({ error: 'Bu filial ma\'lumotlariga ruxsatingiz yo\'q' });
+        }
       }
       const recordError = await recordAccessError(req);
       if (recordError) return res.status(403).json({ error: recordError });

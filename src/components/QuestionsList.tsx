@@ -1,72 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, X, ChevronRight, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
-import { useImtihonApi } from './imtihon/useImtihonApi';
-import { Tugma, INPUT, Yuklanmoqda, BoshHolat, Karta } from './imtihon/ui';
-import { useBankDaraxt, fanniTop, mavzuniTop, BANK_YANGILANDI } from './imtihon/bank/useBankDaraxt';
-import FanlarKorinishi from './imtihon/bank/FanlarKorinishi';
-import FanKorinishi from './imtihon/bank/FanKorinishi';
-import MavzuKorinishi from './imtihon/bank/MavzuKorinishi';
-import OxshashSavollar from './imtihon/bank/OxshashSavollar';
-import AiTuzish from './imtihon/bank/AiTuzish';
-import GuruhOynasi from './imtihon/bank/GuruhOynasi';
+import { Tugma, Yuklanmoqda, BoshHolat, Karta } from './imtihon/ui';
+import { useBankDaraxt, fanniTop, BANK_YANGILANDI } from './imtihon/bank/useBankDaraxt';
 import type { QoshRejim } from './imtihon/bank/QoshRejimi';
-import SavolYuklash from './imtihon/bank/SavolYuklash';
+import SavolQoshish from './imtihon/bank/SavolQoshish';
 import BankJadvali from './imtihon/bank/BankJadvali';
+import BankSozlamalari from './imtihon/bank/BankSozlamalari';
 import Andozalar from './imtihon/bank/Andozalar';
-import { SavolKartasi, SavolOynasi } from './imtihon/bank/SavolKartasi';
-import type { Question } from '../types';
 
-// Savollar banki — butun o'quv markaziga umumiy. Markaz Addmen OMR dasturiga
-// o'rgangan (egasi, 2026-10-01: "ko'p joyi o'xshasin"), shuning uchun tepada
-// Addmen'dagidek ikki bo'lim: "Savollar banki" (ustunlar: fan → bo'lim → mavzu →
-// qiyinlik → filtrlar — hammasi shu yerda qo'shiladi; ostida savollar) va "Andoza"
-// (Blueprint). Fanlar bo'yicha statistika, o'quv rejadan mavzular va qiyinlikni
-// natijaga moslash — "Statistika" ko'rinishida (?kor=tuzilma).
+// Savollar banki — butun o'quv markaziga umumiy. Tepada uch bo'lim:
+//   «Savollar banki» — ro'yxat (fan → bo'lim → mavzu → qiyinlik → filtrlar; ostida savollar);
+//   «Sozlamalar» (?bolim=sozlama) — bankka oid hamma sozlama shu yerda (egasi, 2026-10-10:
+//     «savollar bankiga oid sozlamalarni o'ziga qo'shish, andoza chapiga»);
+//   «Andoza» (?bolim=andoza).
+// «Statistika» ko'rinishi (?kor=tuzilma) olib tashlangan (egasi: «savollar bankiga statistika
+// kerak emas») — eski havola shunchaki ro'yxatni ochadi; undagi boshqa joyda yo'q amallar
+// (o'quv rejadan mavzular, mavzular tartibi, qiyinlikni natijaga moslash) — «Sozlamalar»da.
 // Savol qo'lda yozilmaydi: "Savol qo'shish" — Word, Excel, PDF, rasm yoki matn.
+
+type Bolim = 'bank' | 'sozlama' | 'andoza';
 
 export default function QuestionsList() {
   const { ozgartira } = useCRM();
   const savolTahrir = ozgartira('imtihonlar.savollar');
-  const { soro } = useImtihonApi();
   const [params, setParams] = useSearchParams();
   const { daraxt, xato, yangila } = useBankDaraxt();
 
-  const bolim = params.get('bolim') === 'andoza' ? 'andoza' : 'bank';
-  const tuzilma = params.get('kor') === 'tuzilma';
+  const BOLIMLAR: { v: Bolim; nom: string }[] = [
+    { v: 'bank', nom: 'Savollar banki' },
+    // Sozlamalar — bankni to'ldiradigan xodimga (hammasi o'zgartiruvchi amal).
+    ...(savolTahrir ? [{ v: 'sozlama' as const, nom: 'Sozlamalar' }] : []),
+    { v: 'andoza', nom: 'Andoza' },
+  ];
+  const bolim: Bolim = BOLIMLAR.find(b => b.v === params.get('bolim'))?.v || 'bank';
   const fan = fanniTop(daraxt, Number(params.get('fan')) || null);
-  const mavzu = mavzuniTop(fan, Number(params.get('mavzu')) || null);
-  const ot = (patch: Record<string, number | string | null>) => setParams(p => {
+  const ot =(patch: Record<string, number | string | null>) => setParams(p => {
     for (const [k, v] of Object.entries(patch)) { if (v) p.set(k, String(v)); else p.delete(k); }
     return p;
   });
 
-  const [qidiruv, setQidiruv] = useState('');
-  const [natijalar, setNatijalar] = useState<Question[] | null>(null);
   const [qayta, setQayta] = useState(0);
-  const [ochiq, setOchiq] = useState<Question | null>(null);
   // «Savol qo'shish» oynasining yo'li: fayldan yoki bitta masalaga o'xshashini tuzish (AI).
   const [qoshRejim, setQoshRejim] = useState<QoshRejim>('fayl');
   // "Savol qo'shish" oynasi: ?qosh=1 ham ochadi (eski /questions/new havolalari).
   const qosh = params.get('qosh') === '1';
-  // Bank ro'yxatidan ochilganda — o'sha yerda tanlangan mavzu oldindan qo'yiladi.
+  // Oyna ochilgan paytda ro'yxatda tanlangan mavzu (nomi bilan: hozirgina yaratilgan mavzu daraxtda
+  // hali bo'lmasligi mumkin). Undan qanday foydalanishni oynaning o'zi hal qiladi (SavolQoshish).
   const [qoshMavzu, setQoshMavzu] = useState<{ id: number; nom: string } | null>(null);
-  const qoshOch = () => { setQoshMavzu(null); setQoshRejim('fayl'); ot({ qosh: '1' }); };
+  // Bank ro'yxatida chapda tanlangan mavzu — tepadagi «Savol qo'shish» ham shuni uzatadi
+  // (tugmaning o'zida mavzu nomi yozilmaydi — egasi, 2026-10-10).
+  const [tanlov, setTanlov] = useState<{ id: number; nom: string } | null>(null);
+  const qoshOch = (m: { id: number; nom: string } | null) => {
+    setQoshMavzu(m);
+    setQoshRejim('fayl');
+    // Hozirgina yaratilgan mavzu daraxtda hali yo'q bo'lsa — yangilab qo'yamiz (oyna nomi bilan ishlayveradi).
+    if (m && !daraxt?.fanlar.some(f => f.mavzular.some(x => x.id === m.id))) yangila();
+    ot({ qosh: '1' });
+  };
   // Hozirgina qo'shilgan savollar — bank ro'yxati ularga o'tadi ("yangi" belgisi bilan).
   const [yangi, setYangi] = useState<{ ids: number[]; n: number } | null>(null);
-  // Bank ro'yxatida chapda tanlangan mavzu — tepadagi «Savol qo'shish» shunga ochiladi.
-  const [tanlov, setTanlov] = useState<{ id: number; nom: string } | null>(null);
-
-  // Butun bankdan qidirish (tuzilmaning birinchi qavatida): yozish to'xtagach.
-  useEffect(() => {
-    const k = qidiruv.trim();
-    if (k.length < 2) { setNatijalar(null); return; }
-    const t = setTimeout(() => {
-      soro<{ items: Question[] }>('GET', `questions?qidiruv=${encodeURIComponent(k)}&soni=40`).then(r => setNatijalar(r.items)).catch(() => setNatijalar([]));
-    }, 350);
-    return () => clearTimeout(t);
-  }, [qidiruv, qayta, soro]);
 
   const ozgardi = () => { yangila(); setQayta(n => n + 1); };
 
@@ -82,102 +76,34 @@ export default function QuestionsList() {
 
   return (
     <div className="space-y-3">
-      {/* Addmen'dagi ikki bo'lim: Savollar banki | Andoza (Blueprint) */}
+      {/* Bank bo'limlari: Savollar banki | Sozlamalar | Andoza */}
       <div className="bg-sirt border border-chiziq rounded-2xl shadow-sm px-3 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 min-w-0">
-          <div className="inline-flex rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savollar banki bo'limlari">
-            {([['bank', 'Savollar banki'], ['andoza', 'Andoza (Blueprint)']] as const).map(([v, nom]) => (
-              <button key={v} role="tab" aria-selected={bolim === v} onClick={() => ot({ bolim: v === 'andoza' ? 'andoza' : null, kor: null, mavzu: null })}
-                className={`px-3.5 py-1.5 rounded-[10px] text-[12.5px] font-bold cursor-pointer transition-colors ${bolim === v ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{nom}</button>
-            ))}
-          </div>
-          {bolim === 'bank' && tuzilma && (
-            <nav aria-label="Statistika" className="flex flex-wrap items-center gap-1 text-[13px] min-w-0">
-              <button onClick={() => ot({ kor: null, mavzu: null })} className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer mr-1"><ArrowLeft size={14} /> Ro'yxat</button>
-              <span className="text-matn-xira">|</span>
-              <button onClick={() => ot({ fan: null, mavzu: null })} className={`font-bold cursor-pointer ${fan ? 'text-matn-sokin hover:text-brand' : 'text-matn'}`}>Statistika</button>
-              {fan && <><ChevronRight size={14} className="text-matn-xira" /><button onClick={() => ot({ mavzu: null })} className={`font-bold truncate max-w-[30vw] cursor-pointer ${mavzu ? 'text-matn-sokin hover:text-brand' : 'text-matn'}`}>{fan.name}</button></>}
-              {mavzu && <><ChevronRight size={14} className="text-matn-xira" /><span className="font-bold text-matn truncate max-w-[30vw]">{mavzu.name}</span></>}
-            </nav>
-          )}
+        <div className="inline-flex flex-wrap self-start rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savollar banki bo'limlari">
+          {BOLIMLAR.map(b => (
+            <button key={b.v} role="tab" aria-selected={bolim === b.v} onClick={() => ot({ bolim: b.v === 'bank' ? null : b.v, kor: null, mavzu: null })}
+              className={`px-3.5 py-1.5 rounded-[10px] text-[12.5px] font-bold cursor-pointer transition-colors ${bolim === b.v ? 'bg-brand text-brand-ust shadow-sm' : 'text-matn-sokin hover:text-matn'}`}>{b.nom}</button>
+          ))}
         </div>
-        {bolim === 'bank' && (
-          <div className="flex flex-wrap gap-2 shrink-0">
-            {/* Ro'yxat ko'rinishida — chapda tanlangan mavzuga ochiladi (nomi tugmada yozilgan). */}
-            {savolTahrir && (
-              <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} className="max-w-full"
-                onClick={() => { if (tuzilma) { qoshOch(); return; } setQoshMavzu(tanlov); setQoshRejim('fayl'); if (tanlov && !daraxt.fanlar.some(f => f.mavzular.some(x => x.id === tanlov.id))) yangila(); ot({ qosh: '1' }); }}>
-                <span className="truncate">Savol qo'shish{!tuzilma && tanlov ? ` — ${tanlov.nom}` : ''}</span>
-              </Tugma>
-            )}
-            {!tuzilma && <Tugma kichik turi="oddiy" ikonka={<BarChart3 size={14} />} onClick={() => ot({ kor: 'tuzilma', mavzu: null })} title="Fanlar bo'yicha sonlar va natijalar; o'quv rejadan mavzular; qiyinlikni natijaga moslash">Statistika</Tugma>}
-          </div>
+        {bolim === 'bank' && savolTahrir && (
+          <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} className="shrink-0 self-start md:self-auto" onClick={() => qoshOch(tanlov)}>Savol qo'shish</Tugma>
         )}
       </div>
 
       {bolim === 'andoza' ? (
         <Andozalar daraxt={daraxt} />
-      ) : !tuzilma ? (
+      ) : bolim === 'sozlama' ? (
+        <BankSozlamalari daraxt={daraxt} fanId={fan?.id ?? null} yangila={yangila} onRoyxat={() => ot({ bolim: null })} />
+      ) : (
         <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
           onYangi={ids => setYangi({ ids, n: Date.now() })} onTanlov={setTanlov}
-          onQosh={savolTahrir ? m => {
-            setQoshMavzu(m);
-            setQoshRejim('fayl');
-            // Hozirgina yaratilgan mavzu daraxtda hali yo'q bo'lsa — yangilab qo'yamiz (oyna nomi bilan ishlayveradi).
-            if (m && !daraxt.fanlar.some(f => f.mavzular.some(x => x.id === m.id))) yangila();
-            ot({ qosh: '1' });
-          } : undefined} onTuzilma={() => ot({ kor: 'tuzilma', mavzu: null })} savolTahrir={savolTahrir} />
-      ) : (
-        <>
-          {!fan && (
-            <div className="relative max-w-xl">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
-              <input className={`${INPUT} pl-9`} placeholder="Butun bankdan qidirish (savol matni)" aria-label="Butun bankdan qidirish" value={qidiruv} onChange={e => setQidiruv(e.target.value)} />
-              {qidiruv && <button aria-label="Tozalash" onClick={() => setQidiruv('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-matn-xira hover:text-matn cursor-pointer"><X size={14} /></button>}
-            </div>
-          )}
-          {!fan && natijalar ? (
-            <Karta sarlavha={`Qidiruv natijasi: ${natijalar.length}${natijalar.length === 40 ? '+' : ''}`}>
-              {!natijalar.length ? <p className="text-[12.5px] text-matn-xira">Mos savol topilmadi</p> : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                  {natijalar.map(q => (
-                    <div key={q.id}>
-                      <p className="text-[11px] text-matn-xira px-1 mb-0.5 truncate">{q.subject} › {q.topic}</p>
-                      <SavolKartasi q={q} onOch={() => setOchiq(q)} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Karta>
-          ) : !fan ? (
-            <FanlarKorinishi daraxt={daraxt} onFan={id => ot({ fan: id, mavzu: null })} yangila={yangila} onQosh={savolTahrir ? qoshOch : undefined} />
-          ) : !mavzu ? (
-            <FanKorinishi fan={fan} onMavzu={id => ot({ mavzu: id })} onOrqaga={() => ot({ fan: null, mavzu: null })} yangila={yangila} onQosh={qoshOch} />
-          ) : (
-            <MavzuKorinishi key={`${mavzu.id}-${qayta}`} fan={fan} mavzu={mavzu} daraxt={daraxt} yangila={yangila} onFan={() => ot({ mavzu: null })} onQosh={qoshOch} />
-          )}
-        </>
+          onQosh={savolTahrir ? qoshOch : undefined} savolTahrir={savolTahrir} />
       )}
 
-      {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
-      {qosh && savolTahrir && qoshRejim === 'guruh' && (
-        <GuruhOynasi daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
-          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
-          onSaqlandi={ids => { ozgardi(); if (ids.length) setYangi({ ids, n: Date.now() }); }} />
-      )}
-      {qosh && savolTahrir && qoshRejim === 'ai' && (
-        <AiTuzish daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
-          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
-          onSaqlandi={ids => { ozgardi(); if (ids.length) setYangi({ ids, n: Date.now() }); }} />
-      )}
-      {qosh && savolTahrir && qoshRejim === 'oxshash' && (
-        <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)} onRejim={setQoshRejim}
-          onYop={() => ot({ qosh: null })} onSaqlandi={ozgardi} />
-      )}
-      {qosh && savolTahrir && qoshRejim === 'fayl' && (
-        <SavolYuklash daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? (!tuzilma ? qoshMavzu?.id ?? null : null)}
-          mavzuNomi={!mavzu && !tuzilma ? qoshMavzu?.nom : undefined} onRejim={setQoshRejim} onYop={() => ot({ qosh: null })}
-          onSaqlandi={r => { ozgardi(); if (r?.ids?.length) setYangi({ ids: r.ids, n: Date.now() }); }} />
+      {/* «Savol qo'shish» — bitta oyna, ikki yo'l: «Fayldan» (mavzu oldindan qo'yilmaydi) va «AI tuzadi»
+          (ro'yxatda tanlangan mavzuga). Yo'l almashtirgichi oynaning o'zida (SavolQoshish). */}
+      {qosh && savolTahrir && (
+        <SavolQoshish daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={qoshMavzu?.id ?? null} mavzuNomi={qoshMavzu?.nom} boshRejim={qoshRejim}
+          onYop={() => ot({ qosh: null })} onSaqlandi={ids => { ozgardi(); if (ids.length) setYangi({ ids, n: Date.now() }); }} />
       )}
     </div>
   );

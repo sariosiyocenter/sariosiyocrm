@@ -595,8 +595,8 @@ export default function ZukkoPanel({ ochiq, yop }: { ochiq: boolean; yop: () => 
                                             «Bu oy tushum qanday?» kabi savollarga javob uchun Gemini AI kaliti kerak. Tezkor tugmalar esa hozir ham ishlaydi.
                                         </p>
                                         {holat?.ai.sozlay ? (
-                                            <button onClick={() => havolaniOch('/settings?bolim=integratsiyalar')} className="mt-2 text-[12px] font-medium text-brand hover:underline">
-                                                Sozlamalar → Integratsiyalar →
+                                            <button onClick={() => havolaniOch('/exams?tab=sozlama')} className="mt-2 text-[12px] font-medium text-brand hover:underline">
+                                                Imtihonlar → Sozlamalar →
                                             </button>
                                         ) : <p className="text-[11.5px] text-matn-xira mt-1">Kalitni administrator kiritadi.</p>}
                                     </div>

@@ -9,7 +9,11 @@ import { registerAuditRoutes } from './routes/audit.js';
 import { registerZukkoRoutes } from './routes/zukko.js';
 import { registerHisobotRoutes } from './routes/hisobot.js';
 import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHisoboti } from './routes/imtihon.js';
+import { registerImtihonSozlamaRoutes } from './routes/imtihonSozlama.js';
+import { registerImtihonYechimRoutes } from './routes/imtihonYechim.js';
+import { registerImtihonRasmRoutes } from './routes/imtihonRasm.js';
 import { auditMiddleware } from './lib/audit.js';
+import { yolHimoyasi } from './lib/yolHimoya.js';
 import { fonTozalash } from './lib/fonTozalash.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
@@ -24,7 +28,7 @@ import {
   tolovXabarlariRoyxati, qaytaYubor as tolovXabariniQaytaYubor, sinovXabari, eskizBalansi, eskizHolatlariniYangila,
   yetkazishHolati,
 } from './services/tolovXabari.js';
-import { smsMatni, turkchaHarflar, eskizYuboradi } from './lib/tolovXabari.js';
+import { smsMatni, turkchaHarflar, eskizYuboradi, eskizRadEtdi, kodShabloniMi, kodStandartMatni, kodShabloniQarori, kodSmsHolati } from './lib/tolovXabari.js';
 import {
   qarzXabariniUlash, qarzSozlamasi, qarzSozlamasiniSaqla, qarzdorlarRoyxati, qoldaYubor as qarzQoldaYubor,
   qarzNavbati, qarzXabariniQaytaYubor, qarzXabarlariRoyxati, avtoQarzEslatma, javoblarRoyxati as qarzJavoblari,
@@ -80,6 +84,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
 app.set('trust proxy', 1);
+
+// Yo'l shakli bo'yicha himoyani chetlab o'tishning oldini olish (lib/yolHimoya.js).
+// 1) Marshrutlash harf kattaligiga qat'iy: "/api/Students" endi handlerga tushmaydi,
+//    "/api" 404'iga boradi (aks holda u "/api/students" bilan bir xil edi).
+// 2) yolHimoyasi — kanonik bo'lmagan API yo'lini (kodlangan belgilar, nuqta-bo'laklar,
+//    ikkilangan slash, ';', katta harfli "API") autentifikatsiya va handlergacha rad etadi.
+// Shunday qilib himoyalar (ruxsat, filial/yozuv egasi, jurnal) doim marshrut mos kelgan
+// yo'lni ko'radi.
+app.set('case sensitive routing', true);
+app.use(yolHimoyasi);
 
 // Content Security Policy.
 //
@@ -6884,40 +6898,66 @@ smsYuboruvchiniUlash((phone, message, type, studentId, schoolId) =>
   sendSms(phone, message, type, studentId, schoolId));
 
 // Botda telefon raqamni almashtirish kodi (services/telefonKod.js). Matn Shablonlar
-// ro'yxatida turadi: Eskiz tasdiqlanmagan matnni yubormaydi, shuning uchun birinchi
-// so'rovda shablon o'zi yaratiladi va moderatsiyaga ketadi — holati o'sha yerda ko'rinadi.
-telefonSmsUlash(async ({ telefon, kod, schoolId }) => {
+// ro'yxatida turadi: Eskiz tasdiqlanmagan matnni yubormaydi, shuning uchun shablon
+// birinchi so'rovda o'zi yaratiladi va moderatsiyaga ketadi — holati o'sha yerda ko'rinadi.
+// Standart matn va "qachon qayta yuboriladi" qoidasi — lib/tolovXabari.js (kodShabloniQarori):
+// tizimning eski, tasdiqlanmagan matni yangi standart matnga almashtiriladi; Eskiz RAD ETGAN
+// matn esa o'zi qayta yuborilmaydi (Eskiz kuniga 10 ta shablon qabul qiladi).
+const kodShablonUrinishi = new Map(); // shablon id → Eskizga yetib bormagan matnni oxirgi qayta yuborish vaqti
+const KOD_QAYTA_URINISH_MS = 10 * 60e3;
+// Lokal sinov (SMS_FAKE): Eskizga umuman borilmaydi, shablon holati ham so'ralmaydi.
+const kodSmsSoxta = () => !process.env.VERCEL && process.env.SMS_REAL !== '1' && process.env.SMS_FAKE === '1';
+
+/**
+ * Kod shablonini topadi; yo'q yoki eskirgan bo'lsa yaratib/yangilab Eskizga yuboradi,
+ * tekshiruvda bo'lsa holatini Eskizdan yangilaydi (majburiy — 5 daqiqalik oraliqsiz).
+ */
+async function kodShabloniniTayyorla(schoolId, { majburiy = false } = {}) {
   const ids = await organizationSchoolIds({ schoolId });
   let shablon = await prisma.messageTemplate.findFirst({
     // Turi yoki nomi bo'yicha: shablon tahrirlanganda turi o'zgarib qolsa ham ikkinchisi ochilmasin.
     where: { schoolId: { in: ids.length ? ids : [schoolId] }, OR: [{ category: KOD_SHABLONI.category }, { name: KOD_SHABLONI.name }] }, orderBy: { id: 'asc' },
   });
   const markaz = await markazNomi(schoolId);
-  if (!shablon) {
-    // Markaz nomi matnning o'ziga yoziladi (kodShabloniMatni) — Eskiz shunday matnni tasdiqlaydi.
-    const body = kodShabloniMatni(KOD_SHABLONI.body, markaz);
-    const eskiz = await eskizShablonYubor(body, schoolId);
+  const qaror = kodShabloniQarori(shablon, markaz);
+  if (qaror.amal === 'yarat') {
+    const eskiz = await eskizShablonYubor(qaror.body, schoolId);
     shablon = await prisma.messageTemplate.create({
-      data: { name: KOD_SHABLONI.name, body, category: KOD_SHABLONI.category, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id, schoolId },
+      data: { name: KOD_SHABLONI.name, body: qaror.body, category: KOD_SHABLONI.category, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id, schoolId },
     });
-  } else if (/\{markaz\}/i.test(shablon.body) && !eskizYuboradi(shablon.eskizStatus) && kodShabloniMatni(shablon.body, markaz) !== shablon.body) {
-    // Oldin "{markaz}" bilan yuborilgan va hali tasdiqlanmagan shablon: nom aniq yozilib, qayta yuboriladi.
-    const body = kodShabloniMatni(shablon.body, markaz);
-    const eskiz = await eskizShablonYubor(body, schoolId);
+  } else if (qaror.amal === 'almashtir' || (qaror.amal === 'yubor' && Date.now() - (kodShablonUrinishi.get(shablon.id) || 0) > KOD_QAYTA_URINISH_MS)) {
+    kodShablonUrinishi.set(shablon.id, Date.now());
+    const eskiz = await eskizShablonYubor(qaror.body, schoolId);
     shablon = await prisma.messageTemplate.update({
-      where: { id: shablon.id }, data: { body, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id ?? shablon.eskizTemplateId },
+      where: { id: shablon.id }, data: { body: qaror.body, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id },
     });
+  } else if (kodSmsHolati(shablon.eskizStatus) !== 'tayyor' && shablon.eskizTemplateId && !kodSmsSoxta()) {
+    // Bazadagi holat eskirgan bo'lishi mumkin: Eskiz tasdiqlab bo'lgan (yoki rad etilganini qayta ko'rib chiqqan).
+    // Butun markaz bo'yicha: bu yangilash to'lov SMS i navbati bilan bitta 5 daqiqalik oraliqni bo'lishadi.
+    await eskizHolatlariniYangila(ids.length ? ids : [shablon.schoolId], { majburiy }).catch(e => console.warn('[Telefon kodi] Eskiz holati:', e.message));
+    shablon = await prisma.messageTemplate.findUnique({ where: { id: shablon.id } });
   }
-  // Shablon tahrirlanib {kod} tushib qolgan bo'lsa — standart matn.
-  const andoza = /\{kod\}/i.test(shablon.body) ? shablon.body : KOD_SHABLONI.body;
-  const matn = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, kod);
+  return { shablon, markaz };
+}
+
+telefonSmsUlash(async ({ telefon, kod, schoolId }) => {
+  const { shablon, markaz } = await kodShabloniniTayyorla(schoolId, { majburiy: true });
+  const holat = kodSmsSoxta() ? 'tayyor' : kodSmsHolati(shablon.eskizStatus);
+  // Tasdiqlanmagan matn bilan Eskizga borilmaydi: SMS baribir ketmaydi, Tarixda esa har urinish XATO bo'lib qolardi.
+  if (holat !== 'tayyor') return { success: false, moderatsiya: true, holat, xato: `SMS matni Eskizda tasdiqlanmagan (${shablon.eskizStatus || 'yuborilmagan'})` };
+  const matn = shablon.body.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, kod);
   // Kod SMS jurnalida ko'rinmaydi: tarixni ko'ra oladigan xodim uni o'qib, birovning raqamini tasdiqlab yubormasin.
-  const jurnalMatni = andoza.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, '*****');
-  if (!process.env.VERCEL && process.env.SMS_FAKE === '1') console.log(`[Telefon kodi] SMS_FAKE ${telefon}: ${kod}`);
+  const jurnalMatni = shablon.body.replace(/\{markaz\}/gi, markaz).replace(/\{kod\}/gi, '*****');
+  if (kodSmsSoxta()) console.log(`[Telefon kodi] SMS_FAKE ${telefon}: ${kod}`);
   const r = await sendSms('+' + telefon, matn, 'VERIFY', null, schoolId, null, { jurnalMatni });
   if (r.success) return { success: true };
   const sabab = String(r.data?.message || r.error || '');
-  return { success: false, moderatsiya: /модерац/i.test(sabab), xato: sabab.slice(0, 200) };
+  // Bazada "tasdiqlangan", Eskiz esa matnni tanimadi (shablon Eskiz kabinetida o'zgargan yoki o'chirilgan).
+  return { success: false, moderatsiya: /модерац/i.test(sabab), holat: 'tekshiruvda', xato: sabab.slice(0, 200) };
+}, async (schoolId) => {
+  if (kodSmsSoxta()) return 'tayyor';
+  const { shablon } = await kodShabloniniTayyorla(schoolId);
+  return kodSmsHolati(shablon.eskizStatus);
 });
 
 // Eskiz har bir SMS ning yetib borgan-bormaganini shu manzilga yuboradi
@@ -7089,7 +7129,8 @@ app.get('/api/sms/logs', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Eskiz balansi (so'm) — kampaniyani tasdiqlash oynasida.
+// Eskiz balansi (so'm) — Xabarlar sahifasi sarlavhasida (hamma tabda) va
+// kampaniyani tasdiqlash oynasida. null — bilib bo'lmadi (Eskiz javob bermadi).
 app.get('/api/sms/balans', authenticate, async (req, res, next) => {
   try {
     const balans = await Promise.race([eskizBalansi(req.user.schoolId), new Promise(r => setTimeout(() => r(null), 5000))]);
@@ -7599,6 +7640,12 @@ async function eskizShablonYubor(body, schoolId) {
   }
   try {
     const token = await getEskizToken(schoolId);
+    // Shu matn Eskizda allaqachon bor bo'lsa qayta yuborilmaydi: tasdiqlangani darhol
+    // ishlaydi, tekshiruvdagisi kutiladi, RAD ETILGANI esa qayta yuborilsa ham rad
+    // etiladi va kunlik 10 ta shablon cheklovini yeydi — matnni o'zgartirish kerak.
+    const oldindan = await eskizdagiShablon(token, matn);
+    if (oldindan) return oldindan;
+
     const params = new URLSearchParams();
     params.append('template', matn);
 
@@ -7651,15 +7698,25 @@ function eskizXatosi(res, data) {
   return (qism.join(', ') || `Eskiz rad etdi (HTTP ${res.status})`).slice(0, 300);
 }
 
-/** Eskiz kabinetida aynan shu matnli shablon bormi — {status, id} yoki null. */
+/**
+ * Eskiz kabinetida aynan shu matnli shablon bormi — {status, id} yoki null.
+ * Rad etilgan shablonning matni "original_text" da turadi ("template" bo'sh),
+ * shuning uchun ikkalasi ham solishtiriladi. Bir xil matn bir necha marta
+ * uchrasa — eng yaxshi holatdagisi (tasdiqlangan → tekshiruvda → rad etilgan).
+ */
 async function eskizdagiShablon(token, matn) {
   try {
-    const r = await fetch('https://notify.eskiz.uz/api/user/templates', { headers: { Authorization: 'Bearer ' + token } });
+    const r = await withTimeout(fetch('https://notify.eskiz.uz/api/user/templates', { headers: { Authorization: 'Bearer ' + token } }), 8000, 'Eskiz timeout');
     const d = await r.json().catch(() => ({}));
     const royxat = d?.result || d?.data || [];
     const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const topildi = (Array.isArray(royxat) ? royxat : []).find(x => norm(x.template ?? x.text ?? x.message) === norm(matn));
-    return topildi ? { status: topildi.status || 'moderation', id: topildi.id ? String(topildi.id) : null } : null;
+    const izlangan = norm(matn);
+    const mos = (Array.isArray(royxat) ? royxat : [])
+      .filter(x => [x.template, x.original_text, x.text, x.message].some(v => v && norm(v) === izlangan));
+    if (!mos.length) return null;
+    const daraja = (x) => (eskizYuboradi(x.status) ? 0 : eskizRadEtdi(x.status) ? 2 : 1);
+    const eng = [...mos].sort((a, b) => daraja(a) - daraja(b) || Number(b.id) - Number(a.id))[0];
+    return { status: eng.status || 'moderation', id: eng.id ? String(eng.id) : null };
   } catch (_) {
     return null;
   }
@@ -7702,16 +7759,42 @@ app.get('/api/messaging/templates', authenticate, async (req, res, next) => {
       }
     }
 
+    // Tasdiqlash kodi shabloni (botda raqam almashtirish). Tizimning eski, tasdiqlanmagan
+    // matni shu yerda ham yangi standart matnga almashtiriladi (kodShabloniQarori) — xodim
+    // Xabarlarni ochishi bilan, botdagi so'rovni kutmasdan. Kartadagi «Standart matnni
+    // yuborish» tugmasi uchun standart matn ham qo'shib beriladi (bazada saqlanmaydi).
+    if (templates.some(kodShabloniMi)) {
+      try {
+        const markaz = await markazNomi(req.user.schoolId);
+        if (templates.some(t => kodShabloniMi(t) && kodShabloniQarori(t, markaz).amal === 'almashtir')) {
+          const { shablon } = await kodShabloniniTayyorla(req.user.schoolId);
+          templates = templates.map(t => (t.id === shablon.id ? shablon : t));
+        }
+        const standartMatn = kodStandartMatni(markaz);
+        templates = templates.map(t => (kodShabloniMi(t) ? { ...t, standartMatn } : t));
+      } catch (e) {
+        console.warn('[Kod shabloni]', e.message);
+      }
+    }
+
     res.json(templates);
   } catch (err) { next(err); }
 });
+
+// Tasdiqlash kodi shabloni: {kod} siz kod SMS i yuborib bo'lmaydi.
+const KOD_SHABLON_XATOSI = "«Tasdiqlash kodi» shablonida {kod} o'zgaruvchisi bo'lishi shart — kod shu yerga qo'yiladi.";
 
 app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
   try {
     const { name, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
     // "ı ş ç ğ" SMS ni 2–3 barobar qimmatlashtiradi — matnda saqlanmaydi (lib/tolovXabari.js).
-    const body = req.body.body ? turkchaHarflar(req.body.body) : req.body.body;
+    let body = req.body.body ? turkchaHarflar(req.body.body) : req.body.body;
     if (!name || !body) return res.status(400).json({ error: 'name va body kerak' });
+    if (kodShabloniMi({ name, category })) {
+      if (!/\{kod\}/i.test(body)) return res.status(400).json({ error: KOD_SHABLON_XATOSI });
+      // Markaz nomi matnning o'ziga yoziladi: "{markaz}" Eskizda "istalgan so'z" bo'lib qolardi.
+      body = kodShabloniMatni(body, await markazNomi(req.user.schoolId));
+    }
 
     // Shablon yaratilishi bilan Eskizga moderatsiyaga ketadi.
     const eskiz = await eskizShablonYubor(body, req.user.schoolId);
@@ -7739,7 +7822,17 @@ app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
 app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
   try {
     const { name, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
-    const body = typeof req.body.body === 'string' ? turkchaHarflar(req.body.body) : req.body.body;
+    let body = typeof req.body.body === 'string' ? turkchaHarflar(req.body.body) : req.body.body;
+    const oldingi = await prisma.messageTemplate.findUnique({
+      where: { id: parseInt(req.params.id) },
+      select: { body: true, name: true, category: true },
+    });
+    // Tasdiqlash kodi shabloni: matn erkin tahrirlanadi, faqat {kod} qolishi shart;
+    // markaz nomi matnning o'ziga yoziladi ("{markaz}" Eskizda "istalgan so'z" bo'lib qolardi).
+    if (oldingi && kodShabloniMi({ name: name ?? oldingi.name, category: category ?? oldingi.category })) {
+      if (!/\{kod\}/i.test(body ?? oldingi.body)) return res.status(400).json({ error: KOD_SHABLON_XATOSI });
+      if (typeof body === 'string') body = kodShabloniMatni(body, await markazNomi(req.user.schoolId));
+    }
     const data = {
       ...(name !== undefined && { name }),
       ...(body !== undefined && { body }),
@@ -7753,17 +7846,13 @@ app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => 
     };
 
     // Matn o'zgargan bo'lsa eski moderatsiya kuchini yo'qotadi — qaytadan
-    // yuboriladi. Faqat nomi tahrirlansa Eskizga tegilmaydi.
-    if (body !== undefined) {
-      const oldingi = await prisma.messageTemplate.findUnique({
-        where: { id: parseInt(req.params.id) },
-        select: { body: true },
-      });
-      if (oldingi && oldingi.body !== body) {
-        const eskiz = await eskizShablonYubor(body, req.user.schoolId);
-        data.eskizStatus = eskiz.status;
-        data.eskizTemplateId = eskiz.id;
-      }
+    // yuboriladi. Faqat nomi tahrirlansa Eskizga tegilmaydi. Eskiz rad etgan
+    // matn ham shu yo'l bilan tuzatiladi: aynan o'sha matn qayta yuborilmaydi
+    // (eskizShablonYubor), o'zgartirilgani esa yangi shablon bo'lib ketadi.
+    if (body !== undefined && oldingi && oldingi.body !== body) {
+      const eskiz = await eskizShablonYubor(body, req.user.schoolId);
+      data.eskizStatus = eskiz.status;
+      data.eskizTemplateId = eskiz.id;
     }
 
     const template = await prisma.messageTemplate.update({
@@ -7782,16 +7871,20 @@ app.delete('/api/messaging/templates/:id', authenticate, async (req, res, next) 
 });
 
 // Eskizga qayta yuborish: moderatsiyaga yuborilmagan yoki xato bilan qaytgan
-// shablon uchun (matnni o'zgartirmasdan).
+// shablon uchun (matnni o'zgartirmasdan). Eskiz rad etgan matn bu yerda qayta
+// ketmaydi — holati "rejected" bo'lib qaytadi (eskizShablonYubor).
+// standart: true — tasdiqlash kodi shabloni standart matnga qaytariladi va
+// o'sha matn yuboriladi (xodim yozgan matn rad etilganda).
 app.post('/api/messaging/templates/:id/eskiz', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const t = await prisma.messageTemplate.findUnique({ where: { id } });
     if (!t || t.schoolId !== req.user.schoolId) return res.status(404).json({ error: 'Shablon topilmadi' });
-    const eskiz = await eskizShablonYubor(t.body, req.user.schoolId);
+    const body = req.body?.standart && kodShabloniMi(t) ? kodStandartMatni(await markazNomi(t.schoolId)) : t.body;
+    const eskiz = await eskizShablonYubor(body, req.user.schoolId);
     const template = await prisma.messageTemplate.update({
       where: { id },
-      data: { eskizStatus: eskiz.status, eskizTemplateId: eskiz.id },
+      data: { body, eskizStatus: eskiz.status, eskizTemplateId: eskiz.id },
     });
     res.json(template);
   } catch (err) { next(err); }
@@ -8544,6 +8637,12 @@ registerAuditRoutes(app);
 // Zukko — o'ng paneldagi AI yordamchi (routes/zukko.js).
 registerZukkoRoutes(app);
 registerHisobotRoutes(app, { kpiHisobla, filialXodimlariWhere });
+// Imtihonlar → Sozlamalar: yangi imtihon standartlari (routes/imtihonSozlama.js).
+registerImtihonSozlamaRoutes(app);
+// Savol yechimi: AI ustoz aytganidek yozadi, ustoz ko'rib saqlaydi (routes/imtihonYechim.js).
+registerImtihonYechimRoutes(app);
+// Savol rasmi: AI vektor (SVG) qilib chizadi, tozalangan fayl Storage'ga tushadi (routes/imtihonRasm.js).
+registerImtihonRasmRoutes(app, { storage: supabaseAdmin.storage });
 // Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
 registerImtihonRoutes(app, {
   sendToOne,

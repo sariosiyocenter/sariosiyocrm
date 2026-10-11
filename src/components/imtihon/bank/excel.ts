@@ -29,22 +29,35 @@ export function qatordanSavol(r: Record<string, any>, qator: number) {
     status: s('Holat').toLowerCase().startsWith('qor') ? 'qoralama' : s('Holat').toLowerCase().startsWith('arx') ? 'arxiv' : 'faol',
   };
 }
-export type ExcelSavol = ReturnType<typeof qatordanSavol>;
+export type ExcelSavol = ReturnType<typeof qatordanSavol> & {
+  /** Mavzu ustuni bo'sh edi — oynadagi standart mavzu qo'yildi. */
+  mavzusiz?: boolean;
+  /** Fan ustuni bo'sh edi — oynadagi fan qo'yildi. */
+  fansiz?: boolean;
+  /** Fayl turi «Yozma»: «Javob» ustunidagi yakuniy javob (yechim emas — yechim «Yechim» ustunida). */
+  ustozJavobi?: string;
+};
 
 /**
  * Excel faylidagi savollar. Fan yoki mavzu ustuni bo'sh bo'lsa — `standart`
  * (oynada tanlangan fan/mavzu) qo'yiladi. Kamchiligi bor qatorlar `xatolar` da.
+ * `standart.yozma` — fayl turi «Yozma»: hamma qator yozma masala (Tur ustuniga qaralmaydi);
+ * «Javob» ustuni — yakuniy javob, «Yechim» — ustozning yechimi (bo'sh bo'lsa keyin AI yechadi).
  */
-export async function exceldanSavollar(fayl: File, standart: { fan?: string; mavzu?: string } = {}) {
+export async function exceldanSavollar(fayl: File, standart: { fan?: string; mavzu?: string; yozma?: boolean } = {}) {
   const wb = XLSX.read(await fayl.arrayBuffer(), { type: 'array' });
   const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
   const yaroqli: ExcelSavol[] = [];
   const xatolar: { qator: number; xato: string }[] = [];
   rows.forEach((r, i) => {
-    const q = qatordanSavol(r, i + 2);
+    const q: ExcelSavol = qatordanSavol(r, i + 2);
     if (!q.text && !q.options?.length) return;   // bo'sh qator
-    if (!q.subject && standart.fan) q.subject = standart.fan;
-    if (!q.topic && standart.mavzu) q.topic = standart.mavzu;
+    if (standart.yozma) {
+      const javob = q.type === 'yozma' || !q.options?.length ? String(r.Javob ?? '').trim().slice(0, 300) : '';
+      Object.assign(q, { type: 'yozma', options: null, answers: null, correctAnswer: '', ustozJavobi: javob });
+    }
+    if (!q.subject && standart.fan) { q.subject = standart.fan; q.fansiz = true; }
+    if (!q.topic && standart.mavzu) { q.topic = standart.mavzu; q.mavzusiz = true; }
     const x = !q.subject ? "Fan yo'q" : !q.topic ? "Mavzu yo'q" : q.status === 'faol' ? savolXatosi(q as any) : null;
     if (x) xatolar.push({ qator: i + 2, xato: x }); else yaroqli.push(q);
   });

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 
-/** AI holati: kalit markazniki (Sozlamalar → Integratsiyalar) yoki serverniki. Sahifalar orasida bir marta so'raladi. */
+/** AI holati: kalit markazniki (Imtihonlar → Sozlamalar) yoki serverniki. Sahifalar orasida bir marta so'raladi. */
 export interface AiHolat {
   yoqilgan: boolean;
   model: string | null;
@@ -19,7 +19,7 @@ const BOSH: AiHolat = { yoqilgan: false, model: null, manba: null, sozlay: false
 let kesh: { token: string | null; p: Promise<AiHolat> } | null = null;
 const tinglovchilar = new Set<(h: AiHolat) => void>();
 
-export const AI_SOZLANMAGAN = "AI yoqilmagan — administrator Sozlamalar → Integratsiyalar bo'limida AI kalitini kiritadi";
+export const AI_SOZLANMAGAN = "AI yoqilmagan — administrator Imtihonlar → Sozlamalar bo'limida AI kalitini kiritadi";
 
 /** Kalit saqlangach — ochiq sahifalarning hammasi yangi holatni ko'radi. */
 export function aiHolatiniQoy(h: AiHolat) {

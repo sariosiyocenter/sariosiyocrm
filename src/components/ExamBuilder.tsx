@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -7,15 +7,19 @@ import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuk
 import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
 import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
-import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI, qismSoni, qismTekshiruvi } from '../../lib/imtihon.js';
+import { STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI, qismSoni, qismTekshiruvi } from '../../lib/imtihon.js';
+import { yangiImtihonBoshi } from '../../lib/imtihonSozlama.js';
 import { toDateStr } from '../../lib/lessons.js';
-import { SmsHisobi } from './SmsHisobi';
+import { JARIMALAR, XabarShabloni, NATIJA_OZGARUVCHILARI, RUXSATNOMA_OZGARUVCHILARI } from './imtihon/sozlamaQismlari';
+import { TUR_NOMI, TUR_IZOHI } from '../lib/savolTuri';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
 
 // Imtihon tuzish. Egasining talabi (2026-09-24): "universal bo'lishi kerak" —
 // ball tizimi, smenalar, filiallar, til, reyting va xabar kanali imtihonning
 // o'z sozlamasi. Qulflangandan keyin tuzilma (bloklar, variantlar) o'zgarmaydi,
 // faqat e'lon va xabar sozlamalari.
+// Yangi imtihon markazning umumiy sozlamasidagi qiymatlar bilan ochiladi
+// (Imtihonlar → Sozlamalar, lib/imtihonSozlama.js); mavjud imtihonga u ta'sir qilmaydi.
 
 const yangiId = () => Math.random().toString(36).slice(2, 9);
 
@@ -28,31 +32,46 @@ const DTM_ANDOZA: ExamBlock[] = [
   { id: yangiId(), subject: '2-asosiy fan', pointsPerQuestion: 2.1, topicRules: [{ topic: '', count: 30, type: 'yopiq' }] },
 ];
 
-const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', moslash: 'Moslash', juft: 'Moslashtirish guruhi', qismli: 'Qismli savol', yozma: 'Yozma' };
-/** "Faqat kalit" rejimidagi qoida turlari (varaqdagi tartibda). */
+/** "Faqat kalit" rejimidagi qoida turlari (varaqdagi tartibda); nomlari — lib/savolTuri. */
 const KALIT_TURLARI = [
-  { v: 'yopiq', nom: 'Yopiq' },
-  { v: 'juft', nom: 'Moslashtirish guruhi (A–F)' },
-  { v: 'raqamli', nom: 'Raqamli' },
-  { v: 'qismli:son', nom: 'Qismli savol (36a, 36b) — skaner, son' },
-  { v: 'moslash', nom: 'Moslash' },
-  { v: 'qismli:ustoz', nom: 'Qismli savol (36a, 36b) — ustoz tekshiradi' },
-  { v: 'yozma', nom: 'Yozma' },
-];
-// Manfiy ball: xato javob uchun savol balining qancha qismi ayiriladi (Addmen "negative marking").
-const JARIMALAR: { v: number; nom: string }[] = [
-  { v: 0, nom: "Yo'q" }, { v: 0.25, nom: '¼' }, { v: 1 / 3, nom: '⅓' }, { v: 0.5, nom: '½' }, { v: 1, nom: "To'liq" },
+  { v: 'yopiq', nom: TUR_NOMI.yopiq },
+  { v: 'juft', nom: `${TUR_NOMI.juft} — ${TUR_IZOHI.juft} (A–F)` },
+  { v: 'raqamli', nom: TUR_NOMI.raqamli },
+  { v: 'qismli:son', nom: `${TUR_NOMI.qismli} — ${TUR_IZOHI.qismli}: skaner, son` },
+  { v: 'moslash', nom: TUR_NOMI.moslash },
+  { v: 'qismli:ustoz', nom: `${TUR_NOMI.qismli} — ${TUR_IZOHI.qismli}: ustoz tekshiradi` },
+  { v: 'yozma', nom: TUR_NOMI.yozma },
 ];
 
+/**
+ * /exams/new va /exams/:id/edit bitta komponent: yo'l almashsa (yangi ↔ tahrir, boshqa imtihon)
+ * forma boshidan ochiladi — oldingi imtihonning nomi, bloklari va qulfi aralashib qolmaydi.
+ */
 export default function ExamBuilder() {
+  const { id } = useParams();
+  return <ImtihonFormasi key={id ?? 'yangi'} />;
+}
+
+function ImtihonFormasi() {
   const { id } = useParams();
   const [urlParams] = useSearchParams();
   const tahrir = !!id;
   const navigate = useNavigate();
   const { schools, selectedSchoolId, user, addExam, updateExam, showNotification } = useCRM();
   const { soro } = useImtihonApi();
+  // Forma bir marta to'ldiriladi. `showNotification` har chizishda yangi funksiya, `soro` esa
+  // token yangilanganda almashadi — ular sabab qayta yuklanib, yozilganlar bosilib ketmasin.
+  const yuklandi = useRef(false);
+  const standartQollandi = useRef(false);
+  const xabar = useRef(showNotification);
+  useEffect(() => { xabar.current = showNotification; });
 
-  const [yuklanmoqda, setYuklanmoqda] = useState(tahrir);
+  // So'rovnoma — o'z muharriri (pastda): unga markaz standartlari kerak emas.
+  const yangiSorovnoma = !tahrir && urlParams.get('tur') === 'sorovnoma';
+  // Yangi imtihon ham kutadi: forma markazning standart qiymatlari bilan ochiladi.
+  const [yuklanmoqda, setYuklanmoqda] = useState(!yangiSorovnoma);
+  // «Standart matn» tugmasi qaytaradigan xabar matnlari — markazniki (bo'lmasa tizimniki).
+  const [standartMatn, setStandartMatn] = useState({ natija: STANDART_SHABLON, ruxsatnoma: RUXSATNOMA_SHABLON });
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qulf, setQulf] = useState(false);
   const [nom, setNom] = useState('');
@@ -69,16 +88,39 @@ export default function ExamBuilder() {
   const { daraxt } = useBankDaraxt(sozlama.language);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || yuklandi.current) return;
+    let tirik = true;
     soro<Exam>('GET', `exams/${id}`).then(e => {
+      if (!tirik || yuklandi.current) return;
+      yuklandi.current = true;
       setNom(e.name); setSana(e.date); setDavom(e.duration); setScoring(e.scoring || 'blok');
       setBloklar((e.blocks || []).map(b => ({ ...b, id: b.id || yangiId() })));
       setSozlama(sozlamaniTozala(e.settings) as ExamSettings);
       setEgaFilial(e.schoolId);
       setFiliallar([...new Set([e.schoolId, ...(e.branchIds || [])])]);
       setQulf(!!e.lockedAt);
-    }).catch(err => showNotification(err.message, 'error')).finally(() => setYuklanmoqda(false));
-  }, [id, soro, showNotification]);
+    }).catch(err => { if (tirik) xabar.current(err.message, 'error'); }).finally(() => { if (tirik) setYuklanmoqda(false); });
+    return () => { tirik = false; };
+  }, [id, soro]);
+
+  // Markazning umumiy sozlamasi (Imtihonlar → Sozlamalar). Yangi imtihon shu qiymatlar bilan
+  // boshlanadi; mavjud imtihonda faqat «Standart matn» shu matnlarga qaytaradi. O'qilmasa —
+  // tizim standarti bilan davom etiladi (forma ochilmay qolmasin).
+  useEffect(() => {
+    if (yangiSorovnoma || standartQollandi.current) return;
+    let tirik = true;
+    soro<{ sozlama: unknown }>('GET', 'imtihon-sozlama').then(r => {
+      if (!tirik || standartQollandi.current) return;
+      standartQollandi.current = true;
+      const m = yangiImtihonBoshi(r.sozlama);
+      setStandartMatn({ natija: m.settings.notify.template, ruxsatnoma: m.settings.admit.template });
+      if (id) return;
+      setDavom(m.duration);
+      setScoring(m.scoring === 'foiz' ? 'foiz' : 'blok');
+      setSozlama(m.settings as ExamSettings);
+    }).catch(() => { /* tizim standarti qoladi */ }).finally(() => { if (tirik && !id) setYuklanmoqda(false); });
+    return () => { tirik = false; };
+  }, [id, soro, yangiSorovnoma]);
 
   const tuzilma = useMemo(() => varaqTuzilmasi(bloklar, scoring), [bloklar, scoring]);
   const s = (patch: Partial<ExamSettings>) => setSozlama(x => ({ ...x, ...patch }));
@@ -130,7 +172,7 @@ export default function ExamBuilder() {
 
   if (yuklanmoqda) return <Yuklanmoqda />;
   // So'rovnoma — o'z muharriri (savollar va shkala).
-  if (sozlama.source === 'sorovnoma' || (!tahrir && urlParams.get('tur') === 'sorovnoma')) return <SorovnomaMuharriri id={id} />;
+  if (sozlama.source === 'sorovnoma' || yangiSorovnoma) return <SorovnomaMuharriri id={id} />;
 
   const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
 
@@ -156,9 +198,9 @@ export default function ExamBuilder() {
     <div className="max-w-6xl mx-auto pb-24 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button aria-label="Orqaga" onClick={() => navigate(tahrir ? `/exams/${id}` : '/exams')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
+          <button aria-label="Orqaga" onClick={() => navigate(tahrir ? `/exams/${id}` : '/exams?tab=imtihonlar')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
           <div>
-            <h1 className="text-[15px] font-bold text-matn">{tahrir ? 'Imtihon sozlamalari' : 'Yangi imtihon'}</h1>
+            <h1 className="text-[15px] font-bold text-matn">{tahrir ? 'Imtihon sozlamasi' : 'Yangi imtihon'}</h1>
             <p className="text-[12px] text-matn-xira">{tuzilma.savolSoni ?? tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}</p>
           </div>
           {qulf && <Yorliq rang="brand"><Lock size={11} /> Qulflangan</Yorliq>}
@@ -256,7 +298,7 @@ export default function ExamBuilder() {
       </Karta>
 
       <Karta sarlavha="Tuzilma" izoh={qulfIzoh || (kalitRejimi
-        ? "Har fan — alohida blok, kitobchadagi tartibda. Varaqda har fanda avval yopiq, keyin raqamli, keyin yozma savollar turadi — kitobcha raqamlari shunga mos bo'lsin."
+        ? `Har fan — alohida blok, kitobchadagi tartibda. Varaqda har fanda avval ${TUR_NOMI.yopiq.toLowerCase()}, keyin ${TUR_NOMI.raqamli.toLowerCase()}, keyin ${TUR_NOMI.yozma.toLowerCase()} savollar turadi — kitobcha raqamlari shunga mos bo'lsin.`
         : "Har fan — alohida blok: savollar soni, qiyinlik va mavzular. Taqsimotni tizim o'zi hisoblaydi — jadvalda ko'rinadi, katagini qo'lda ham o'zgartirsa bo'ladi.")}
         amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={dtmAndoza}>DTM andozasi</Tugma>}>
         <div className="space-y-3">
@@ -316,7 +358,7 @@ export default function ExamBuilder() {
             ? { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }
             : { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }])}>Fan (blok) qo'shish</Tugma>}
           <div className="flex flex-wrap gap-2 pt-1 text-[12px] text-matn-sokin">
-            <Yorliq>{tuzilma.yopiq} ta yopiq</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta raqamli</Yorliq>}{(tuzilma.moslash || 0) > 0 && <Yorliq>{tuzilma.moslash} ta moslash</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta yozma</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
+            <Yorliq>{tuzilma.yopiq} ta {TUR_NOMI.yopiq.toLowerCase()}</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta {TUR_NOMI.raqamli.toLowerCase()}</Yorliq>}{(tuzilma.moslash || 0) > 0 && <Yorliq>{tuzilma.moslash} ta {TUR_NOMI.moslash.toLowerCase()}</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta {TUR_NOMI.yozma.toLowerCase()}</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
           </div>
         </div>
       </Karta>
@@ -434,17 +476,8 @@ export default function ExamBuilder() {
                 </Maydon>
               </div>
               {sozlama.notify.channel !== 'NONE' && (
-                <>
-                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {holat} {rasch} {daraja} {bloklar} {orin} {markaz} {havola}">
-                    <textarea rows={5} className={INPUT} value={sozlama.notify.template} onChange={e => s({ notify: { ...sozlama.notify, template: e.target.value } })} />
-                  </Maydon>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11.5px] text-matn-xira">Namuna:</p>
-                    {sozlama.notify.template !== STANDART_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ notify: { ...sozlama.notify, template: SOZLAMA_STANDART.notify.template } })}>Standart matn</Tugma>}
-                  </div>
-                  <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{xabarNamuna}</pre>
-                  {sozlama.notify.channel !== 'TELEGRAM' && <SmsHisobi matn={xabarNamuna} toldirilgan />}
-                </>
+                <XabarShabloni nom="Xabar matni" ozgaruvchilar={NATIJA_OZGARUVCHILARI} qiymat={sozlama.notify.template} standart={standartMatn.natija}
+                  onChange={template => s({ notify: { ...sozlama.notify, template } })} namuna={xabarNamuna} sms={sozlama.notify.channel !== 'TELEGRAM'} />
               )}
             </div>
           </Karta>
@@ -465,17 +498,8 @@ export default function ExamBuilder() {
                 </Maydon>
               </div>
               {sozlama.admit.channel !== 'NONE' && (
-                <>
-                  <Maydon nom="Matn" izoh="{ism} {imtihon} {sana} {vaqt} {filial} {xona} {qator} {orin} {markaz}">
-                    <textarea rows={6} className={INPUT} value={sozlama.admit.template} onChange={e => s({ admit: { ...sozlama.admit, template: e.target.value } })} />
-                  </Maydon>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11.5px] text-matn-xira">Namuna:</p>
-                    {sozlama.admit.template !== RUXSATNOMA_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ admit: { ...sozlama.admit, template: RUXSATNOMA_SHABLON } })}>Standart matn</Tugma>}
-                  </div>
-                  <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{ruxsatnomaNamuna}</pre>
-                  {sozlama.admit.channel !== 'TELEGRAM' && <SmsHisobi matn={ruxsatnomaNamuna} toldirilgan />}
-                </>
+                <XabarShabloni nom="Matn" ozgaruvchilar={RUXSATNOMA_OZGARUVCHILARI} qiymat={sozlama.admit.template} standart={standartMatn.ruxsatnoma} qatorlar={6}
+                  onChange={template => s({ admit: { ...sozlama.admit, template } })} namuna={ruxsatnomaNamuna} sms={sozlama.admit.channel !== 'TELEGRAM'} />
               )}
             </div>
           </Karta>

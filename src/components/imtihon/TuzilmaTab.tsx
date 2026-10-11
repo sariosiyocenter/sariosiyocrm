@@ -7,6 +7,7 @@ import { useConfirm } from '../ConfirmDialog';
 import SorovnomaTuzilma from './SorovnomaTuzilma';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
+import { TUR_NOMI } from '../../lib/savolTuri';
 import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
 import type { ImtihonTafsil, TabId } from './turlar';
@@ -19,7 +20,8 @@ interface Qoida {
   sabab?: { qoralama?: number; xatoli?: number; boshqaQiyinlik?: number; boshqaTil?: number; boshqaQoida?: number; fandaJami?: number; yoq?: number; faolEmas?: number };
 }
 interface KalitHolat { kalit: string; session: number; code: string; jami: number; toldirilgan: number; tayyor: boolean }
-const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', moslash: 'moslash', yozma: 'yozma' };
+// Guruhli turlar Milliy sertifikat varag'idagi raqamlari bilan ataladi (src/lib/savolTuri.ts).
+const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', moslash: 'moslash', juft: TUR_NOMI.juft, qismli: TUR_NOMI.qismli, yozma: 'yozma' };
 // Qiyinlik nomlari bankdagi sozlamadan (foydalanuvchi o'zgartirgan bo'lishi mumkin).
 const QIYIN: Record<number, string> = new Proxy({} as Record<number, string>, { get: (_, d) => (QIYINLIK[Number(d) - 1]?.nom || '').toLowerCase() });
 const qoidaNomi = (q: { mavzu: string; tur: string; qiyinlik: number; tanlangan?: boolean }) =>

@@ -6,14 +6,22 @@
 // SMS pullik, shuning uchun bir Telegram hisobiga kuniga ko'pi bilan
 // KUNLIK_CHEKLOV ta kod, ikki so'rov orasida ORALIQ_SONIYA, bitta raqamga
 // sutkada RAQAMGA_CHEKLOV ta. Holat: kutilmoqda | tasdiqlandi | bekor | xato
-// (SMS ketmadi — kunlik limitga kirmaydi, lekin oraliq va o'z chegarasi bor).
+// (SMS ketmadi — kunlik limitga kirmaydi, lekin oraliq va o'z chegarasi bor)
+// | ogoh (kod emas — rahbarlar ogohlantirilgani belgisi, ogohlantirishKerak).
 //
 // SMS ni server.js yuboradi (Eskiz, shablon moderatsiyasi u yerda) — bot
 // server.js ga bog'lanib qolmasligi uchun server o'zini shu yerda ro'yxatdan
 // o'tkazadi (services/transportNotify.js dagi kabi).
+//
+// SMS matni (standart matn, Eskiz rad etganda nima qilinishi) — lib/tolovXabari.js
+// ("Tasdiqlash kodi SMS i"). SMS siz yo'l ham bor: odam Telegramdagi o'z raqamini
+// yuborsa (contact.user_id === from.id), raqamni Telegram o'zi tasdiqlagan
+// bo'ladi — kod kerak emas (src/bot/telefon.js).
 import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
 import { uzRaqam } from '../lib/tolovXabari.js';
+
+export { KOD_SHABLONI, kodShabloniMatni } from '../lib/tolovXabari.js';
 
 export const KOD_MUDDATI_DAQIQA = 10;
 export const KUNLIK_CHEKLOV = 4;
@@ -21,27 +29,50 @@ export const ORALIQ_SONIYA = 60;
 export const URINISH_CHEKLOVI = 5;
 /** Bitta raqamga (kim so'rashidan qat'i nazar) sutkada ko'pi bilan shuncha kod SMS i. */
 export const RAQAMGA_CHEKLOV = 3;
-
-/** Shablonlar ro'yxatidagi nomi va matni — Eskiz moderatsiyasiga shu matn ketadi. */
-export const KOD_SHABLONI = {
-  name: 'TELEFON RAQAMNI ALMASHTIRISH KODI',
-  category: 'Tasdiqlash kodi',
-  body: '{markaz}: telefon raqamni almashtirish kodi: {kod}. Kodni hech kimga aytmang.',
-};
-
-/**
- * Eskizga ketadigan matn: markaz nomi ANIQ yoziladi. "{markaz}" Eskiz andozasida "%w{1,5}" (istalgan
- * so'zlar) bo'lib qolardi — moderatsiya esa matnda tashkilot nomini ko'rishni xohlaydi (shu hisobdagi
- * hamma tasdiqlangan shablonda nom yozilgan). Nom noma'lum bo'lsa matn o'zgarmaydi.
- */
-export function kodShabloniMatni(body, markaz) {
-  const nom = String(markaz || '').replace(/\s+/g, ' ').trim();
-  return nom ? String(body || '').replace(/\{markaz\}/gi, nom) : String(body || '');
-}
+/** "SMS kod ishlamayapti" ogohlantirishi rahbarlarga shuncha soatda bir marta. */
+export const OGOH_ORALIQ_SOAT = 24;
 
 let kodYuboruvchi = null;
-/** server.js: ({ telefon, kod, schoolId }) => Promise<{ success, moderatsiya?, xato? }> */
-export function telefonSmsUlash(fn) { kodYuboruvchi = fn; }
+let holatBeruvchi = null;
+/**
+ * server.js o'zini ulaydi:
+ *   yubor({ telefon, kod, schoolId }) => Promise<{ success, moderatsiya?, holat?, xato? }>
+ *   holat(schoolId) => Promise<'tayyor' | 'tekshiruvda' | 'rad' | 'ulanmagan'> — kod SMS i hozir keta oladimi.
+ */
+export function telefonSmsUlash(yubor, holat = null) { kodYuboruvchi = yubor; holatBeruvchi = holat; }
+
+/**
+ * Kod SMS i hozir keta oladimi (lib/tolovXabari.js kodSmsHolati). Shablon yo'q yoki eski bo'lsa server
+ * shu chaqiruvda uni yaratib/yangilab Eskizga yuboradi. Aniqlab bo'lmasa (yoki uzoq javob) — 'tayyor':
+ * urinishning o'zi aniq sababni aytadi.
+ */
+export async function smsHolati(schoolId) {
+  if (!kodYuboruvchi) return 'ulanmagan';
+  if (!holatBeruvchi) return 'tayyor';
+  let vaqt;
+  const kutish = new Promise(r => { vaqt = setTimeout(() => r('tayyor'), 6000); });
+  try {
+    return await Promise.race([holatBeruvchi(schoolId), kutish]);
+  } catch (e) {
+    console.error('[Telefon kodi] holat:', e.message);
+    return 'tayyor';
+  } finally {
+    clearTimeout(vaqt);
+  }
+}
+
+/**
+ * Rahbarlarni "SMS kod ishlamayapti" deb ogohlantirish vaqti keldimi. Keldi bo'lsa — belgilab qo'yadi:
+ * har urinishda emas, filialga OGOH_ORALIQ_SOAT soatda bir marta (serverda holat yo'q — belgi jadvalda,
+ * "ogoh" yozuvi; uning tgChat i raqam emas, shuning uchun kod limitlariga aralashmaydi).
+ */
+export async function ogohlantirishKerak(schoolId, hozir = new Date()) {
+  const tgChat = `ogoh:${schoolId || 0}`;
+  const chegara = new Date(hozir.getTime() - OGOH_ORALIQ_SOAT * 3600 * 1000);
+  if (await prisma.telefonKod.count({ where: { tgChat, holat: 'ogoh', createdAt: { gte: chegara } } })) return false;
+  await prisma.telefonKod.create({ data: { tgChat, telefon: '', kodHash: '', holat: 'ogoh', expiresAt: hozir } });
+  return true;
+}
 
 const sir = () => String(process.env.JWT_SECRET || 'telefon-kod');
 const hash = (tgChat, telefon, kod) =>
@@ -55,8 +86,9 @@ export function bazaRaqami(v) {
 
 /**
  * Kod yaratadi va SMS yuboradi.
- * @returns {Promise<{ id: number } | { xato: string, raqamXato?: boolean, moderatsiya?: boolean }>}
- *          raqamXato — raqam noto'g'ri yozilgan (qayta so'rash kerak)
+ * @returns {Promise<{ id: number } | { xato: string, raqamXato?: boolean, moderatsiya?: boolean, holat?: string }>}
+ *          raqamXato — raqam noto'g'ri yozilgan (qayta so'rash kerak);
+ *          moderatsiya — SMS matni Eskizda tasdiqlanmagan, holat: 'tekshiruvda' | 'rad' | 'ulanmagan'
  */
 export async function kodYubor({ tgChat, telefon, schoolId, hozir = new Date() }) {
   const raqam = uzRaqam(telefon);
@@ -84,12 +116,10 @@ export async function kodYubor({ tgChat, telefon, schoolId, hozir = new Date() }
   const kod = String(crypto.randomInt(10000, 100000));
   const natija = await kodYuboruvchi({ telefon: raqam, kod, schoolId }).catch(e => ({ success: false, xato: e.message }));
   if (!natija?.success) {
-    // Rahbarlarga ogohlantirish soatiga bir marta: har urinishda emas.
-    const soatOldin = new Date(hozir.getTime() - 3600 * 1000);
-    const yaqindaXato = await prisma.telefonKod.count({ where: { holat: 'xato', createdAt: { gte: soatOldin } } });
     await prisma.telefonKod.create({ data: { tgChat: String(tgChat), telefon: raqam, kodHash: '', holat: 'xato', expiresAt: hozir } });
+    // moderatsiya — SMS matni Eskizda tasdiqlanmagan (tekshiruvda yoki rad etilgan): bot nima qilish mumkinligini aytadi.
     return natija?.moderatsiya
-      ? { moderatsiya: true, ogohlantir: yaqindaXato === 0, xato: "Kod yuboriladigan SMS matni hozir aloqa operatori tekshiruvida. Tasdiqlangach shu yerda qayta urinib ko'ring yoki raqamni markaz ma'muri orqali o'zgartiring." }
+      ? { moderatsiya: true, holat: natija.holat || 'tekshiruvda', xato: "Hozircha SMS orqali kod yuborib bo'lmaydi: SMS matni aloqa operatori tasdig'idan o'tmagan." }
       : { xato: "SMS yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring yoki markaz ma'muriga murojaat qiling." };
   }
 

@@ -301,7 +301,7 @@ function raqamlagich(r: Raqamlash) {
 
 // b — qalin, u — tagi chizilgan, h — sariq/fon bilan ajratilgan, r — shrift rangi.
 type Bolak = { t: string; b: boolean; u: boolean; h: boolean; r: boolean } | { raw: string };
-interface Paragraf { bolaklar: Bolak[]; rasmlar: number[] }
+export interface Paragraf { bolaklar: Bolak[]; rasmlar: number[] }
 
 // Symbol shriftidagi belgilar (w:sym): eski hujjatlarda × ≤ ≥ ...
 const SYMBOL: Record<string, string> = {
@@ -311,9 +311,9 @@ const SYMBOL: Record<string, string> = {
 };
 
 /** Jadval: qatorlar → kataklar → katak ichidagi paragraflar. */
-type Jadval = Paragraf[][][];
+export type Jadval = Paragraf[][][];
 
-interface Hujjat {
+export interface Hujjat {
   paragraflar: Paragraf[];
   jadvallar: Jadval[];
   rasmYollari: string[];
@@ -328,7 +328,8 @@ export async function wordniOqi(fayl: File): Promise<WordNatija> {
   return qismlargaBol(paragraflar, rasmYollari, fayllar, { formulaSoni, oqilmagan, tashlangan });
 }
 
-async function hujjatniOqi(fayl: File, maksRasm: number): Promise<Hujjat> {
+/** Hujjat: paragraflar, jadvallar tuzilmasi va rasmlar (jadval shablonlari — wordShablon.ts — ham shundan o'qiydi). */
+export async function hujjatniOqi(fayl: File, maksRasm: number): Promise<Hujjat> {
   const bayt = new Uint8Array(await fayl.arrayBuffer());
   if (bayt[0] === 0xD0 && bayt[1] === 0xCF) throw new Error(ESKI_DOC);
   if (bayt[0] !== 0x50 || bayt[1] !== 0x4B) throw new Error("Word fayli emas yoki buzilgan");
@@ -380,7 +381,7 @@ async function hujjatniOqi(fayl: File, maksRasm: number): Promise<Hujjat> {
   };
 
   // Jadval qatori — bitta paragraf: kataklar « | », katak ichidagi paragraflar « / » bilan.
-  // Tuzilmasi ham saqlanadi (Addmen QR jadvali — wordJadvalSavollari).
+  // Tuzilmasi ham saqlanadi (Word shablon jadvallari — wordShablon.ts).
   const jadvallar: Jadval[] = [];
   const jadval = (tbl: Element, out: Paragraf[]) => {
     const tuzilma: Jadval = [];
@@ -484,7 +485,7 @@ async function hujjatniOqi(fayl: File, maksRasm: number): Promise<Hujjat> {
   return { paragraflar, jadvallar, rasmYollari, fayllar, formulaSoni, oqilmagan, tashlangan };
 }
 
-const rasmTuri = (yol: string) => (/\.png$/i.test(yol) ? 'image/png' : /\.gif$/i.test(yol) ? 'image/gif' : /\.bmp$/i.test(yol) ? 'image/bmp' : /\.webp$/i.test(yol) ? 'image/webp' : 'image/jpeg');
+export const rasmTuri = (yol: string) => (/\.png$/i.test(yol) ? 'image/png' : /\.gif$/i.test(yol) ? 'image/gif' : /\.bmp$/i.test(yol) ? 'image/bmp' : /\.webp$/i.test(yol) ? 'image/webp' : 'image/jpeg');
 
 async function qismlargaBol(paragraflar: Paragraf[], rasmYollari: string[], fayllar: Map<string, Uint8Array>, sanoq: { formulaSoni: number; oqilmagan: number; tashlangan: number }): Promise<WordNatija> {
   const { formulaSoni, oqilmagan, tashlangan } = sanoq;
@@ -523,134 +524,8 @@ async function qismlargaBol(paragraflar: Paragraf[], rasmYollari: string[], fayl
   return { qismlar, rasmSoni: qismlar.reduce((a, q) => a + q.rasmlar.length, 0), formulaSoni, oqilmagan, tashlangan };
 }
 
-// --- Addmen QR jadvali (AI siz) -------------------------------------------------
-//
-// Addmen savollarni "Question Resource" Word faylida saqlaydi: har qator — bitta
-// savol, ustunlar: № | savol | A | B | C | D | (E) | javob. Bunday jadval aniq
-// qoida bilan o'qiladi — AI kerak emas, 18 ming savol ham tez ko'chadi.
-
-export interface JadvalSavol {
-  raqam: string | null;
-  /** HTML (formulalar $...$, qo'shimcha rasmlar <img>). */
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  /** Bo'lsa — savol qoralama bo'lib tushadi. */
-  xato: string | null;
-  /** "N (ru)" qatoridagi tarjima; ikkinchi tarjima qatori ("N (en)") — `boshqa` da. */
-  tarjima?: JadvalTarjima & { boshqa?: JadvalTarjima[] } | null;
-}
-export interface JadvalTarjima { til: 'uz' | 'ru' | 'en'; text: string; options: string[] }
-export interface JadvalNatija { savollar: JadvalSavol[]; formulaSoni: number; oqilmagan: number; rasmSoni: number }
-
-const KIRILL_HARF: Record<string, string> = { А: 'A', Б: 'B', В: 'C', Г: 'D', Д: 'E', Е: 'F' };
-/** Javob katagi: A–F (lotin yoki kirill), 1–6 yoki "A)" kabi. */
-function javobHarfi(s: string): string | null {
-  const t = s.replace(/\s+/g, '').replace(/[.)]+$/, '').toUpperCase();
-  if (/^[A-F]$/.test(t)) return t;
-  if (KIRILL_HARF[t]) return KIRILL_HARF[t];
-  if (/^[1-6]$/.test(t)) return 'ABCDEF'[Number(t) - 1];
-  return null;
-}
-const RAQAM_KATAK = /^\s*\d{1,6}\s*[.)]?\s*$/;
-/** Ikki tilli QR shablonidagi tarjima qatori: "12 (ru)". */
-const TARJIMA_KATAK = /^\s*\d{1,6}\s*\((uz|ru|en)\)\s*$/i;
-const html = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-/**
- * Hujjatdagi Addmen QR jadvallaridan savollar. Bunday jadval bo'lmasa — null
- * (fayl odatdagidek AI ga beriladi). `rasmYukla` — rasmni saqlab, havolasini qaytaradi.
- */
-export async function wordJadvalSavollari(fayl: File, rasmYukla: (dataUrl: string, nom: string) => Promise<string>): Promise<JadvalNatija | null> {
-  const h = await hujjatniOqi(fayl, 5000);
-  const katakMatni = (k: Paragraf[] | undefined) => (k || []).map(p => matnniYig(p.bolaklar, false)).join('\n').replace(/ /g, ' ').trim();
-  const qatorlar: { kataklar: Paragraf[][]; seriya: boolean; til?: 'uz' | 'ru' | 'en' }[] = [];
-  for (const j of h.jadvallar) {
-    const toliq = j.filter(q => q.length >= 6);
-    if (!toliq.length) continue;
-    const javobli = toliq.filter(q => javobHarfi(katakMatni(q[q.length - 1])));
-    // QR jadvali: ≥6 ustunli qatorlarning yarmidan ko'pida oxirgi katak — javob harfi
-    // (ikki tilli shablonning "N (ru)" tarjima qatorlari sanalmaydi — ularda javob yo'q).
-    // To'ldirilmagan shablon qatorlari (faqat raqam) ham sanalmaydi.
-    const savolQatorlari = toliq.filter(q => !TARJIMA_KATAK.test(katakMatni(q[0])) && q.slice(1).some(k => katakMatni(k)));
-    if (!javobli.length || javobli.length * 2 < savolQatorlari.length) continue;
-    for (const q of toliq) {
-      const tarjima = TARJIMA_KATAK.exec(katakMatni(q[0]));
-      if (tarjima) { qatorlar.push({ kataklar: q, seriya: true, til: tarjima[1].toLowerCase() as 'uz' | 'ru' | 'en' }); continue; }
-      // Sarlavha qatori ("№ | Savol | A | … | Javob") — javob harfi ham, raqami ham yo'q.
-      const seriya = RAQAM_KATAK.test(katakMatni(q[0]));
-      if (!seriya && !javobHarfi(katakMatni(q[q.length - 1]))) continue;
-      qatorlar.push({ kataklar: q, seriya });
-    }
-  }
-  if (!qatorlar.length) return null;
-
-  // Rasmlar: bir marta yuklanadi (bir xil rasm bir necha joyda bo'lishi mumkin).
-  const havolalar = new Map<number, Promise<string>>();
-  const rasmHavolasi = (i: number) => {
-    if (!havolalar.has(i)) {
-      const yol = h.rasmYollari[i];
-      const bayt = h.fayllar.get(yol);
-      havolalar.set(i, !bayt ? Promise.resolve('') : new Promise<string>((ok) => {
-        const o = new FileReader();
-        o.onload = () => rasmYukla(String(o.result), yol.split('/').pop() || 'rasm.png').then(ok, () => ok(''));
-        o.onerror = () => ok('');
-        o.readAsDataURL(new Blob([bayt as BlobPart], { type: rasmTuri(yol) }));
-      }));
-    }
-    return havolalar.get(i)!;
-  };
-  const katakHtml = async (k: Paragraf[] | undefined) => {
-    let s = html(katakMatni(k)).replace(/\n/g, '<br>');
-    const rasmlar = [...s.matchAll(/\u0000R(\d+)\u0000/g)].map(m => Number(m[1]));
-    for (const i of rasmlar) {
-      const url = await rasmHavolasi(i);
-      s = s.replace(`\u0000R${i}\u0000`, url ? `<img src="${url}" alt="">` : '');
-    }
-    return s.trim();
-  };
-
-  const savollar: JadvalSavol[] = [];
-  for (const { kataklar, seriya, til } of qatorlar) {
-    const n = kataklar.length;
-    if (til) {
-      // Tarjima qatori — oldingi savolga (javob ustuni hisobga olinmaydi).
-      const oldingi = savollar[savollar.length - 1];
-      const matn = await katakHtml(kataklar[1]);
-      const variantlar = await Promise.all(kataklar.slice(2, n - 1).map(katakHtml));
-      while (variantlar.length && !variantlar[variantlar.length - 1]) variantlar.pop();
-      if (oldingi && (matn || variantlar.some(Boolean))) {
-        const t: JadvalTarjima = { til, text: matn, options: variantlar };
-        oldingi.tarjima = oldingi.tarjima ? { ...oldingi.tarjima, boshqa: [...(oldingi.tarjima.boshqa || []), t] } : t;
-      }
-      continue;
-    }
-    const savolKatak = kataklar[seriya ? 1 : 0];
-    const variantlar = kataklar.slice(seriya ? 2 : 1, n - 1);
-    // Addmen 4 yoki 5 variantli: bo'sh oxirgi ustunlar tashlanadi.
-    while (variantlar.length && !katakMatni(variantlar[variantlar.length - 1])) variantlar.pop();
-    // Rasmlar matn ichida qoladi (ko'rib chiqishda ham, kitobchada ham o'z joyida chiqadi).
-    const text = await katakHtml(savolKatak);
-    const options = await Promise.all(variantlar.map(katakHtml));
-    const javob = javobHarfi(katakMatni(kataklar[n - 1])) || '';
-    const kamchilik = [
-      /o'qilmadi/.test(text + options.join(' ')) && "MathType formula yoki rasm o'qilmadi",
-      !javob && "javob yo'q",
-      javob && 'ABCDEF'.indexOf(javob) >= options.length && `javob ${javob}, variant ${options.length} ta`,
-      options.length < 2 && "variantlar yo'q",
-      options.some(o => !o) && "bo'sh variant bor",
-    ].filter(Boolean) as string[];
-    if (!text) continue;
-    savollar.push({
-      raqam: seriya ? katakMatni(kataklar[0]).replace(/[^\d]/g, '') : null,
-      text, options, correctAnswer: javob, xato: kamchilik.length ? kamchilik.join(', ') : null,
-    });
-  }
-  return { savollar, formulaSoni: h.formulaSoni, oqilmagan: h.oqilmagan, rasmSoni: havolalar.size };
-}
-
 /** Bo'laklar → matn: bir xil belgili qo'shni yozuvlar birlashadi, belgi bo'sh joyga qo'yilmaydi. */
-function matnniYig(bolaklar: Bolak[], belgilar = true): string {
+export function matnniYig(bolaklar: Bolak[], belgilar = true): string {
   let s = '';
   for (let i = 0; i < bolaklar.length;) {
     const b = bolaklar[i];
