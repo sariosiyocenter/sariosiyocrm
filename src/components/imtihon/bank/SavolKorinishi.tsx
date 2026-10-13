@@ -9,8 +9,9 @@ import type { Question } from '../../../types';
 /**
  * Savolning to'liq ko'rinishi: (bo'lsa) umumiy matn yoki shart, formulalar, variantlar, to'g'ri
  * javob, yechim. `yechimsiz` — yechim ko'rsatilmaydi (yechim oynasi uni o'zi alohida chiqaradi).
+ * `yechimAmali` — yechim sarlavhasi yonidagi tugma (masalan «Video dars»).
  */
-export default function SavolKorinishi({ q, yechimsiz }: { q: Question; yechimsiz?: boolean }) {
+export default function SavolKorinishi({ q, yechimsiz, yechimAmali }: { q: Question; yechimsiz?: boolean; yechimAmali?: React.ReactNode }) {
   const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
   // Guruhli savol bo'lagi: 'juft' — umumiy javoblar ro'yxatidan (A–F) harf; 'qismli' — javobi yoziladi.
   const guruhli = q.type === 'juft' || q.type === 'qismli';
@@ -40,7 +41,10 @@ export default function SavolKorinishi({ q, yechimsiz }: { q: Question; yechimsi
       {q.type === 'yozma' && <p className="text-[13px] text-matn-sokin">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}.</p>}
       {!yechimsiz && q.solution && (
         <div className="rounded-lg border border-chiziq bg-sirt p-3">
-          <p className="text-[11px] font-semibold text-matn-xira mb-1">Yechim {q.solutionStatus === 'tasdiqlangan' ? '· tasdiqlangan' : '· tasdiqlanmagan'}</p>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className="text-[11px] font-semibold text-matn-xira">Yechim {q.solutionStatus === 'tasdiqlangan' ? '· tasdiqlangan' : '· tasdiqlanmagan'}</p>
+            {yechimAmali}
+          </div>
           <div className={`${SAVOL_MATNI} text-[13px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.solution) }} />
         </div>
       )}

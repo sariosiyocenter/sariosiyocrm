@@ -416,6 +416,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const yechimKor = useCallback((id: number) => setYechim(x => x ?? { id, rejim: 'korish' }), []);
   const yechimOch = (id: number, rejim: YechimRejimi) => { setMenyu(null); setYechim(x => x ?? { id, rejim }); };
   const darsOch = (id: number) => { setMenyu(null); setDars(x => x ?? id); };
+  const darsKor = useCallback((id: number) => setDars(x => x ?? id), []);
   /** Yechim saqlandi: kartadagi belgi darhol yangilanadi; filtr sonlari va ro'yxat — jimgina. */
   const yechimSaqlandi = useCallback((id: number, n: YechimNatijasi) => {
     setRoyxat(r => r && ({ ...r, items: r.items.map(q => (q.id === id ? { ...q, yechimBor: n.yechimBor, solutionStatus: n.solutionStatus } : q)) }));
@@ -978,7 +979,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                 return (
                   <BankSavolKarta key={q.id} q={q} raqam={(sahifa - 1) * SAHIFA + i + 1} tanlangan={tanlangan.has(q.id)} yangi={yangiIdlar.has(q.id)} tanlanadi={savolTahrir || ochiradi} tahrir={savolTahrir}
                     mavzu={(q.bankTopicId != null && mavzuNomi.get(q.bankTopicId)) || q.topic || ''} darajaNom={d.nom} darajaNuqta={d.nuqta} guruhlar={guruhlar}
-                    onTanla={almashtir} onKor={korish} onSudra={savolTahrir ? sudra : undefined} onMenyu={kartaMenyu} onYechim={yechimKoradi ? yechimKor : undefined} />
+                    onTanla={almashtir} onKor={korish} onSudra={savolTahrir ? sudra : undefined} onMenyu={kartaMenyu} onYechim={yechimKoradi ? yechimKor : undefined} onDars={yechimKoradi ? darsKor : undefined} />
                 );
               })}
             </ul>

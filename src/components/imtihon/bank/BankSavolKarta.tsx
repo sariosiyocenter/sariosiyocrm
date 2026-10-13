@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Check, Folder, Lightbulb, MoreHorizontal } from 'lucide-react';
+import { Check, Clapperboard, Folder, Lightbulb, MoreHorizontal } from 'lucide-react';
 import { Yorliq } from '../ui';
 import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { TUR_NOMI } from '../../../lib/savolTuri';
@@ -12,9 +12,9 @@ import type { BelgiGuruhi } from '../../../types';
  * Bank ro'yxatidagi savol kartasi: matn (formulalar bilan), variantlar va to'g'ri javob ochmasdan
  * ko'rinadi. Yorliqlar (mavzu, qiyinlik, filtrlar) bosilsa — shu yerning o'zida o'zgartiriladi;
  * karta chapdagi mavzu yoki filtr qatoriga sudrab tashlanadi. Yechimi bor savolda — sokin
- * «Yechim» belgisi (bosilsa yechim ochiladi); yechim amallari — «⋯» menyusida.
+ * «Yechim» va «Video dars» belgilari (bosilsa o'sha oyna ochiladi); qolgan amallar — «⋯» menyusida.
  */
-export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu, onYechim }: {
+export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu, onYechim, onDars }: {
   q: BankQatori;
   /** Ro'yxatdagi tartib raqami — har ko'rinishda (fan, bo'lim, mavzu, filtr) 1 dan boshlanadi. */
   raqam: number;
@@ -23,6 +23,8 @@ export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlan
   onMenyu: (tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => void;
   /** Yechimni ko'rish (berilmasa — belgi chiqmaydi). */
   onYechim?: (id: number) => void;
+  /** Video dars oynasini ochish — dars yechimdan tuziladi, shuning uchun faqat yechimi bor savolda. */
+  onDars?: (id: number) => void;
 }) {
   const html = useMemo(() => formulaliHtml(q.text || ''), [q.text]);
   const variantlar = useMemo(() => (q.options || []).map(o => formulaliHtml(o)), [q.options]);
@@ -61,6 +63,10 @@ export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlan
               <button type="button" onClick={() => onYechim(q.id)} aria-label={`#${q.id} — yechimni ko'rish`}
                 title={q.solutionStatus === 'tasdiqlangan' ? "Yechimi bor — ko'rish" : "Yechimi bor (tasdiqlanmagan) — ko'rish"}
                 className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer"><Lightbulb size={12} />Yechim</button>
+            )}
+            {q.yechimBor && onDars && (
+              <button type="button" onClick={() => onDars(q.id)} aria-label={`#${q.id} — video dars`} title="Video dars: ko'rish, tuzish, ovoz yozdirish"
+                className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer"><Clapperboard size={12} />Video dars</button>
             )}
             {!!q.usedCount && <span>{q.usedCount} marta ishlatilgan</span>}
             <span className="raqam" title="Savolning bankdagi doimiy raqami (ID) — qaysi mavzuda turishidan qat'i nazar o'zgarmaydi">ID {q.id}</span>

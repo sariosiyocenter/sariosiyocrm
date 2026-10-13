@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp, Sparkles } from 'lucide-react';
+import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp, Sparkles, Clapperboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
@@ -10,6 +10,7 @@ import { TUR_NOMI } from '../../../lib/savolTuri';
 import { natijaQiyinligi, qiyinlikMosEmas } from '../../../../lib/imtihon.js';
 import SavolKorinishi from './SavolKorinishi';
 import OxshashSavollar from './OxshashSavollar';
+import DarsOynasi from './DarsOynasi';
 import { DarajaTanlov, QiyinlikYorligi, qiyinlikDaraja, darajaBandi, type DarajaQiymati } from './qiyinlik';
 import { useDarajalar } from './useDarajalar';
 import type { BankDaraxt, Question } from '../../../types';
@@ -67,7 +68,7 @@ export function SavolKartasi({ q, onOch, tanlash, tanlangan, onTanla, sudrash }:
 export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
   q: Question; daraxt: BankDaraxt | null; onYop: () => void; onOzgardi: () => void;
 }) {
-  const { ozgartira, showNotification } = useCRM();
+  const { kora, ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar');
   const ochiradi = ozgartira('imtihonlar.ochirish');
   const { soro } = useImtihonApi();
@@ -76,6 +77,14 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
   const [q, setQ] = useState(boshQ);
   const [band, setBand] = useState(false);
   const [oxshash, setOxshash] = useState(false);
+  // Video dars oynasi (DarsOynasi) — yechim yonidagi tugmadan ochiladi.
+  const [dars, setDars] = useState(false);
+  const darsTugmasi = kora('imtihonlar.savollar') && (
+    <button type="button" onClick={() => setDars(true)} title="Yechimning video darsi: ko'rish, tuzish, ovoz yozdirish"
+      className="inline-flex items-center gap-1 rounded-lg border border-chiziq px-2 py-1 text-[11.5px] font-semibold text-brand hover:border-brand cursor-pointer">
+      <Clapperboard size={13} />Video dars
+    </button>
+  );
   const natija = natijaQiyinligi(q.pCorrect);
   const fan = daraxt?.fanlar.find(f => f.mavzular.some(m => m.id === q.bankTopicId));
   const mavzu = fan?.mavzular.find(m => m.id === q.bankTopicId);
@@ -139,7 +148,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
           <button aria-label="Yopish" onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <SavolKorinishi q={q} />
+          <SavolKorinishi q={q} yechimAmali={darsTugmasi} />
           {!!q.usedCount && (
             <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-matn-sokin">
               <span>{q.usedCount} ta imtihonda ishlatilgan</span>
@@ -185,6 +194,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
         )}
       </div>
       {oxshash && daraxt && <OxshashSavollar daraxt={daraxt} asl={q} onYop={() => setOxshash(false)} onSaqlandi={onOzgardi} />}
+      {dars && <DarsOynasi id={q.id} onYop={() => setDars(false)} />}
     </div>
   );
 }
