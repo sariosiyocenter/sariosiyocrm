@@ -1400,3 +1400,22 @@ Sinov: `scratch/guruh1_ui.mjs` (bank), `scratch/guruh2_dvigatel.mjs` (dvigatel, 
 `scratch/guruh2_ui.mjs` (imtihon → kitobcha → varaq → skaner → tekshirish).
 `scratch/guruh3_sof.mjs` (erkin varaq, onlayn javob — bazasiz), `scratch/guruh3_ui.mjs` (qo'lda tanlash,
 andoza), `scratch/guruh4_ui.mjs` (AI importi va tuzishi — soxta AI: `scratch/ai_soxta_guruh.mjs`).
+
+## 23. Bank filtrlari: yechim holati, video dars, natija, tarjima, yangilik (2026-10-13)
+
+Egasi: «tam yechimi bor va videodarsi bor savollar, yana 3–4 ta filtr». «Boshqa filtrlar» paneliga
+qo'shildi — yangi ustun yo'q, hammasi mavjud maydonlardan (`lib/bankFiltr.js`, `routes/savolBanki.js`
+`royxatSharti`, sonlar — `bank/filtr` javobidagi `qoshimcha`; null bo'lsa tugmalar sonsiz):
+
+- **Yechim** bo'limida ikkinchi qator: «Tasdiqlangan yechim» (`solutionStatus = tasdiqlangan` — «tam
+  yechim») va «Tasdiqlanmagan yechim» (AI qoralamasi). Eski «Yechimi bor / yo'q» matn bo'yicha qoladi.
+- **Video dars** (bir nechta tanlanadi — "yoki"): tasdiqlangan, tasdiqlanmagan, **eskirgan** (yechim
+  yoki to'g'ri javob o'zgargan — o'quvchiga ko'rinmaydi, qayta tuzish kerak; `darsHolati`, yechim izi
+  JS da hisoblanadi, shuning uchun darslar alohida so'rovda olinadi) va «Darsi yo'q» (`lesson: null`).
+- **Imtihonda ishlatilgan** (`usedCount`), **Natija bo'yicha qiyinlik** (to'g'ri topganlar ulushi:
+  70%+ oson, 40–70% o'rta, undan kam — qiyin; chegaralar `natijaQiyinligi` bilan bir xil;
+  natija — savol ishlatilgan va `pCorrect` hisoblangan bo'lsa, qolgani «Ma'lumot yo'q»),
+  **Tarjima** (`tarjima` JSON bor / yo'q) va **Qo'shilgan vaqti** (oxirgi 24 soat / 7 / 30 kun).
+- Ustunlar orasida — "va", bir ustun ichida tanlanganlar — "yoki" (avvalgidek). Sonlar arxivsiz.
+
+Sinov: `tests/bankFiltr.test.mjs` (shartlar, sonlar so'rovi, dars holati — bazasiz).

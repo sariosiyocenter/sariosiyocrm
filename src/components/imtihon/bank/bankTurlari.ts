@@ -1,4 +1,4 @@
-import type { Question, SavolTuri } from '../../../types';
+import type { DarsFiltri, NatijaFiltri, Question, SavolTuri, YangiKun } from '../../../types';
 
 // Savollar banki ekranining (BankJadvali) umumiy turlari va kichik yordamchilari — ekran
 // bo'laklari (savol kartasi, guruh kartasi, «Boshqa filtrlar» paneli) shulardan foydalanadi.
@@ -16,16 +16,35 @@ export interface Saralash {
   rasm: BorYoq;
   /** Yechimi bor / yo'q savollar. */
   yechim: BorYoq;
+  /** Yechim ustoz tasdiqlagan yoki hali tasdiqlanmagan (AI qoralamasi); '' — hammasi. */
+  yechimHolati: '' | 'tasdiqlangan' | 'qoralama';
+  /** Video dars holati (tanlanganlar — "yoki"). */
+  dars: DarsFiltri[];
+  /** Imtihonda ishlatilgan / ishlatilmagan savollar. */
+  ishlatilgan: BorYoq;
+  /** Imtihon natijasiga ko'ra qiyinlik (tanlanganlar — "yoki"). */
+  natija: NatijaFiltri[];
+  /** Tarjimasi bor / yo'q savollar. */
+  tarjima: BorYoq;
+  /** Oxirgi necha kunda qo'shilgan; 0 — hammasi. */
+  yangi: 0 | YangiKun;
 }
 export const BOSH_SARALASH: Saralash = {
   qiyinlik: [], darajalar: [], belgilar: {}, manbalar: [], toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '',
   izohlar: [], matnli: '', joylashuv: [], rasm: '', yechim: '',
+  yechimHolati: '', dars: [], ishlatilgan: '', natija: [], tarjima: '', yangi: 0,
 };
 
 export const JOYLASHUV_NOMI: Record<number, string> = { 0: 'Avtomatik', 1: '1 ustun', 2: '2 ustun', 4: '4 ustun' };
 export const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
 export const RASM_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Rasmli', yoq: 'Rasmsiz' };
 export const YECHIM_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Yechimi bor', yoq: "Yechimi yo'q" };
+export const YECHIM_HOLATI_NOMI: Record<'tasdiqlangan' | 'qoralama', string> = { tasdiqlangan: 'Tasdiqlangan yechim', qoralama: 'Tasdiqlanmagan yechim' };
+export const DARS_NOMI: Record<DarsFiltri, string> = { tasdiqlangan: 'Tasdiqlangan', qoralama: 'Tasdiqlanmagan', eskirgan: 'Eskirgan', yoq: "Darsi yo'q" };
+export const ISHLATILGAN_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Ishlatilgan', yoq: 'Ishlatilmagan' };
+export const NATIJA_NOMI: Record<NatijaFiltri, string> = { oson: 'Oson (70%+ topgan)', orta: "O'rta (40–70%)", qiyin: 'Qiyin (40% dan kam)', yoq: "Ma'lumot yo'q" };
+export const TARJIMA_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Tarjimasi bor', yoq: "Tarjimasi yo'q" };
+export const YANGI_NOMI: Record<YangiKun, string> = { 1: 'Oxirgi 24 soat', 7: 'Oxirgi 7 kun', 30: 'Oxirgi 30 kun' };
 
 export const almashtirRoyxat = <K,>(l: K[], k: K) => (l.includes(k) ? l.filter(x => x !== k) : [...l, k]);
 

@@ -8,7 +8,11 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
 import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI, SAVOL_TURLARI, GURUH_TURLARI, HARFLAR, savolVariantlari } from '../lib/imtihon.js';
-import { rasmliIdlarSorovi, rasmYechimSoniSorovi, yechimBor, YECHIM_BOSH } from '../lib/bankFiltr.js';
+import {
+  rasmliIdlarSorovi, rasmYechimSoniSorovi, yechimBor, YECHIM_BOSH,
+  YECHIM_HOLATI_FILTRI, DARS_FILTRI, boshqaSonlarSorovi, boshqaSonlari, natijaSharti, yangiChegara,
+} from '../lib/bankFiltr.js';
+import { darsHolati } from '../lib/imtihonDars.js';
 // Andozalar: qo'shilgan savollar ro'yxati (sof qoidalari — lib/andoza.js) va qoidalar bo'yicha to'ldirish.
 import { guruhSavolimi, andozaSavolSoni, andozaniToldir } from '../lib/imtihon.js';
 import { ANDOZA_MAX, andozaIdlari, andozaSoni, andozaFani, andozaTosiqlari, guruhlariBilan, andozagaQoshish, andozadanOlish, andozaTartibi } from '../lib/andoza.js';
@@ -862,6 +866,7 @@ export function registerSavolBankiRoutes(app) {
       // Rasmli va yechimli savollar soni — alohida so'rov (matn ustunlari bu yerga tortilmaydi);
       // u ishlamasa ham ekran ochiladi (filtr tugmalari sonsiz chiqadi).
       const rasmYechimKutish = rasmYechimSoni(orgIds, mavzular.map(t => t.id)).catch(e => { console.error('[bank] rasm/yechim sonlari:', e.message); return null; });
+      const boshqaKutish = boshqaSonlar(orgIds, mavzular.map(t => t.id)).catch(e => { console.error('[bank] qo\'shimcha filtr sonlari:', e.message); return null; });
       const savollar = await prisma.question.findMany({
         where: { schoolId: { in: orgIds }, bankTopicId: { in: mavzular.map(t => t.id) } },
         select: { bankTopicId: true, difficulty: true, source: true, tagIds: true, toplam: true, status: true, type: true, remark: true, passageId: true, joylashuv: true },
@@ -914,6 +919,8 @@ export function registerSavolBankiRoutes(app) {
         // Rasmli / rasmsiz va yechimi bor / yo'q savollar (arxivsiz); null — sanab bo'lmadi.
         rasmli: ry ? { bor: ry.rasmli, yoq: ry.jami - ry.rasmli } : null,
         yechimli: ry ? { bor: ry.yechimli, yoq: ry.jami - ry.yechimli } : null,
+        // Yechim holati, video dars, ishlatilgani, natija, tarjima va yangilik sonlari (arxivsiz); null — sanab bo'lmadi.
+        qoshimcha: await boshqaKutish,
         qiyinlikSozlama: await qiyinlikSozlamasi(orgIds),
         guruhlar: hammaGuruh.filter(g => g.tur !== 'qiyinlik'),
         darajalar: (hammaGuruh.find(g => g.tur === 'qiyinlik')?.tags || []).map(t => ({ id: t.id, name: t.name, asos: qiyinlikDarajasi(t.asos || 2), soni: belgi[t.id] || 0 })),
@@ -1242,6 +1249,47 @@ async function rasmYechimSoni(orgIds, mavzuIdlar) {
 }
 
 /**
+ * Savollarning video dars holati: Map(savol id → 'tasdiqlangan' | 'qoralama' | 'eskirgan'); darsi
+ * yo'q savol kirmaydi. `mavzuIdlar` null — butun bank; `arxivsiz` — arxivdagi savollarsiz.
+ */
+async function darsHolatlari(orgIds, mavzuIdlar, { arxivsiz = false } = {}) {
+  if (mavzuIdlar && !mavzuIdlar.length) return new Map();
+  const royxat = await prisma.questionLesson.findMany({
+    where: { question: {
+      schoolId: { in: orgIds },
+      ...(mavzuIdlar ? { bankTopicId: { in: mavzuIdlar } } : {}),
+      ...(arxivsiz ? { status: { not: 'arxiv' } } : {}),
+    } },
+    // Chegarasiz: darslar savollar sonidan oshmaydi; kesilsa facet va ro'yxat jim noto'g'ri bo'lib qolardi.
+    select: { questionId: true, status: true, yechimIzi: true, question: { select: { solution: true, correctAnswer: true } } },
+  });
+  return new Map(royxat.map(d => [d.questionId, darsHolati(d, d.question)]));
+}
+
+/** Fan mavzularidagi (arxivsiz) savollar bo'yicha qo'shimcha filtrlar sonlari (lib/bankFiltr.js boshqaSonlari). */
+async function boshqaSonlar(orgIds, mavzuIdlar) {
+  if (!mavzuIdlar.length) return boshqaSonlari(null, new Map());
+  const s = boshqaSonlarSorovi(orgIds, mavzuIdlar);
+  const [[qator], darslar] = await Promise.all([
+    prisma.$queryRawUnsafe(s.sql, ...s.qiymatlar).then(r => (r.length ? r : [null])),
+    darsHolatlari(orgIds, mavzuIdlar, { arxivsiz: true }),
+  ]);
+  return boshqaSonlari(qator, darslar);
+}
+
+/** Video dars sharti: tanlangan holatlar "yoki" (darsi yo'q — bog'lanishning o'zi bo'yicha). */
+async function darsSharti(orgIds, mavzuIdlar, holatlar) {
+  const yoki = [];
+  if (holatlar.includes('yoq')) yoki.push({ lesson: { is: null } });
+  const tanlangan = holatlar.filter(h => h !== 'yoq');
+  if (tanlangan.length) {
+    const idlar = [...(await darsHolatlari(orgIds, mavzuIdlar)).entries()].filter(([, h]) => tanlangan.includes(h)).map(([id]) => id);
+    yoki.push({ id: { in: idlar } });
+  }
+  return yoki.length === 1 ? yoki[0] : { OR: yoki };
+}
+
+/**
  * Ro'yxat sharti. Bir ustun ichida tanlanganlar — "yoki", ustunlar orasida — "va"
  * (Addmen'dagidek). '' — qiymati yo'q (bo'limsiz, manbasiz, to'plamsiz).
  */
@@ -1312,6 +1360,20 @@ async function royxatSharti(f, orgIds) {
   // Yechimi bor / yo'q (holati emas, matnining o'zi bo'yicha).
   if (f.yechim === 'bor') and.push({ solution: { not: null } }, { solution: { notIn: YECHIM_BOSH } });
   else if (f.yechim === 'yoq') and.push({ OR: [{ solution: null }, { solution: { in: YECHIM_BOSH } }] });
+  // Yechim holati: ustoz tasdiqlagan yoki hali tasdiqlanmagan (AI qoralamasi).
+  if (YECHIM_HOLATI_FILTRI.includes(f.yechimHolati)) and.push({ solutionStatus: f.yechimHolati });
+  const darslar = [...new Set((Array.isArray(f.dars) ? f.dars : []).filter(h => DARS_FILTRI.includes(h)))];
+  if (darslar.length && darslar.length < DARS_FILTRI.length) and.push(await darsSharti(orgIds, mavzuIdlar, darslar));
+  if (f.ishlatilgan === 'bor') and.push({ usedCount: { gt: 0 } });
+  else if (f.ishlatilgan === 'yoq') and.push({ usedCount: { lte: 0 } });
+  const natija = natijaSharti(f.natija);
+  if (natija) and.push(natija);
+  // Tarjima: bazadagi NULL ham, JSON null ham — "yo'q".
+  const tarjimaYoq = [{ tarjima: { equals: Prisma.DbNull } }, { tarjima: { equals: Prisma.JsonNull } }];
+  if (f.tarjima === 'bor') and.push({ NOT: tarjimaYoq });
+  else if (f.tarjima === 'yoq') and.push({ OR: tarjimaYoq });
+  const yangiBoshi = yangiChegara(f.yangi);
+  if (yangiBoshi) and.push({ createdAt: { gte: yangiBoshi } });
   const joylar = (Array.isArray(f.joylashuv) ? f.joylashuv : []).map(Number).filter(n => [0, 1, 2, 4].includes(n));
   if (joylar.length) {
     const bor = joylar.filter(Boolean);

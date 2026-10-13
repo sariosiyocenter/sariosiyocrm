@@ -1,22 +1,33 @@
 import React from 'react';
 import { TUR_NOMI } from '../../../lib/savolTuri';
-import { almashtirRoyxat, HOLAT_NOMI, JOYLASHUV_NOMI, RASM_NOMI, TABLETKA, YECHIM_NOMI, type BorYoq, type Holat, type Saralash } from './bankTurlari';
-import type { BankFiltrMalumoti, SavolTuri } from '../../../types';
+import {
+  almashtirRoyxat, DARS_NOMI, HOLAT_NOMI, ISHLATILGAN_NOMI, JOYLASHUV_NOMI, NATIJA_NOMI, RASM_NOMI, TABLETKA, TARJIMA_NOMI,
+  YANGI_NOMI, YECHIM_HOLATI_NOMI, YECHIM_NOMI, type BorYoq, type Holat, type Saralash,
+} from './bankTurlari';
+import type { BankFiltrMalumoti, DarsFiltri, NatijaFiltri, SavolTuri, YangiKun } from '../../../types';
 
-// Bank ro'yxatining «Boshqa filtrlar» paneli: tartib, savol turi, rasm, yechim, holat, manba,
-// fayl, izoh, matn, joylashuv va QID oralig'i. (Mavzu, qiyinlik va foydalanuvchining o'z
+// Bank ro'yxatining «Boshqa filtrlar» paneli: tartib, savol turi, rasm, yechim (va uning holati),
+// video dars, holat, manba, fayl, izoh, matn, joylashuv, ishlatilgani, natija bo'yicha qiyinlik,
+// tarjima, qo'shilgan vaqti va QID oralig'i. (Mavzu, qiyinlik va foydalanuvchining o'z
 // filtrlari — chap panelda: BankJadvali.tsx.)
+
+const DARS_TARTIBI: DarsFiltri[] = ['tasdiqlangan', 'qoralama', 'eskirgan', 'yoq'];
+const NATIJA_TARTIBI: NatijaFiltri[] = ['oson', 'orta', 'qiyin', 'yoq'];
+const YANGI_TARTIBI: YangiKun[] = [1, 7, 30];
 
 /** Panelda nechta saralash yoqilgan (tugmadagi son). */
 export const boshqaFiltrSoni = (s: Saralash) => (s.tur ? 1 : 0) + (s.rasm ? 1 : 0) + (s.yechim ? 1 : 0) + (s.holat ? 1 : 0) + s.manbalar.length
-  + (s.toplam !== null ? 1 : 0) + s.izohlar.length + (s.matnli ? 1 : 0) + s.joylashuv.length + (s.qidDan || s.qidGacha ? 1 : 0);
+  + (s.toplam !== null ? 1 : 0) + s.izohlar.length + (s.matnli ? 1 : 0) + s.joylashuv.length + (s.qidDan || s.qidGacha ? 1 : 0)
+  + (s.yechimHolati ? 1 : 0) + s.dars.length + (s.ishlatilgan ? 1 : 0) + s.natija.length + (s.tarjima ? 1 : 0) + (s.yangi ? 1 : 0);
 
 export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
   filtr: BankFiltrMalumoti; s: Saralash; setS: React.Dispatch<React.SetStateAction<Saralash>>;
   tartib: 'asc' | 'desc'; setTartib: (t: 'asc' | 'desc') => void;
 }) {
+  /** Qo'shimcha filtrlar sonlari (serverdan kelmasa — tugmalar sonsiz). */
+  const q = filtr.qoshimcha ?? undefined;
   /** Ikki holatli saralash (bor / yo'q): yana bosilsa — olinadi; son serverdan kelmagan bo'lsa — sonsiz. */
-  const borYoq = (kalit: 'rasm' | 'yechim' | 'matnli', nomlar: Record<Exclude<BorYoq, ''>, string>, sonlar?: { bor: number; yoq: number } | null) => (
+  const borYoq = (kalit: 'rasm' | 'yechim' | 'matnli' | 'ishlatilgan' | 'tarjima', nomlar: Record<Exclude<BorYoq, ''>, string>, sonlar?: { bor: number; yoq: number } | null) => (
     <div className="flex flex-wrap gap-1.5">
       {(['bor', 'yoq'] as const).map(k => (
         <button key={k} type="button" aria-pressed={s[kalit] === k} onClick={() => setS(x => ({ ...x, [kalit]: x[kalit] === k ? '' : k }))} className={TABLETKA(s[kalit] === k)}>
@@ -49,8 +60,18 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
         {borYoq('rasm', RASM_NOMI, filtr.rasmli)}
         <p className="mt-1.5 text-[11px] text-matn-xira">Rasm savolning o'zida, variantida yoki umumiy shartida</p>
       </Bolim>
-      <Bolim nom="Yechim" tanlangan={s.yechim ? 1 : 0}>
+      <Bolim nom="Yechim" tanlangan={(s.yechim ? 1 : 0) + (s.yechimHolati ? 1 : 0)}>
         {borYoq('yechim', YECHIM_NOMI, filtr.yechimli)}
+        <div className="mt-1.5">
+          <Tabletkalar qiymatlar={(['tasdiqlangan', 'qoralama'] as const).map(k => ({ k, nom: YECHIM_HOLATI_NOMI[k], soni: q?.yechim[k] }))}
+            tanlangan={k => s.yechimHolati === k} onBos={k => setS(x => ({ ...x, yechimHolati: x.yechimHolati === k ? '' : k }))} />
+        </div>
+        <p className="mt-1.5 text-[11px] text-matn-xira">Tasdiqlangan — ustoz tekshirib tasdiqlagan yechim; qolgani — AI qoralamasi</p>
+      </Bolim>
+      <Bolim nom="Video dars" tanlangan={s.dars.length}>
+        <Tabletkalar qiymatlar={DARS_TARTIBI.map(k => ({ k, nom: DARS_NOMI[k], soni: q?.dars[k] }))}
+          tanlangan={k => s.dars.includes(k)} onBos={k => setS(x => ({ ...x, dars: almashtirRoyxat(x.dars, k) }))} />
+        <p className="mt-1.5 text-[11px] text-matn-xira">Eskirgan — yechim o'zgargani uchun o'quvchiga ko'rinmaydi, qayta tuzish kerak</p>
       </Bolim>
       <Bolim nom="Holati" tanlangan={s.holat ? 1 : 0}>
         <div className="flex flex-wrap gap-1.5">
@@ -96,6 +117,21 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
           </div>
         </Bolim>
       )}
+      <Bolim nom="Imtihonda ishlatilgan" tanlangan={s.ishlatilgan ? 1 : 0}>
+        {borYoq('ishlatilgan', ISHLATILGAN_NOMI, q?.ishlatilgan)}
+      </Bolim>
+      <Bolim nom="Natija bo'yicha qiyinlik" tanlangan={s.natija.length}>
+        <Tabletkalar qiymatlar={NATIJA_TARTIBI.map(k => ({ k, nom: NATIJA_NOMI[k], soni: q?.natija[k] }))}
+          tanlangan={k => s.natija.includes(k)} onBos={k => setS(x => ({ ...x, natija: almashtirRoyxat(x.natija, k) }))} />
+        <p className="mt-1.5 text-[11px] text-matn-xira">Imtihondagi to'g'ri topganlar ulushi (belgilangan qiyinlikdan alohida)</p>
+      </Bolim>
+      <Bolim nom="Tarjima" tanlangan={s.tarjima ? 1 : 0}>
+        {borYoq('tarjima', TARJIMA_NOMI, q?.tarjimali)}
+      </Bolim>
+      <Bolim nom="Qo'shilgan vaqti" tanlangan={s.yangi ? 1 : 0}>
+        <Tabletkalar qiymatlar={YANGI_TARTIBI.map(k => ({ k, nom: YANGI_NOMI[k], soni: q?.yangi[k] }))}
+          tanlangan={k => s.yangi === k} onBos={k => setS(x => ({ ...x, yangi: x.yangi === k ? 0 : k }))} />
+      </Bolim>
       <Bolim nom="Savol raqami (QID) oralig'i" tanlangan={s.qidDan || s.qidGacha ? 1 : 0}>
         <div className="flex items-center gap-2">
           <input className="w-full min-w-0 px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12.5px] raqam focus:border-brand" style={{ outline: 'none' }} inputMode="numeric" placeholder="dan" aria-label="QID dan"
@@ -106,6 +142,21 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
         </div>
       </Bolim>
     </section>
+  );
+}
+
+/** Tabletka-tugmalar qatori: har birida nomi va (serverdan kelgan bo'lsa) soni; bosilganda `onBos`. */
+function Tabletkalar<K extends string | number>({ qiymatlar, tanlangan, onBos }: {
+  qiymatlar: { k: K; nom: string; soni?: number }[]; tanlangan: (k: K) => boolean; onBos: (k: K) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {qiymatlar.map(({ k, nom, soni }) => (
+        <button key={String(k)} type="button" aria-pressed={tanlangan(k)} onClick={() => onBos(k)} className={TABLETKA(tanlangan(k))}>
+          {nom}{soni !== undefined && <span className="raqam text-[11px] opacity-70">{soni}</span>}
+        </button>
+      ))}
+    </div>
   );
 }
 

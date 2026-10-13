@@ -559,6 +559,23 @@ export interface Question {
 /** Filtr (belgi guruhi): `subjectId` — faqat shu fanniki (null — hamma fanda); `tur: 'qiyinlik'` — foydalanuvchi darajalari. */
 export interface BelgiGuruhi { id: number; name: string; order: number; subjectId?: number | null; tur?: string | null; tags: { id: number; name: string; order: number; asos?: number }[] }
 
+/** Video dars holati (bank filtri): eskirgan — yechim o'zgargan, o'quvchiga ko'rinmaydi. */
+export type DarsFiltri = 'tasdiqlangan' | 'qoralama' | 'eskirgan' | 'yoq';
+/** Natija bo'yicha qiyinlik (to'g'ri topganlar ulushi): 'yoq' — hali natija yig'ilmagan. */
+export type NatijaFiltri = 'oson' | 'orta' | 'qiyin' | 'yoq';
+/** Savol qo'shilganiga oxirgi necha kun (1 — oxirgi 24 soat). */
+export type YangiKun = 1 | 7 | 30;
+
+/** bank/filtr: yechim holati, video dars, ishlatilgani, natija, tarjima va yangilik sonlari. */
+export interface BankQoshimchaSonlari {
+    yechim: { tasdiqlangan: number; qoralama: number };
+    dars: Record<DarsFiltri, number>;
+    ishlatilgan: { bor: number; yoq: number };
+    tarjimali: { bor: number; yoq: number };
+    natija: Record<NatijaFiltri, number>;
+    yangi: Record<YangiKun, number>;
+}
+
 /** GET /api/bank/filtr — fan bo'yicha filtr ustunlari va sonlar (arxivsiz). */
 export interface BankFiltrMalumoti {
     fan: { id: number; name: string };
@@ -582,6 +599,8 @@ export interface BankFiltrMalumoti {
     rasmli?: { bor: number; yoq: number } | null;
     /** Yechimi bor / yo'q savollar soni; null — sanab bo'lmadi. */
     yechimli?: { bor: number; yoq: number } | null;
+    /** Qo'shimcha filtrlar sonlari (arxivsiz); null — sanab bo'lmadi. */
+    qoshimcha?: BankQoshimchaSonlari | null;
     /** Variantlar joylashuvi: 0 — avtomatik, 1/2/4 ustun. */
     joylashuv: Record<'0' | '1' | '2' | '4', number>;
     /** belgi id → savollar soni */

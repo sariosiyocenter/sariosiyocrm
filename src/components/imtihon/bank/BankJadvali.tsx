@@ -18,7 +18,10 @@ import YechimOynasi, { type YechimNatijasi } from './YechimOynasi';
 import DarsOynasi from './DarsOynasi';
 import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
-import { almashtirRoyxat, BOSH_SARALASH as BOSH, HOLAT_NOMI, JOYLASHUV_NOMI, RASM_NOMI, TABLETKA, YECHIM_NOMI, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi } from './bankTurlari';
+import {
+  almashtirRoyxat, BOSH_SARALASH as BOSH, DARS_NOMI, HOLAT_NOMI, ISHLATILGAN_NOMI, JOYLASHUV_NOMI, NATIJA_NOMI, RASM_NOMI, TABLETKA, TARJIMA_NOMI,
+  YANGI_NOMI, YECHIM_HOLATI_NOMI, YECHIM_NOMI, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi,
+} from './bankTurlari';
 import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question } from '../../../types';
 
 // Savollar banki (egasi bilan maketda kelishilgan ko'rinish, 2026-10-03).
@@ -183,6 +186,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     qiyinlik: s.qiyinlik, darajalar: s.darajalar, qiyinlikSof: true, manbalar: s.manbalar, belgilar: s.belgilar,
     toplam: s.toplam ?? undefined, tur: s.tur || undefined, qidiruv: s.qidiruv.trim() || undefined,
     izohlar: s.izohlar, matnli: s.matnli || undefined, joylashuv: s.joylashuv, rasm: s.rasm || undefined, yechim: s.yechim || undefined,
+    yechimHolati: s.yechimHolati || undefined, dars: s.dars, ishlatilgan: s.ishlatilgan || undefined, natija: s.natija,
+    tarjima: s.tarjima || undefined, yangi: s.yangi || undefined,
   })), [fan?.id, tanlov, s]);
 
   useEffect(() => { setSahifa(1); }, [sorov, tartib]);
@@ -690,6 +695,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     if (s.tur) l.push({ k: 'tur', nom: TUR_NOMI[s.tur], ol: () => setS(x => ({ ...x, tur: '' })) });
     if (s.rasm) l.push({ k: 'rasm', nom: `${RASM_NOMI[s.rasm]} savollar`, ol: () => setS(x => ({ ...x, rasm: '' })) });
     if (s.yechim) l.push({ k: 'yechim', nom: YECHIM_NOMI[s.yechim], ol: () => setS(x => ({ ...x, yechim: '' })) });
+    if (s.yechimHolati) l.push({ k: 'yechimHolati', nom: YECHIM_HOLATI_NOMI[s.yechimHolati], ol: () => setS(x => ({ ...x, yechimHolati: '' })) });
+    for (const d of s.dars) l.push({ k: `dars${d}`, nom: `Video dars: ${DARS_NOMI[d].toLowerCase()}`, ol: () => setS(x => ({ ...x, dars: x.dars.filter(y => y !== d) })) });
+    if (s.ishlatilgan) l.push({ k: 'ishlatilgan', nom: ISHLATILGAN_NOMI[s.ishlatilgan], ol: () => setS(x => ({ ...x, ishlatilgan: '' })) });
+    for (const n of s.natija) l.push({ k: `natija${n}`, nom: `Natija: ${NATIJA_NOMI[n].replace(/ \(.*\)$/, '').toLowerCase()}`, ol: () => setS(x => ({ ...x, natija: x.natija.filter(y => y !== n) })) });
+    if (s.tarjima) l.push({ k: 'tarjima', nom: TARJIMA_NOMI[s.tarjima], ol: () => setS(x => ({ ...x, tarjima: '' })) });
+    if (s.yangi) l.push({ k: 'yangi', nom: YANGI_NOMI[s.yangi], ol: () => setS(x => ({ ...x, yangi: 0 })) });
     for (const m of s.manbalar) l.push({ k: `s${m}`, nom: m || 'Manbasiz', ol: () => setS(x => ({ ...x, manbalar: x.manbalar.filter(y => y !== m) })) });
     if (s.toplam !== null) l.push({ k: 'toplam', nom: `Fayl: ${s.toplam || "to'plamsiz"}`, ol: () => setS(x => ({ ...x, toplam: null })) });
     if (s.holat) l.push({ k: 'holat', nom: HOLAT_NOMI[s.holat], ol: () => setS(x => ({ ...x, holat: '' })) });
@@ -910,7 +921,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             </button>
           </div>
 
-          {/* Kam ishlatiladigan saralashlar: tartib, turi, rasm, yechim, holati, manba, fayl, izoh, matn, joylashuv, QID. */}
+          {/* Kam ishlatiladigan saralashlar: tartib, turi, rasm, yechim (holati), video dars, holati, manba, fayl, izoh, matn,
+              joylashuv, ishlatilgani, natija, tarjima, qo'shilgan vaqti, QID. */}
           {boshqa && filtr && <BoshqaFiltrlar filtr={filtr} s={s} setS={setS} tartib={tartib} setTartib={setTartib} />}
 
           <div className="flex flex-wrap items-center gap-1.5 px-1 min-h-7">
