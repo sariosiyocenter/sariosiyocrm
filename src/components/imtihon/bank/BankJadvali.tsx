@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList } from 'lucide-react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
@@ -15,6 +15,7 @@ import GuruhOynasi from './GuruhOynasi';
 import BankSavolKarta from './BankSavolKarta';
 import BoshqaFiltrlar, { boshqaFiltrSoni } from './BoshqaFiltrlar';
 import YechimOynasi, { type YechimNatijasi } from './YechimOynasi';
+import DarsOynasi from './DarsOynasi';
 import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiyinlik';
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
 import { almashtirRoyxat, BOSH_SARALASH as BOSH, HOLAT_NOMI, JOYLASHUV_NOMI, RASM_NOMI, TABLETKA, YECHIM_NOMI, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi } from './bankTurlari';
@@ -104,6 +105,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const [guruhTahrir, setGuruhTahrir] = useState<number | null>(null);
   // Yechim oynasi: qaysi savol va qaysi rejimda (ko'rish yoki o'zgartirish).
   const [yechim, setYechim] = useState<{ id: number; rejim: YechimRejimi } | null>(null);
+  // Video dars oynasi (DarsOynasi): qaysi savol.
+  const [dars, setDars] = useState<number | null>(null);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   const [band, setBand] = useState<string | null>(null);
   // Serverga yozilayotgan yangi qatorlar (nomi darhol ko'rinadi).
@@ -412,6 +415,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   // Oyna ochiq turganda boshqasi ochilmaydi (ichidagi saqlanmagan yechim jim yo'qolmasin).
   const yechimKor = useCallback((id: number) => setYechim(x => x ?? { id, rejim: 'korish' }), []);
   const yechimOch = (id: number, rejim: YechimRejimi) => { setMenyu(null); setYechim(x => x ?? { id, rejim }); };
+  const darsOch = (id: number) => { setMenyu(null); setDars(x => x ?? id); };
   /** Yechim saqlandi: kartadagi belgi darhol yangilanadi; filtr sonlari va ro'yxat — jimgina. */
   const yechimSaqlandi = useCallback((id: number, n: YechimNatijasi) => {
     setRoyxat(r => r && ({ ...r, items: r.items.map(q => (q.id === id ? { ...q, yechimBor: n.yechimBor, solutionStatus: n.solutionStatus } : q)) }));
@@ -420,11 +424,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     jim.current = true;
     setQayta(x => x + 1);
   }, []);
-  /** Menyudagi yechim amallari: ko'rish — savollar bo'limini ko'ra oladiganga, o'zgartirish — tahrirlay oladiganga. */
+  /** Menyudagi yechim va video dars amallari: ko'rish — savollar bo'limini ko'ra oladiganga, o'zgartirish — tahrirlay oladiganga. */
   const yechimBandlari = (id: number) => (
     <>
       {yechimKoradi && <MenyuBand ikonka={<Lightbulb size={14} />} onClick={() => yechimOch(id, 'korish')}>Yechimni ko'rish</MenyuBand>}
       {savolTahrir && <MenyuBand ikonka={<Wand2 size={14} />} onClick={() => yechimOch(id, 'ozgartirish')}>Yechimni o'zgartirish</MenyuBand>}
+      {yechimKoradi && <MenyuBand ikonka={<Clapperboard size={14} />} onClick={() => darsOch(id)}>Video dars</MenyuBand>}
     </>
   );
 
@@ -1108,6 +1113,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {guruhTahrir != null && <GuruhOynasi daraxt={daraxt} guruhId={guruhTahrir} onYop={() => setGuruhTahrir(null)} onSaqlandi={ozgardi} />}
       {yechim && <YechimOynasi key={yechim.id} id={yechim.id} rejim={yechim.rejim} onYop={() => setYechim(null)} onSaqlandi={yechimSaqlandi} />}
+      {dars && <DarsOynasi key={dars} id={dars} onYop={() => setDars(null)} />}
       {andozaga && <AndozagaQoshish ids={andozaga} onYop={() => setAndozaga(null)} onQoshildi={() => setTanlangan(new Set())} />}
       {oxshash && (
         <OxshashKop ids={oxshash} onYop={() => setOxshash(null)}

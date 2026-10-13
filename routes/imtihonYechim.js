@@ -33,40 +33,41 @@ const AI_YOQILMAGAN = "AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo
 const BOLIM = 'imtihonlar.savollar';
 
 // So'rov oxirigacha markaz kaliti bilan ishlaydi (lib/imtihonAI.js dagi AsyncLocalStorage).
-const aiKontekst = async (req, res, next) => {
+export const aiKontekst = async (req, res, next) => {
   let kalit;
   try { kalit = await markazKaliti(req.user); } catch (err) { return next(err); }
   aiBilan(kalit, () => next());
 };
 
 /**
- * So'rov shu yo'lning aniq ko'rinishidami va xodim savollar bankini o'zgartira oladimi.
- * Javob yuborilgan bo'lsa (ruxsat yo'q) — false. `oxiri` — id dan keyingi qism ("/yechim").
+ * So'rov shu yo'lning aniq ko'rinishidami va xodim savollar bankini o'zgartira oladimi
+ * (`daraja` 1 bo'lsa — ko'ra oladimi). Javob yuborilgan bo'lsa (ruxsat yo'q) — 0.
+ * `oxiri` — id dan keyingi qism ("/yechim").
  */
-function ruxsatniTekshir(req, res, oxiri) {
+export function ruxsatniTekshir(req, res, oxiri, daraja = 2) {
   const id = aniqYolId(req.path, req.params.id, oxiri);
   if (!id) {
     res.status(404).json({ error: 'Savol topilmadi' });
     return 0;
   }
-  if (!yetadimi(req.ruxsat, BOLIM, 2)) {
-    res.status(403).json({ error: "Savollar bankini o'zgartirishga ruxsatingiz yo'q. Administratorga murojaat qiling.", ruxsat: true });
+  if (!yetadimi(req.ruxsat, BOLIM, daraja)) {
+    res.status(403).json({ error: `Savollar bankini ${daraja > 1 ? "o'zgartirishga" : "ko'rishga"} ruxsatingiz yo'q. Administratorga murojaat qiling.`, ruxsat: true });
     return 0;
   }
   return id;
 }
 
 /** Savol shu xodimning markaziniki bo'lsa — o'zi, aks holda null (boshqa markaz savoli "topilmadi" bo'lib ko'rinadi). */
-const ozSavoli = async (req, q) => (q && (await sameOrganization(req.user, q.schoolId)) ? q : null);
+export const ozSavoli = async (req, q) => (q && (await sameOrganization(req.user, q.schoolId)) ? q : null);
 
 /** Savol umumiy sharti bilan (guruhli savolda — boshqa bo'laklari ham: qismlar bir-biriga bog'liq). */
-const savolniOl = (id) => prisma.question.findUnique({
+export const savolniOl = (id) => prisma.question.findUnique({
   where: { id },
   include: { passage: { select: { tur: true, text: true, imageUrl: true, variantlar: true, questions: { select: { id: true, text: true, correctAnswer: true }, orderBy: { id: 'asc' } } } } },
 });
 
 /** Qismli savol: shu qismning harfi va boshqa qismlar (AI ga ma'lumot uchun). */
-function qismlar(q) {
+export function qismlar(q) {
   if (q.type !== 'qismli') return { qism: '', qoshnilar: [] };
   const hammasi = (q.passage?.questions || []).map((x, i) => ({ id: x.id, belgi: QISM_HARFLARI[i] || String(i + 1), matn: x.text, javob: x.correctAnswer || '' }));
   return { qism: hammasi.find(x => x.id === q.id)?.belgi || '', qoshnilar: hammasi.filter(x => x.id !== q.id) };

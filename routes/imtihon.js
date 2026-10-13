@@ -28,8 +28,9 @@ import {
   SAVOL_TURLARI, yakkaSavolTuri, guruhSavolimi, qismSoni, qismTekshiruvi,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
+import { oquvchiDarsi } from '../lib/imtihonDars.js';
 
-const kor = (req, bolim, daraja = 1) => yetadimi(req.ruxsat, bolim, daraja);
+const kor =(req, bolim, daraja = 1) => yetadimi(req.ruxsat, bolim, daraja);
 
 // Natija sahifasi havolasi: natija id si + imzo. Imzosiz yoki boshqa id bilan
 // ochib bo'lmaydi, shuning uchun havolani faqat xabar olgan ota-ona biladi.
@@ -2518,7 +2519,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
 
   // Ota-ona xabardagi havola orqali ochadi (kirishsiz). Faqat e'lon qilingan
   // imtihon. Sozlamada yoqilgan bo'lsa — savollar, o'quvchining javobi, to'g'ri
-  // javob va faqat TASDIQLANGAN yechim ("xatolar ustida ishlash").
+  // javob, faqat TASDIQLANGAN yechim va video dars ("xatolar ustida ishlash").
   // ============================ Onlayn test (Addmen CBT) ============================
 
   async function testOrni(token) {
@@ -2762,11 +2763,19 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         const v = await prisma.examVariant.findFirst({ where: { examId: e.id, session: r.session ?? 1, code: r.variantCode } });
         const items = Array.isArray(v?.items) ? v.items : [];
         const qids = items.map(it => it.q).filter(Number.isInteger);
-        const qs = await prisma.question.findMany({
-          where: { id: { in: qids } },
-          select: { id: true, text: true, imageUrl: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, solution: true, solutionStatus: true, passageId: true, correctAnswer: true, answers: true },
-        });
+        const [qs, darslar] = await Promise.all([
+          prisma.question.findMany({
+            where: { id: { in: qids } },
+            select: { id: true, text: true, imageUrl: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, solution: true, solutionStatus: true, passageId: true, correctAnswer: true, answers: true },
+          }),
+          // Video dars — qo'shimcha: uni o'qib bo'lmasa ham natija sahifasi ochilaveradi.
+          prisma.questionLesson.findMany({
+            where: { questionId: { in: qids }, status: 'tasdiqlangan' },
+            select: { questionId: true, qadamlar: true, davomiylik: true, ovozUrl: true, status: true, yechimIzi: true },
+          }).catch((err) => { console.error('[natija] video darslar olinmadi:', err?.message || err); return []; }),
+        ]);
         const qmap = new Map(qs.map(q => [q.id, q]));
+        const darsMap = new Map(darslar.map(x => [x.questionId, x]));
         const detail = new Map((Array.isArray(r.detail) ? r.detail : []).map(d => [d.n, d]));
         savollar = items.map(it => {
           const q = qmap.get(it.q);
@@ -2787,6 +2796,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
             javob: typeof d.javob === 'object' && d.javob ? (d.javob.ball ?? '') : (d.javob ?? ''),
             togri, holat: d.holat || null, ball: d.ball ?? 0,
             yechim: q?.solutionStatus === 'tasdiqlangan' ? q.solution : null,
+            dars: q ? oquvchiDarsi(darsMap.get(q.id), q) : null,
           };
         });
         const pids = [...new Set(qs.map(q => q.passageId).filter(Boolean))];

@@ -346,3 +346,24 @@ input[type="number"] {
 }
 .bank-chaqnash { animation: bank-chaqnash 1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .bank-chaqnash { animation: none; } }
+
+/* Video dars pleeri (src/components/imtihon/dars/DarsPleer.tsx). Doska — markaz rangidan
+   olingan to'q fon: yorug' va qorong'i mavzuda bir xil (bu — doska, sahifa emas). Qatorlar
+   chapdan o'ngga "yozilib" chiqadi; animatsiya tugagach kesim olinadi (keng formula sig'sin). */
+.dars-doska {
+  --dars-bor: #f1f6f4;
+  --dars-urgu: color-mix(in srgb, var(--color-brand-accent) 45%, #ffffff);
+  color: var(--dars-bor);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgb(255 255 255 / 0.035) 31px 32px),
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--color-brand) 46%, #0b1716), color-mix(in srgb, var(--color-brand) 20%, #070f0e));
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+}
+.dars-doska .katex { font-size: 1.14em; }
+@keyframes dars-yoz {
+  from { clip-path: inset(0 100% 0 0); opacity: 0.3; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+.dars-qator { animation: dars-yoz 0.7s cubic-bezier(0.22, 0.8, 0.3, 1) backwards; }
+@media (prefers-reduced-motion: reduce) { .dars-qator { animation: none; } }

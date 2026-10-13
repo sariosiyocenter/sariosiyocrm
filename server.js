@@ -12,6 +12,7 @@ import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHi
 import { registerImtihonSozlamaRoutes } from './routes/imtihonSozlama.js';
 import { registerImtihonYechimRoutes } from './routes/imtihonYechim.js';
 import { registerImtihonRasmRoutes } from './routes/imtihonRasm.js';
+import { registerImtihonDarsRoutes } from './routes/imtihonDars.js';
 import { auditMiddleware } from './lib/audit.js';
 import { yolHimoyasi } from './lib/yolHimoya.js';
 import { fonTozalash } from './lib/fonTozalash.js';
@@ -123,7 +124,8 @@ app.use(helmet({
       // weights are fetch() calls and connect-src did not allow the CDN.
       // OSRM — Logistika → Reja yo'l masofalari va yo'l chizig'i (lib/yolMasofa.js).
       connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org', 'https://cdn.jsdelivr.net', new URL(OSRM_MANZIL).origin].filter(Boolean),
-      mediaSrc: ["'self'", 'blob:', 'data:'],
+      // Video dars ovozi (routes/imtihonDars.js) Storage'dan o'ynaladi.
+      mediaSrc: ["'self'", 'blob:', 'data:', SUPABASE_ORIGIN].filter(Boolean),
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
       baseUri: ["'self'"],
@@ -8643,6 +8645,8 @@ registerImtihonSozlamaRoutes(app);
 registerImtihonYechimRoutes(app);
 // Savol rasmi: AI vektor (SVG) qilib chizadi, tozalangan fayl Storage'ga tushadi (routes/imtihonRasm.js).
 registerImtihonRasmRoutes(app, { storage: supabaseAdmin.storage });
+// Savolning video darsi: AI yechimni ssenariyga aylantiradi, ovoz (MP3) Storage'ga tushadi (routes/imtihonDars.js).
+registerImtihonDarsRoutes(app, { storage: supabaseAdmin.storage });
 // Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
 registerImtihonRoutes(app, {
   sendToOne,

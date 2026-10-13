@@ -1073,10 +1073,33 @@ model Question {
   tarjima       Json?
   // Addmen DISPLAY CHOICES: javob variantlari kitobchada nechta ustunda (1, 2, 4; null — o'zi tanlaydi).
   joylashuv     Int?
+  // Video dars (routes/imtihonDars.js) — alohida jadvalda: savollar ro'yxati og'irlashmaydi.
+  lesson        QuestionLesson?
 
   @@index([schoolId, subject, topic])
   @@index([passageId])
   @@index([bankTopicId])
+}
+
+// Savolning video darsi (lib/imtihonDars.js): AI tayyor yechimni doska qadamlari va o'qituvchi
+// nutqiga aylantiradi; "video"ni pleer shu ssenariydan chizadi, ovoz (MP3) bir marta yoziladi va
+// shu savol tushgan hamma o'quvchiga xizmat qiladi. O'quvchi faqat tasdiqlanganini ko'radi.
+model QuestionLesson {
+  id          Int      @id @default(autoincrement())
+  questionId  Int      @unique
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  // [{sarlavha, doska, nutq, boshi, davomi}] — vaqtlar soniyada (ovoz yozilguncha taxminiy).
+  qadamlar    Json
+  davomiylik  Float    @default(0)
+  // Ovoz fayli (Storage). Yo'q bo'lsa pleer subtitr bilan, ovozsiz o'ynaydi.
+  ovozUrl     String?
+  status      String   @default("qoralama") // qoralama | tasdiqlangan
+  // Dars qaysi yechimdan tuzilgani: yechim o'zgarsa dars eskiradi va o'quvchiga ko'rinmaydi.
+  yechimIzi   String
+  korsatma    String?
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // Savol belgilari guruhi — Addmen'dagi foydalanuvchi filtrlari ("Milliy sertifikat

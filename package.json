@@ -9,12 +9,14 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "test": "node --test --experimental-test-module-mocks \"tests/*.test.mjs\"",
     "start": "node server.js",
     "postinstall": "prisma generate && prisma db push",
     "db:push:force": "prisma db push --accept-data-loss"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",
+    "@breezystack/lamejs": "^1.2.7",
     "@google/genai": "^1.29.0",
     "@prisma/client": "^6.2.1",
     "@splinetool/react-spline": "^4.1.0",
