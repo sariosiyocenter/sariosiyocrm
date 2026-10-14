@@ -15,7 +15,6 @@ import TekshirishTab from './imtihon/TekshirishTab';
 import NatijalarTab from './imtihon/NatijalarTab';
 import TarixBolimi from './imtihon/TarixBolimi';
 import ImtihonSozlamalari from './imtihon/ImtihonSozlamalari';
-import BosqichYolboshchi from './imtihon/BosqichYolboshchi';
 import { sanaMatni } from './imtihon/format';
 import { toDateStr } from '../../lib/lessons.js';
 import type { Exam } from '../types';
@@ -146,10 +145,6 @@ export default function ExamsList() {
           </button>
         )}
       </nav>
-
-      {tab !== 'sozlama' && !tarix && (
-        <BosqichYolboshchi tab={tab as TabId} exam={exam && exam.id === tanlangan && tab !== 'savollar' ? exam : null} onTab={tabga} />
-      )}
 
       {tab === 'savollar' && <QuestionsList />}
 
