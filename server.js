@@ -46,7 +46,7 @@ import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyChekl
 import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent, kurslardanChiqarish, kursdanChiqish, chiqishTanloviXatosi } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, setKursChiqish, firstMonthQuote, todayTashkent, kurslardanChiqarish, kursdanChiqish, chiqishTanloviXatosi } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi, kunniSaqlash, holatniOchirish } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
@@ -1505,7 +1505,18 @@ async function kpiHisobla(employee, month) {
     // berilgan bo'lsa ham u faqat o'z oyida hisobga kiradi: 2 mln berib
     // 4 oy o'qiydigan o'quvchi uchun ustoz har oy 500 mingdan oladi.
     // Qarz kech to'langan bo'lsa — to'langan oyga yoziladi.
-    const studentIds = [...new Set(groups.flatMap(g => g.students.map(s => s.id)))];
+    // Faqat hozirgi a'zolar emas: guruhdan chiqqan yoki boshqa kursga ko'chgan
+    // o'quvchining shu guruh hisobini yopgan puli ham shu ustozniki. Ilgari
+    // ular tushib qolardi — oy o'rtasida ko'chgan o'quvchining o'tilgan
+    // darslari puli eski ustozga hech qachon yozilmasdi.
+    const sobiqlar = groupIds.length
+      ? await prisma.payment.findMany({
+          where: { groupId: { in: groupIds }, type: { in: ['Oylik', 'Chegirma'] } },
+          select: { studentId: true },
+          distinct: ['studentId'],
+        })
+      : [];
+    const studentIds = [...new Set([...groups.flatMap(g => g.students.map(s => s.id)), ...sobiqlar.map(r => r.studentId)])];
     const receivedByGroup = await receivedForGroups(studentIds, String(month));
 
     // O'tkazilgan darslar — ma'lumot uchun (oylikka qo'shilmaydi).
@@ -5512,6 +5523,25 @@ app.post('/api/students/:id/kurs-hisob', authenticate, async (req, res, next) =>
       studentId: req.params.id,
       groupId: parseInt(groupId),
       startDate, price, firstMonthDue,
+      schoolId: schoolId ? parseInt(schoolId) : undefined,
+      apply: preview !== true,
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+// Allaqachon chiqib ketgan kurs uchun chiqish sanasi (kelgan sanaga o'xshash):
+// hisob shu kungacha qoladi, keyingi oylar bekor bo'ladi (services/enrollment.js
+// → setKursChiqish). preview: true — faqat hisob, hech narsa yozilmaydi.
+app.post('/api/students/:id/kurs-chiqish', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, groupId, endDate, summa, preview } = req.body;
+    if (!groupId || !endDate) return res.status(400).json({ error: 'groupId va endDate kerak' });
+    const result = await setKursChiqish({
+      studentId: req.params.id,
+      groupId: parseInt(groupId),
+      endDate, summa,
       schoolId: schoolId ? parseInt(schoolId) : undefined,
       apply: preview !== true,
     });

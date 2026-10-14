@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Attendance, Student, Group } from '../types';
 import { useCRM } from '../context/CRMContext';
 import { displayName } from '../lib/displayName';
+import { kelganSana } from '../lib/taqsimot';
 import { Check, X, HelpCircle, XCircle, Clock, LogOut, Ban } from 'lucide-react';
 
 interface AttendanceMatrixProps {
@@ -21,7 +22,7 @@ const STATUSES = [
 ] as const;
 
 export default function AttendanceMatrix({ group, students, attendances, selectedDate }: AttendanceMatrixProps) {
-    const { addAttendance, showNotification, ozgartira } = useCRM();
+    const { addAttendance, showNotification, ozgartira, payments } = useCRM();
     const davomatTahrir = ozgartira('kurslar.davomat');
     const [activePopover, setActivePopover] = useState<{
         studentId: number;
@@ -55,9 +56,25 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
     const getAtt = (studentId: number, date: string) =>
         attendances.find(a => a.studentId === studentId && a.date === date && a.groupId === group.id);
 
-    const getAttendancePct = (studentId: number) => {
-        const pastDates = lessonDates.filter(d => d <= today);
+    // O'quvchi shu kursga kelgan sana (boshqa guruhdan o'tganda — ko'chirilgan
+    // kun). Shundan oldingi darslar unga tegishli emas: ilgari ular "kelmagan"
+    // sanalib foiz tushib ketardi (43%) va katak "belgilanmagan" ko'rinardi.
+    // Shu kursda ungacha yozuv bo'lsa — eng erta yozuv sanasi olinadi.
+    const joinDateOf = (student: Student): string | null => {
+        const kelgan = kelganSana(student, group.id, payments);
+        let erta: string | null = null;
+        for (const a of attendances) {
+            if (a.studentId === student.id && a.groupId === group.id && (!erta || a.date < erta)) erta = a.date;
+        }
+        if (!kelgan) return erta;
+        return erta && erta < kelgan ? erta : kelgan;
+    };
+
+    const getAttendancePct = (student: Student) => {
+        const from = joinDateOf(student);
+        const pastDates = lessonDates.filter(d => d <= today && (!from || d >= from));
         if (!pastDates.length) return null;
+        const studentId = student.id;
         const came = pastDates.filter(d => {
             const s = getAtt(studentId, d)?.status;
             return s === 'Keldi' || s === 'Kechikdi' || s === 'ErtaKetdi';
@@ -115,7 +132,8 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                     </thead>
                     <tbody>
                         {students.map((student, si) => {
-                            const pct = getAttendancePct(student.id);
+                            const pct = getAttendancePct(student);
+                            const joinDate = joinDateOf(student);
                             const rowBg = si % 2 === 0 ? 'bg-sirt' : 'bg-gray-50/30 dark:bg-gray-800/20';
                             return (
                                 <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
@@ -146,6 +164,10 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
 
                                         if (isFuture) {
                                             cellClass = 'border border-dashed border-chiziq opacity-30';
+                                        } else if (!att && joinDate && date < joinDate) {
+                                            // Hali kursga kelmagan — kelmagan emas, hisobga kirmaydi.
+                                            cellClass = 'border border-dashed border-chiziq opacity-40 hover:opacity-70';
+                                            content = <span className="text-matn-xira text-[9px] font-bold">·</span>;
                                         } else if (!att) {
                                             cellClass = 'border border-chiziq hover:bg-chiziq/60 hover:border-gray-400 dark:hover:border-gray-500';
                                             content = <span className="text-matn-xira text-[11px] font-bold">—</span>;
@@ -175,7 +197,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                                         }
                                                     }}
                                                     className={`w-8 h-8 rounded-xl mx-auto flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer ${cellClass}`}
-                                                    title={`${student.name} — ${date}${att ? `: ${att.status}` : ''}`}
+                                                    title={`${student.name} — ${date}${att ? `: ${att.status}` : (joinDate && date < joinDate ? ` (kursga ${joinDate} dan kelgan)` : '')}`}
                                                 >
                                                     {content}
                                                 </button>

@@ -24,6 +24,7 @@ import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import { TolovXabarQatori } from './TolovXabari';
 import KursHisobModal from './KursHisobModal';
+import KursChiqishModal from './KursChiqishModal';
 import KursdanChiqarishModal from './KursdanChiqarishModal';
 import type { KursdanChiqishTanlovi } from '../types';
 import { isCashIncome } from '../lib/money';
@@ -105,6 +106,8 @@ export default function StudentDetails() {
     // "Kursga kelgan sana": o'quvchi ro'yxatga oy boshida olinib, darsga oy
     // o'rtasidan kelishi mumkin — hisob o'sha kundan yuritiladi.
     const [editingStart, setEditingStart] = useState<{ groupId: number, name: string, current: string } | null>(null);
+    // Chiqib ketgan kursning chiqish sanasi (KursChiqishModal).
+    const [editingEnd, setEditingEnd] = useState<{ groupId: number, name: string, current: string } | null>(null);
     // To'lovni tahrirlash (resepshn — 10 daqiqa, admin — doim).
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     // Kartochkadagi ha/yo'q belgilari saqlanayotgan payt (transport | imtihon).
@@ -138,6 +141,13 @@ export default function StudentDetails() {
 
     /** Shu kursga kelgan sana — hisob yuritiladigan kun (lib/taqsimot.ts → kelganSana). */
     const kursSanasi = (groupId: number) => student ? kelganSana(student, groupId, payments) : null;
+    // Chiqib ketgan kursni chiqish sanasi oynasida ochish (oxirgi belgilangan sana yoki bugun).
+    const chiqishOynasi = (groupId: number, name: string) => {
+        const cp = student?.customPrices && typeof student.customPrices === 'object'
+            ? (student.customPrices as Record<string, unknown>)['chiqish_' + groupId]
+            : undefined;
+        setEditingEnd({ groupId, name, current: typeof cp === 'string' ? cp : toDateStr() });
+    };
 
 
 
@@ -765,12 +775,13 @@ export default function StudentDetails() {
                         // Hozirgi kurslardan tashqaridagi qarz: eski (kursga bog'lanmagan)
                         // qoldiq va o'quvchi chiqqan kurslar (masalan Passiv qilinganda) qarzi.
                         const boshqaQarzlar = (() => {
-                            const m = new Map<string, number>();
+                            const m = new Map<string, { groupId: number | null, groupName: string, summa: number }>();
                             for (const b of ledger?.buckets || []) {
                                 if ((b.remaining || 0) <= 0) continue;
                                 if (b.groupId && kurslarHolati.some(c => c.groupId === b.groupId)) continue;
                                 const nom = b.groupId ? `${b.groupName} (chiqqan)` : 'Eski qoldiq';
-                                m.set(nom, (m.get(nom) || 0) + b.remaining);
+                                const eski = m.get(nom);
+                                m.set(nom, { groupId: b.groupId || null, groupName: b.groupName || '', summa: (eski?.summa || 0) + b.remaining });
                             }
                             return [...m.entries()];
                         })();
@@ -820,10 +831,19 @@ export default function StudentDetails() {
                                                 )}
                                             </div>
                                         ))}
-                                        {boshqaQarzlar.map(([nom, summa]) => (
+                                        {boshqaQarzlar.map(([nom, q]) => (
                                             <div key={nom} className="flex items-center justify-between gap-3 px-3 py-2">
                                                 <span className="text-[12px] text-matn-sokin truncate">{nom}</span>
-                                                <span className="raqam text-[13px] font-semibold text-xato shrink-0">−{Math.round(summa).toLocaleString('ru-RU')}</span>
+                                                <span className="flex items-center gap-2 shrink-0">
+                                                    {/* Chiqib ketgan kursning qarzi noto'g'ri bo'lsa — chiqish sanasini belgilash. */}
+                                                    {q.groupId && kursHisobiTahrir && (
+                                                        <button type="button" onClick={() => chiqishOynasi(q.groupId!, q.groupName)}
+                                                            className="text-[11px] font-semibold text-brand hover:underline cursor-pointer">
+                                                            Chiqish sanasi
+                                                        </button>
+                                                    )}
+                                                    <span className="raqam text-[13px] font-semibold text-xato">−{Math.round(q.summa).toLocaleString('ru-RU')}</span>
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
@@ -1640,7 +1660,9 @@ export default function StudentDetails() {
                                                 const kurs = kursNomi(p.groupId);
                                                 const kursBor = !!p.groupId && studentGroups.some(g => g.id === p.groupId);
                                                 const tahrir = hisob
-                                                    ? (kursBor && kursHisobiTahrir ? () => setEditingStart({ groupId: p.groupId!, name: kurs, current: kursSanasi(p.groupId!) || toDateStr() }) : null)
+                                                    ? (!kursHisobiTahrir || !p.groupId ? null
+                                                        : kursBor ? () => setEditingStart({ groupId: p.groupId!, name: kurs, current: kursSanasi(p.groupId!) || toDateStr() })
+                                                        : () => chiqishOynasi(p.groupId!, kurs))
                                                     : (canEditPayment(p, currentUser?.role, tolovTuzatish) ? () => setEditingPayment(p) : null);
                                                 return (
                                                     <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 hover:bg-ichki/50 transition-colors">
@@ -2619,6 +2641,17 @@ export default function StudentDetails() {
                     groupName={editingStart.name}
                     current={editingStart.current}
                     onClose={() => setEditingStart(null)}
+                />
+            )}
+
+            {editingEnd && student && (
+                <KursChiqishModal
+                    studentId={student.id}
+                    schoolId={student.schoolId}
+                    groupId={editingEnd.groupId}
+                    groupName={editingEnd.name}
+                    current={editingEnd.current}
+                    onClose={() => setEditingEnd(null)}
                 />
             )}
 

@@ -1118,8 +1118,12 @@ export default function CourseDetails() {
                                                 <div key={s.id} className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-chiziq/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                                                        <Avatar name={s.name} photo={s.photo} size={24} square />
-                                                        <span className="text-[12px] sm:text-[11px] font-bold text-matn tracking-tight truncate sm:max-w-[140px]">{displayName(s.name)}</span>
+                                                        {/* Ism/rasmga bosilsa o'quvchi profiliga o'tadi ("Umumiy"dagi kabi). */}
+                                                        <button type="button" onClick={() => navigate(`/students/${s.id}`)}
+                                                            className="flex items-center gap-2 min-w-0 cursor-pointer group/ism text-left">
+                                                            <Avatar name={s.name} photo={s.photo} size={24} square />
+                                                            <span className="text-[12px] sm:text-[11px] font-bold text-matn tracking-tight truncate sm:max-w-[140px] group-hover/ism:text-brand group-hover/ism:underline">{displayName(s.name)}</span>
+                                                        </button>
                                                     </div>
                                                     <div className="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-0.5 shrink-0">
                                                         <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Keldi')}

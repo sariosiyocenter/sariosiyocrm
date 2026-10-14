@@ -35,6 +35,9 @@ interface Preview {
     date: string;
     /** Ko'chirishda pul umuman o'zgarmaydi — hisob jadvali ham chiqmaydi. */
     moneyFree?: boolean;
+    /** Shu oyning o'tilmagan darslari puli eski kursdan yangisiga (balans o'zgarmaydi). */
+    kochirish?: { summa: number; darslar: number; oyDarslari: number; darsNarxi: number; oy: string } | null;
+    warning?: string | null;
     from?: { id: number; name: string; teacher: string | null; price: number } | null;
     to?: { id: number; name: string; teacher: string | null; price: number };
     lines: Line[];
@@ -227,10 +230,15 @@ export default function StudentMoveModal({ studentId, mode, onClose, fromGroup }
                         <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl space-y-1.5">
                             <p className="text-[12px] font-black text-emerald-700 dark:text-emerald-400">To'lovsiz almashtiriladi</p>
                             <p className="text-[11px] font-bold text-matn-sokin leading-relaxed">
-                                Balans o'zgarmaydi ({money(preview.student.balanceBefore)} so'm), yangi hisob yozilmaydi,
-                                qaytariladigan pul ham yo'q. Yangi kurs keyingi oydan odatdagidek hisoblanadi.
-                                Almashtirilgani amallar jurnalida saqlanadi.
+                                Balans o'zgarmaydi ({money(preview.student.balanceBefore)} so'm), qaytariladigan pul yo'q.
+                                {preview.kochirish
+                                    ? <> {preview.kochirish.oy[0].toUpperCase() + preview.kochirish.oy.slice(1)}ning o'tilmagan {preview.kochirish.darslar} darsi
+                                        ({preview.kochirish.oyDarslari} dan, 1 dars {money(preview.kochirish.darsNarxi)}) puli — <span className="num text-matn">{money(preview.kochirish.summa)} so'm</span> —
+                                        «{preview.from?.name}» dan «{preview.to?.name}» ga o'tadi: qarz, darsga kirish muddati va ustoz ulushi yangi kursda hisoblanadi.</>
+                                    : <> Shu oy uchun eski kursdan o'tadigan pul yo'q.</>}
+                                {' '}Yangi kurs keyingi oydan odatdagidek hisoblanadi. Almashtirilgani amallar jurnalida saqlanadi.
                             </p>
+                            {preview.warning && <p className="text-[11px] font-bold text-ogoh">{preview.warning}</p>}
                         </div>
                     </div>
                 )}
