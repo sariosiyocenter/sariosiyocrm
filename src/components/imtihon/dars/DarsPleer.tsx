@@ -1,18 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Captions, CaptionsOff, Pause, Play, RotateCcw, SkipBack, SkipForward } from 'lucide-react';
 import { formulaliHtml } from '../../../lib/matn';
+import Chizma, { type ChizmaKorinishi } from './Chizma';
 import { darsVaqti, type Dars } from './darsTurlari';
 
 // Video dars pleeri (egasi, 2026-10-13). Bu — video fayl emas: ssenariy qadamlari (doska + nutq)
 // va bitta ovoz fayli. Pleer doskani o'zi chizadi — qadamlar ovoz bilan birga, qator-qator
 // "yozilib" chiqadi. Shuning uchun dars telefonda ham tiniq, hajmi esa videodan o'nlab marta kichik.
 // Ovoz bo'lmasa (hali yozilmagan yoki ochilmadi) — dars subtitr bilan, taxminiy vaqtda o'ynaydi.
+// Chizmali darsda (egasi, 2026-10-14) doska ikkiga bo'linadi: bir tomonda chizma yoki savol rasmi
+// (qadam-baqadam chiziladi — Chizma.tsx), ikkinchi tomonda yozuv.
 
 const TEZLIKLAR = [1, 1.25, 1.5, 0.75];
 /** Ekran shu oraliqda yangilanadi (soniya) — har kadrda emas: kuchsiz telefonda ham silliq. */
 const YANGILASH = 0.06;
 /** Qadam ichida keyingi qator ko'pi bilan shuncha soniyadan keyin chiqadi. */
 const QATOR_ORALIGI_MAX = 1.6;
+/** Qadam ichida keyingi chizma elementi ko'pi bilan shuncha soniyadan keyin chiziladi. */
+const ELEMENT_ORALIGI_MAX = 2.2;
 
 // Natija sahifasida bir nechta dars turadi: bir vaqtda faqat bittasi gapiradi — boshqasi
 // boshlansa, avvalgisi to'xtaydi.
@@ -43,6 +48,9 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
   // Doska matni AI yozgan oddiy matn: avval ekranlanadi (teg bo'lib ishlamaydi), so'ng formulaliHtml
   // undagi $...$ ni KaTeX ga aylantiradi va natijani yana tozalaydi (src/lib/matn.ts).
   const qatorlar = useMemo(() => qadamlar.map(q => q.doska.split('\n').filter(Boolean).map(x => formulaliHtml(ekranla(x)))), [qadamlar]);
+  // Darsning hamma chizma elementlari — chizma o'lchami shulardan (qadamdan qadamga siljimaydi).
+  const hammaChizma = useMemo(() => qadamlar.flatMap(q => q.chizma || []), [qadamlar]);
+  const chizmali = hammaChizma.length > 0 || qadamlar.some(q => q.rasm);
 
   useEffect(() => {
     if (!oynaydi) return;
@@ -102,6 +110,15 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
   // Joriy qadamning qatorlari birdan emas, nutq davomida navbat bilan chiqadi.
   const oraliq = Math.min(QATOR_ORALIGI_MAX, ((q?.davomi ?? 0) * 0.6) / Math.max(1, qatorSoni));
   const ochilgan = tugadi ? qatorSoni : Math.min(qatorSoni, Math.floor(Math.max(0, vaqt - (q?.boshi ?? 0)) / (oraliq || 1)) + 1);
+  // Chizma ham shunday: joriy qadamning elementlari nutq davomida birma-bir chiziladi, avvalgilari turadi.
+  const joriyChizma = q?.chizma ?? [];
+  const chizOraliq = Math.min(ELEMENT_ORALIGI_MAX, ((q?.davomi ?? 0) * 0.7) / Math.max(1, joriyChizma.length));
+  const chizilgan = tugadi ? joriyChizma.length : Math.min(joriyChizma.length, Math.floor(Math.max(0, vaqt - (q?.boshi ?? 0)) / (chizOraliq || 1)) + 1);
+  const korinadigan: ChizmaKorinishi[] = boshlangan
+    ? qadamlar.slice(0, joriy + 1).flatMap((x, i) => (x.chizma || []).slice(0, i === joriy ? chizilgan : undefined).map((e, k) => ({ kalit: `${i}-${k}`, e })))
+    : [];
+  // Rasm: joriy qadam ko'rsatsa — o'sha (chizma bilan birga); aks holda chizma hali yo'q bo'lsa — oxirgi ko'rsatilgan rasm.
+  const rasm = q?.rasm || (korinadigan.length ? '' : qadamlar.slice(0, joriy + 1).reverse().find(x => x.rasm)?.rasm || '');
 
   // Doska joriy qadamga o'zi suriladi (sahifaning o'zi emas — faqat doska ichi).
   useEffect(() => {
@@ -122,6 +139,29 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
   const keyingiQadam = () => otkaz(joriy < qadamlar.length - 1 ? qadamlar[joriy + 1].boshi : davomiylik);
   const tezlikniAlmashtir = () => setTezlik(t => TEZLIKLAR[(TEZLIKLAR.indexOf(t) + 1) % TEZLIKLAR.length]);
   const subtitrKorinadi = boshlangan && (subtitr || !ovozli);
+  // Doskadagi yozuv (qadamlar) — oddiy va chizmali joylashuvda bir xil.
+  const matn = (
+    <>
+      {boshlangan && qadamlar.slice(0, joriy + 1).map((x, i) => {
+        const faol = i === joriy;
+        const javob = i === qadamlar.length - 1;
+        return (
+          <section key={i} ref={faol ? joriyEl : undefined} aria-current={faol ? 'step' : undefined}
+            className={`relative pl-4 py-2 transition-opacity duration-300 ${faol || tugadi ? 'opacity-100' : 'opacity-45'} ${javob ? 'mt-1 rounded-lg bg-white/[0.06] pr-3' : ''}`}>
+            <span aria-hidden className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-full" style={{ background: faol || javob ? 'var(--dars-urgu)' : 'rgb(255 255 255 / 0.2)' }} />
+            <h5 className="text-[11px] font-bold uppercase tracking-[0.09em]" style={{ color: 'var(--dars-urgu)' }}>
+              <span className="raqam">{i + 1}</span>{x.sarlavha && <> · {x.sarlavha}</>}
+            </h5>
+            <div className="mt-1 space-y-1.5 text-[16px] sm:text-[17px] leading-relaxed">
+              {qatorlar[i].slice(0, faol ? ochilgan : undefined).map((html, k) => (
+                <div key={k} className="dars-qator overflow-x-auto overflow-y-hidden" dangerouslySetInnerHTML={{ __html: html }} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
 
   return (
     <div className="rounded-2xl border border-chiziq bg-sirt overflow-hidden">
@@ -131,26 +171,26 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
       )}
 
       <div className="relative">
-        <div ref={doska} className="dars-doska relative overflow-y-auto h-[min(58vh,23rem)] px-4 py-4 sm:px-6 sm:py-5">
-          {boshlangan && qadamlar.slice(0, joriy + 1).map((x, i) => {
-            const faol = i === joriy;
-            const javob = i === qadamlar.length - 1;
-            return (
-              <section key={i} ref={faol ? joriyEl : undefined} aria-current={faol ? 'step' : undefined}
-                className={`relative pl-4 py-2 transition-opacity duration-300 ${faol || tugadi ? 'opacity-100' : 'opacity-45'} ${javob ? 'mt-1 rounded-lg bg-white/[0.06] pr-3' : ''}`}>
-                <span aria-hidden className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-full" style={{ background: faol || javob ? 'var(--dars-urgu)' : 'rgb(255 255 255 / 0.2)' }} />
-                <h5 className="text-[11px] font-bold uppercase tracking-[0.09em]" style={{ color: 'var(--dars-urgu)' }}>
-                  <span className="raqam">{i + 1}</span>{x.sarlavha && <> · {x.sarlavha}</>}
-                </h5>
-                <div className="mt-1 space-y-1.5 text-[16px] sm:text-[17px] leading-relaxed">
-                  {qatorlar[i].slice(0, faol ? ochilgan : undefined).map((html, k) => (
-                    <div key={k} className="dars-qator overflow-x-auto overflow-y-hidden" dangerouslySetInnerHTML={{ __html: html }} />
-                  ))}
+        {chizmali ? (
+          <div className="dars-doska grid h-[min(84vh,38rem)] grid-rows-[minmax(0,17rem)_minmax(0,1fr)] sm:h-[min(62vh,25rem)] sm:grid-cols-2 sm:grid-rows-1">
+            <div className="relative grid min-h-0 place-items-center border-b border-white/10 p-3 sm:border-b-0 sm:border-r">
+              {/* Rasm va chizma birga turadi (rasm tepada): biri ikkinchisini yashirmaydi, chizma esa qayta chizilmaydi. */}
+              {boshlangan && (
+                <div className="flex h-full w-full min-h-0 flex-col items-center justify-center gap-2">
+                  {rasm && <img key={rasm} src={rasm} alt="Masala rasmi" className={`dars-chiz-paydo min-h-0 max-w-full rounded-lg bg-white object-contain ${korinadigan.length ? 'max-h-[42%]' : 'max-h-full'}`} />}
+                  {korinadigan.length > 0 && <div className="min-h-0 w-full flex-1"><Chizma elementlar={korinadigan} hammasi={hammaChizma} /></div>}
                 </div>
-              </section>
-            );
-          })}
-        </div>
+              )}
+            </div>
+            <div ref={doska} className="relative min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
+              {matn}
+            </div>
+          </div>
+        ) : (
+          <div ref={doska} className="dars-doska relative overflow-y-auto h-[min(58vh,23rem)] px-4 py-4 sm:px-6 sm:py-5">
+            {matn}
+          </div>
+        )}
 
         {!boshlangan && (
           <div className="absolute inset-0 grid place-items-center">

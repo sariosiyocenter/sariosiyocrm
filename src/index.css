@@ -366,4 +366,10 @@ input[type="number"] {
   to { clip-path: inset(0 0 0 0); opacity: 1; }
 }
 .dars-qator { animation: dars-yoz 0.7s cubic-bezier(0.22, 0.8, 0.3, 1) backwards; }
-@media (prefers-reduced-motion: reduce) { .dars-qator { animation: none; } }
+/* Chizma (Chizma.tsx): chiziq bo'r bilan tortilgandek uzunligi bo'yicha ochiladi (pathLength=1),
+   nuqta, belgi va uzuq chiziq — asta paydo bo'ladi. */
+@keyframes dars-chiz { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes dars-paydo { from { opacity: 0; } to { opacity: 1; } }
+.dars-chiz { stroke-dasharray: 1; animation: dars-chiz 1.1s cubic-bezier(0.45, 0.05, 0.35, 1) both; }
+.dars-chiz-paydo { animation: dars-paydo 0.6s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .dars-qator, .dars-chiz, .dars-chiz-paydo { animation: none; } }

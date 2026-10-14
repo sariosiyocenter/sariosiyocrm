@@ -1,12 +1,37 @@
 // Savolning video darsi (lib/imtihonDars.js): ssenariy qadamlari va ovoz. "Video" fayl emas —
 // pleer (DarsPleer.tsx) shu qadamlardan doskani o'zi chizadi.
 
+/**
+ * Doskaga chiziladigan element (lib/darsChizma.js elementniTozala). Koordinatalar matematik
+ * (y yuqoriga); `tur` ga qarab kerakli maydonlar to'ldirilgan bo'ladi.
+ */
+export interface ChizmaElementi {
+  tur: 'oqlar' | 'nuqta' | 'kesma' | 'aylana' | 'yoy' | 'kopburchak' | 'grafik' | 'matn' | 'jism';
+  rang?: 'asosiy' | 'urgu' | 'ikkinchi';
+  nom?: string;
+  x?: number; y?: number; r?: number;
+  x1?: number; y1?: number; x2?: number; y2?: number;
+  /** Kesma jism uchlari orasida (masalan A va C₁) — koordinata o'rniga. */
+  uch1?: string; uch2?: string;
+  xdan?: number; xgacha?: number; ydan?: number; ygacha?: number;
+  dan?: number; gacha?: number;
+  nuqtalar?: { x: number; y: number; nom?: string }[];
+  yopiq?: boolean; uzuq?: boolean; strelka?: boolean;
+  ifoda?: string; matn?: string;
+  jism?: 'parallelepiped' | 'kub' | 'piramida' | 'silindr' | 'konus' | 'shar';
+  a?: number; b?: number; c?: number; h?: number; belgilar?: string;
+}
+
 /** Bitta qadam: doskaga yoziladigani, o'qituvchi nutqi va ovozdagi vaqti (soniya). */
 export interface DarsQadami {
   sarlavha: string;
   /** Oddiy matn (HTML emas): har qator alohida, formulalar $...$ ichida. */
   doska: string;
   nutq: string;
+  /** Shu qadamda doskaga chiziladigan yangi elementlar (avvalgilari qoladi). */
+  chizma?: ChizmaElementi[];
+  /** Shu qadamda ko'rsatiladigan savol rasmi (o'zimizning Storage havolasi). */
+  rasm?: string;
   boshi: number;
   davomi: number;
 }

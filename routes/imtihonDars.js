@@ -12,7 +12,7 @@ import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { savolVariantlari } from '../lib/imtihon.js';
 import { AiXato, aiSozlanganmi } from '../lib/imtihonAI.js';
-import { yechimBormi } from '../lib/imtihonYechim.js';
+import { rasmlarniOl, savolRasmlari, yechimBormi, RASM_SONI_MAX } from '../lib/imtihonYechim.js';
 import { bankDarsi, darsEskirganmi, darsMalumoti, darsTuz, ovozFayli, vaqtlarniQoy, yechimIzi } from '../lib/imtihonDars.js';
 import { nutqniOvozga, ovozTayyormi } from '../lib/darsOvoz.js';
 import { aiKontekst, ozSavoli, qismlar, ruxsatniTekshir, savolniOl } from './imtihonYechim.js';
@@ -33,7 +33,11 @@ const YECHIM_KERAK = 'Video dars tayyor yechimdan tuziladi — avval yechim yozd
 /** Savol darsi bilan (egasini va yechimini tekshirish uchun kerakli maydonlar). */
 const darsliSavol = (id) => prisma.question.findUnique({
   where: { id },
-  select: { id: true, schoolId: true, solution: true, solutionStatus: true, correctAnswer: true, lesson: true },
+  // Rasmlar (savolRasmlari) uchun: matn, variantlar, umumiy shart — dars faqat savolning o'z rasmini ko'rsata oladi.
+  select: {
+    id: true, schoolId: true, solution: true, solutionStatus: true, correctAnswer: true, lesson: true, type: true, text: true, imageUrl: true,
+    options: true, optionA: true, optionB: true, optionC: true, optionD: true, answers: true, passage: { select: { text: true, imageUrl: true, variantlar: true } },
+  },
 });
 
 /** Hamma yo'llarning javobi: {dars — null yoki bankDarsi(), yechimBor, yechimTasdiqlangan}. */
@@ -95,7 +99,11 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
       if (!yechimBormi(q.solution)) return res.status(400).json({ error: YECHIM_KERAK });
       if (!aiSozlanganmi()) return res.status(503).json({ error: AI_YOQILMAGAN });
-      res.json(await darsTuz(q, savolVariantlari(q), { korsatma: req.body?.korsatma, ...qismlar(q) }));
+      const variantlar = savolVariantlari(q);
+      // Har rasm alohida olinadi: qaysi biri modelga yetganini bilish kerak (AI rasmni raqami bilan ko'rsatadi).
+      const rasmlar = (await Promise.all(savolRasmlari(q, variantlar).slice(0, RASM_SONI_MAX)
+        .map(async (url) => ({ url, qism: (await rasmlarniOl([url])).qismlar[0] || null })))).filter(r => r.qism);
+      res.json(await darsTuz(q, variantlar, { korsatma: req.body?.korsatma, rasmlar, ...qismlar(q) }));
     } catch (err) {
       if (err instanceof AiXato) return res.status(err.status).json({ error: err.message });
       next(err);
@@ -110,7 +118,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       if (!id) return;
       const q = await ozSavoli(req, await darsliSavol(id));
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
-      const { d, xato } = darsMalumoti(req.body, q.lesson);
+      const { d, xato } = darsMalumoti(req.body, q.lesson, { rasmlar: savolRasmlari(q, savolVariantlari(q)) });
       if (xato) return res.status(400).json({ error: xato });
       if (!d.qadamlar) {
         if (d.status === 'tasdiqlangan' && darsEskirganmi(q.lesson, q)) return res.status(400).json({ error: "Yechim yoki to'g'ri javob o'zgargan — darsni qayta tuzdiring, keyin tasdiqlang" });
