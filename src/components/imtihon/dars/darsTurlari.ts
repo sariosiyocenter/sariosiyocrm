@@ -6,7 +6,9 @@
  * (y yuqoriga); `tur` ga qarab kerakli maydonlar to'ldirilgan bo'ladi.
  */
 export interface ChizmaElementi {
-  tur: 'oqlar' | 'nuqta' | 'kesma' | 'aylana' | 'yoy' | 'kopburchak' | 'grafik' | 'matn' | 'jism';
+  tur: 'oqlar' | 'nuqta' | 'kesma' | 'aylana' | 'yoy' | 'burchak' | 'kopburchak' | 'grafik' | 'matn' | 'jism';
+  /** Burchak belgisi: to'g'ri burchak (kvadratcha). */
+  togri?: boolean;
   rang?: 'asosiy' | 'urgu' | 'ikkinchi';
   nom?: string;
   x?: number; y?: number; r?: number;

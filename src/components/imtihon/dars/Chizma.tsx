@@ -149,6 +149,28 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
         </g>
       );
     }
+    case 'burchak': {
+      // Uchidan ikki tomonga qarab — piksel fazosida (Y cho'zilgan chizmada ham burchak to'g'ri ko'rinadi).
+      const [vx, vy] = px(e.x ?? 0, e.y ?? 0);
+      const [ax, ay] = px(e.x1 ?? 0, e.y1 ?? 0);
+      const [bx, by] = px(e.x2 ?? 0, e.y2 ?? 0);
+      const ua = Math.hypot(ax - vx, ay - vy), ub = Math.hypot(bx - vx, by - vy);
+      if (!ua || !ub) return null;
+      const [u1, u2] = [(ax - vx) / ua, (ay - vy) / ua];
+      const [w1, w2] = [(bx - vx) / ub, (by - vy) / ub];
+      const [bis1, bis2] = [u1 + w1, u2 + w2];
+      const bisUz = Math.hypot(bis1, bis2) || 1;
+      if (e.togri) {
+        const k = 12;
+        const d = yol([[vx + u1 * k, vy + u2 * k], [vx + (u1 + w1) * k, vy + (u2 + w2) * k], [vx + w1 * k, vy + w2 * k]]);
+        return <g><Chiziq d={d} rang={rang} qalin={1.6} />{e.nom && <Belgi x={vx + (bis1 / bisUz) * 30} y={vy + (bis2 / bisUz) * 30} matn={e.nom} rang={rang} kechikish={0.6} />}</g>;
+      }
+      const r = 20;
+      // Kichik burchak tomonga: yoy yo'nalishi vektorlar ko'paytmasi ishorasidan.
+      const supurish = u1 * w2 - u2 * w1 > 0 ? 1 : 0;
+      const d = `M${vx + u1 * r},${vy + u2 * r}A${r},${r} 0 0 ${supurish} ${vx + w1 * r},${vy + w2 * r}`;
+      return <g><Chiziq d={d} rang={rang} qalin={1.8} />{e.nom && <Belgi x={vx + (bis1 / bisUz) * (r + 13)} y={vy + (bis2 / bisUz) * (r + 13)} matn={e.nom} rang={rang} kechikish={0.6} />}</g>;
+    }
     case 'kopburchak': {
       const nuqtalar = e.nuqtalar.map(n => px(n.x, n.y));
       const [mx, my] = nuqtalar.reduce(([a, b], [x, y]) => [a + x / nuqtalar.length, b + y / nuqtalar.length], [0, 0]);

@@ -15,6 +15,8 @@ import { AiXato, aiSozlanganmi } from '../lib/imtihonAI.js';
 import { rasmlarniOl, savolRasmlari, yechimBormi, RASM_SONI_MAX } from '../lib/imtihonYechim.js';
 import { bankDarsi, darsEskirganmi, darsMalumoti, darsTuz, ovozFayli, vaqtlarniQoy, yechimIzi } from '../lib/imtihonDars.js';
 import { nutqniOvozga, ovozTayyormi } from '../lib/darsOvoz.js';
+import { ovozdanMatn } from '../lib/ovozdanMatn.js';
+import { yetadimi } from '../lib/ruxsatlar.js';
 import { aiKontekst, ozSavoli, qismlar, ruxsatniTekshir, savolniOl } from './imtihonYechim.js';
 
 // Ssenariy va ovoz — pullik AI so'rovlari: xodim boshiga soatiga 60 ta.
@@ -27,7 +29,17 @@ const darsCheklovi = rateLimit({
   message: { error: "Video dars so'rovlari juda ko'p — bir soatdan keyin qayta urinib ko'ring" },
 });
 
-const AI_YOQILMAGAN = "AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo'limida AI kalitini kiritishi kerak";
+// Ovozli ko'rsatmani matnga o'girish — qisqa va arzon, lekin pullik: xodim boshiga soatiga 120 ta.
+const ovozMatnCheklovi = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `ovozmatn:${req.user?.id ?? 'nomalum'}`,
+  message: { error: "Ovozli ko'rsatmalar juda ko'p — bir soatdan keyin qayta urinib ko'ring" },
+});
+
+const AI_YOQILMAGAN ="AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo'limida AI kalitini kiritishi kerak";
 const YECHIM_KERAK = 'Video dars tayyor yechimdan tuziladi — avval yechim yozdiring';
 
 /** Savol darsi bilan (egasini va yechimini tekshirish uchun kerakli maydonlar). */
@@ -161,6 +173,19 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       }
       await ovozniOchir(q.lesson.ovozUrl);
       res.json(javob(q, await prisma.questionLesson.findUnique({ where: { questionId: id } })));
+    } catch (err) {
+      if (err instanceof AiXato) return res.status(err.status).json({ error: err.message });
+      next(err);
+    }
+  });
+
+  // Ustozning ovozli ko'rsatmasi → matn (dars va yechim oynasidagi mikrofon tugmasi). Hech narsa
+  // saqlanmaydi: matn ustozga qaytadi, u ko'rib-tuzatib AI ga yuboradi. Kirish: {audio — data URL}.
+  app.post('/api/ai/ovozdan-matn', authenticate, ovozMatnCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!yetadimi(req.ruxsat, 'imtihonlar.savollar', 2)) return res.status(403).json({ error: "Savollar bankini o'zgartirishga ruxsatingiz yo'q", ruxsat: true });
+      if (!aiSozlanganmi()) return res.status(503).json({ error: AI_YOQILMAGAN });
+      res.json({ matn: await ovozdanMatn(req.body?.audio) });
     } catch (err) {
       if (err instanceof AiXato) return res.status(err.status).json({ error: err.message });
       next(err);

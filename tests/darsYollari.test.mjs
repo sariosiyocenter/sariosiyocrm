@@ -62,6 +62,7 @@ const storage = {
 
 const { soxtaModelniQoy } = await import('../lib/imtihonAI.js');
 const { soxtaOvozniQoy, CHASTOTA } = await import('../lib/darsOvoz.js');
+const { soxtaOvozdanMatnniQoy } = await import('../lib/ovozdanMatn.js');
 const { yechimIzi } = await import('../lib/imtihonDars.js');
 const { registerImtihonDarsRoutes } = await import('../routes/imtihonDars.js');
 
@@ -243,4 +244,19 @@ test('Storage ishlamasa yoki AI kaliti bo\'lmasa — dars o\'zgarmaydi, xato tus
   assert.equal((await soro('POST', '/dars/ovoz')).status, 503);
   assert.equal((await soro('POST', '/dars/ai', {})).status, 503);
   assert.equal(fayllar.size, 0);
+});
+
+test('ovozli ko\'rsatma: o\'zgartira oladigan xodim matnini oladi; ko\'ra oladigani — 403; yomon audio — 400', async (t) => {
+  t.after(() => soxtaOvozdanMatnniQoy(null));
+  soxtaOvozdanMatnniQoy(async () => 'Chizma bilan tushuntiring.');
+  const audio = `data:audio/webm;codecs=opus;base64,${Buffer.alloc(3000, 1).toString('base64')}`;
+  const sor = async (body) => {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/api/ai/ovozdan-matn`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: r.status, j: await r.json() };
+  };
+  assert.deepEqual(await sor({ audio }), { status: 200, j: { matn: 'Chizma bilan tushuntiring.' } });
+  assert.equal((await sor({ audio: 'data:image/png;base64,AAAA' })).status, 400);
+  assert.equal((await sor({})).status, 400);
+  holat.ruxsat = { daraja: { 'imtihonlar.savollar': 1 } };
+  assert.equal((await sor({ audio })).status, 403);
 });

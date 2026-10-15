@@ -7,6 +7,7 @@ import { useAiHolat, AI_SOZLANMAGAN } from '../useAiHolat';
 import { BoshHolat, Tugma, Yorliq, Yuklanmoqda } from '../ui';
 import { Oyna } from './BankOynalari';
 import DarsPleer from '../dars/DarsPleer';
+import MikrofonTugma from '../MikrofonTugma';
 import type { DarsHolati, DarsTaklifi } from '../dars/darsTurlari';
 
 // Savolning video darsi oynasi (egasi, 2026-10-13): o'quvchi natijadan keyin masala qanday
@@ -174,7 +175,10 @@ export default function DarsOynasi({ id, onYop }: { id: number; onYop: () => voi
 
           {tahrir && h.yechimBor && (
             <section aria-label="Dars qanday bo'lishi kerak" className="space-y-2">
-              <label htmlFor="dars-talabi" className="block text-[13px] font-bold text-matn">{dars ? "Boshqacha bo'lsinmi? Dars qanday bo'lishi kerak?" : "Dars qanday bo'lishi kerak?"}</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="dars-talabi" className="block text-[13px] font-bold text-matn">{dars ? "Boshqacha bo'lsinmi? Dars qanday bo'lishi kerak?" : "Dars qanday bo'lishi kerak?"}</label>
+                <MikrofonTugma disabled={!!band || aiYoq} onMatn={t => setMatn(m => `${m.trim() ? `${m.trim()} ` : ''}${t}`.slice(0, KORSATMA_MAX))} />
+              </div>
               <textarea id="dars-talabi" rows={2} maxLength={KORSATMA_MAX} value={matn} onChange={e => setMatn(e.target.value)} disabled={!!band}
                 placeholder="Ixtiyoriy: qisqaroq, soddaroq tilda, chizma bilan, 7-sinf o'quvchisi uchun…"
                 className="w-full px-3 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn focus:border-brand placeholder:text-matn-xira resize-y" style={{ outline: 'none' }} />

@@ -7,6 +7,7 @@ import { useAiHolat, AI_SOZLANMAGAN } from '../useAiHolat';
 import { Tugma, Yorliq, Yuklanmoqda } from '../ui';
 import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { Oyna } from './BankOynalari';
+import MikrofonTugma from '../MikrofonTugma';
 import SavolKorinishi from './SavolKorinishi';
 import type { YechimRejimi } from './bankTurlari';
 import type { Question } from '../../../types';
@@ -254,7 +255,10 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
 
           {talabOchiq && (
             <section aria-label="Yechim qanday bo'lishi kerak" className="space-y-2">
-              <label htmlFor="yechim-talabi" className="block text-[13px] font-bold text-matn">{taklif ? "Boshqacha bo'lsinmi? Yechim qanday bo'lishi kerak?" : "Yechim qanday bo'lishi kerak?"}</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="yechim-talabi" className="block text-[13px] font-bold text-matn">{taklif ? "Boshqacha bo'lsinmi? Yechim qanday bo'lishi kerak?" : "Yechim qanday bo'lishi kerak?"}</label>
+                <MikrofonTugma disabled={band === 'ai' || aiYoq} onMatn={t => setMatn(m => `${m.trim() ? `${m.trim()} ` : ''}${t}`.slice(0, KORSATMA_MAX))} />
+              </div>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tayyor talablar">
                 {TAKLIFLAR.map(t => {
                   const yoniq = tanlangan.includes(t);

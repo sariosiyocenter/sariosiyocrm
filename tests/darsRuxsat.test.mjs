@@ -20,3 +20,7 @@ test('video darsni tuzish, saqlash, ovoz yozdirish va o\'chirish — o\'zgartira
     assert.deepEqual(await talab(method, `/api/questions/042${oxiri}/`), [{ k: BOLIM, d: 2 }], `${method} 042${oxiri}/`);
   }
 });
+
+test('ovozli ko\'rsatmani matnga o\'girish — o\'zgartira oladiganga (2-daraja)', async () => {
+  assert.deepEqual(await talab('POST', '/api/ai/ovozdan-matn'), [{ k: BOLIM, d: 2 }]);
+});
