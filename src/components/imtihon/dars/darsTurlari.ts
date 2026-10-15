@@ -14,6 +14,8 @@ export interface ChizmaElementi {
   /** Kesma jism uchlari orasida (masalan A va C₁) — koordinata o'rniga. */
   uch1?: string; uch2?: string;
   xdan?: number; xgacha?: number; ydan?: number; ygacha?: number;
+  /** O'qlar: X bo'linmalari π bilan (trigonometriya). */
+  birlik?: 'pi';
   dan?: number; gacha?: number;
   nuqtalar?: { x: number; y: number; nom?: string }[];
   yopiq?: boolean; uzuq?: boolean; strelka?: boolean;

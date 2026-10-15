@@ -46,6 +46,10 @@ test('element tozalash: turlar, sonlar chegarasi, ortiqcha maydonlar', () => {
   const kub = elementniTozala({ tur: 'jism', jism: 'kub', a: 3, b: 9, c: 9, belgilar: 'A B C D' });
   assert.deepEqual([kub.a, kub.b, kub.c, kub.belgilar], [3, 3, 3, 'ABCD']);
   assert.equal(elementniTozala({ tur: 'jism', jism: 'tetraedr' }), null);
+  // π birlikdagi o'qlar va uzuq grafik (asosiy funksiyani taqqoslash uchun).
+  assert.equal(elementniTozala({ tur: 'oqlar', xdan: -6.3, xgacha: 6.3, ydan: -1.5, ygacha: 1.5, birlik: 'pi' }).birlik, 'pi');
+  assert.equal(elementniTozala({ tur: 'oqlar', birlik: 'gradus' }).birlik, undefined);
+  assert.equal(elementniTozala({ tur: 'grafik', ifoda: 'sin(x)', uzuq: true }).uzuq, true);
   // Koordinatasi berilmagan element 0;0 da "arvoh" bo'lmaydi — tashlanadi.
   assert.equal(elementniTozala({ tur: 'nuqta', x: 1 }), null);
   assert.equal(elementniTozala({ tur: 'nuqta', x: 1, y: null }), null);
@@ -145,6 +149,7 @@ test('darsTuz: rasmlar modelga beriladi, so\'rovda chizma va rasm qoidasi bor', 
   assert.equal(oxirgi.qismlar.filter(x => x.inlineData).length, 1);
   assert.match(oxirgi.qismlar[0].text, /CHIZMA:[\s\S]*avval X, keyin Y/);
   assert.match(oxirgi.qismlar[0].text, /Savolga 1 ta rasm ilova qilingan/);
+  assert.match(oxirgi.qismlar[0].text, /SAVOL RASMIDA[\s\S]*QAYTA CHIZING/);
   assert.ok(oxirgi.sxema.properties.qadamlar.items.properties.chizma);
   assert.equal(r.qadamlar[0].rasm, url);
   assert.equal(r.qadamlar[0].chizma[0].tur, 'oqlar');

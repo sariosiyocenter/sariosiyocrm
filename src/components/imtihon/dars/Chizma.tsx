@@ -15,8 +15,19 @@ const CHET = 26;
 const RANG: Record<string, string> = { asosiy: 'var(--dars-bor)', urgu: 'var(--dars-urgu)', ikkinchi: '#f2c46b' };
 const GRAFIK_NUQTALARI = 240;
 const OQ_KECHIKISH = 0.6;
+/** Juda yassi grafikda balandlik kenglikning kamida shuncha ulushi bo'ladi. */
+const YASSI_ULUSH = 0.55;
 
 export interface ChizmaKorinishi { kalit: string; e: ChizmaElementi }
+
+/** π/2 ning karralisi → belgi: π/2, π, 3π/2, 2π, −π/2… */
+function piBelgisi(v: number): string {
+  const k = Math.round(v / (Math.PI / 2));
+  const ishora = k < 0 ? '−' : '';
+  const m = Math.abs(k);
+  if (m % 2 === 0) return `${ishora}${m === 2 ? '' : m / 2}π`;
+  return `${ishora}${m === 1 ? '' : m}π/2`;
+}
 
 type Px = (x: number, y: number) => [number, number];
 const yol = (nuqtalar: [number, number][], yopiq = false) =>
@@ -61,12 +72,14 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
       const x0 = Math.min(e.xgacha, Math.max(e.xdan, 0));
       const xa = px(e.xdan, y0), xb = px(e.xgacha, y0), ya = px(x0, e.ydan), yb = px(x0, e.ygacha);
       const oqRang = 'rgb(255 255 255 / 0.7)';
-      const qx = bolinmaQadami(e.xgacha - e.xdan), qy = bolinmaQadami(e.ygacha - e.ydan);
+      // π birlikda: bo'linma π/2 (keng oraliqda — π), belgisi π/2, π, 3π/2… ko'rinishida.
+      const piBirlik = e.birlik === 'pi';
+      const qx = piBirlik ? ((e.xgacha - e.xdan) / (Math.PI / 2) <= 10 ? Math.PI / 2 : Math.PI) : bolinmaQadami(e.xgacha - e.xdan), qy = bolinmaQadami(e.ygacha - e.ydan);
       const bolinmalar: React.ReactNode[] = [];
       for (let v = Math.ceil(e.xdan / qx) * qx; v <= e.xgacha - qx / 2; v += qx) {
         if (Math.abs(v) < 1e-9) continue;
         const [x, y] = px(v, y0);
-        bolinmalar.push(<g key={`x${v}`} className="dars-chiz-paydo" style={{ animationDelay: `${OQ_KECHIKISH * 2}s` }}><path d={`M${x},${y - 3}L${x},${y + 3}`} stroke={oqRang} strokeWidth={1.2} /><text x={x} y={y + 14} fill="rgb(255 255 255 / 0.55)" fontSize={10} textAnchor="middle">{+v.toFixed(4)}</text></g>);
+        bolinmalar.push(<g key={`x${v}`} className="dars-chiz-paydo" style={{ animationDelay: `${OQ_KECHIKISH * 2}s` }}><path d={`M${x},${y - 3}L${x},${y + 3}`} stroke={oqRang} strokeWidth={1.2} /><text x={x} y={y + 14} fill="rgb(255 255 255 / 0.55)" fontSize={10} textAnchor="middle">{piBirlik ? piBelgisi(v) : +v.toFixed(4)}</text></g>);
       }
       for (let v = Math.ceil(e.ydan / qy) * qy; v <= e.ygacha - qy / 2; v += qy) {
         if (Math.abs(v) < 1e-9) continue;
@@ -167,11 +180,9 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
       }
       const d = bolaklar.filter(b => b.length > 1).map(b => yol(b)).join('');
       if (!d) return null;
-      const oxiri = bolaklar.filter(b => b.length).at(-1)?.at(-1);
       return (
         <g>
-          <g clipPath={`url(#${kesim})`}><Chiziq d={d} rang={rang} qalin={2.4} /></g>
-          {e.nom && oxiri && <Belgi x={Math.min(KENGLIK - 30, oxiri[0])} y={Math.max(14, oxiri[1] - 14)} matn={e.nom} rang={rang} kechikish={1} />}
+          <g clipPath={`url(#${kesim})`}><Chiziq d={d} rang={rang} qalin={2.4} uzuq={e.uzuq} /></g>
         </g>
       );
     }
@@ -212,11 +223,17 @@ export default function Chizma({ elementlar, hammasi }: { elementlar: ChizmaKori
     const ch = chizmaChegarasi(hammasi);
     const dx = ch.xgacha - ch.xdan, dy = ch.ygacha - ch.ydan;
     const s = Math.min((KENGLIK - 2 * CHET) / dx, (BALANDLIK_MAX - 2 * CHET) / dy);
-    const balandlik = dy * s + 2 * CHET;
+    // Faqat grafik/kesma bo'lgan juda yassi chizmada (sinusoida −2π…2π) Y o'qi cho'ziladi — darslikdagidek;
+    // aylana, yoy va jism bo'lsa masshtab bir xil qoladi (aks holda aylana ellips bo'lib ketardi).
+    const shaklBor = hammasi.some(e => e.tur === 'aylana' || e.tur === 'yoy' || e.tur === 'jism' || e.tur === 'kopburchak');
+    const sy = shaklBor ? s : Math.max(s, Math.min((KENGLIK * YASSI_ULUSH - 2 * CHET) / dy, (BALANDLIK_MAX - 2 * CHET) / dy));
+    const balandlik = dy * sy + 2 * CHET;
     const ox = (KENGLIK - dx * s) / 2;
-    const px: Px = (x, y) => [ox + (x - ch.xdan) * s, CHET + (ch.ygacha - y) * s];
+    const px: Px = (x, y) => [ox + (x - ch.xdan) * s, CHET + (ch.ygacha - y) * sy];
     return { ch, s, balandlik, px };
   }, [hammasi]);
+  // Grafiklar nomi — chap yuqori burchakdagi izohda (grafik oxiriga yozilsa, ikki grafik nomi ustma-ust tushardi).
+  const izoh = elementlar.filter(({ e }) => e.tur === 'grafik' && e.nom);
   // Grafik chizma ramkasidan tashqariga chiqmaydi (cheksizga ketadigan shoxlar shu yerda kesiladi).
   const kesim = `dars-kesim-${useId().replace(/:/g, '')}`;
   const [x1, y1] = px(ch.xdan, ch.ygacha);
@@ -227,6 +244,17 @@ export default function Chizma({ elementlar, hammasi }: { elementlar: ChizmaKori
     <svg viewBox={`0 0 ${KENGLIK} ${balandlik.toFixed(1)}`} className="block h-full w-full" role="img" aria-label="Doskadagi chizma" style={{ maxHeight: '100%' }}>
       <defs><clipPath id={kesim}><rect x={ramka[0]} y={ramka[1]} width={ramka[2]} height={ramka[3]} /></clipPath></defs>
       {elementlar.map(({ kalit, e }) => <Element key={kalit} e={e} px={px} s={s} ch={ch} kesim={kesim} uchlar={uchlar} />)}
+      {izoh.map(({ kalit, e }, i) => {
+        const rang = RANG[e.rang || 'asosiy'] || RANG.asosiy;
+        const y = 12 + i * 17;
+        return (
+          <g key={`izoh-${kalit}`} className="dars-chiz-paydo" style={{ animationDelay: '0.8s' }}>
+            <rect x={4} y={y - 8} width={Math.min(KENGLIK - 8, 34 + (e.nom || '').length * 7)} height={16} rx={4} fill="rgb(0 0 0 / 0.35)" />
+            <path d={`M10,${y}L26,${y}`} stroke={rang} strokeWidth={2.4} strokeLinecap="round" strokeDasharray={e.uzuq ? '4 3' : undefined} />
+            <text x={31} y={y} fill={rang} fontSize={12} fontWeight={600} dominantBaseline="middle">{e.nom}</text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
