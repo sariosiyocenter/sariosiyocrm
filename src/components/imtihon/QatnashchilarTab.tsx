@@ -607,9 +607,9 @@ function OrinOynasi({ o, smenalar, xonalar, orinlar, onKochir, onYop }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[260] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-4">
       <div className="fixed inset-0 bg-black/50" onClick={onYop} />
-      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-4xl border border-chiziq">
+      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-4xl border border-chiziq my-auto">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn truncate">{o.name} — o'rnini o'zgartirish</h3>

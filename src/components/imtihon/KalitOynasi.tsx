@@ -75,9 +75,9 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
   };
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto p-4">
       <div className="fixed inset-0 bg-black/50" onClick={() => onYop(ozgardi)} />
-      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-5xl border border-chiziq max-h-[92vh] flex flex-col">
+      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-5xl border border-chiziq max-h-[92vh] flex flex-col my-auto">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-chiziq">
           <div className="flex items-center gap-2">
             <KeyRound size={18} className="text-brand" />

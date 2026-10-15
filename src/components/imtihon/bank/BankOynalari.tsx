@@ -13,9 +13,9 @@ export function Oyna({ sarlavha, izoh, onYop, children, pastki, kenglik = 'max-w
   sarlavha: string; izoh?: React.ReactNode; onYop: () => void; children: React.ReactNode; pastki?: React.ReactNode; kenglik?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-[260] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4" role="dialog" aria-modal="true" aria-label={sarlavha}>
+    <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-3 sm:p-4" role="dialog" aria-modal="true" aria-label={sarlavha}>
       <div className="fixed inset-0 bg-black/50" onClick={onYop} />
-      <div className={`relative bg-sirt rounded-2xl shadow-2xl w-full ${kenglik} border border-chiziq my-2`}>
+      <div className={`relative bg-sirt rounded-2xl shadow-2xl w-full ${kenglik} border border-chiziq my-auto`}>
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-chiziq">
           <div className="min-w-0">
             <h3 className="text-[14px] font-bold text-matn">{sarlavha}</h3>

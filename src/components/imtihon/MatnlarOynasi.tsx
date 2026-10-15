@@ -67,9 +67,9 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
   };
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto p-4">
       <div className="fixed inset-0 bg-black/50" onClick={onYop} />
-      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-2xl border border-chiziq max-h-[90vh] flex flex-col">
+      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-2xl border border-chiziq max-h-[90vh] flex flex-col my-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-chiziq">
           <div>
             <h3 className="text-[14px] font-bold text-matn">Umumiy matnlar</h3>
