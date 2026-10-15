@@ -596,7 +596,7 @@ export interface BankFiltrMalumoti {
     /** Matnga bog'langan (passage) va bog'lanmagan savollar soni. */
     matnli: { bor: number; yoq: number };
     /** Rasmli / rasmsiz savollar soni (rasm savolning o'zida, matni yoki variantlarida, yoki umumiy shartida); null — sanab bo'lmadi. */
-    rasmli?: { bor: number; yoq: number } | null;
+    rasmli?: { bor: number; yoq: number; kutmoqda?: number } | null;
     /** Yechimi bor / yo'q savollar soni; null — sanab bo'lmadi. */
     yechimli?: { bor: number; yoq: number } | null;
     /** Qo'shimcha filtrlar sonlari (arxivsiz); null — sanab bo'lmadi. */

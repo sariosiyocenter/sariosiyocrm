@@ -6,14 +6,19 @@ import type { DarsFiltri, NatijaFiltri, Question, SavolTuri, YangiKun } from '..
 export type Holat = '' | 'faol' | 'qoralama' | 'arxiv';
 /** Ikki holatli saralash: '' — hammasi. */
 export type BorYoq = '' | 'bor' | 'yoq';
+/** Rasm saralashi: bor / yo'q va «chizma kutmoqda» (matnda [rasm] belgisi). */
+export type RasmFiltri = BorYoq | 'kutmoqda';
 
 /** Ro'yxat saralashi (chapdagi tuzilma tanlovidan tashqari hammasi). */
 export interface Saralash {
   qiyinlik: number[]; darajalar: number[]; belgilar: Record<number, number[]>; manbalar: string[];
   toplam: string | null; holat: Holat; tur: '' | SavolTuri; qidiruv: string; qidDan: string; qidGacha: string;
   izohlar: string[]; matnli: BorYoq; joylashuv: number[];
-  /** Rasmli / rasmsiz savollar (rasm savolda, variantda yoki umumiy shartda). */
-  rasm: BorYoq;
+  /**
+   * Rasmli / rasmsiz savollar (rasm savolda, variantda yoki umumiy shartda); 'kutmoqda' — matnda
+   * «[rasm]» belgisi bor, chizma hali qo'yilmagan (rasmsiz hisoblanmaydi).
+   */
+  rasm: RasmFiltri;
   /** Yechimi bor / yo'q savollar. */
   yechim: BorYoq;
   /** Yechim ustoz tasdiqlagan yoki hali tasdiqlanmagan (AI qoralamasi); '' — hammasi. */
@@ -37,7 +42,7 @@ export const BOSH_SARALASH: Saralash = {
 
 export const JOYLASHUV_NOMI: Record<number, string> = { 0: 'Avtomatik', 1: '1 ustun', 2: '2 ustun', 4: '4 ustun' };
 export const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
-export const RASM_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Rasmli', yoq: 'Rasmsiz' };
+export const RASM_NOMI: Record<Exclude<RasmFiltri, ''>, string> = { bor: 'Rasmli', yoq: 'Rasmsiz', kutmoqda: 'Chizma kutmoqda' };
 export const YECHIM_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Yechimi bor', yoq: "Yechimi yo'q" };
 export const YECHIM_HOLATI_NOMI: Record<'tasdiqlangan' | 'qoralama', string> = { tasdiqlangan: 'Tasdiqlangan yechim', qoralama: 'Tasdiqlanmagan yechim' };
 export const DARS_NOMI: Record<DarsFiltri, string> = { tasdiqlangan: 'Tasdiqlangan', qoralama: 'Tasdiqlanmagan', eskirgan: 'Eskirgan', yoq: "Darsi yo'q" };

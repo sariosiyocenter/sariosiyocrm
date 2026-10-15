@@ -6,7 +6,7 @@ import { natijaQiyinligi } from '../lib/imtihon.js';
 import { darsHolati, yechimIzi } from '../lib/imtihonDars.js';
 import {
   DARS_FILTRI, NATIJA_FILTRI, YANGI_KUNLAR, YECHIM_HOLATI_FILTRI,
-  boshqaSonlarSorovi, boshqaSonlari, natijaSharti, yangiChegara,
+  boshqaSonlarSorovi, boshqaSonlari, natijaSharti, rasmliIdlarSorovi, rasmYechimSoniSorovi, yangiChegara,
 } from '../lib/bankFiltr.js';
 
 test("natija sharti: noma'lum va to'liq tanlov — shart qo'yilmaydi", () => {
@@ -80,6 +80,26 @@ test("sonlar: bazadagi qator va darslardan yig'iladi, yo'qlari 'yo'q' ga o'tadi"
   assert.deepEqual(r.tarjimali, { bor: 5, yoq: 95 });
   assert.deepEqual(r.natija, { oson: 10, orta: 20, qiyin: 6, yoq: 64 });
   assert.deepEqual(r.yangi, { 1: 2, 7: 9, 30: 30 });
+});
+
+test("rasm filtri: uch xil id so'rovi — rasmli, belgi kutayotgan, ikkalasidan biri", () => {
+  const rasmli = rasmliIdlarSorovi([1], [10], 50);
+  const kutmoqda = rasmliIdlarSorovi([1], [10], 50, 'kutmoqda');
+  const istalgan = rasmliIdlarSorovi([1], [10], 50, 'istalgan');
+  assert.match(rasmli.sql, /imageUrl/);
+  assert.doesNotMatch(rasmli.sql, /rasm\(/i);
+  assert.match(kutmoqda.sql, /\[\[\]rasm/);
+  assert.doesNotMatch(kutmoqda.sql, /imageUrl/);
+  assert.match(istalgan.sql, /imageUrl[\s\S]*\[\[\]rasm/);
+  assert.deepEqual(kutmoqda.qiymatlar, [[1], [10], 50]);
+  // Noma'lum tur — xavfsiz standart (rasmli), foydalanuvchi matni so'rovga kirmaydi.
+  assert.equal(rasmliIdlarSorovi([1], null, 5, "x'; DROP TABLE").sql, rasmliIdlarSorovi([1], null, 5).sql);
+});
+
+test("rasm sonlari: rasmli, belgi kutayotgan va rasmsiz — alohida ustunlar", () => {
+  const s = rasmYechimSoniSorovi([1], [10]);
+  for (const ustun of ['"jami"', '"rasmli"', '"kutmoqda"', '"rasmsiz"', '"yechimli"']) assert.ok(s.sql.includes(ustun), ustun);
+  assert.deepEqual(s.qiymatlar, [[1], [10]]);
 });
 
 test("sonlar: bo'sh qator va darslarsiz ham buzilmaydi", () => {

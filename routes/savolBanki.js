@@ -917,7 +917,7 @@ export function registerSavolBankiRoutes(app) {
         mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
         manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi, kesim,
         // Rasmli / rasmsiz va yechimi bor / yo'q savollar (arxivsiz); null — sanab bo'lmadi.
-        rasmli: ry ? { bor: ry.rasmli, yoq: ry.jami - ry.rasmli } : null,
+        rasmli: ry ? { bor: ry.rasmli, yoq: ry.rasmsiz, kutmoqda: ry.kutmoqda } : null,
         yechimli: ry ? { bor: ry.yechimli, yoq: ry.jami - ry.yechimli } : null,
         // Yechim holati, video dars, ishlatilgani, natija, tarjima va yangilik sonlari (arxivsiz); null — sanab bo'lmadi.
         qoshimcha: await boshqaKutish,
@@ -1234,18 +1234,22 @@ async function belgilarniSavollardanOl(ids, orgIds) {
 const matnlar = v => [...new Set((Array.isArray(v) ? v : []).map(x => nomi(x)))].slice(0, 500);
 
 // Rasm va yechim filtrlari: so'rov matni lib/bankFiltr.js da (qat'iy matn, qiymatlar — parametr).
-/** Rasmi bor savollar id lari (`mavzuIdlar` null — butun bank; bo'sh — savol yo'q). */
-async function rasmliIdlar(orgIds, mavzuIdlar) {
+/**
+ * Rasmi bor savollar id lari (`mavzuIdlar` null — butun bank; bo'sh — savol yo'q). `tur`:
+ * 'rasmli' (haqiqiy rasm), 'kutmoqda' («[rasm]» belgisi bor, chizma yo'q) yoki 'istalgan'.
+ */
+async function rasmliIdlar(orgIds, mavzuIdlar, tur = 'rasmli') {
   if (mavzuIdlar && !mavzuIdlar.length) return [];
-  const s = rasmliIdlarSorovi(orgIds, mavzuIdlar, IDLAR_MAX);
+  const s = rasmliIdlarSorovi(orgIds, mavzuIdlar, IDLAR_MAX, tur);
   return (await prisma.$queryRawUnsafe(s.sql, ...s.qiymatlar)).map(r => r.id);
 }
-/** Fan mavzularidagi (arxivsiz) savollar: {jami, rasmli, yechimli}. */
+/** Fan mavzularidagi (arxivsiz) savollar: {jami, rasmli, kutmoqda, rasmsiz, yechimli}. */
 async function rasmYechimSoni(orgIds, mavzuIdlar) {
-  if (!mavzuIdlar.length) return { jami: 0, rasmli: 0, yechimli: 0 };
+  if (!mavzuIdlar.length) return { jami: 0, rasmli: 0, kutmoqda: 0, rasmsiz: 0, yechimli: 0 };
   const s = rasmYechimSoniSorovi(orgIds, mavzuIdlar);
   const [r] = await prisma.$queryRawUnsafe(s.sql, ...s.qiymatlar);
-  return { jami: Number(r?.jami) || 0, rasmli: Number(r?.rasmli) || 0, yechimli: Number(r?.yechimli) || 0 };
+  const n = k => Number(r?.[k]) || 0;
+  return { jami: n('jami'), rasmli: n('rasmli'), kutmoqda: n('kutmoqda'), rasmsiz: n('rasmsiz'), yechimli: n('yechimli') };
 }
 
 /**
@@ -1353,10 +1357,10 @@ async function royxatSharti(f, orgIds) {
   if (f.matnli === 'bor') and.push({ passageId: { not: null } });
   else if (f.matnli === 'yoq') and.push({ passageId: null });
   // Rasmli / rasmsiz: rasm savolning o'zida, matni yoki variantlari ichida, yoki umumiy shartida.
-  if (f.rasm === 'bor' || f.rasm === 'yoq') {
-    const idlar = await rasmliIdlar(orgIds, mavzuIdlar);
-    and.push({ id: f.rasm === 'bor' ? { in: idlar } : { notIn: idlar } });
-  }
+  // «Chizma kutmoqda» — matnda «[rasm]» belgisi bor, chizma hali qo'yilmagan; «rasmsiz» ularni o'z ichiga olmaydi.
+  if (f.rasm === 'bor') and.push({ id: { in: await rasmliIdlar(orgIds, mavzuIdlar) } });
+  else if (f.rasm === 'kutmoqda') and.push({ id: { in: await rasmliIdlar(orgIds, mavzuIdlar, 'kutmoqda') } });
+  else if (f.rasm === 'yoq') and.push({ id: { notIn: await rasmliIdlar(orgIds, mavzuIdlar, 'istalgan') } });
   // Yechimi bor / yo'q (holati emas, matnining o'zi bo'yicha).
   if (f.yechim === 'bor') and.push({ solution: { not: null } }, { solution: { notIn: YECHIM_BOSH } });
   else if (f.yechim === 'yoq') and.push({ OR: [{ solution: null }, { solution: { in: YECHIM_BOSH } }] });

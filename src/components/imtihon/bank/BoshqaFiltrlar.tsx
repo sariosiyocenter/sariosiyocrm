@@ -57,8 +57,9 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
         </div>
       </Bolim>
       <Bolim nom="Rasm" tanlangan={s.rasm ? 1 : 0}>
-        {borYoq('rasm', RASM_NOMI, filtr.rasmli)}
-        <p className="mt-1.5 text-[11px] text-matn-xira">Rasm savolning o'zida, variantida yoki umumiy shartida</p>
+        <Tabletkalar qiymatlar={(['bor', 'yoq', 'kutmoqda'] as const).map(k => ({ k, nom: RASM_NOMI[k], soni: filtr.rasmli?.[k] }))}
+          tanlangan={k => s.rasm === k} onBos={k => setS(x => ({ ...x, rasm: x.rasm === k ? '' : k }))} />
+        <p className="mt-1.5 text-[11px] text-matn-xira">Rasm savolning o'zida, variantida yoki umumiy shartida. «Chizma kutmoqda» — matnda [rasm] belgisi bor, chizma hali qo'yilmagan</p>
       </Bolim>
       <Bolim nom="Yechim" tanlangan={(s.yechim ? 1 : 0) + (s.yechimHolati ? 1 : 0)}>
         {borYoq('yechim', YECHIM_NOMI, filtr.yechimli)}

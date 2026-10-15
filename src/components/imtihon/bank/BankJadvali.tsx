@@ -693,7 +693,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       l.push({ k: `b${g}_${id}`, nom: id ? guruh?.tags.find(x => x.id === id)?.name || `#${id}` : `${guruh?.name || 'Filtr'}: qo'yilmagan`, ol: () => setS(x => ({ ...x, belgilar: { ...x.belgilar, [g]: (x.belgilar[Number(g)] || []).filter(y => y !== id) } })) });
     }
     if (s.tur) l.push({ k: 'tur', nom: TUR_NOMI[s.tur], ol: () => setS(x => ({ ...x, tur: '' })) });
-    if (s.rasm) l.push({ k: 'rasm', nom: `${RASM_NOMI[s.rasm]} savollar`, ol: () => setS(x => ({ ...x, rasm: '' })) });
+    if (s.rasm) l.push({ k: 'rasm', nom: s.rasm === 'kutmoqda' ? RASM_NOMI.kutmoqda : `${RASM_NOMI[s.rasm]} savollar`, ol: () => setS(x => ({ ...x, rasm: '' })) });
     if (s.yechim) l.push({ k: 'yechim', nom: YECHIM_NOMI[s.yechim], ol: () => setS(x => ({ ...x, yechim: '' })) });
     if (s.yechimHolati) l.push({ k: 'yechimHolati', nom: YECHIM_HOLATI_NOMI[s.yechimHolati], ol: () => setS(x => ({ ...x, yechimHolati: '' })) });
     for (const d of s.dars) l.push({ k: `dars${d}`, nom: `Video dars: ${DARS_NOMI[d].toLowerCase()}`, ol: () => setS(x => ({ ...x, dars: x.dars.filter(y => y !== d) })) });

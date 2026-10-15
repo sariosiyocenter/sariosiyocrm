@@ -1418,4 +1418,12 @@ qo'shildi — yangi ustun yo'q, hammasi mavjud maydonlardan (`lib/bankFiltr.js`,
   **Tarjima** (`tarjima` JSON bor / yo'q) va **Qo'shilgan vaqti** (oxirgi 24 soat / 7 / 30 kun).
 - Ustunlar orasida — "va", bir ustun ichida tanlanganlar — "yoki" (avvalgidek). Sonlar arxivsiz.
 
+- **Rasm** filtriga uchinchi qiymat — «Chizma kutmoqda» (2026-10-15): AI va Word importi chizma o'rniga
+  matnda `[rasm]` / `[rasm 2]` belgisini qoldiradi, chizma qo'yilgach belgi olinadi (`rasmBelgisiBor`).
+  Ilgari bunday savollar haqiqiy rasmi yo'qligi uchun «Rasmsiz» sanalardi — ustoz esa ularni chizmali
+  deb ko'rardi. Endi: Rasmli (haqiqiy rasm) · Rasmsiz (rasm ham, belgi ham yo'q) · Chizma kutmoqda (belgi bor).
+  Belgi matn, variantlar va umumiy shartdan qidiriladi.
+- **Oynalar**: balandligi ekrandan oshgan oyna (video dars, yechim va b.) tepasidan ochilib scroll bo'ladi
+  (`items-center` o'rniga panelda `my-auto`).
+
 Sinov: `tests/bankFiltr.test.mjs` (shartlar, sonlar so'rovi, dars holati — bazasiz).
