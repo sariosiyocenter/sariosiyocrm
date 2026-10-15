@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PenTool, RotateCcw, Undo2, Loader2, AlertTriangle } from 'lucide-react';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Yorliq, INPUT } from '../ui';
+import MikrofonTugma from '../MikrofonTugma';
+import { matnQoshish } from '../../../../lib/matnQoshish.js';
 import { rasmChiz, rasmXatoMatni, svgmi, type ChizilganRasm, type RasmSorovi } from '../../../lib/svgRasm';
 
 // Savol rasmi bloki (savolni ko'rib chiqish kartasida): hozirgi rasm, «Vektor qilib chizish»,
@@ -13,6 +15,9 @@ import { rasmChiz, rasmXatoMatni, svgmi, type ChizilganRasm, type RasmSorovi } f
 // chizdirish uchun — lib/svgRasm.ts dagi `rasmlarniChiz` (shu payt kartaga `band` beriladi).
 //
 // Chizma faqat <img> bilan ko'rsatiladi (SVG matni sahifaga HTML bo'lib qo'yilmaydi).
+
+/** «Qayta chizish» ko'rsatmasining uzunligi (ovozdan kelgan matn ham shundan oshmaydi). */
+const KORSATMA_MAX = 300;
 
 export interface VektorRasmProps {
   /** Savol matni (bank HTML i). */
@@ -133,10 +138,11 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
       {aiChizgan ? (
         <div className="flex flex-wrap items-center gap-2">
           <input
-            className={`${INPUT} py-1.5 text-[12.5px] flex-1 min-w-44`} value={korsatma} disabled={ish} maxLength={300}
+            className={`${INPUT} py-1.5 text-[12.5px] flex-1 min-w-44`} value={korsatma} disabled={ish} maxLength={KORSATMA_MAX}
             placeholder="Nimani o'zgartirish kerak?" aria-label="Qayta chizish uchun ko'rsatma (ixtiyoriy)"
             onChange={e => setKorsatma(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void chiz(); } }}
           />
+          <MikrofonTugma disabled={ish} onMatn={t => setKorsatma(m => matnQoshish(m, t, KORSATMA_MAX))} />
           <Tugma kichik type="button" ikonka={<RotateCcw size={13} />} disabled={ish} onClick={() => void chiz()}>Qayta chizish</Tugma>
           <Tugma kichik type="button" turi="oddiy" ikonka={<Undo2 size={13} />} disabled={ish} onClick={() => { setXato(null); onChange(boshQiymat); }}>
             {boshQiymat ? 'Asl rasmga qaytish' : 'Chizmani olib tashlash'}

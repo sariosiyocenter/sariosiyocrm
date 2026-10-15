@@ -35,7 +35,8 @@ interface Natija extends AiSavol {
   rasm?: RasmHolati;
 }
 
-type Tur = '' | 'yopiq' | 'raqamli';
+// Javob shakli: asl masaladek yoki 4 variantli («Javobi son/matn» olib tashlandi — egasi, 2026-10-15).
+type Tur = '' | 'yopiq';
 type Til = 'uz' | 'ru' | 'en';
 
 let keyingiKalit = 1;
@@ -266,8 +267,7 @@ export default function OxshashSavollar({ daraxt, asl: bankdagi, onYop, onSaqlan
                       <Maydon nom="Javob shakli">
                         <select className={SELECT} value={tur} onChange={e => setTur(e.target.value as Tur)} aria-label="Javob shakli">
                           <option value="">Asl masaladek</option>
-                          <option value="yopiq">Variantli (A–D)</option>
-                          <option value="raqamli">Javobi son/matn</option>
+                          <option value="yopiq">{TUR_NOMI.yopiq} (A–D)</option>
                         </select>
                       </Maydon>
                       <Maydon nom="Til">

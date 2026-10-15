@@ -1,4 +1,4 @@
-// Video dars yo'llari (routes/imtihonDars.js) — haqiqiy Express, lekin soxta baza, soxta AI va
+// Video yechim yo'llari (routes/imtihonDars.js) — haqiqiy Express, lekin soxta baza, soxta AI va
 // soxta Storage bilan: tuzish → saqlash → ovoz → tasdiqlash → o'chirish, ruxsatlar va chekka holatlar.
 //   npm test   (modul almashtirish uchun --experimental-test-module-mocks kerak)
 import test, { mock } from 'node:test';
@@ -189,9 +189,9 @@ test('yechimsiz savolga dars tuzilmaydi va saqlanmaydi; noto\'g\'ri so\'rov — 
 
   baza.savollar.set(42, { ...SAVOL });
   assert.match((await soro('PUT', '/dars', {})).j.error, /kerak/);
-  assert.match((await soro('PUT', '/dars', { status: 'tasdiqlangan' })).j.error, /avval dars tuzdiring/);
+  assert.match((await soro('PUT', '/dars', { status: 'tasdiqlangan' })).j.error, /avval video yechim tuzing/);
   assert.match((await soro('PUT', '/dars', { qadamlar: [QADAMLAR[0]] })).j.error, /kamida 2 ta qadam/);
-  assert.match((await soro('POST', '/dars/ovoz')).j.error, /avval dars tuzdiring/);
+  assert.match((await soro('POST', '/dars/ovoz')).j.error, /avval video yechim tuzing/);
   assert.equal(baza.darslar.size, 0);
 });
 
@@ -208,7 +208,7 @@ test('yechim yoki to\'g\'ri javob o\'zgarsa dars eskiradi va tasdiqlab bo\'lmayd
   assert.equal((await soro('GET', '/dars')).j.dars.eskirgan, true);
   const r = await soro('PUT', '/dars', { status: 'tasdiqlangan' });
   assert.equal(r.status, 400);
-  assert.match(r.j.error, /qayta tuzdiring/);
+  assert.match(r.j.error, /qayta tuzing/);
   assert.equal(baza.darslar.get(42).status, 'qoralama');
   // Qayta saqlansa — yangi yechimga bog'lanadi va tasdiqlasa bo'ladi.
   await soro('PUT', '/dars', { qadamlar: QADAMLAR });

@@ -11,8 +11,8 @@ export type RasmFiltri = BorYoq | 'kutmoqda';
 
 /** Ro'yxat saralashi (chapdagi tuzilma tanlovidan tashqari hammasi). */
 export interface Saralash {
-  qiyinlik: number[]; darajalar: number[]; belgilar: Record<number, number[]>; manbalar: string[];
-  toplam: string | null; holat: Holat; tur: '' | SavolTuri; qidiruv: string; qidDan: string; qidGacha: string;
+  qiyinlik: number[]; darajalar: number[]; belgilar: Record<number, number[]>;
+  holat: Holat; tur: '' | SavolTuri; qidiruv: string; qidDan: string; qidGacha: string;
   izohlar: string[]; matnli: BorYoq; joylashuv: number[];
   /**
    * Rasmli / rasmsiz savollar (rasm savolda, variantda yoki umumiy shartda); 'kutmoqda' — matnda
@@ -23,7 +23,7 @@ export interface Saralash {
   yechim: BorYoq;
   /** Yechim ustoz tasdiqlagan yoki hali tasdiqlanmagan (AI qoralamasi); '' — hammasi. */
   yechimHolati: '' | 'tasdiqlangan' | 'qoralama';
-  /** Video dars holati (tanlanganlar — "yoki"). */
+  /** Video yechim holati (tanlanganlar — "yoki"). */
   dars: DarsFiltri[];
   /** Imtihonda ishlatilgan / ishlatilmagan savollar. */
   ishlatilgan: BorYoq;
@@ -35,7 +35,7 @@ export interface Saralash {
   yangi: 0 | YangiKun;
 }
 export const BOSH_SARALASH: Saralash = {
-  qiyinlik: [], darajalar: [], belgilar: {}, manbalar: [], toplam: null, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '',
+  qiyinlik: [], darajalar: [], belgilar: {}, holat: '', tur: '', qidiruv: '', qidDan: '', qidGacha: '',
   izohlar: [], matnli: '', joylashuv: [], rasm: '', yechim: '',
   yechimHolati: '', dars: [], ishlatilgan: '', natija: [], tarjima: '', yangi: 0,
 };
@@ -45,7 +45,7 @@ export const HOLAT_NOMI: Record<Exclude<Holat, ''>, string> = { faol: 'Faol', qo
 export const RASM_NOMI: Record<Exclude<RasmFiltri, ''>, string> = { bor: 'Rasmli', yoq: 'Rasmsiz', kutmoqda: 'Chizma kutmoqda' };
 export const YECHIM_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Yechimi bor', yoq: "Yechimi yo'q" };
 export const YECHIM_HOLATI_NOMI: Record<'tasdiqlangan' | 'qoralama', string> = { tasdiqlangan: 'Tasdiqlangan yechim', qoralama: 'Tasdiqlanmagan yechim' };
-export const DARS_NOMI: Record<DarsFiltri, string> = { tasdiqlangan: 'Tasdiqlangan', qoralama: 'Tasdiqlanmagan', eskirgan: 'Eskirgan', yoq: "Darsi yo'q" };
+export const DARS_NOMI: Record<DarsFiltri, string> = { tasdiqlangan: 'Tasdiqlangan', qoralama: 'Tasdiqlanmagan', eskirgan: 'Eskirgan', yoq: "Videosi yo'q" };
 export const ISHLATILGAN_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Ishlatilgan', yoq: 'Ishlatilmagan' };
 export const NATIJA_NOMI: Record<NatijaFiltri, string> = { oson: 'Oson (70%+ topgan)', orta: "O'rta (40–70%)", qiyin: 'Qiyin (40% dan kam)', yoq: "Ma'lumot yo'q" };
 export const TARJIMA_NOMI: Record<Exclude<BorYoq, ''>, string> = { bor: 'Tarjimasi bor', yoq: "Tarjimasi yo'q" };
@@ -62,10 +62,30 @@ export const CHIP_BOSH = `${CHIP} border-dashed border-chiziq-kuchli text-matn-x
 
 /** Ro'yxatdagi savol (GET bank/royxat). Yechimning o'zi ro'yxatda kelmaydi — faqat bor-yo'qligi. */
 export type BankQatori = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points' | 'remark' | 'passageId' | 'joylashuv' | 'passage' | 'solutionStatus'>
-  & { yechimBor?: boolean };
+  & { yechimBor?: boolean; /** Imtihonga yaramasa — sababi (server hisoblaydi). */ xato?: string | null };
 
 /** Bank ekranidagi ochiladigan menyular. 'yechim' — guruhli savol bo'lagining yechimi. */
 export type MenyuTuri = 'fan' | 'savol' | 'mavzu' | 'daraja' | 'guruh' | 'yana' | 'guruhkarta' | 'yechim';
 
 /** Yechim oynasining rejimi: ko'rish yoki o'zgartirish (AI ga qanday bo'lishi aytiladi). */
 export type YechimRejimi = 'korish' | 'ozgartirish';
+
+/** Chap paneldagi tuzilma tanlovi: butun fan, bitta bo'lim yoki bitta mavzu. */
+export type MavzuTanlovi = { tur: 'hamma' } | { tur: 'bolim'; nom: string } | { tur: 'mavzu'; id: number };
+
+/**
+ * Saralash holatidan `GET bank/royxat?f=` ga yuboriladigan filtr (URL uchun kodlangan JSON).
+ * Bank ro'yxati (BankJadvali) va «Savol qo'shish» oynasi (SavolTanlash) bir xil filtrlaydi —
+ * shuning uchun bitta joyda. `holatMajbur` — holat saralashdan qat'i nazar shu qiymatga qo'yiladi.
+ */
+export function saralashdanSorov(s: Saralash, fanId: number | undefined, tanlov: MavzuTanlovi, holatMajbur?: Holat): string {
+  return encodeURIComponent(JSON.stringify({
+    fanId, qidDan: s.qidDan || undefined, qidGacha: s.qidGacha || undefined, holat: (holatMajbur ?? s.holat) || undefined,
+    bolimlar: tanlov.tur === 'bolim' ? [tanlov.nom] : undefined, mavzular: tanlov.tur === 'mavzu' ? [tanlov.id] : [],
+    qiyinlik: s.qiyinlik, darajalar: s.darajalar, qiyinlikSof: true, belgilar: s.belgilar,
+    tur: s.tur || undefined, qidiruv: s.qidiruv.trim() || undefined,
+    izohlar: s.izohlar, matnli: s.matnli || undefined, joylashuv: s.joylashuv, rasm: s.rasm || undefined, yechim: s.yechim || undefined,
+    yechimHolati: s.yechimHolati || undefined, dars: s.dars, ishlatilgan: s.ishlatilgan || undefined, natija: s.natija,
+    tarjima: s.tarjima || undefined, yangi: s.yangi || undefined,
+  }));
+}

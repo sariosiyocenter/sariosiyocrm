@@ -4,6 +4,8 @@ import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
 import AiKalitKartasi from '../AiKalitKartasi';
+import MikrofonTugma from '../MikrofonTugma';
+import { matnQoshish } from '../../../../lib/matnQoshish.js';
 import { Tugma, Tanlov, Yorliq, Maydon, INPUT } from '../ui';
 import { HARFLAR, savolXatosi } from '../../../../lib/imtihon.js';
 import { DarajaTanlov, boshDaraja, darajaBandi, darajaMaydonlari, type DarajaQiymati } from './qiyinlik';
@@ -12,7 +14,7 @@ import { fanniTop, mavzuniTop } from './useBankDaraxt';
 import { type AiSavol, type Tekshiruv, rasmTayyorla, htmlMatnga, matniBor, izi, xatoMatni, Korinish, Tahrir, FanMavzuTanlov, yechimSora, YECHISH_BOLAGI } from './aiUmumiy';
 import QoshRejimi, { type QoshRejim } from './QoshRejimi';
 import { AiGuruhKarta, guruhlarniSaqla, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
-import { FAYL_TURLARI, faylTuriNomi, guruhTurimi } from './faylTuri';
+import { FAYL_TURLARI, guruhTurimi, type FaylTuri } from './faylTuri';
 import { useRasmNavbati, RasmJarayoni, SavolRasmi, rasmIshi, rasmNatijasiniQoy, rasmKerakmi, rasmYetishmaydi, type RasmHolati } from './rasmNavbati';
 import { rasmBelgisiBor, type RasmIshi, type RasmNatijasi } from '../../../lib/svgRasm';
 import type { BankDaraxt } from '../../../types';
@@ -30,19 +32,19 @@ import type { BankDaraxt } from '../../../types';
 // beriladi. Namunasiz tuzishda chizmaga faqat mavzu talab qilsa ruxsat (server: mavzuRasmlimi) va faqat
 // tekshiruvdan o'tgan savollar o'zi chiziladi — qolganiga kartada «Vektor qilib chizish» tugmasi.
 
-type Tur = 'yopiq' | 'raqamli' | 'moslash' | 'qismli' | 'yozma';
-// «Javobi son/matn» — egasining so'zi (2026-10-10): variantsiz, javobi yoziladigan savol.
-const TURLAR: { v: Tur; nom: string; izoh: string }[] = [
-  { v: 'yopiq', nom: faylTuriNomi('yopiq'), izoh: 'Har savolda 4 ta variant, bittasi to\'g\'ri.' },
-  { v: 'raqamli', nom: 'Javobi son/matn', izoh: "Variantsiz: o'quvchi javobni o'zi yozadi (varaqda — raqamli katak)." },
-  ...FAYL_TURLARI.filter(t => t.v !== 'yopiq').map(t => ({ v: t.v as Tur, nom: t.nom, izoh: t.izoh })),
-];
+// Savol turi — faqat TEST_TURLARI dagi to'rttasi (faylTuri.ts); «Javobi son/matn» (raqamli) olib tashlandi
+// (egasi, 2026-10-15: "mana bu ortiqcha"). Bazadagi eski raqamli savollar ko'rinishda o'qilaveradi.
+type Tur = FaylTuri;
+const TURLAR = FAYL_TURLARI;
 /** Nechta tuziladi — tur bo'yicha (birinchisi kichik, o'rtadagisi standart). */
-const SONLAR: Record<Tur, [number, number, number]> = { yopiq: [5, 10, 20], raqamli: [5, 10, 20], moslash: [2, 3, 5], qismli: [2, 3, 5], yozma: [3, 5, 10] };
+const SONLAR: Record<Tur, [number, number, number]> = { yopiq: [5, 10, 20], moslash: [2, 3, 5], qismli: [2, 3, 5], yozma: [3, 5, 10] };
 /** Bitta so'rovda nechta savol tuziladi (yozma — batafsil yechimi bilan, shuning uchun kam). */
 const bolak = (t: Tur) => (t === 'yozma' ? 3 : 10);
 const TEKSHIRUV_BOLAGI = 12;
 const MAKS_NAMUNA = 3;
+/** Matn maydonlarining uzunligi (ovozdan kelgan matn ham shu chegaradan oshmaydi). */
+const TAVSIF_MAX = 1000;
+const NAMUNA_MAX = 3000;
 
 interface Yangi extends AiSavol {
   kalit: number; tanlangan: boolean; tekshiruv: Tekshiruv | null;
@@ -436,11 +438,15 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
                   <DarajaTanlov qiymat={daraja} onChange={setDaraja} band={band} />
                 </Maydon>
               </div>
-              <Maydon nom="Nima kerak" izoh="Ixtiyoriy. O'z so'zingiz bilan: qanaqa masala yoki misol, qaysi sinf, qaysi darajada">
-                <textarea rows={2} className={INPUT} value={tavsif} maxLength={1000} disabled={band} onChange={e => setTavsif(e.target.value)} aria-label="Nima kerak"
+              <Maydon div nom={<span className="flex flex-wrap items-center justify-between gap-2"><span>Nima kerak</span>
+                <MikrofonTugma disabled={band} onMatn={t => setTavsif(m => matnQoshish(m, t, TAVSIF_MAX))} /></span>}
+                izoh="Ixtiyoriy. O'z so'zingiz bilan (yoki mikrofon bilan aytib): qanaqa masala yoki misol, qaysi sinf, qaysi darajada">
+                <textarea rows={2} className={INPUT} value={tavsif} maxLength={TAVSIF_MAX} disabled={band} onChange={e => setTavsif(e.target.value)} aria-label="Nima kerak"
                   placeholder="Masalan: kasrlarni qo'shish va ayirishga oid matnli masalalar, 6-sinf, DTM testlaridagidek" />
               </Maydon>
-              <Maydon div nom="Namuna" izoh="Ixtiyoriy. Masalaning matni yoki rasmi (kitob, daftar, test sahifasi; Ctrl+V ham bo'ladi) — AI shunga o'xshashlarini tuzadi">
+              <Maydon div nom={<span className="flex flex-wrap items-center justify-between gap-2"><span>Namuna</span>
+                <MikrofonTugma disabled={band} onMatn={t => setNamuna(m => matnQoshish(m, t, NAMUNA_MAX))} /></span>}
+                izoh="Ixtiyoriy. Masalaning matni yoki rasmi (kitob, daftar, test sahifasi; Ctrl+V ham bo'ladi) — AI shunga o'xshashlarini tuzadi">
                 <div className="space-y-2">
                   {namunaRasm && (
                     <div className="flex items-start gap-3">
@@ -450,7 +456,7 @@ export default function AiTuzish({ daraxt, fanId: boshFan = null, mavzuId: boshM
                       <Tugma kichik turi="oddiy" ikonka={<Trash2 size={13} />} disabled={band} onClick={() => { setNamunaRasm(null); setOqilgan(null); }}>Olib tashlash</Tugma>
                     </div>
                   )}
-                  <textarea rows={3} className={INPUT} value={namuna} maxLength={3000} disabled={band} onChange={e => setNamuna(e.target.value)} aria-label="Namuna matni"
+                  <textarea rows={3} className={INPUT} value={namuna} maxLength={NAMUNA_MAX} disabled={band} onChange={e => setNamuna(e.target.value)} aria-label="Namuna matni"
                     placeholder={namunaRasm ? "Qo'shimcha namuna matni (ixtiyoriy)" : 'Masalan: 3/4 + 1/6 ni hisoblang. A) 11/12 B) 4/10 C) 2/5 D) 5/6'} />
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <Tugma kichik ikonka={<Camera size={13} />} disabled={band} onClick={() => faylRef.current?.click()}>{namunaRasm ? 'Boshqa rasm' : 'Namuna rasmi'}</Tugma>

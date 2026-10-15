@@ -1,4 +1,4 @@
-// Video dars chizmasi (lib/darsChizma.js, lib/ifoda.js) va darsdagi rasm (lib/imtihonDars.js).
+// Video yechim chizmasi (lib/darsChizma.js, lib/ifoda.js) va darsdagi rasm (lib/imtihonDars.js).
 //   npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';

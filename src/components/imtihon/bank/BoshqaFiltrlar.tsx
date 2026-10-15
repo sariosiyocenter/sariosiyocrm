@@ -1,26 +1,30 @@
 import React from 'react';
-import { TUR_NOMI } from '../../../lib/savolTuri';
+import { TEST_TURLARI, TUR_NOMI } from '../../../lib/savolTuri';
 import {
   almashtirRoyxat, DARS_NOMI, HOLAT_NOMI, ISHLATILGAN_NOMI, JOYLASHUV_NOMI, NATIJA_NOMI, RASM_NOMI, TABLETKA, TARJIMA_NOMI,
   YANGI_NOMI, YECHIM_HOLATI_NOMI, YECHIM_NOMI, type BorYoq, type Holat, type Saralash,
 } from './bankTurlari';
-import type { BankFiltrMalumoti, DarsFiltri, NatijaFiltri, SavolTuri, YangiKun } from '../../../types';
+import type { BankFiltrMalumoti, DarsFiltri, NatijaFiltri, YangiKun } from '../../../types';
 
-// Bank ro'yxatining «Boshqa filtrlar» paneli: tartib, savol turi, rasm, yechim (va uning holati),
-// video dars, holat, manba, fayl, izoh, matn, joylashuv, ishlatilgani, natija bo'yicha qiyinlik,
-// tarjima, qo'shilgan vaqti va QID oralig'i. (Mavzu, qiyinlik va foydalanuvchining o'z
-// filtrlari — chap panelda: BankJadvali.tsx.)
+// Bank ro'yxatining «Boshqa filtrlar» paneli: tartib, savol turi (faqat TEST_TURLARI), rasm, yechim
+// (va uning holati), video yechim, holat, izoh, matn, joylashuv, ishlatilgani, natija bo'yicha
+// qiyinlik, tarjima, qo'shilgan vaqti va QID oralig'i. (Mavzu, qiyinlik va foydalanuvchining o'z
+// filtrlari — chap panelda: BankJadvali.tsx; «Savol qo'shish» oynasida (SavolTanlash) chap panel
+// yo'q, shuning uchun `ozFiltrlar` bilan ular ham shu panelning ichida chiqadi.)
 
 const DARS_TARTIBI: DarsFiltri[] = ['tasdiqlangan', 'qoralama', 'eskirgan', 'yoq'];
 const NATIJA_TARTIBI: NatijaFiltri[] = ['oson', 'orta', 'qiyin', 'yoq'];
 const YANGI_TARTIBI: YangiKun[] = [1, 7, 30];
 
+/** Panel ko'rinishi: `holatsiz` — «Holati» bo'limi yo'q; `ozFiltrlar` — qiyinlik darajalari va foydalanuvchining o'z filtrlari ham shu yerda. */
+export interface BoshqaKorinish { holatsiz?: boolean; ozFiltrlar?: boolean }
+
 /** Panelda nechta saralash yoqilgan (tugmadagi son). */
-export const boshqaFiltrSoni = (s: Saralash) => (s.tur ? 1 : 0) + (s.rasm ? 1 : 0) + (s.yechim ? 1 : 0) + (s.holat ? 1 : 0) + s.manbalar.length
-  + (s.toplam !== null ? 1 : 0) + s.izohlar.length + (s.matnli ? 1 : 0) + s.joylashuv.length + (s.qidDan || s.qidGacha ? 1 : 0)
+export const boshqaFiltrSoni = (s: Saralash, { holatsiz, ozFiltrlar }: BoshqaKorinish = {}) => (s.tur ? 1 : 0) + (s.rasm ? 1 : 0) + (s.yechim ? 1 : 0) + (s.holat && !holatsiz ? 1 : 0)
+  + (ozFiltrlar ? s.darajalar.length + Object.values(s.belgilar).reduce((a, l) => a + l.length, 0) : 0) + s.izohlar.length + (s.matnli ? 1 : 0) + s.joylashuv.length + (s.qidDan || s.qidGacha ? 1 : 0)
   + (s.yechimHolati ? 1 : 0) + s.dars.length + (s.ishlatilgan ? 1 : 0) + s.natija.length + (s.tarjima ? 1 : 0) + (s.yangi ? 1 : 0);
 
-export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
+export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib, holatsiz, ozFiltrlar }: BoshqaKorinish & {
   filtr: BankFiltrMalumoti; s: Saralash; setS: React.Dispatch<React.SetStateAction<Saralash>>;
   tartib: 'asc' | 'desc'; setTartib: (t: 'asc' | 'desc') => void;
 }) {
@@ -47,14 +51,9 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
         </div>
       </Bolim>
       <Bolim nom="Savol turi" tanlangan={s.tur ? 1 : 0}>
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(TUR_NOMI) as SavolTuri[]).filter(k => filtr.turlar[k] || s.tur === k).map(k => (
-            <button key={k} type="button" aria-pressed={s.tur === k} onClick={() => setS(x => ({ ...x, tur: x.tur === k ? '' : k }))} className={TABLETKA(s.tur === k)}>
-              {TUR_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.turlar[k]}</span>
-            </button>
-          ))}
-          {!(Object.keys(TUR_NOMI) as SavolTuri[]).some(k => filtr.turlar[k]) && <span className="text-[12px] text-matn-xira">Savol yo'q</span>}
-        </div>
+        {/* Faqat TEST_TURLARI — hammasi doim ko'rinadi (savoli yo'qlari 0 bilan). */}
+        <Tabletkalar qiymatlar={TEST_TURLARI.map(k => ({ k, nom: TUR_NOMI[k], soni: filtr.turlar[k] || 0 }))}
+          tanlangan={k => s.tur === k} onBos={k => setS(x => ({ ...x, tur: x.tur === k ? '' : k }))} />
       </Bolim>
       <Bolim nom="Rasm" tanlangan={s.rasm ? 1 : 0}>
         <Tabletkalar qiymatlar={(['bor', 'yoq', 'kutmoqda'] as const).map(k => ({ k, nom: RASM_NOMI[k], soni: filtr.rasmli?.[k] }))}
@@ -69,33 +68,38 @@ export default function BoshqaFiltrlar({ filtr, s, setS, tartib, setTartib }: {
         </div>
         <p className="mt-1.5 text-[11px] text-matn-xira">Tasdiqlangan — ustoz tekshirib tasdiqlagan yechim; qolgani — AI qoralamasi</p>
       </Bolim>
-      <Bolim nom="Video dars" tanlangan={s.dars.length}>
+      <Bolim nom="Video yechim" tanlangan={s.dars.length}>
         <Tabletkalar qiymatlar={DARS_TARTIBI.map(k => ({ k, nom: DARS_NOMI[k], soni: q?.dars[k] }))}
           tanlangan={k => s.dars.includes(k)} onBos={k => setS(x => ({ ...x, dars: almashtirRoyxat(x.dars, k) }))} />
         <p className="mt-1.5 text-[11px] text-matn-xira">Eskirgan — yechim o'zgargani uchun o'quvchiga ko'rinmaydi, qayta tuzish kerak</p>
       </Bolim>
-      <Bolim nom="Holati" tanlangan={s.holat ? 1 : 0}>
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(HOLAT_NOMI) as Exclude<Holat, ''>[]).map(k => (
-            <button key={k} type="button" aria-pressed={s.holat === k} onClick={() => setS(x => ({ ...x, holat: x.holat === k ? '' : k }))} className={TABLETKA(s.holat === k)}>
-              {HOLAT_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.holat[k]}</span>
-            </button>
-          ))}
-        </div>
-        <p className="mt-1.5 text-[11px] text-matn-xira">Tanlanmasa — faol va qoralama (arxiv yashirin)</p>
-      </Bolim>
-      {filtr.manbalar.some(m => m.nom) && (
-        <Bolim nom="Manba" tanlangan={s.manbalar.length}>
-          <Belgilar qiymatlar={filtr.manbalar.map(m => ({ k: m.nom, nom: m.nom || <i className="text-matn-xira">Manbasiz</i>, soni: m.soni }))}
-            tanlangan={s.manbalar} onChange={v => setS(x => ({ ...x, manbalar: v }))} />
+      {!holatsiz && (
+        <Bolim nom="Holati" tanlangan={s.holat ? 1 : 0}>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(HOLAT_NOMI) as Exclude<Holat, ''>[]).map(k => (
+              <button key={k} type="button" aria-pressed={s.holat === k} onClick={() => setS(x => ({ ...x, holat: x.holat === k ? '' : k }))} className={TABLETKA(s.holat === k)}>
+                {HOLAT_NOMI[k]}<span className="raqam text-[11px] opacity-70">{filtr.holat[k]}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-matn-xira">Tanlanmasa — faol va qoralama (arxiv yashirin)</p>
         </Bolim>
       )}
-      {filtr.toplamlar.some(m => m.nom) && (
-        <Bolim nom="To'plam (fayl)" tanlangan={s.toplam !== null ? 1 : 0}>
-          <Belgilar qiymatlar={filtr.toplamlar.map(x => ({ k: x.nom, nom: x.nom || <i className="text-matn-xira">To'plamsiz</i>, soni: x.soni }))}
-            tanlangan={s.toplam !== null ? [s.toplam] : []} onChange={v => setS(x => ({ ...x, toplam: v.length ? v[v.length - 1] : null }))} />
+      {ozFiltrlar && filtr.darajalar.length > 0 && (
+        <Bolim nom="Qiyinlik darajalari" tanlangan={s.darajalar.length}>
+          <Tabletkalar qiymatlar={filtr.darajalar.map(d => ({ k: d.id, nom: d.name, soni: d.soni }))}
+            tanlangan={k => s.darajalar.includes(k)} onBos={k => setS(x => ({ ...x, darajalar: almashtirRoyxat(x.darajalar, k) }))} />
         </Bolim>
       )}
+      {ozFiltrlar && filtr.guruhlar.filter(g => g.tags.length > 0).map(g => {
+        const tanl = s.belgilar[g.id] || [];
+        return (
+          <Bolim key={g.id} nom={g.name} tanlangan={tanl.length}>
+            <Tabletkalar qiymatlar={g.tags.map(x => ({ k: x.id, nom: x.name, soni: filtr.belgilar[x.id] || 0 }))}
+              tanlangan={k => tanl.includes(k)} onBos={k => setS(x => ({ ...x, belgilar: { ...x.belgilar, [g.id]: almashtirRoyxat(x.belgilar[g.id] || [], k) } }))} />
+          </Bolim>
+        );
+      })}
       {filtr.izohlar.some(x => x.nom) && (
         <Bolim nom="Izoh (remark)" tanlangan={s.izohlar.length}>
           <Belgilar qiymatlar={filtr.izohlar.map(x => ({ k: x.nom, nom: x.nom || <i className="text-matn-xira">Izohsiz</i>, soni: x.soni }))}

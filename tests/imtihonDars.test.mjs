@@ -1,4 +1,4 @@
-// Video dars ssenariysi (lib/imtihonDars.js) — soxta model bilan: bazasiz, haqiqiy AI siz.
+// Video yechim ssenariysi (lib/imtihonDars.js) — soxta model bilan: bazasiz, haqiqiy AI siz.
 //   npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -136,9 +136,9 @@ test('darsTuz: yechimi yo\'q savolga dars tuzilmaydi; chala javob — xato', asy
   model({ qadamlar: QADAMLAR });
   await assert.rejects(() => darsTuz({ ...SAVOL, solution: '<p></p>' }, VARIANTLAR), { status: 400, message: /avval yechim/ });
   model({ qadamlar: [QADAMLAR[0]] });
-  await assert.rejects(() => darsTuz(SAVOL, VARIANTLAR), /dars tuza olmadi/);
+  await assert.rejects(() => darsTuz(SAVOL, VARIANTLAR), /video yechim tuza olmadi/);
   model({});
-  await assert.rejects(() => darsTuz(SAVOL, VARIANTLAR), /dars tuza olmadi/);
+  await assert.rejects(() => darsTuz(SAVOL, VARIANTLAR), /video yechim tuza olmadi/);
 });
 
 test('saqlash: yangi ssenariy qoralama bo\'ladi; holatni o\'zgartirish — faqat bor darsga', () => {
@@ -150,7 +150,7 @@ test('saqlash: yangi ssenariy qoralama bo\'ladi; holatni o\'zgartirish — faqat
   assert.deepEqual(Object.keys(yangi.d.qadamlar[0]), ['sarlavha', 'doska', 'nutq', 'boshi', 'davomi']);
 
   assert.deepEqual(darsMalumoti({ status: 'tasdiqlangan' }, { id: 1 }), { d: { status: 'tasdiqlangan' } });
-  assert.match(darsMalumoti({ status: 'tasdiqlangan' }, null).xato, /avval dars tuzdiring/);
+  assert.match(darsMalumoti({ status: 'tasdiqlangan' }, null).xato, /avval video yechim tuzing/);
   assert.match(darsMalumoti({ status: 'boshqa' }, { id: 1 }).xato, /holati noto'g'ri/);
   assert.match(darsMalumoti({}, { id: 1 }).xato, /kerak/);
   assert.match(darsMalumoti(null, null).xato, /kerak/);

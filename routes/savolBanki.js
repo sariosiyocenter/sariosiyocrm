@@ -7,6 +7,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { authenticate, organizationSchoolIds } from '../middleware/auth.js';
+import { tasodifiyTanla } from '../lib/bankTasodifiy.js';
 import { turi, savolXatosi, qiyinlikDarajasi, natijaQiyinligi, qiyinlikMosEmas, mavzuMavjudligi, filtrMos, SAVOL_HOLATLARI, SAVOL_TURLARI, GURUH_TURLARI, HARFLAR, savolVariantlari } from '../lib/imtihon.js';
 import {
   rasmliIdlarSorovi, rasmYechimSoniSorovi, yechimBor, YECHIM_BOSH,
@@ -928,7 +929,8 @@ export function registerSavolBankiRoutes(app) {
     } catch (err) { xato(res, next)(err); }
   });
 
-  // Filtr bo'yicha savollar (sahifalab) yoki faqat id lar (?idlar=1 — "hammasini tanlash").
+  // Filtr bo'yicha savollar (sahifalab), faqat id lar (?idlar=1 — "hammasini tanlash") yoki
+  // tasodifiy tanlov (?tasodifiy=N&istisno=1,2 — «Savol qo'shish» oynasi).
   app.get('/api/bank/royxat', authenticate, async (req, res, next) => {
     try {
       const orgIds = await organizationSchoolIds(req.user);
@@ -936,6 +938,23 @@ export function registerSavolBankiRoutes(app) {
       try { f = JSON.parse(String(req.query.f || '{}')) || {}; } catch { return res.status(400).json({ error: "Filtr noto'g'ri" }); }
       const where = await royxatSharti(f, orgIds);
       const tartib = { id: req.query.tartib === 'desc' ? 'desc' : 'asc' };
+      if (parseInt(req.query.tasodifiy) > 0) {
+        const istisno = String(req.query.istisno || '').split(',').map(ANY_ID).filter(Boolean).slice(0, IDLAR_MAX);
+        const nomzodlar = await prisma.question.findMany({ where, select: { id: true, type: true, passageId: true }, orderBy: tartib, take: IDLAR_MAX });
+        // Tekshirish uchun yakka savollar va matnlarning hamma savoli (holati va chalaligi bilan) yuklanadi.
+        const yukla = async ({ idlar, passageIdlar }) => {
+          const rows = await prisma.question.findMany({
+            where: { schoolId: { in: orgIds }, OR: [{ id: { in: idlar } }, { passageId: { in: passageIdlar } }] },
+            select: { id: true, type: true, passageId: true, status: true, bankTopicId: true, text: true, imageUrl: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true },
+          });
+          return rows.map(q => ({
+            id: q.id, type: q.type, passageId: q.passageId, status: q.status, bankTopicId: q.bankTopicId,
+            hasAnswers: Array.isArray(q.answers) && q.answers.length > 0, xato: savolXatosi(q),
+          }));
+        };
+        const r = await tasodifiyTanla({ nomzodlar, soni: parseInt(req.query.tasodifiy), istisno, yukla });
+        return res.json({ items: r.tanlandi, soni: r.soni, nomzod: nomzodlar.length });
+      }
       if (req.query.idlar === '1') {
         const rows = await prisma.question.findMany({ where, select: { id: true }, orderBy: tartib, take: IDLAR_MAX });
         return res.json({ ids: rows.map(r => r.id) });
@@ -951,18 +970,26 @@ export function registerSavolBankiRoutes(app) {
             options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, points: true, pCorrect: true,
             remark: true, passageId: true, joylashuv: true, solution: true, solutionStatus: true,
             // Guruhli savol kartasi uchun: umumiy shart va javoblar ro'yxati.
-            passage: { select: { id: true, tur: true, text: true, variantlar: true, questions: { select: { id: true }, orderBy: { id: 'asc' } } } },
+            passage: { select: { id: true, title: true, tur: true, text: true, variantlar: true, questions: { select: { id: true }, orderBy: { id: 'asc' } } } },
           },
         }),
         prisma.question.count({ where }),
       ]);
       // Kartochkada savol to'liq ko'rinadi: matn, variantlar va to'g'ri javob. Yechimning o'zi
       // ro'yxatda kelmaydi — faqat bor-yo'qligi (`yechimBor`); matni «Yechimni ko'rish» da olinadi.
+      // Imtihon tuzuvchi (bank ruxsatisiz) ham savol tanlaydi, lekin to'g'ri javobni ko'rmaydi.
+      const kalitsiz = !yetadimi(req.ruxsat, 'imtihonlar.savollar', 1);
       res.json({
-        items: items.map(({ optionA, optionB, optionC, optionD, solution, ...q }) => ({
-          ...q, yechimBor: yechimBor(solution), text: String(q.text || '').slice(0, 2000),
-          options: savolVariantlari({ options: q.options, optionA, optionB, optionC, optionD }).map(o => o.slice(0, 500)),
-        })),
+        items: items.map(({ optionA, optionB, optionC, optionD, solution, ...q }) => {
+          const o = {
+            ...q, yechimBor: yechimBor(solution), text: String(q.text || '').slice(0, 2000),
+            options: savolVariantlari({ options: q.options, optionA, optionB, optionC, optionD }).map(x => x.slice(0, 500)),
+            // Imtihonga yaramasa — sababi (matn qisqartirilmasdan hisoblanadi).
+            xato: savolXatosi({ ...q, optionA, optionB, optionC, optionD }),
+          };
+          if (kalitsiz) { delete o.correctAnswer; if (o.type !== 'moslash') delete o.answers; delete o.yechimBor; }
+          return o;
+        }),
         total, sahifa, soni,
       });
     } catch (err) { xato(res, next)(err); }

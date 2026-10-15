@@ -559,14 +559,14 @@ export interface Question {
 /** Filtr (belgi guruhi): `subjectId` — faqat shu fanniki (null — hamma fanda); `tur: 'qiyinlik'` — foydalanuvchi darajalari. */
 export interface BelgiGuruhi { id: number; name: string; order: number; subjectId?: number | null; tur?: string | null; tags: { id: number; name: string; order: number; asos?: number }[] }
 
-/** Video dars holati (bank filtri): eskirgan — yechim o'zgargan, o'quvchiga ko'rinmaydi. */
+/** Video yechim holati (bank filtri): eskirgan — yechim o'zgargan, o'quvchiga ko'rinmaydi. */
 export type DarsFiltri = 'tasdiqlangan' | 'qoralama' | 'eskirgan' | 'yoq';
 /** Natija bo'yicha qiyinlik (to'g'ri topganlar ulushi): 'yoq' — hali natija yig'ilmagan. */
 export type NatijaFiltri = 'oson' | 'orta' | 'qiyin' | 'yoq';
 /** Savol qo'shilganiga oxirgi necha kun (1 — oxirgi 24 soat). */
 export type YangiKun = 1 | 7 | 30;
 
-/** bank/filtr: yechim holati, video dars, ishlatilgani, natija, tarjima va yangilik sonlari. */
+/** bank/filtr: yechim holati, video yechim, ishlatilgani, natija, tarjima va yangilik sonlari. */
 export interface BankQoshimchaSonlari {
     yechim: { tasdiqlangan: number; qoralama: number };
     dars: Record<DarsFiltri, number>;

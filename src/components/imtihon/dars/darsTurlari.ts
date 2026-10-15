@@ -1,4 +1,4 @@
-// Savolning video darsi (lib/imtihonDars.js): ssenariy qadamlari va ovoz. "Video" fayl emas —
+// Savolning video yechimi (lib/imtihonDars.js): ssenariy qadamlari va ovoz. "Video" fayl emas —
 // pleer (DarsPleer.tsx) shu qadamlardan doskani o'zi chizadi.
 
 /**
@@ -40,18 +40,18 @@ export interface DarsQadami {
   davomi: number;
 }
 
-/** O'quvchiga ko'rinadigan dars (natija sahifasi). */
+/** O'quvchiga ko'rinadigan video yechim (natija sahifasi). */
 export interface Dars {
   qadamlar: DarsQadami[];
   davomiylik: number;
-  /** Ovoz fayli (MP3); null — dars subtitr bilan, ovozsiz o'ynaydi. */
+  /** Ovoz fayli (MP3); null — video yechim subtitr bilan, ovozsiz o'ynaydi. */
   ovoz: string | null;
 }
 
-/** Bank ekranidagi (ustoz ko'radigan) dars. */
+/** Bank ekranidagi (ustoz ko'radigan) video yechim. */
 export interface BankDarsi extends Dars {
   status: 'qoralama' | 'tasdiqlangan';
-  /** Dars tuzilgandan keyin yechim o'zgargan — o'quvchiga ko'rinmaydi. */
+  /** Video yechim tuzilgandan keyin yechim o'zgargan — o'quvchiga ko'rinmaydi. */
   eskirgan: boolean;
   korsatma: string | null;
 }

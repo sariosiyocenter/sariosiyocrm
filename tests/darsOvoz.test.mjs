@@ -1,4 +1,4 @@
-// Video dars ovozi (lib/darsOvoz.js) — haqiqiy TTS siz: sun'iy ovoz (ton + jimlik) va soxta tarmoq.
+// Video yechim ovozi (lib/darsOvoz.js) — haqiqiy TTS siz: sun'iy ovoz (ton + jimlik) va soxta tarmoq.
 //   npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';

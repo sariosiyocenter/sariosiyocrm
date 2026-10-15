@@ -1,7 +1,7 @@
-// Savolning video darsi yo'llari (mantiq — lib/imtihonDars.js, ovoz — lib/darsOvoz.js). Bank
-// kartasidagi «Video dars»: AI tayyor yechimni ssenariyga aylantiradi (bazaga yozilmaydi) → ustoz
+// Savolning video yechimi yo'llari (mantiq — lib/imtihonDars.js, ovoz — lib/darsOvoz.js). Bank
+// kartasidagi «Video yechim»: AI tayyor yechimni ssenariyga aylantiradi (bazaga yozilmaydi) → ustoz
 // ko'rib saqlaydi → ovoz yoziladi (alohida so'rov: sekin va qayta urinsa bo'ladi) → ustoz
-// tasdiqlaydi. O'quvchi darsni natija sahifasida ko'radi (routes/imtihon.js, faqat tasdiqlangani).
+// tasdiqlaydi. O'quvchi video yechimni natija sahifasida ko'radi (routes/imtihon.js, faqat tasdiqlangani).
 //
 // Ruxsat — routes/imtihonYechim.js dagidek: `authenticate` yo'lning aniq ko'rinishini tekshiradi,
 // bu yerda yo'l shakli, savol egasi va bo'lim ruxsati yana tekshiriladi (`ruxsatniTekshir`).
@@ -26,7 +26,7 @@ const darsCheklovi = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => `dars:${req.user?.id ?? 'nomalum'}`,
-  message: { error: "Video dars so'rovlari juda ko'p — bir soatdan keyin qayta urinib ko'ring" },
+  message: { error: "Video yechim so'rovlari juda ko'p — bir soatdan keyin qayta urinib ko'ring" },
 });
 
 // Ovozli ko'rsatmani matnga o'girish — qisqa va arzon, lekin pullik: xodim boshiga soatiga 120 ta.
@@ -40,9 +40,9 @@ const ovozMatnCheklovi = rateLimit({
 });
 
 const AI_YOQILMAGAN ="AI yoqilmagan: administrator Imtihonlar → Sozlamalar bo'limida AI kalitini kiritishi kerak";
-const YECHIM_KERAK = 'Video dars tayyor yechimdan tuziladi — avval yechim yozdiring';
+const YECHIM_KERAK = 'Video yechim tayyor yechimdan tuziladi — avval yechim yozdiring';
 
-/** Savol darsi bilan (egasini va yechimini tekshirish uchun kerakli maydonlar). */
+/** Savol video yechimi bilan (egasini va yechimini tekshirish uchun kerakli maydonlar). */
 const darsliSavol = (id) => prisma.question.findUnique({
   where: { id },
   // Rasmlar (savolRasmlari) uchun: matn, variantlar, umumiy shart — dars faqat savolning o'z rasmini ko'rsata oladi.
@@ -90,7 +90,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
     if (nom) await fayldanOchir(nom);
   }
 
-  // Savolning darsi (ustozga: qoralamasi ham, eskirgani ham ko'rinadi).
+  // Savolning video yechimi (ustozga: qoralamasi ham, eskirgani ham ko'rinadi).
   app.get('/api/questions/:id/dars', authenticate, async (req, res, next) => {
     try {
       const id = ruxsatniTekshir(req, res, '/dars', 1);
@@ -133,7 +133,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       const { d, xato } = darsMalumoti(req.body, q.lesson, { rasmlar: savolRasmlari(q, savolVariantlari(q)) });
       if (xato) return res.status(400).json({ error: xato });
       if (!d.qadamlar) {
-        if (d.status === 'tasdiqlangan' && darsEskirganmi(q.lesson, q)) return res.status(400).json({ error: "Yechim yoki to'g'ri javob o'zgargan — darsni qayta tuzdiring, keyin tasdiqlang" });
+        if (d.status === 'tasdiqlangan' && darsEskirganmi(q.lesson, q)) return res.status(400).json({ error: "Yechim yoki to'g'ri javob o'zgargan — video yechimni qayta tuzing, keyin tasdiqlang" });
         return res.json(javob(q, await prisma.questionLesson.update({ where: { questionId: id }, data: d })));
       }
       if (!yechimBormi(q.solution)) return res.status(400).json({ error: YECHIM_KERAK });
@@ -156,7 +156,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       if (!id) return;
       const q = await ozSavoli(req, await darsliSavol(id));
       if (!q) return res.status(404).json({ error: 'Savol topilmadi' });
-      if (!q.lesson) return res.status(400).json({ error: "Bu savolning video darsi yo'q — avval dars tuzdiring" });
+      if (!q.lesson) return res.status(400).json({ error: "Bu savolning video yechimi yo'q — avval video yechim tuzing" });
       if (!ovozTayyormi()) return res.status(503).json({ error: AI_YOQILMAGAN });
       const { mp3, chegaralar } = await nutqniOvozga(q.lesson.qadamlar);
       const url = await ovozniYukla(id, mp3);
@@ -169,7 +169,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
       }).catch(async (e) => { await ovozniOchir(url); throw e; });
       if (!count) {
         await ovozniOchir(url);
-        return res.status(409).json({ error: "Dars shu orada o'zgardi — ovozni qayta yozdiring" });
+        return res.status(409).json({ error: "Video yechim shu orada o'zgardi — ovozni qayta yozdiring" });
       }
       await ovozniOchir(q.lesson.ovozUrl);
       res.json(javob(q, await prisma.questionLesson.findUnique({ where: { questionId: id } })));
@@ -179,7 +179,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
     }
   });
 
-  // Ustozning ovozli ko'rsatmasi → matn (dars va yechim oynasidagi mikrofon tugmasi). Hech narsa
+  // Ustozning ovozli ko'rsatmasi → matn (video yechim va yechim oynasidagi mikrofon tugmasi). Hech narsa
   // saqlanmaydi: matn ustozga qaytadi, u ko'rib-tuzatib AI ga yuboradi. Kirish: {audio — data URL}.
   app.post('/api/ai/ovozdan-matn', authenticate, ovozMatnCheklovi, aiKontekst, async (req, res, next) => {
     try {
@@ -192,7 +192,7 @@ export function registerImtihonDarsRoutes(app, { storage }) {
     }
   });
 
-  // Darsni olib tashlash (ovoz fayli bilan). Savol va yechimga tegilmaydi.
+  // Video yechimni olib tashlash (ovoz fayli bilan). Savol va yechimga tegilmaydi.
   app.delete('/api/questions/:id/dars', authenticate, async (req, res, next) => {
     try {
       const id = ruxsatniTekshir(req, res, '/dars');

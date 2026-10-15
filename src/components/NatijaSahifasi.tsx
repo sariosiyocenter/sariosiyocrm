@@ -11,7 +11,7 @@ import { darsVaqti, type Dars } from './imtihon/dars/darsTurlari';
  * Imtihon natijasi (/natija/:token) — ota-onaga xabardagi imzolangan havola,
  * kirishsiz. Ball, fanlar bo'yicha natija va o'rin; imtihon sozlamasida yoqilgan
  * bo'lsa "xatolar ustida ishlash": savol, o'quvchining javobi, to'g'ri javob va
- * ustoz tasdiqlagan yechim va video dars (masala qanday yechilishi — doskada, ovoz bilan).
+ * ustoz tasdiqlagan yechim va video yechim (masala qanday yechilishi — doskada, ovoz bilan).
  */
 
 interface Savol { n: number; y?: string; t: 'yopiq' | 'raqamli' | 'moslash' | 'yozma'; ong?: string[]; p: number; pa: number | null; matn: string; rasm: string | null; variantlar: string[]; javob: any; togri: string[] | null; holat: string | null; ball: number; yechim: string | null; dars?: Dars | null }
@@ -38,13 +38,13 @@ const HOLAT: Record<string, { nom: string; cls: string; Ikonka: any }> = {
   ortiqcha: { nom: 'Hisobga olinmadi (ortiqcha)', cls: 'text-matn-sokin bg-ichki border-chiziq', Ikonka: MinusCircle },
 };
 
-/** Savolning video darsi: pleer (va ovoz fayli) faqat o'quvchi ochganda yuklanadi. */
-function VideoDars({ dars }: { dars: Dars }) {
+/** Savolning video yechimi: pleer (va ovoz fayli) faqat o'quvchi ochganda yuklanadi. */
+function VideoYechim({ dars }: { dars: Dars }) {
   const [ochiq, setOchiq] = useState(false);
   return (
     <div className="mt-3">
       <button type="button" aria-expanded={ochiq} onClick={() => setOchiq(x => !x)} className="flex items-center gap-1.5 cursor-pointer text-[13px] font-semibold text-brand">
-        <CirclePlay size={15} />Video dars <span className="raqam font-normal text-matn-xira">{darsVaqti(dars.davomiylik)}</span>
+        <CirclePlay size={15} />Video yechim <span className="raqam font-normal text-matn-xira">{darsVaqti(dars.davomiylik)}</span>
         <ChevronDown size={14} className={`transition-transform ${ochiq ? 'rotate-180' : ''}`} />
       </button>
       {ochiq && <div className="mt-2"><DarsPleer dars={dars} /></div>}
@@ -208,7 +208,7 @@ export default function NatijaSahifasi() {
                         <div className={`${SAVOL_MATNI} mt-2 text-[13.5px] text-matn rounded-lg bg-ichki p-3`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.yechim) }} />
                       </details>
                     )}
-                    {s.dars && <VideoDars dars={s.dars} />}
+                    {s.dars && <VideoYechim dars={s.dars} />}
                   </article>
                 </React.Fragment>
               );

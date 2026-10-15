@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard } from 'lucide-react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard, Languages } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
@@ -8,6 +8,7 @@ import { TUR_NOMI } from '../../../lib/savolTuri';
 import { BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
 import { SavolOynasi } from './SavolKartasi';
 import OxshashKop from './OxshashKop';
+import TarjimaKop from './TarjimaKop';
 import AndozagaQoshish from './AndozagaQoshish';
 import FanKartalari from './FanKartalari';
 import GuruhKarta, { type GuruhMenyusi } from './GuruhKarta';
@@ -20,7 +21,7 @@ import { QIYINLIK, qiyinlikniSozla, qiyinlikSozlamasi, useQiyinlik } from './qiy
 import { YonQator, QatorForma, QoshHavola, Katak, KutishQatori, Menyu, MenyuSarlavha, MenyuBand, MenyuChiziq, Xabar, sudrashniBoshla, sudralayotgan } from './BankQismlari';
 import {
   almashtirRoyxat, BOSH_SARALASH as BOSH, DARS_NOMI, HOLAT_NOMI, ISHLATILGAN_NOMI, JOYLASHUV_NOMI, NATIJA_NOMI, RASM_NOMI, TABLETKA, TARJIMA_NOMI,
-  YANGI_NOMI, YECHIM_HOLATI_NOMI, YECHIM_NOMI, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi,
+  YANGI_NOMI, YECHIM_HOLATI_NOMI, YECHIM_NOMI, saralashdanSorov, type BankQatori, type MenyuTuri, type Saralash, type YechimRejimi,
 } from './bankTurlari';
 import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question } from '../../../types';
 
@@ -102,13 +103,15 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const [belgilash, setBelgilash] = useState(false);
   // Bankdagi savol(lar)ga o'xshash masala tuzish oynasi — asl savollar id lari.
   const [oxshash, setOxshash] = useState<number[] | null>(null);
+  // Tanlangan savollarni ommaviy tarjima qilish oynasi — savollar id lari.
+  const [tarjima, setTarjima] = useState<number[] | null>(null);
   // Tanlangan savollarni andozaga qo'shish oynasi — savollar id lari.
   const [andozaga, setAndozaga] = useState<number[] | null>(null);
   // Tahrirlanayotgan guruhli savol (umumiy shart id si).
   const [guruhTahrir, setGuruhTahrir] = useState<number | null>(null);
   // Yechim oynasi: qaysi savol va qaysi rejimda (ko'rish yoki o'zgartirish).
   const [yechim, setYechim] = useState<{ id: number; rejim: YechimRejimi } | null>(null);
-  // Video dars oynasi (DarsOynasi): qaysi savol.
+  // Video yechim oynasi (DarsOynasi): qaysi savol.
   const [dars, setDars] = useState<number | null>(null);
   const [ochiq, setOchiq] = useState<Question | null>(null);
   const [band, setBand] = useState<string | null>(null);
@@ -180,15 +183,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     return () => { bekor = true; };
   }, [yangi?.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sorov = useMemo(() => encodeURIComponent(JSON.stringify({
-    fanId: fan?.id, qidDan: s.qidDan || undefined, qidGacha: s.qidGacha || undefined, holat: s.holat || undefined,
-    bolimlar: tanlov.tur === 'bolim' ? [tanlov.nom] : undefined, mavzular: tanlov.tur === 'mavzu' ? [tanlov.id] : [],
-    qiyinlik: s.qiyinlik, darajalar: s.darajalar, qiyinlikSof: true, manbalar: s.manbalar, belgilar: s.belgilar,
-    toplam: s.toplam ?? undefined, tur: s.tur || undefined, qidiruv: s.qidiruv.trim() || undefined,
-    izohlar: s.izohlar, matnli: s.matnli || undefined, joylashuv: s.joylashuv, rasm: s.rasm || undefined, yechim: s.yechim || undefined,
-    yechimHolati: s.yechimHolati || undefined, dars: s.dars, ishlatilgan: s.ishlatilgan || undefined, natija: s.natija,
-    tarjima: s.tarjima || undefined, yangi: s.yangi || undefined,
-  })), [fan?.id, tanlov, s]);
+  // Ro'yxat filtri — «Savol qo'shish» oynasi (SavolTanlash) bilan bir xil (saralashdanSorov).
+  const sorov = useMemo(() => saralashdanSorov(s, fan?.id, tanlov), [fan?.id, tanlov, s]);
 
   useEffect(() => { setSahifa(1); }, [sorov, tartib]);
   useEffect(() => {
@@ -430,12 +426,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     jim.current = true;
     setQayta(x => x + 1);
   }, []);
-  /** Menyudagi yechim va video dars amallari: ko'rish — savollar bo'limini ko'ra oladiganga, o'zgartirish — tahrirlay oladiganga. */
+  /** Menyudagi yechim va video yechim amallari: ko'rish — savollar bo'limini ko'ra oladiganga, o'zgartirish — tahrirlay oladiganga. */
   const yechimBandlari = (id: number) => (
     <>
       {yechimKoradi && <MenyuBand ikonka={<Lightbulb size={14} />} onClick={() => yechimOch(id, 'korish')}>Yechimni ko'rish</MenyuBand>}
       {savolTahrir && <MenyuBand ikonka={<Wand2 size={14} />} onClick={() => yechimOch(id, 'ozgartirish')}>Yechimni o'zgartirish</MenyuBand>}
-      {yechimKoradi && <MenyuBand ikonka={<Clapperboard size={14} />} onClick={() => darsOch(id)}>Video dars</MenyuBand>}
+      {yechimKoradi && <MenyuBand ikonka={<Clapperboard size={14} />} onClick={() => darsOch(id)}>Video yechim</MenyuBand>}
     </>
   );
 
@@ -653,7 +649,6 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const belgilashBoshi = (): BelgilashBoshi => {
     const b: BelgilashBoshi = { guruhlar: {} };
     if (tanlov.tur === 'mavzu') b.mavzuId = tanlov.id;
-    if (s.manbalar.length === 1) b.manba = s.manbalar[0];
     if (s.izohlar.length === 1) b.izoh = s.izohlar[0];
     return b;
   };
@@ -696,13 +691,11 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     if (s.rasm) l.push({ k: 'rasm', nom: s.rasm === 'kutmoqda' ? RASM_NOMI.kutmoqda : `${RASM_NOMI[s.rasm]} savollar`, ol: () => setS(x => ({ ...x, rasm: '' })) });
     if (s.yechim) l.push({ k: 'yechim', nom: YECHIM_NOMI[s.yechim], ol: () => setS(x => ({ ...x, yechim: '' })) });
     if (s.yechimHolati) l.push({ k: 'yechimHolati', nom: YECHIM_HOLATI_NOMI[s.yechimHolati], ol: () => setS(x => ({ ...x, yechimHolati: '' })) });
-    for (const d of s.dars) l.push({ k: `dars${d}`, nom: `Video dars: ${DARS_NOMI[d].toLowerCase()}`, ol: () => setS(x => ({ ...x, dars: x.dars.filter(y => y !== d) })) });
+    for (const d of s.dars) l.push({ k: `dars${d}`, nom: `Video yechim: ${DARS_NOMI[d].toLowerCase()}`, ol: () => setS(x => ({ ...x, dars: x.dars.filter(y => y !== d) })) });
     if (s.ishlatilgan) l.push({ k: 'ishlatilgan', nom: ISHLATILGAN_NOMI[s.ishlatilgan], ol: () => setS(x => ({ ...x, ishlatilgan: '' })) });
     for (const n of s.natija) l.push({ k: `natija${n}`, nom: `Natija: ${NATIJA_NOMI[n].replace(/ \(.*\)$/, '').toLowerCase()}`, ol: () => setS(x => ({ ...x, natija: x.natija.filter(y => y !== n) })) });
     if (s.tarjima) l.push({ k: 'tarjima', nom: TARJIMA_NOMI[s.tarjima], ol: () => setS(x => ({ ...x, tarjima: '' })) });
     if (s.yangi) l.push({ k: 'yangi', nom: YANGI_NOMI[s.yangi], ol: () => setS(x => ({ ...x, yangi: 0 })) });
-    for (const m of s.manbalar) l.push({ k: `s${m}`, nom: m || 'Manbasiz', ol: () => setS(x => ({ ...x, manbalar: x.manbalar.filter(y => y !== m) })) });
-    if (s.toplam !== null) l.push({ k: 'toplam', nom: `Fayl: ${s.toplam || "to'plamsiz"}`, ol: () => setS(x => ({ ...x, toplam: null })) });
     if (s.holat) l.push({ k: 'holat', nom: HOLAT_NOMI[s.holat], ol: () => setS(x => ({ ...x, holat: '' })) });
     for (const z of s.izohlar) l.push({ k: `z${z}`, nom: `Izoh: ${z || "yo'q"}`, ol: () => setS(x => ({ ...x, izohlar: x.izohlar.filter(y => y !== z) })) });
     if (s.matnli) l.push({ k: 'matnli', nom: s.matnli === 'bor' ? 'Matnli savollar' : 'Matnsiz savollar', ol: () => setS(x => ({ ...x, matnli: '' })) });
@@ -921,7 +914,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             </button>
           </div>
 
-          {/* Kam ishlatiladigan saralashlar: tartib, turi, rasm, yechim (holati), video dars, holati, manba, fayl, izoh, matn,
+          {/* Kam ishlatiladigan saralashlar: tartib, turi, rasm, yechim (holati), video yechim, holati, izoh, matn,
               joylashuv, ishlatilgani, natija, tarjima, qo'shilgan vaqti, QID. */}
           {boshqa && filtr && <BoshqaFiltrlar filtr={filtr} s={s} setS={setS} tartib={tartib} setTartib={setTartib} />}
 
@@ -1014,6 +1007,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                         <PanelTugma key={g.id} onClick={e => setMenyu({ tur: 'guruh', rect: e.currentTarget.getBoundingClientRect(), ids, guruh: g.id })}>{g.name}</PanelTugma>
                       ))}
                       <PanelTugma ikonka={<Sparkles size={14} />} title="AI shu savollarning har biriga o'xshash masalalar tuzadi" onClick={() => setOxshash(ids)}>O'xshashini tuzish</PanelTugma>
+                      <PanelTugma ikonka={<Languages size={14} />} title="AI tanlangan savollarni boshqa tilga tarjima qiladi (qoralama bo'lib saqlanadi)" onClick={() => setTarjima(ids)}>Tarjima</PanelTugma>
                       <PanelTugma ikonka={<LayoutList size={14} />} title="Tanlangan savollarni andozaga qo'shish" onClick={() => setAndozaga(ids)}>Andozaga</PanelTugma>
                       <PanelTugma ikonka={<MoreHorizontal size={14} />} aria-label="Boshqa amallar" title="Boshqa amallar" onClick={e => setMenyu({ tur: 'yana', rect: e.currentTarget.getBoundingClientRect(), ids })} />
                     </>
@@ -1041,6 +1035,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
           <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>{savolTahrir ? 'Ochish va tahrirlash' : "Ko'rish"}</MenyuBand>
           {yechimBandlari(menyu.ids[0])}
           {savolTahrir && <MenyuBand ikonka={<Sparkles size={14} />} onClick={() => { setOxshash(menyu.ids); setMenyu(null); }}>O'xshashini tuzish (AI)</MenyuBand>}
+          {savolTahrir && <MenyuBand ikonka={<Languages size={14} />} onClick={() => { setTarjima(menyu.ids); setMenyu(null); }}>Tarjima qilish (AI)</MenyuBand>}
           {ochiradi && <MenyuBand ikonka={<Trash2 size={14} />} xavfli onClick={() => ochir(menyu.ids)}>Savolni o'chirish</MenyuBand>}
         </Menyu>
       )}
@@ -1126,7 +1121,8 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {guruhTahrir != null && <GuruhOynasi daraxt={daraxt} guruhId={guruhTahrir} onYop={() => setGuruhTahrir(null)} onSaqlandi={ozgardi} />}
       {yechim && <YechimOynasi key={yechim.id} id={yechim.id} rejim={yechim.rejim} onYop={() => setYechim(null)} onSaqlandi={yechimSaqlandi} />}
-      {dars && <DarsOynasi key={dars} id={dars} onYop={() => setDars(null)} />}
+      {dars && <DarsOynasi key={dars} id={dars} onYop={() => setDars(null)} onSaqlandi={yechimSaqlandi} />}
+      {tarjima && <TarjimaKop ids={tarjima} onYop={() => setTarjima(null)} onTayyor={() => { setTanlangan(new Set()); ozgardi(); }} />}
       {andozaga && <AndozagaQoshish ids={andozaga} onYop={() => setAndozaga(null)} onQoshildi={() => setTanlangan(new Set())} />}
       {oxshash && (
         <OxshashKop ids={oxshash} onYop={() => setOxshash(null)}

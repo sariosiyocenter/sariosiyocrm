@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clapperboard, Loader2, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
@@ -9,6 +9,10 @@ import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { Oyna } from './BankOynalari';
 import MikrofonTugma from '../MikrofonTugma';
 import SavolKorinishi from './SavolKorinishi';
+import DarsOynasi from './DarsOynasi';
+import { bosqichMatni, natijaXabari, yechimOzTasdiqlansinmi } from '../../../../lib/yechimVideo.js';
+import { videoYarat, xatoSababi, yechimniYozVaSaqla, type AiYechim, type Bosqich, type YechimHolati, type YechimNatijasi } from './yechimVideo';
+import type { DarsHolati } from '../dars/darsTurlari';
 import type { YechimRejimi } from './bankTurlari';
 import type { Question } from '../../../types';
 
@@ -17,18 +21,11 @@ import type { Question } from '../../../types';
 // daraja, til…), yechimni AI yozadi. AI yozgani avval shu yerda ko'rinadi; ustoz «Saqlash»ni
 // bosmaguncha bazaga hech narsa yozilmaydi. AI bankdagi to'g'ri javobdan boshqa javobga kelsa —
 // ogohlantirish chiqadi (jim saqlanmaydi).
+// Egasi, 2026-10-15: "yechim + videoni bitta qilib yaratish" — «Yechim + video yechim yaratish» yechimni
+// yozib saqlaydi va undan video yechim tuzadi (ishonchsiz chiqsa — yechim avval shu yerda ko'rinadi, «Saqlash»
+// bosilgach video yechim ham tuziladi). Video yechimning o'zi — DarsOynasi (shu oynadan ochiladi).
 
-type YechimHolati = NonNullable<Question['solutionStatus']>;
-/** POST questions/:id/yechim/ai javobi (bazaga yozilmagan taklif). */
-interface AiYechim {
-  yechim: string; aiJavobi: string;
-  /** AI javobi bankdagi javob bilan mosmi; null — solishtirib bo'lmadi (yozma savol, erkin matnli javob). */
-  mos: boolean | null;
-  kalit: string; izoh: string; rasmKerak: boolean;
-  rasm: { jami: number; berildi: number };
-}
-/** Saqlangandan keyin ro'yxatga qaytadigan holat. */
-export interface YechimNatijasi { yechimBor: boolean; solutionStatus: YechimHolati }
+export type { YechimNatijasi };
 
 // Bir bosishda tanlanadigan talablar; ustoz o'z so'zi bilan ham yozadi (ikkalasi birga ketadi).
 const TAKLIFLAR = ['Batafsil, har qadam izohi bilan', 'Qisqaroq', 'Boshqa usulda', "Soddaroq tilda — o'quvchi tushunadigan qilib"];
@@ -61,7 +58,16 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
   const [taklif, setTaklif] = useState<(AiYechim & { talab: string }) | null>(null);
   // Belgilansa — yechim tasdiqlangan bo'lib saqlanadi (o'quvchi natijadan keyin ko'radi).
   const [tasdiq, setTasdiq] = useState(false);
-  const [band, setBand] = useState<'ai' | 'saqla' | 'holat' | null>(null);
+  const [band, setBand] = useState<'ai' | 'saqla' | 'holat' | 'video' | null>(null);
+  // Saqlangach video yechim ham tuzilsinmi (taklif ko'rinib turganda belgilanadi; standart — ha).
+  const [videoHam, setVideoHam] = useState(true);
+  // Birgalikda yaratish jarayoni: qaysi bosqich va yechim ham yozilyaptimi ("1/3" hisobi uchun).
+  const [bosqich, setBosqich] = useState<Bosqich | null>(null);
+  const [birga, setBirga] = useState(false);
+  // Savolning video yechimi holati (GET questions/:id/dars) va AI ning ogohlantirishlari; DarsOynasi ochiqmi.
+  const [video, setVideo] = useState<DarsHolati | null>(null);
+  const [videoOgohlar, setVideoOgohlar] = useState<string[]>([]);
+  const [videoOyna, setVideoOyna] = useState(false);
   const taklifRef = useRef<HTMLElement>(null);
   const ochiq = useRef(true);
   useEffect(() => { ochiq.current = true; return () => { ochiq.current = false; }; }, []);
@@ -71,6 +77,9 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
     soro<Question>('GET', `questions/${id}`).then(r => { if (!bekor) setQ(r); }).catch(e => { if (!bekor) setXato(e.message); });
     return () => { bekor = true; };
   }, [id, soro]);
+
+  const videoniOqi = () => soro<DarsHolati>('GET', `questions/${id}/dars`).then(r => { if (ochiq.current) setVideo(r); }).catch(() => undefined);
+  useEffect(() => { videoniOqi(); }, [id, soro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Yangi yechim kelganda diqqat (klaviatura va ekran o'quvchi) o'shanga o'tadi.
   useEffect(() => { if (taklif) taklifRef.current?.focus(); }, [taklif]);
@@ -95,7 +104,7 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
       setTaklif({ ...r, talab });
       // Tasdiq o'zi qo'yiladi faqat AI javobi bankdagi javob bilan mos chiqqanda (va u rasmni ko'rganda);
       // solishtirib bo'lmaydigan (yozma) yoki mos kelmagan yechimni ustoz o'zi belgilab tasdiqlaydi.
-      setTasdiq(r.mos === true && !r.rasmKerak && r.rasm.jami <= r.rasm.berildi);
+      setTasdiq(yechimOzTasdiqlansinmi(r));
     } catch (e: any) {
       // 504 — server javob berishga ulgurmadi (uzun yechim): xabar serverdan kelmaydi.
       if (ochiq.current) showNotification(e?.status === 504 ? "AI javob berishga ulgurmadi — qayta urinib ko'ring" : e.message, 'error');
@@ -104,11 +113,78 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
     }
   };
 
-  const yoz = async (body: { solution?: string; solutionStatus: YechimHolati; korsatma?: string }, xabar: string) => {
+  /** Yechimni saqlaydi; `xabar` null bo'lsa — jim (birgalikda yaratishda bitta umumiy xabar chiqadi). */
+  const yoz = async (body: { solution?: string; solutionStatus: YechimHolati; korsatma?: string }, xabar: string | null) => {
     const r = await soro<{ solution: string | null; solutionStatus: YechimHolati; yechimBor: boolean }>('PUT', `questions/${id}/yechim`, body);
+    yechimYangilandi(r);
+    if (xabar) showNotification(xabar, 'success');
+    return r;
+  };
+  /** Yechim yangilandi (qo'lda yoki birgalikda yaratishda): oynadagi savol, ro'yxat belgisi va eskirgan video. */
+  const yechimYangilandi = (r: { solution: string | null; solutionStatus: YechimHolati; yechimBor: boolean }) => {
     setQ(x => x && ({ ...x, solution: r.solution, solutionStatus: r.solutionStatus }));
-    showNotification(xabar, 'success');
+    setVideo(v => v && { ...v, yechimBor: r.yechimBor, yechimTasdiqlangan: r.solutionStatus === 'tasdiqlangan' });
     onSaqlandi?.(id, { yechimBor: r.yechimBor, solutionStatus: r.solutionStatus });
+  };
+
+  /**
+   * Yechim saqlangan — undan video yechim yaratadi (ssenariy → saqlash → ovoz). Bitta umumiy xabar chiqadi.
+   * Video yechim yaratilmasa yechim saqlangan qoladi; xabarda shu aytiladi.
+   */
+  const videoniYarat = async (korsatma: string, yechimYozildi: boolean, yechimTasdiq: boolean) => {
+    setBirga(yechimYozildi);
+    setBand('video');
+    setBosqich('video');
+    try {
+      const n = await videoYarat(soro, id, { korsatma, ovozYoz: !!ai?.yoqilgan, onBosqich: setBosqich, tirik: () => ochiq.current });
+      if (!n || !ochiq.current) return;
+      setVideo(n.holat);
+      setVideoOgohlar(n.ogohlar);
+      const x = natijaXabari({ yechimYozildi, yechimTasdiq, ovoz: !!n.holat.dars?.ovoz, ovozXato: n.ovozXato });
+      showNotification(x.matn, x.turi as 'success' | 'info');
+    } catch (e: any) {
+      if (ochiq.current) {
+        showNotification(`${yechimYozildi ? 'Yechim saqlandi, lekin video yechim yaratilmadi' : 'Yechim saqlandi, video yechim yaratilmadi'}: ${xatoSababi(e, "«Video yechim» bo'limidan qayta urinib ko'ring")}`, 'error');
+        videoniOqi();
+      }
+    } finally {
+      if (ochiq.current) { setBand(null); setBosqich(null); setBirga(false); }
+    }
+  };
+
+  /** «Yechim + video yechim yaratish»: AI yechadi → (ishonchli bo'lsa) saqlanadi → video yechim tuziladi. */
+  const birgaYarat = async () => {
+    if (band || !q) return;
+    if (bor && !(await confirm({
+      title: 'Yechim va video yechim qayta yaratilsinmi?',
+      message: "Hozirgi yechim AI yozgani bilan almashtiriladi (yangisi tasdiqlanmagan bo'lishi mumkin), video yechim ham yangidan tuziladi.",
+      confirmLabel: 'Qayta yaratish', danger: false,
+    }))) return;
+    setBirga(true);
+    setBand('ai');
+    setBosqich('yechim');
+    let davom: { talab: string; tasdiq: boolean } | null = null;
+    try {
+      const y = await yechimniYozVaSaqla(soro, id, { korsatma: talab, tirik: () => ochiq.current });
+      if (!y || !ochiq.current) return;
+      if (!y.saqlandi) {
+        // Ishonchsiz yechim ko'rmay saqlanmaydi: ustoz shu yerda ko'rib, «Saqlash» bosadi (video yechim — shundan keyin).
+        setTaklif({ ...y.ai, talab });
+        setTasdiq(false);
+        setVideoHam(true);
+        showNotification("AI yechimi bankdagi javobga mos kelmadi yoki rasm ko'rinmadi — yechimni tekshiring; «Saqlash» bosilgach video yechim ham yaratiladi", 'info');
+        return;
+      }
+      yechimYangilandi(y.javob);
+      setTanlangan([]); setMatn(''); setRejim('korish');
+      davom = { talab, tasdiq: y.javob.solutionStatus === 'tasdiqlangan' };
+    } catch (e: any) {
+      if (ochiq.current) showNotification(e?.status === 504 ? "AI javob berishga ulgurmadi — qayta urinib ko'ring" : e.message, 'error');
+      return;
+    } finally {
+      if (ochiq.current && !davom) { setBand(null); setBosqich(null); setBirga(false); }
+    }
+    if (davom) await videoniYarat(davom.talab, true, davom.tasdiq);
   };
 
   const saqla = async () => {
@@ -126,13 +202,18 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
     setBand('saqla');
     try {
       await yoz({ solution: taklif.yechim, solutionStatus: tasdiq ? 'tasdiqlangan' : 'qoralama', korsatma: taklif.talab || undefined },
-        tasdiq ? "Yechim saqlandi — o'quvchilar natijadan keyin ko'radi" : "Yechim qoralama bo'lib saqlandi — o'quvchilar ko'rmaydi");
+        videoHam ? null : tasdiq ? "Yechim saqlandi — o'quvchilar natijadan keyin ko'radi" : "Yechim qoralama bo'lib saqlandi — o'quvchilar ko'rmaydi");
+      const talabi = taklif.talab;
       setTaklif(null); setTanlangan([]); setMatn(''); setRejim('korish');
+      if (videoHam) {
+        // Video yechim shu saqlangan yechimdan tuziladi (band 'video' bo'lib qoladi — oyna yopilmaydi).
+        await videoniYarat(talabi, true, tasdiq);
+        return;
+      }
     } catch (e: any) {
       showNotification(e.message, 'error');
-    } finally {
-      setBand(null);
     }
+    setBand(null);
   };
 
   const holatQoy = async (holat: YechimHolati) => {
@@ -151,15 +232,21 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
     || !!(await confirm({ title: 'Yangi yechim saqlanmadi', message: "AI yozgan yechim yo'qoladi.", confirmLabel: tugma, danger: false }));
   const yop = async () => {
     // Saqlanayotgan paytda yopilmaydi: so'rov baribir tugaydi, «yo'qoladi» degan savol esa chalg'itadi.
-    if (band === 'saqla' || band === 'holat') return;
+    if (band === 'saqla' || band === 'holat' || band === 'video') return;
     if (await tashlansinmi('Yopish')) onYop();
   };
   const taklifniTashla = async () => { if (await tashlansinmi('Tashlash')) setTaklif(null); };
   const ozgartirishga = () => { setKorishdan(true); setRejim('ozgartirish'); };
 
   const aiTugma = (nom: string, turi: 'asosiy' | 'ikkinchi', ikonka: React.ReactNode) => (
-    <Tugma turi={turi} ikonka={ikonka} yuklanmoqda={band === 'ai'} disabled={!ai || aiYoq || !!band}
+    <Tugma turi={turi} ikonka={ikonka} yuklanmoqda={band === 'ai' && !birga} disabled={!ai || aiYoq || !!band}
       title={aiYoq ? AI_SOZLANMAGAN : 'AI yechimni yozadi — siz ko\'rib, saqlaysiz'} onClick={aiYoz}>{nom}</Tugma>
+  );
+
+  /** «Yechim + video yechim yaratish» — ikkalasini bitta bosishda. */
+  const birgaTugma = (nom: string, turi: 'asosiy' | 'ikkinchi') => (
+    <Tugma turi={turi} ikonka={<Clapperboard size={14} />} yuklanmoqda={band === 'ai' && birga} disabled={!ai || aiYoq || !!band}
+      title={aiYoq ? AI_SOZLANMAGAN : "AI yechimni yozib saqlaydi, so'ng undan video yechim yaratadi (doskadagi yozuv, chizma, ovoz) — siz ko'rib, tasdiqlaysiz"} onClick={birgaYarat}>{nom}</Tugma>
   );
 
   const pastki = !q ? <><span /><Tugma onClick={onYop}>Yopish</Tugma></>
@@ -169,13 +256,16 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
         <Tugma disabled={!!band} onClick={taklifniTashla}>Bekor qilish</Tugma>
         <div className="flex flex-wrap justify-end gap-2">
           {aiTugma('Qayta yozdirish', 'ikkinchi', <RefreshCw size={14} />)}
-          <Tugma turi={taklif.mos === false ? 'ikkinchi' : 'asosiy'} yuklanmoqda={band === 'saqla'} disabled={!!band} onClick={saqla}>{taklif.mos === false ? 'Baribir saqlash' : 'Saqlash'}</Tugma>
+          <Tugma turi={taklif.mos === false ? 'ikkinchi' : 'asosiy'} yuklanmoqda={band === 'saqla'} disabled={!!band} onClick={saqla}>{taklif.mos === false ? 'Baribir saqlash' : 'Saqlash'}{videoHam ? ' + video yechim' : ''}</Tugma>
         </div>
       </>
     ) : rejim === 'ozgartirish' ? (
       <>
         <Tugma disabled={!!band} onClick={() => (korishdan ? setRejim('korish') : onYop())}>Bekor qilish</Tugma>
-        {aiTugma('AI yozsin', 'asosiy', <Sparkles size={14} />)}
+        <div className="flex flex-wrap justify-end gap-2">
+          {aiTugma('Faqat yechim', 'ikkinchi', <Sparkles size={14} />)}
+          {birgaTugma('Yechim + video yechim yaratish', 'asosiy')}
+        </div>
       </>
     ) : bor ? (
       <>
@@ -187,7 +277,10 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
     ) : (
       <>
         <Tugma turi="oddiy" disabled={!!band} onClick={ozgartirishga}>Qanday bo'lishini aytish</Tugma>
-        {aiTugma('AI yechsin', 'asosiy', <Sparkles size={14} />)}
+        <div className="flex flex-wrap justify-end gap-2">
+          {aiTugma('Faqat yechim', 'ikkinchi', <Sparkles size={14} />)}
+          {birgaTugma('Yechim + video yechim yaratish', 'asosiy')}
+        </div>
       </>
     );
 
@@ -204,6 +297,7 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
                 <Yorliq rang="ogoh">hali saqlanmagan</Yorliq>
                 {bor && <span className="text-[11.5px] text-matn-xira">saqlansa — hozirgi yechim o'rniga yoziladi</span>}
                 {band === 'ai' && <span role="status" className="inline-flex items-center gap-1.5 text-[12px] text-matn-sokin"><Loader2 size={13} className="animate-spin" />AI qayta yozmoqda…</span>}
+                {band === 'video' && bosqich && <span role="status" className="inline-flex items-center gap-1.5 text-[12px] text-matn-sokin"><Loader2 size={13} className="animate-spin" />{bosqichMatni(bosqich, { yechim: birga, ovoz: !!ai?.yoqilgan })}</span>}
               </div>
               {taklif.mos === false && (
                 <div role="alert" className="flex items-start gap-2 rounded-xl border border-xato-chiziq bg-xato-fon px-3 py-2.5 text-[12.5px] text-matn">
@@ -234,6 +328,10 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
                 <input type="checkbox" className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={tasdiq} onChange={e => setTasdiq(e.target.checked)} />
                 <span><b>Tekshirdim, tasdiqlayman</b> — o'quvchilar natijadan keyin ko'radi<span className="block text-[11.5px] text-matn-xira">Belgilanmasa — qoralama bo'lib saqlanadi: faqat ustozlar ko'radi, keyin ham tasdiqlasa bo'ladi</span></span>
               </label>
+              <label className="flex items-start gap-2 text-[12.5px] text-matn cursor-pointer select-none">
+                <input type="checkbox" className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--color-brand)] cursor-pointer" checked={videoHam} disabled={!!band} onChange={e => setVideoHam(e.target.checked)} />
+                <span><b>Saqlagach video yechimni ham yaratish</b><span className="block text-[11.5px] text-matn-xira">AI shu yechimdan doskadagi yozuv, chizma va ovozli video yechim tuzadi (qoralama bo'lib saqlanadi)</span></span>
+              </label>
             </section>
           ) : (
             <section aria-label="Yechim" className="rounded-xl border border-chiziq bg-sirt p-4">
@@ -244,7 +342,7 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
                   : <span title="O'quvchilar faqat tasdiqlangan yechimni ko'radi"><Yorliq rang="ogoh">tasdiqlanmagan</Yorliq></span>)}
               </div>
               {band === 'ai' ? (
-                <p role="status" className="flex items-center gap-2 py-3 text-[13px] text-matn-sokin"><Loader2 size={15} className="animate-spin" />AI yechmoqda… odatda 10–30 soniya</p>
+                <p role="status" className="flex items-center gap-2 py-3 text-[13px] text-matn-sokin"><Loader2 size={15} className="animate-spin" />{birga && bosqich ? bosqichMatni(bosqich, { yechim: true, ovoz: !!ai?.yoqilgan }) : 'AI yechmoqda… odatda 10–30 soniya'}</p>
               ) : bor ? (
                 <div className={`${SAVOL_MATNI} text-[13.5px] text-matn`} dangerouslySetInnerHTML={{ __html: yechimHtml }} />
               ) : (
@@ -253,22 +351,46 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
             </section>
           )}
 
+          {!taklif && (
+            <section aria-label="Video yechim" className="rounded-xl border border-chiziq bg-sirt p-4 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-[13px] font-bold text-matn">Video yechim</h4>
+                {!video?.dars && <Yorliq>hali yo'q</Yorliq>}
+                {video?.dars && (
+                  <>
+                    {video.dars.eskirgan ? <Yorliq rang="xato">eskirgan</Yorliq>
+                      : video.dars.status === 'tasdiqlangan' ? <Yorliq rang="yaxshi">tasdiqlangan</Yorliq> : <Yorliq rang="ogoh">tasdiqlanmagan</Yorliq>}
+                    <Yorliq rang={video.dars.ovoz ? 'brand' : 'kulrang'}>{video.dars.ovoz ? 'ovozli' : 'ovozsiz'}</Yorliq>
+                  </>
+                )}
+                {band === 'video' && bosqich && <span role="status" className="inline-flex items-center gap-1.5 text-[12px] text-matn-sokin"><Loader2 size={13} className="animate-spin" />{bosqichMatni(bosqich, { yechim: birga, ovoz: !!ai?.yoqilgan })}</span>}
+                <span className="ml-auto">
+                  <Tugma kichik ikonka={<Clapperboard size={13} />} disabled={!!band || !bor} onClick={() => setVideoOyna(true)}
+                    title={bor ? undefined : "Video yechim yechimdan yaratiladi — avval yechim yozing"}>{video?.dars ? "Ko'rish / o'zgartirish" : tahrir ? 'Yaratish' : "Ko'rish"}</Tugma>
+                </span>
+              </div>
+              {video?.dars?.eskirgan && <p className="text-[12px] text-xato">Yechim o'zgargan — video yechim eski yechimdan yaratilgan, o'quvchilarga ko'rsatilmaydi. Uni qayta yarating.</p>}
+              {videoOgohlar.map(o => <p key={o} role="alert" className="flex items-start gap-1.5 text-[12px] text-ogoh"><AlertTriangle size={13} className="shrink-0 mt-0.5" /><span>{o}</span></p>)}
+              {!video?.dars && <p className="text-[12px] text-matn-xira">{bor ? "Video yechim shu yechimdan yaratiladi." : "Yechim yozilgach video yechim yaratiladi — «Yechim + video yechim yaratish» ikkalasini birga yaratadi."}</p>}
+            </section>
+          )}
+
           {talabOchiq && (
             <section aria-label="Yechim qanday bo'lishi kerak" className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label htmlFor="yechim-talabi" className="block text-[13px] font-bold text-matn">{taklif ? "Boshqacha bo'lsinmi? Yechim qanday bo'lishi kerak?" : "Yechim qanday bo'lishi kerak?"}</label>
-                <MikrofonTugma disabled={band === 'ai' || aiYoq} onMatn={t => setMatn(m => `${m.trim() ? `${m.trim()} ` : ''}${t}`.slice(0, KORSATMA_MAX))} />
+                <MikrofonTugma disabled={!!band || aiYoq} onMatn={t => setMatn(m => `${m.trim() ? `${m.trim()} ` : ''}${t}`.slice(0, KORSATMA_MAX))} />
               </div>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tayyor talablar">
                 {TAKLIFLAR.map(t => {
                   const yoniq = tanlangan.includes(t);
                   return (
-                    <button key={t} type="button" aria-pressed={yoniq} disabled={band === 'ai'} onClick={() => setTanlangan(l => (l.includes(t) ? l.filter(x => x !== t) : [...l, t]))}
+                    <button key={t} type="button" aria-pressed={yoniq} disabled={!!band} onClick={() => setTanlangan(l => (l.includes(t) ? l.filter(x => x !== t) : [...l, t]))}
                       className={`px-2.5 py-1 rounded-lg border text-[12px] font-semibold cursor-pointer transition-colors disabled:opacity-50 ${yoniq ? 'bg-brand text-brand-ust border-brand' : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn hover:border-chiziq-kuchli'}`}>{t}</button>
                   );
                 })}
               </div>
-              <textarea id="yechim-talabi" rows={3} maxLength={KORSATMA_MAX} value={matn} onChange={e => setMatn(e.target.value)} disabled={band === 'ai'} autoFocus={boshRejim === 'ozgartirish'}
+              <textarea id="yechim-talabi" rows={3} maxLength={KORSATMA_MAX} value={matn} onChange={e => setMatn(e.target.value)} disabled={!!band} autoFocus={boshRejim === 'ozgartirish'}
                 placeholder="Yoki o'z so'zingiz bilan yozing: qaysi usulda, qanchalik batafsil, kim uchun, qaysi tilda…"
                 className="w-full px-3 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn focus:border-brand placeholder:text-matn-xira resize-y" style={{ outline: 'none' }} />
               <p className="text-[11.5px] text-matn-xira">
@@ -279,6 +401,7 @@ export default function YechimOynasi({ id, rejim: boshRejim, onYop, onSaqlandi }
           {tahrir && aiYoq && <p className="text-[12px] text-ogoh">{AI_SOZLANMAGAN}</p>}
         </>
       )}
+      {videoOyna && <DarsOynasi id={id} onYop={() => { setVideoOyna(false); videoniOqi(); }} onSaqlandi={(_, n) => { setQ(x => x && ({ ...x, solutionStatus: n.solutionStatus })); onSaqlandi?.(id, n); }} />}
     </Oyna>
   );
 }

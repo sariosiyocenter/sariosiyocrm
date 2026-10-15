@@ -1,4 +1,4 @@
-import { TUR_NOMI, TUR_IZOHI } from '../../../lib/savolTuri';
+import { TUR_NOMI, TUR_IZOHI, TEST_TURLARI, type TestTuri } from '../../../lib/savolTuri';
 import type { GuruhTuri } from '../../../types';
 
 // Fayl turi (egasi, 2026-10-10: "savollarni qo'lda qo'shmaymiz, fayldan qo'shamiz, faqat fayl turi
@@ -8,12 +8,23 @@ import type { GuruhTuri } from '../../../types';
 
 export type FaylTuri = 'yopiq' | GuruhTuri | 'yozma';
 
-export const FAYL_TURLARI: { v: FaylTuri; nom: string; izoh: string }[] = [
-  { v: 'yopiq', nom: '4 variantli', izoh: 'Oddiy test: har savolning A–D variantlari va bitta to\'g\'ri javobi bor.' },
-  { v: 'moslash', nom: TUR_NOMI.juft, izoh: `${bosh(TUR_IZOHI.juft)}: bitta umumiy shart, bir nechta savol va hammasiga bitta javoblar ro'yxati (A–F).` },
-  { v: 'qismli', nom: TUR_NOMI.qismli, izoh: `${bosh(TUR_IZOHI.qismli)}: bitta raqam ostida umumiy shart va a), b) qismlari — har qismning o'z javobi.` },
-  { v: 'yozma', nom: TUR_NOMI.yozma, izoh: "MS-41-43: to'liq yechimi yoziladigan masala. AI har birini yechib, batafsil izohli yechim qo'shadi." },
-];
+/**
+ * Test turi (SavolTuri: yopiq / juft / qismli / yozma) → fayl turi. Faqat shu yerda: guruhli «juft»
+ * (MS-33-35) bazada va fayl yo'lida `moslash` deb yuradi, qolganlari bir xil.
+ */
+export const FAYL_TURI_TESTDAN: Record<TestTuri, FaylTuri> = { yopiq: 'yopiq', juft: 'moslash', qismli: 'qismli', yozma: 'yozma' };
+
+const TUR_TAVSIFI: Record<TestTuri, string> = {
+  yopiq: "Oddiy test: har savolning A–D variantlari va bitta to'g'ri javobi bor.",
+  juft: `${bosh(TUR_IZOHI.juft)}: bitta umumiy shart, bir nechta savol va hammasiga bitta javoblar ro'yxati (A–F).`,
+  qismli: `${bosh(TUR_IZOHI.qismli)}: bitta raqam ostida umumiy shart va a), b) qismlari — har qismning o'z javobi.`,
+  yozma: "MS-41-43: to'liq yechimi yoziladigan masala. AI har birini yechib, batafsil izohli yechim qo'shadi.",
+};
+
+/** Tanlanadigan fayl/savol turlari — TEST_TURLARI bilan bir xil tartibda va nomda (savolTuri.ts). */
+export const FAYL_TURLARI: { v: FaylTuri; nom: string; izoh: string }[] = TEST_TURLARI.map(t => ({
+  v: FAYL_TURI_TESTDAN[t], nom: TUR_NOMI[t], izoh: TUR_TAVSIFI[t],
+}));
 
 function bosh(s: string | undefined): string {
   const t = String(s || '');

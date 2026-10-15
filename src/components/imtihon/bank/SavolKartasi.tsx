@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp, Sparkles, Clapperboard } from 'lucide-react';
+import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp, Sparkles, Clapperboard, Lightbulb } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
@@ -11,6 +11,8 @@ import { natijaQiyinligi, qiyinlikMosEmas } from '../../../../lib/imtihon.js';
 import SavolKorinishi from './SavolKorinishi';
 import OxshashSavollar from './OxshashSavollar';
 import DarsOynasi from './DarsOynasi';
+import YechimOynasi from './YechimOynasi';
+import SavolTarjimasi from './SavolTarjimasi';
 import { DarajaTanlov, QiyinlikYorligi, qiyinlikDaraja, darajaBandi, type DarajaQiymati } from './qiyinlik';
 import { useDarajalar } from './useDarajalar';
 import type { BankDaraxt, Question } from '../../../types';
@@ -77,14 +79,18 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
   const [q, setQ] = useState(boshQ);
   const [band, setBand] = useState(false);
   const [oxshash, setOxshash] = useState(false);
-  // Video dars oynasi (DarsOynasi) — yechim yonidagi tugmadan ochiladi.
+  // Video yechim oynasi (DarsOynasi) — yechim yonidagi tugmadan ochiladi; yechim oynasi (YechimOynasi) —
+  // pastdagi «Yechim va video yechim» tugmasidan: yechimi yo'q savolda ikkalasi bitta bosishda yaratiladi.
   const [dars, setDars] = useState(false);
+  const [yechimOyna, setYechimOyna] = useState(false);
   const darsTugmasi = kora('imtihonlar.savollar') && (
-    <button type="button" onClick={() => setDars(true)} title="Yechimning video darsi: ko'rish, tuzish, ovoz yozdirish"
+    <button type="button" onClick={() => setDars(true)} title="Yechimning video yechimi: ko'rish, tuzish, ovoz yozdirish"
       className="inline-flex items-center gap-1 rounded-lg border border-chiziq px-2 py-1 text-[11.5px] font-semibold text-brand hover:border-brand cursor-pointer">
-      <Clapperboard size={13} />Video dars
+      <Clapperboard size={13} />Video yechim
     </button>
   );
+  /** Yechim yoki video yechim oynasi yopilgach: yechim matni o'zgargan bo'lishi mumkin — savolni qayta o'qiydi. */
+  const yangila = () => { soro<Question>('GET', `questions/${q.id}`).then(r => setQ(x => ({ ...x, ...r }))).catch(() => undefined); };
   const natija = natijaQiyinligi(q.pCorrect);
   const fan = daraxt?.fanlar.find(f => f.mavzular.some(m => m.id === q.bankTopicId));
   const mavzu = fan?.mavzular.find(m => m.id === q.bankTopicId);
@@ -159,6 +165,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
               )}
             </div>
           )}
+          <SavolTarjimasi q={q} tahrir={tahrir} onSaqlandi={() => onOzgardi()} />
           {tahrir && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-chiziq p-3">
               <div className="sm:col-span-2">
@@ -187,6 +194,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
           <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-chiziq">
             {ochiradi ? <Tugma turi="xavfli" kichik ikonka={<Trash2 size={14} />} onClick={ochir}>O'chirish</Tugma> : <span />}
             <div className="flex flex-wrap justify-end gap-2">
+              {kora('imtihonlar.savollar') && <Tugma ikonka={<Lightbulb size={14} />} onClick={() => setYechimOyna(true)} title="Yechim va uning video yechimi: ko'rish, AI bilan ikkalasini bitta bosishda yaratish">Yechim va video yechim</Tugma>}
               {daraxt && <Tugma ikonka={<Sparkles size={14} />} onClick={() => setOxshash(true)} title="AI shu savolga o'xshash, sonlari va javobi boshqa savollar tuzadi">O'xshash</Tugma>}
               <Tugma turi="asosiy" ikonka={<Pencil size={14} />} onClick={() => navigate(`/questions/${q.id}/edit`)}>Tahrirlash</Tugma>
             </div>
@@ -194,7 +202,8 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
         )}
       </div>
       {oxshash && daraxt && <OxshashSavollar daraxt={daraxt} asl={q} onYop={() => setOxshash(false)} onSaqlandi={onOzgardi} />}
-      {dars && <DarsOynasi id={q.id} onYop={() => setDars(false)} />}
+      {dars && <DarsOynasi id={q.id} onYop={() => { setDars(false); yangila(); }} onSaqlandi={() => onOzgardi()} />}
+      {yechimOyna && <YechimOynasi id={q.id} rejim="korish" onYop={() => { setYechimOyna(false); yangila(); }} onSaqlandi={() => onOzgardi()} />}
     </div>
   );
 }

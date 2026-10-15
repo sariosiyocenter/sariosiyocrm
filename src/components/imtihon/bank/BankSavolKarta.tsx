@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Check, Clapperboard, Folder, Lightbulb, MoreHorizontal } from 'lucide-react';
+import { Check, Clapperboard, Folder, Lightbulb, MoreHorizontal, Sparkles } from 'lucide-react';
 import { Yorliq } from '../ui';
 import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { TUR_NOMI } from '../../../lib/savolTuri';
@@ -12,7 +12,9 @@ import type { BelgiGuruhi } from '../../../types';
  * Bank ro'yxatidagi savol kartasi: matn (formulalar bilan), variantlar va to'g'ri javob ochmasdan
  * ko'rinadi. Yorliqlar (mavzu, qiyinlik, filtrlar) bosilsa — shu yerning o'zida o'zgartiriladi;
  * karta chapdagi mavzu yoki filtr qatoriga sudrab tashlanadi. Yechimi bor savolda — sokin
- * «Yechim» va «Video dars» belgilari (bosilsa o'sha oyna ochiladi); qolgan amallar — «⋯» menyusida.
+ * «Yechim» va «Video yechim» belgilari (bosilsa o'sha oyna ochiladi), yechimi yo'q savolda (tahrir
+ * huquqi bilan) — «Yechim + video yechim» (yechim oynasi: ikkalasi bitta bosishda yaratiladi);
+ * qolgan amallar — «⋯» menyusida.
  */
 export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlanadi, tahrir, mavzu, darajaNom, darajaNuqta, guruhlar, onTanla, onKor, onSudra, onMenyu, onYechim, onDars }: {
   q: BankQatori;
@@ -23,7 +25,7 @@ export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlan
   onMenyu: (tur: MenyuTuri, el: HTMLElement, id: number, guruh?: number) => void;
   /** Yechimni ko'rish (berilmasa — belgi chiqmaydi). */
   onYechim?: (id: number) => void;
-  /** Video dars oynasini ochish — dars yechimdan tuziladi, shuning uchun faqat yechimi bor savolda. */
+  /** Video yechim oynasini ochish — u yechimdan tuziladi, shuning uchun faqat yechimi bor savolda. */
   onDars?: (id: number) => void;
 }) {
   const html = useMemo(() => formulaliHtml(q.text || ''), [q.text]);
@@ -65,8 +67,13 @@ export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlan
                 className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer"><Lightbulb size={12} />Yechim</button>
             )}
             {q.yechimBor && onDars && (
-              <button type="button" onClick={() => onDars(q.id)} aria-label={`#${q.id} — video dars`} title="Video dars: ko'rish, tuzish, ovoz yozdirish"
-                className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer"><Clapperboard size={12} />Video dars</button>
+              <button type="button" onClick={() => onDars(q.id)} aria-label={`#${q.id} — video yechim`} title="Video yechim: ko'rish, tuzish, ovoz yozdirish"
+                className="inline-flex items-center gap-1 font-semibold text-matn-sokin hover:text-brand cursor-pointer"><Clapperboard size={12} />Video yechim</button>
+            )}
+            {!q.yechimBor && tahrir && onYechim && (
+              <button type="button" onClick={() => onYechim(q.id)} aria-label={`#${q.id} — yechim va video yechim yaratish`}
+                title="Yechimi yo'q — AI yechim va video yechimni bitta bosishda yaratadi"
+                className="inline-flex items-center gap-1 font-semibold text-matn-xira hover:text-brand cursor-pointer"><Sparkles size={12} />Yechim + video yechim</button>
             )}
             {!!q.usedCount && <span>{q.usedCount} marta ishlatilgan</span>}
             <span className="raqam" title="Savolning bankdagi doimiy raqami (ID) — qaysi mavzuda turishidan qat'i nazar o'zgarmaydi">ID {q.id}</span>

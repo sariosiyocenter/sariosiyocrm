@@ -3,7 +3,7 @@ import { bolinmaQadami, chizmaChegarasi, jismBolaklari, jismUchlari } from '../.
 import { ifodaniKompilyatsiya } from '../../../../lib/ifoda.js';
 import type { ChizmaElementi } from './darsTurlari';
 
-// Video dars doskasidagi chizma (lib/darsChizma.js elementlari). Har element doskaga birinchi marta
+// Video yechim doskasidagi chizma (lib/darsChizma.js elementlari). Har element doskaga birinchi marta
 // chiqqanda bo'r bilan chizilgandek "yoziladi" (SVG chiziq uzunligi bo'yicha ochiladi); avval
 // chizilganlari joyida qoladi. Koordinatalar matematik — bu yerda pikselga o'giriladi, o'lcham
 // butun dars elementlaridan olinadi: chizma qadamdan qadamga siljib ketmaydi. Matnlar React matni

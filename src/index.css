@@ -347,7 +347,7 @@ input[type="number"] {
 .bank-chaqnash { animation: bank-chaqnash 1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .bank-chaqnash { animation: none; } }
 
-/* Video dars pleeri (src/components/imtihon/dars/DarsPleer.tsx). Doska — markaz rangidan
+/* Video yechim pleeri (src/components/imtihon/dars/DarsPleer.tsx). Doska — markaz rangidan
    olingan to'q fon: yorug' va qorong'i mavzuda bir xil (bu — doska, sahifa emas). Qatorlar
    chapdan o'ngga "yozilib" chiqadi; animatsiya tugagach kesim olinadi (keng formula sig'sin). */
 .dars-doska {

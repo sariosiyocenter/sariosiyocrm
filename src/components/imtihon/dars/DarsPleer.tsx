@@ -4,7 +4,7 @@ import { formulaliHtml } from '../../../lib/matn';
 import Chizma, { type ChizmaKorinishi } from './Chizma';
 import { darsVaqti, type Dars } from './darsTurlari';
 
-// Video dars pleeri (egasi, 2026-10-13). Bu — video fayl emas: ssenariy qadamlari (doska + nutq)
+// Video yechim pleeri (egasi, 2026-10-13). Bu — video fayl emas: ssenariy qadamlari (doska + nutq)
 // va bitta ovoz fayli. Pleer doskani o'zi chizadi — qadamlar ovoz bilan birga, qator-qator
 // "yozilib" chiqadi. Shuning uchun dars telefonda ham tiniq, hajmi esa videodan o'nlab marta kichik.
 // Ovoz bo'lmasa (hali yozilmagan yoki ochilmadi) — dars subtitr bilan, taxminiy vaqtda o'ynaydi.
@@ -194,12 +194,12 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
 
         {!boshlangan && (
           <div className="absolute inset-0 grid place-items-center">
-            <button type="button" onClick={ijro} className="group flex flex-col items-center gap-3 cursor-pointer rounded-2xl p-4" aria-label={`Video darsni boshlash — ${darsVaqti(davomiylik)}`}>
+            <button type="button" onClick={ijro} className="group flex flex-col items-center gap-3 cursor-pointer rounded-2xl p-4" aria-label={`Video yechimni boshlash — ${darsVaqti(davomiylik)}`}>
               <span className="grid place-items-center w-16 h-16 rounded-full bg-white text-brand shadow-xl transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
                 <Play size={26} className="translate-x-0.5" fill="currentColor" />
               </span>
               <span className="text-[13px] font-semibold text-white">
-                Video dars · <span className="raqam">{darsVaqti(davomiylik)}</span>
+                Video yechim · <span className="raqam">{darsVaqti(davomiylik)}</span>
                 <span className="block text-center text-[11.5px] font-normal text-white/65">{qadamlar.length} qadam{ovozli ? '' : ' · ovozsiz, subtitr bilan'}</span>
               </span>
             </button>
@@ -222,7 +222,7 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
             ))}
           </div>
           <input type="range" min={0} max={davomiylik} step={0.1} value={vaqt} disabled={!boshlangan} onChange={e => otkaz(Number(e.target.value))}
-            aria-label="Dars vaqti" aria-valuetext={`${darsVaqti(vaqt)} / ${darsVaqti(davomiylik)}, ${joriy + 1}-qadam`}
+            aria-label="Video yechim vaqti" aria-valuetext={`${darsVaqti(vaqt)} / ${darsVaqti(davomiylik)}, ${joriy + 1}-qadam`}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default" />
         </div>
 
@@ -244,7 +244,7 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
               className="raqam min-w-[3.1rem] rounded-lg border border-chiziq px-2 py-1.5 text-[12px] font-bold text-matn-sokin hover:border-chiziq-kuchli hover:text-matn cursor-pointer">{tezlik}×</button>
           </span>
         </div>
-        {dars.ovoz && ovozXato && <p role="status" className="mt-1 text-[11.5px] text-ogoh">Ovozni ochib bo'lmadi — dars subtitr bilan davom etadi.</p>}
+        {dars.ovoz && ovozXato && <p role="status" className="mt-1 text-[11.5px] text-ogoh">Ovozni ochib bo'lmadi — video yechim subtitr bilan davom etadi.</p>}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import type { Question } from '../../../types';
 /**
  * Savolning to'liq ko'rinishi: (bo'lsa) umumiy matn yoki shart, formulalar, variantlar, to'g'ri
  * javob, yechim. `yechimsiz` — yechim ko'rsatilmaydi (yechim oynasi uni o'zi alohida chiqaradi).
- * `yechimAmali` — yechim sarlavhasi yonidagi tugma (masalan «Video dars»).
+ * `yechimAmali` — yechim sarlavhasi yonidagi tugma (masalan «Video yechim»).
  */
 export default function SavolKorinishi({ q, yechimsiz, yechimAmali }: { q: Question; yechimsiz?: boolean; yechimAmali?: React.ReactNode }) {
   const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());

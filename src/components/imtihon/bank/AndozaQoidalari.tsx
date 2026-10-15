@@ -4,15 +4,17 @@ import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, SELECT } from '../ui';
 import { QIYINLIK } from './qiyinlik';
 import { andozaQoidali } from './andoza';
-import { TUR_NOMI } from '../../../lib/savolTuri';
+import { TEST_TURLARI, TUR_NOMI, testTurimi } from '../../../lib/savolTuri';
 import type { Andoza, AndozaQatori, BankDaraxt, BankFiltrMalumoti, SavolTuri } from '../../../types';
 
 // «Qoidalar bo'yicha avtomatik to'ldirish» — andozaning ikkinchi darajali yo'li (Addmen
-// "Blueprint" qatorlari): har qoida — filtr (bo'lim, mavzu, qiyinlik, manba, fan filtrlari,
-// tur) va nechta savol. «To'ldirish» andozaning bo'sh o'rinlariga mos savollarni bankdan
+// "Blueprint" qatorlari): har qoida — filtr (bo'lim, mavzu, qiyinlik, fan filtrlari,
+// tur — faqat TEST_TURLARI) va nechta savol. «To'ldirish» andozaning bo'sh o'rinlariga mos savollarni bankdan
 // tanlab qo'yadi. Eski andozalar shu qoidalarning o'zidan iborat (savollar tasodifiy olinadi).
 
 const YANGI_QATOR: AndozaQatori = { bolim: null, mavzuId: null, qiyinlik: 0, manba: null, tagIds: [], tur: 'yopiq', soni: 5 };
+/** Manba filtri bank ekranidan olib tashlangan: eski qoidalardagi manba ham e'tiborga olinmaydi (server manba: null ni qabul qiladi). */
+const manbasiz = (rows: AndozaQatori[]): AndozaQatori[] => rows.map(r => (r.manba ? { ...r, manba: null } : r));
 const KICHIK = 'w-full min-w-0 px-2 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] text-matn outline-none focus:border-brand cursor-pointer';
 
 type Hisob = { bor: number; boshQolgan: number; yetadi: boolean };
@@ -25,7 +27,7 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
   const qoidali = andozaQoidali(a);
   const [ochiq, setOchiq] = useState(qoidali);
   const [fanId, setFanId] = useState<number | null>(a.subjectId ?? a.fanId ?? daraxt.fanlar[0]?.id ?? null);
-  const [rows, setRows] = useState<AndozaQatori[]>(a.rows.length ? a.rows : [{ ...YANGI_QATOR }]);
+  const [rows, setRows] = useState<AndozaQatori[]>(a.rows.length ? manbasiz(a.rows) : [{ ...YANGI_QATOR }]);
   const [ozgargan, setOzgargan] = useState(false);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [filtr, setFiltr] = useState<BankFiltrMalumoti | null>(null);
@@ -35,7 +37,7 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
   // Saqlangach yoki to'ldirilgach — serverdagi qoidalar.
   const serverKalit = JSON.stringify(a.rows);
   useEffect(() => {
-    setRows(a.rows.length ? a.rows : [{ ...YANGI_QATOR }]);
+    setRows(a.rows.length ? manbasiz(a.rows) : [{ ...YANGI_QATOR }]);
     setOzgargan(false);
     if (a.subjectId) setFanId(a.subjectId);
   }, [serverKalit, a.subjectId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,7 +109,6 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
                   <th className="px-1.5 py-2 text-left font-semibold">Bo'lim</th>
                   <th className="px-1.5 py-2 text-left font-semibold">Mavzu</th>
                   <th className="px-1.5 py-2 text-left font-semibold w-24">Qiyinlik</th>
-                  <th className="px-1.5 py-2 text-left font-semibold">Manba</th>
                   {guruhlar.map(g => <th key={g.id} className="px-1.5 py-2 text-left font-semibold">{g.name}</th>)}
                   <th className="px-1.5 py-2 text-left font-semibold w-28">Tur</th>
                   <th className="px-1.5 py-2 text-center font-semibold w-16">Soni</th>
@@ -142,12 +143,6 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
                           {QIYINLIK.filter(q => !q.yashirin || r.qiyinlik === q.d).map(q => <option key={q.d} value={q.d}>{q.nom}</option>)}
                         </select>
                       </td>
-                      <td className="px-1.5 py-1.5">
-                        <select className={KICHIK} disabled={!tahrir} value={r.manba ?? ''} aria-label={`${i + 1}-qoida manbasi`} onChange={e => qator(i, { manba: e.target.value || null })}>
-                          <option value="">Hammasi</option>
-                          {(filtr?.manbalar || []).filter(m => m.nom).map(m => <option key={m.nom} value={m.nom}>{m.nom}</option>)}
-                        </select>
-                      </td>
                       {guruhlar.map(g => {
                         const joriy = r.tagIds.find(id => g.tags.some(t => t.id === id)) ?? '';
                         return (
@@ -163,7 +158,9 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
                       <td className="px-1.5 py-1.5">
                         {/* Guruhli savollar butunligicha olinadi; MS-36-45 da son — savollar soni (har biri a, b). */}
                         <select className={KICHIK} disabled={!tahrir} value={r.tur} aria-label={`${i + 1}-qoida turi`} onChange={e => qator(i, { tur: e.target.value as SavolTuri })}>
-                          {(Object.keys(TUR_NOMI) as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                          {/* Eski qoidadagi (raqamli, moslash) tur — yo'qolmasin, lekin yangi tanlab bo'lmaydi. */}
+                          {!testTurimi(r.tur) && <option value={r.tur}>{TUR_NOMI[r.tur]}</option>}
+                          {TEST_TURLARI.map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
                         </select>
                       </td>
                       <td className="px-1.5 py-1.5 text-center">
@@ -184,7 +181,7 @@ export default function AndozaQoidalari({ a, daraxt, tahrir, band, onToldir, onS
               </tbody>
               <tfoot className="bg-ichki">
                 <tr>
-                  <td colSpan={5 + guruhlar.length} className="px-2 py-2">
+                  <td colSpan={4 + guruhlar.length} className="px-2 py-2">
                     {tahrir && <Tugma kichik ikonka={<Plus size={13} />} disabled={!fanId} onClick={() => ozgartir([...rows, { ...(rows[rows.length - 1] || YANGI_QATOR), tagIds: [...(rows[rows.length - 1]?.tagIds || [])] }])}>Qoida qo'shish</Tugma>}
                   </td>
                   <td className="px-1.5 py-2 text-right font-semibold text-matn-sokin">Jami</td>
