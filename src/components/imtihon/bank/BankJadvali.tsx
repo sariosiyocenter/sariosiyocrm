@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard, Languages } from 'lucide-react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard, Languages, PenTool } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
+import { useAiHolat } from '../useAiHolat';
 import { Tugma, Yuklanmoqda, BoshHolat } from '../ui';
 import { TUR_NOMI } from '../../../lib/savolTuri';
 import { BelgilashOynasi, type BelgilashBoshi } from './BankOynalari';
@@ -114,6 +115,9 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   // Video yechim oynasi (DarsOynasi): qaysi savol.
   const [dars, setDars] = useState<number | null>(null);
   const [ochiq, setOchiq] = useState<Question | null>(null);
+  // Oyna «Rasm chizish (AI)» dan ochildi — chizma bloki chizishni o'zi boshlaydi.
+  const [ochiqChiz, setOchiqChiz] = useState(false);
+  const ai = useAiHolat();
   const [band, setBand] = useState<string | null>(null);
   // Serverga yozilayotgan yangi qatorlar (nomi darhol ko'rinadi).
   const [kutilmoqda, setKutilmoqda] = useState<{ joy: string; nom: string }[]>([]);
@@ -311,8 +315,9 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   };
   const ids = [...tanlangan];
 
-  const korish = useCallback((id: number) => {
+  const korish = useCallback((id: number, chizish = false) => {
     setBand('korish');
+    setOchiqChiz(chizish);
     soro<Question>('GET', `questions/${id}`).then(setOchiq).catch(e => showNotification(e.message, 'error')).finally(() => setBand(null));
   }, [soro]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1034,6 +1039,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
         <Menyu rect={menyu.rect} onYop={() => setMenyu(null)} nom={`#${menyu.ids[0]} savol`}>
           <MenyuBand ikonka={<Eye size={14} />} onClick={() => { korish(menyu.ids[0]); setMenyu(null); }}>{savolTahrir ? 'Ochish va tahrirlash' : "Ko'rish"}</MenyuBand>
           {yechimBandlari(menyu.ids[0])}
+          {savolTahrir && ai?.yoqilgan && <MenyuBand ikonka={<PenTool size={14} />} onClick={() => { korish(menyu.ids[0], true); setMenyu(null); }}>Rasm chizish (AI)</MenyuBand>}
           {savolTahrir && <MenyuBand ikonka={<Sparkles size={14} />} onClick={() => { setOxshash(menyu.ids); setMenyu(null); }}>O'xshashini tuzish (AI)</MenyuBand>}
           {savolTahrir && <MenyuBand ikonka={<Languages size={14} />} onClick={() => { setTarjima(menyu.ids); setMenyu(null); }}>Tarjima qilish (AI)</MenyuBand>}
           {ochiradi && <MenyuBand ikonka={<Trash2 size={14} />} xavfli onClick={() => ochir(menyu.ids)}>Savolni o'chirish</MenyuBand>}
@@ -1118,7 +1124,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       )}
 
       {belgilash && filtr && <BelgilashOynasi ids={ids} filtr={filtr} boshi={belgilashBoshi()} onYop={() => setBelgilash(false)} onSaqlandi={ozgardi} />}
-      {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
+      {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} chizish={ochiqChiz} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
       {guruhTahrir != null && <GuruhOynasi daraxt={daraxt} guruhId={guruhTahrir} onYop={() => setGuruhTahrir(null)} onSaqlandi={ozgardi} />}
       {yechim && <YechimOynasi key={yechim.id} id={yechim.id} rejim={yechim.rejim} onYop={() => setYechim(null)} onSaqlandi={yechimSaqlandi} />}
       {dars && <DarsOynasi key={dars} id={dars} onYop={() => setDars(null)} onSaqlandi={yechimSaqlandi} />}

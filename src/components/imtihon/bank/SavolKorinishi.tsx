@@ -10,8 +10,9 @@ import type { Question } from '../../../types';
  * Savolning to'liq ko'rinishi: (bo'lsa) umumiy matn yoki shart, formulalar, variantlar, to'g'ri
  * javob, yechim. `yechimsiz` — yechim ko'rsatilmaydi (yechim oynasi uni o'zi alohida chiqaradi).
  * `yechimAmali` — yechim sarlavhasi yonidagi tugma (masalan «Video yechim»).
+ * `rasm` — savol rasmi o'rniga matn ostida turadigan blok (AI chizma bloki); berilsa, rasm uning ichida.
  */
-export default function SavolKorinishi({ q, yechimsiz, yechimAmali }: { q: Question; yechimsiz?: boolean; yechimAmali?: React.ReactNode }) {
+export default function SavolKorinishi({ q, yechimsiz, yechimAmali, rasm }: { q: Question; yechimsiz?: boolean; yechimAmali?: React.ReactNode; rasm?: React.ReactNode }) {
   const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
   // Guruhli savol bo'lagi: 'juft' — umumiy javoblar ro'yxatidan (A–F) harf; 'qismli' — javobi yoziladi.
   const guruhli = q.type === 'juft' || q.type === 'qismli';
@@ -25,8 +26,9 @@ export default function SavolKorinishi({ q, yechimsiz, yechimAmali }: { q: Quest
           {shart && <div className={`${SAVOL_MATNI} text-[13px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(shart) }} />}
         </div>
       )}
-      {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-56 rounded-lg border border-chiziq bg-white" />}
+      {!rasm && q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-56 rounded-lg border border-chiziq bg-white" />}
       <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text) }} />
+      {rasm}
       {(q.type === 'yopiq' || q.type === 'juft') && (
         <ol className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {(q.options || []).map((o, i) => (

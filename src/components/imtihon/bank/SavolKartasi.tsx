@@ -7,8 +7,10 @@ import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Yorliq, Tanlov, SELECT } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { TUR_NOMI } from '../../../lib/savolTuri';
-import { natijaQiyinligi, qiyinlikMosEmas } from '../../../../lib/imtihon.js';
+import { natijaQiyinligi, qiyinlikMosEmas, guruhSavolimi } from '../../../../lib/imtihon.js';
+import { useAiHolat } from '../useAiHolat';
 import SavolKorinishi from './SavolKorinishi';
+import SavolChizmasi from './SavolChizmasi';
 import OxshashSavollar from './OxshashSavollar';
 import DarsOynasi from './DarsOynasi';
 import YechimOynasi from './YechimOynasi';
@@ -67,11 +69,14 @@ export function SavolKartasi({ q, onOch, tanlash, tanlangan, onTanla, sudrash }:
 }
 
 /** Savol oynasi: to'liq ko'rinish va tez o'zgartirishlar (qiyinlik, mavzu, holat). */
-export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
+export function SavolOynasi({ q: boshQ, daraxt, chizish, onYop, onOzgardi }: {
   q: Question; daraxt: BankDaraxt | null; onYop: () => void; onOzgardi: () => void;
+  /** «Rasm chizish (AI)» dan ochildi: chizma bloki chizishni o'zi boshlaydi. */
+  chizish?: boolean;
 }) {
   const { kora, ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.savollar');
+  const ai = useAiHolat();
   const ochiradi = ozgartira('imtihonlar.ochirish');
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
@@ -154,7 +159,9 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
           <button aria-label="Yopish" onClick={onYop} className="p-2 -mr-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <SavolKorinishi q={q} yechimAmali={darsTugmasi} />
+          <SavolKorinishi q={q} yechimAmali={darsTugmasi} rasm={tahrir && ai?.yoqilgan && !guruhSavolimi(q.type) ? (
+            <SavolChizmasi q={q} avto={chizish} onSaqlandi={o => { setQ(x => ({ ...x, ...o })); onOzgardi(); }} />
+          ) : undefined} />
           {!!q.usedCount && (
             <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-matn-sokin">
               <span>{q.usedCount} ta imtihonda ishlatilgan</span>
