@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, LayoutList, Eye, Loader2, ListChecks, FileDown, PenTool, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, Eye, Loader2, ListChecks, FileDown, PenTool, AlertTriangle } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, Tanlov } from './ui';
@@ -14,7 +13,6 @@ import { yuklabOl } from '../../lib/zip';
 import { varaqTuzilmasi } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
-import AndozadanQogoz from './AndozadanQogoz';
 import { varaqParametrlari } from './varaqParam';
 import TanlanganSavollar from './TanlanganSavollar';
 import VaraqDizayni from './dizayner/VaraqDizayni';
@@ -22,14 +20,13 @@ import VaraqDizayni from './dizayner/VaraqDizayni';
 // 3-bo'lim. Chapda — chop etiladigan hujjatlar (Addmen QPG kabi ikki guruh:
 // savol qog'ozi va imtihon kuni), o'ngda — tanlangan hujjat qanday
 // chiqishining jonli ko'rinishi (birinchi betlari). Javob varaqalari xona →
-// qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). "Andozadan
-// savol qog'ozi" — andoza(lar)dan variantli imtihonni bir qadamda yasaydi.
+// qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). Bu yerda faqat
+// hujjatlar: andozadan imtihon yaratish «Yangi imtihon»da (2026-10-17).
 
 type Hujjat = 'savollar' | 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
 
 export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => void }) {
-  const { settings, schools, showNotification, kora, ozgartira } = useCRM();
-  const navigate = useNavigate();
+  const { settings, schools, showNotification, kora } = useCRM();
   const { soro } = useImtihonApi();
   const { data } = useOrinlar(exam.id);
   const s = exam.settings;
@@ -44,12 +41,10 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const [yakka, setYakka] = useState<number>(0);
   const [kitobchaKodi, setKitobchaKodi] = useState('');
   const [band, setBand] = useState<false | 'chop' | 'word'>(false);
-  const [andozaOyna, setAndozaOyna] = useState(false);
   // Kitobcha ko'rinishi (Addmen QPG "Output") — brauzerda eslab qolinadi.
   const [ko, setKoHolat] = useState<KitobchaSozlama>(() => { try { return { ...KITOBCHA_STANDART, ...JSON.parse(localStorage.getItem('imt_kitobcha') || '{}') }; } catch { return KITOBCHA_STANDART; } });
   const setKo = (patch: Partial<KitobchaSozlama>) => setKoHolat(x => { const y = { ...x, ...patch }; try { localStorage.setItem('imt_kitobcha', JSON.stringify(y)); } catch { /* eslab qolinmaydi */ } return y; });
   const kalitKorinadi = kora('imtihonlar.kalit');
-  const yaratadi = ozgartira('imtihonlar.imtihon');
   const kitobchaBor = s.source === 'bank';
   const sorovnoma = s.source === 'sorovnoma';
   const anonim = sorovnoma && !!s.sorovnoma?.anonim;
@@ -121,7 +116,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
     if (turi === 'varaq') {
       const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : korinish ? orinlar.slice(0, 1) : orinlar;
       if (!tanlanganlar.length) {
-        if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichini bajaring");
+        if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «Qatnashchilar» tabida o'rinlashtiring");
         return null;
       }
       const svglar = tanlanganlar.flatMap(o => sahifalar.map(sh => varaqSvg(sh, umumiy, varaqMalumoti(o))));
@@ -141,7 +136,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
     }
     const xonaRoyxati = xonalarBoyicha();
     if (!xonaRoyxati.length) {
-      if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichini bajaring");
+      if (!korinish) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q — «Qatnashchilar» tabida o'rinlashtiring");
       return null;
     }
     const f = turi === 'eshik' ? eshikRoyxatiHtml : vedomostHtml;
@@ -184,28 +179,16 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
       tayyorla(hujjat, true).then(p => {
         if (bekor) return;
         setKorinish(p ? { html: `<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><style>${p.css}${KORINISH_CSS}</style></head><body>${p.body}</body></html>` }
-          : { xato: hujjat === 'kitobcha' ? "Bu smenada variant yo'q" : "Bu smenada o'rinlashtirilgan qatnashchi yo'q — «O'rinlashtirish» bosqichidan keyin ko'rinadi" });
+          : { xato: hujjat === 'kitobcha' ? "Bu smenada variant yo'q" : "Bu smenada o'rinlashtirilgan qatnashchi yo'q — «Qatnashchilar» tabida o'rinlashtirilgach ko'rinadi" });
       }).catch(e => { if (!bekor) setKorinish({ xato: e.message }); });
     }, 150);
     return () => { bekor = true; clearTimeout(t); };
   }, [hujjat, smena, xona, yakka, rasmli, qogoz, kitobchaKodi, ko, data, exam, keshAvlod]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const andozadanTayyor = (id: number, qulflandi: boolean) => {
-    setAndozaOyna(false);
-    navigate(qulflandi ? `/exams?tab=chop&imtihon=${id}` : `/exams?imtihon=${id}`);
-  };
-  const andozaTugmasi = yaratadi && (
-    <Tugma ikonka={<LayoutList size={14} />} onClick={() => setAndozaOyna(true)}>Andozadan savol qog'ozi</Tugma>
-  );
-  const andozaOynasi = andozaOyna && <AndozadanQogoz onYop={() => setAndozaOyna(false)} onTayyor={andozadanTayyor} />;
-
   if (!exam.lockedAt) {
     return (
-      <>
-        <QulfKerak examId={exam.id} ikonka={<Printer size={20} />} qoshimcha={andozaTugmasi}
-          izoh="Kitobcha, kalit va javob varaqalari variantlar tayyor bo'lgach chiqadi: «Imtihonlar» tabida savollarni (yoki «faqat kalit» rejimida kitobcha kalitini) tayyorlab, qulflang. Yoki andozadan yangi savol qog'ozi yarating." />
-        {andozaOynasi}
-      </>
+      <QulfKerak examId={exam.id} ikonka={<Printer size={20} />}
+        izoh="Kitobcha, kalit va javob varaqalari variantlar tayyor bo'lgach chiqadi: «Imtihonlar» tabida savollarni (yoki «faqat kalit» rejimida kitobcha kalitini) tayyorlab, qulflang." />
     );
   }
   if (!data) return <Yuklanmoqda />;
@@ -241,7 +224,6 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
 
   return (
     <div className="space-y-4">
-      {andozaOynasi}
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 items-start">
         <div className="space-y-4">
           <Karta ichki="p-2">
@@ -263,17 +245,6 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
                 })}
               </div>
             ))}
-            {andozaTugmasi && !sorovnoma && (
-              <div className="border-t border-chiziq mt-1.5 pt-2 px-1 pb-1">
-                <button onClick={() => setAndozaOyna(true)} className="w-full flex items-center gap-3 px-2.5 py-1.5 rounded-xl text-left cursor-pointer hover:bg-ichki">
-                  <span className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center border border-dashed border-brand/50 text-brand"><LayoutList size={16} /></span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-matn">Andozadan savol qog'ozi</span>
-                    <span className="block text-[11.5px] text-matn-xira">Blueprint → variantli imtihon</span>
-                  </span>
-                </button>
-              </div>
-            )}
           </Karta>
 
           <Karta sarlavha={tanlanganNomi}>

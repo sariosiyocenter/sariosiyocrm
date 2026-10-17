@@ -145,7 +145,7 @@ export default function ReytingEkrani() {
   } else if (!d.imtihon.publishedAt) {
     ichi = <div className="flex-1 flex items-center justify-center"><BoshHolat ikonka={<Trophy size={20} />} sarlavha="Natijalar hali e'lon qilinmagan" izoh="Reyting e'londan keyin chiqadi (Natijalar bo'limi → E'lon qilish)."><Tugma onClick={yop}>Imtihonga qaytish</Tugma></BoshHolat></div>;
   } else if (d.ranking === 'yoq') {
-    ichi = <div className="flex-1 flex items-center justify-center"><BoshHolat ikonka={<Trophy size={20} />} sarlavha="Bu imtihonda reyting ko'rsatilmaydi" izoh="Imtihon sozlamasida «O'rin ko'rsatilmasin» tanlangan."><Tugma onClick={yop}>Imtihonga qaytish</Tugma></BoshHolat></div>;
+    ichi = <div className="flex-1 flex items-center justify-center"><BoshHolat ikonka={<Trophy size={20} />} sarlavha="Bu imtihonda reyting ko'rsatilmaydi" izoh="Natijalar → «Sozlama va e'lon»da «O'rin yo'q» tanlangan."><Tugma onClick={yop}>Imtihonga qaytish</Tugma></BoshHolat></div>;
   } else if (!qatorlar.length) {
     ichi = <div className="flex-1 flex items-center justify-center"><BoshHolat ikonka={<Trophy size={20} />} sarlavha="Natija yo'q" /></div>;
   } else {

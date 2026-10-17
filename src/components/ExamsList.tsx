@@ -22,22 +22,22 @@ import type { ImtihonTafsil, TabId } from './imtihon/turlar';
 
 // Imtihonlar moduli — bitta ish joyi. Tablar imtihonning bosqichlari:
 // 1 Savollar banki (hamma imtihon uchun umumiy) · 2 Imtihonlar (ro'yxat va
-// tanlangan imtihonning tuzilmasi, kaliti, qulfi) · 3 O'rinlashtirish ·
-// 4 Chop etish · 5 Skaner (skanerlash va tekshirish) · 6 Natijalar (va tarix).
+// tanlangan imtihonning tuzilmasi, kaliti, qulfi) · 3 Qatnashchilar (kim, qanday
+// va qachon topshiradi, o'rinlar, ruxsatnoma) · 4 Chop etish · 5 Skaner (skanerlash
+// va tekshirish) · 6 Natijalar (natija sozlamasi, e'lon va tarix).
 // 2–6-tablar tepadagi paneldagi imtihon bilan ishlaydi (URL da `imtihon=`),
-// har tabda o'sha imtihonning shu bosqichdagi holati ko'rinadi.
-// Tablar qatorining oxirida — «Sozlamalar» (?tab=sozlama): butun modulning umumiy
-// sozlamasi (yangi imtihon standartlari, xabar matnlari, AI kaliti). Bitta imtihonning
-// o'z sozlamasi — imtihon panelidagi «Imtihon sozlamasi» tugmasi.
+// har tabda o'sha imtihonning shu bosqichdagi holati va sozlamasi ko'rinadi
+// (egasi, 2026-10-17: har sozlama o'z bosqichida). Tablar qatorining oxirida —
+// «Sozlamalar» (?tab=sozlama): butun modulning standartlari, shu bosqichlar bo'yicha.
 
 // Imtihon qanday o'tadi — bo'sh holatda ko'rsatiladigan qisqa yo'riqnoma.
 const QADAMLAR = [
   ['Savollar banki', "Savollar qo'lda, Excel yoki AI import bilan kiritiladi. O'z kitobchangiz bo'lsa — bu qadam shart emas."],
-  ['Imtihon', "Fanlar va savollar sonini tanlaysiz. Manba: bank yoki «faqat kalit» (o'z kitobchangiz). So'ng «qulflash» — variantlar tayyor."],
-  ["O'rinlashtirish", "Kurslar va xonalar tanlanadi — har o'ringa variant, yonma-yon o'tirganlarga har xil."],
+  ['Imtihon', "Savollar qayerdan: bank, andoza, o'z kitobchangiz yoki so'rovnoma. Fanlar va savollar soni, so'ng «qulflash» — variantlar tayyor."],
+  ['Qatnashchilar', "Kurslar, qog'oz yoki onlayn, smena vaqti va xonalar — har o'ringa variant, yonma-yon o'tirganlarga har xil. Ruxsatnoma shu yerdan."],
   ['Chop etish', "Kitobchalar (bank rejimida) va har o'quvchiga shaxsiy javob varaqasi — ismi, o'rni va QR kodi bilan."],
   ['Skaner', "Varaqlar pachkasi skanerdan PDF qilib yoki telefon kamerasi bilan yuklanadi: QR dan o'quvchi, doirachalardan javoblar o'qiladi, ball o'zi hisoblanadi."],
-  ['Natijalar', "Shubhali belgilarni tekshirasiz, e'lon qilasiz — ota-onaga SMS/Telegram, reyting, tahlil va tarix."],
+  ['Natijalar', "O'tish bali va reyting shu yerda sozlanadi. Shubhali belgilarni tekshirasiz, e'lon qilasiz — ota-onaga SMS/Telegram, tahlil va tarix."],
 ] as const;
 
 /** Tanlanmagan bo'lsa — shu bosqich uchun eng mos imtihon. */
@@ -76,7 +76,7 @@ export default function ExamsList() {
   const TABLAR = [
     { id: 'savollar', nom: 'Savollar banki', ikonka: BookOpen, ochiq: kora('imtihonlar.savollar') },
     { id: 'imtihonlar', nom: 'Imtihonlar', ikonka: FileText, ochiq: kora('imtihonlar.imtihon') || kora('imtihonlar.natija') },
-    { id: 'orin', nom: "O'rinlashtirish", ikonka: Users, ochiq: kora('imtihonlar.imtihon') },
+    { id: 'orin', nom: 'Qatnashchilar', ikonka: Users, ochiq: kora('imtihonlar.imtihon') },
     { id: 'chop', nom: 'Chop etish', ikonka: Printer, ochiq: kora('imtihonlar.imtihon') },
     { id: 'skaner', nom: 'Skaner', ikonka: ScanLine, ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar va tarix', ikonka: BarChart3, ochiq: kora('imtihonlar.natija') },
@@ -249,8 +249,8 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
         <Tugma kichik turi="oddiy" ikonka={<List size={14} />} onClick={onRoyxat} aria-label="Barcha imtihonlar"><span className="hidden sm:inline">Barcha imtihonlar</span></Tugma>
         {ozgartira('imtihonlar.imtihon') && (
           <>
-            {/* «Sozlamalar» — tepadagi tab (butun modul); bu — shu imtihonning o'zi. */}
-            <Tugma kichik ikonka={<Settings2 size={14} />} onClick={() => navigate(`/exams/${exam.id}/edit`)} aria-label="Imtihon sozlamasi"><span className="hidden sm:inline">Imtihon sozlamasi</span></Tugma>
+            {/* Nomi, sanasi va tuzilmasi; o'tkazish va natija sozlamalari — o'z tablarida. */}
+            <Tugma kichik ikonka={<Settings2 size={14} />} onClick={() => navigate(`/exams/${exam.id}/edit`)} aria-label="Tahrirlash"><span className="hidden sm:inline">Tahrirlash</span></Tugma>
             <Tugma kichik ikonka={<Copy size={14} />} onClick={nusxa} aria-label="Nusxa olish"><span className="hidden sm:inline">Nusxa</span></Tugma>
             {ozgartira('imtihonlar.ochirish') && <Tugma kichik turi="xavfli" ikonka={<Trash2 size={14} />} onClick={ochir} aria-label="Imtihonni o'chirish"><span className="hidden sm:inline">O'chirish</span></Tugma>}
           </>
@@ -272,14 +272,13 @@ function ImtihonlarRoyxati({ tanlangan, onTanla }: { tanlangan: number | null; o
   const yangi = ozgartira('imtihonlar.imtihon') ? () => navigate('/exams/new') : undefined;
 
   return (
-    <Karta sarlavha="Imtihonlar" izoh="Imtihonni tanlang — keyingi bosqichlar (o'rinlashtirish, chop etish, skaner, natijalar) shu imtihon bilan ishlaydi"
+    <Karta sarlavha="Imtihonlar" izoh="Imtihonni tanlang — keyingi bosqichlar (qatnashchilar, chop etish, skaner, natijalar) shu imtihon bilan ishlaydi"
       amallar={
         <>
           <div className="relative w-full sm:w-56">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
             <input className={`${INPUT} pl-9 py-2`} placeholder="Qidirish" aria-label="Imtihon qidirish" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          {yangi && <Tugma kichik ikonka={<MessageSquareText size={14} />} onClick={() => navigate('/exams/new?tur=sorovnoma')} title="O'quvchi yoki ota-ona fikri — OMR varaq bilan">So'rovnoma</Tugma>}
           {yangi && <Tugma turi="asosiy" kichik ikonka={<Plus size={14} />} onClick={yangi}>Yangi imtihon</Tugma>}
         </>
       }>

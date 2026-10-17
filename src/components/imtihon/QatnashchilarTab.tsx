@@ -10,10 +10,19 @@ import { toDateStr } from '../../../lib/lessons.js';
 import type { ImtihonTafsil } from './turlar';
 import OnlaynTestKarta from './OnlaynTestKarta';
 import { mehmonlarniOqi, mehmonShabloni } from './mehmonExcel';
+import {
+  SozlamaKartasi, useSozlamaSaqla, useMarkazMatnlari, TopshirishTanlovi, OnlaynVaqti, SmenalarRoyxati, SmenagaBolish,
+  OrinTartibi, RuxsatnomaSozlamasi, ruxsatnomaNamunasi,
+} from './sozlamaQismlari';
 import type { Room } from '../../types';
 
-// 2-bo'lim: kim qatnashadi (kurslar + tashqi qatnashchilar), qaysi xonalarda,
-// o'rinlashtirish va eshikdagi keldi/kelmadi belgisi.
+// Qatnashchilar va o'tkazish: kim qatnashadi (filiallar, kurslar, tashqi qatnashchilar),
+// qanday va qachon topshiradi (qog'oz / onlayn, smenalar), qaysi xonalarda, o'rinlashtirish,
+// ruxsatnoma va eshikdagi keldi/kelmadi belgisi. Bularning sozlamasi ham shu yerda
+// (2026-10-17) — variantlarga ta'sir qilmaydi, qulfdan keyin ham o'zgaradi.
+
+const OTKAZISH_KALITLARI = ['onlayn', 'sessions', 'sessionFill'] as const;
+const RUXSATNOMA_KALITLARI = ['admit'] as const;
 
 export interface Orin {
   id: number; studentId: number | null; name: string; photo: string | null; phone: string | null; mehmon: boolean;
@@ -42,7 +51,7 @@ interface Qatnashchilar {
 }
 
 export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => Promise<any> }) {
-  const { groups, schools, ozgartira, showNotification } = useCRM();
+  const { groups, schools, settings, ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.imtihon');
   const belgilaydi = tahrir || ozgartira('imtihonlar.natija');
   const xonaTahrir = ozgartira('sozlamalar.xonalar');
@@ -63,6 +72,8 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   const [kochiriladi, setKochiriladi] = useState<Orin | null>(null);
   const [ruxsatnoma, setRuxsatnoma] = useState<{ yuborildi: number; xato: number; qoldi: number } | null>(null);
   const toxtaRef = useRef(false);
+  const { saqla: sozlamaSaqla, band: sozlamaBand } = useSozlamaSaqla(exam.id, yangila);
+  const matnlar = useMarkazMatnlari();
 
   const filiallar = useMemo(() => [...new Set([exam.schoolId, ...(exam.branchIds || [])])], [exam]);
   const filialNomi = (id: number) => schools.find(s => s.id === id)?.name || '';
@@ -161,6 +172,14 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
     } finally {
       setBand(null);
     }
+  };
+
+  // Qatnashadigan filial: imtihon yaratilgani doim qatnashadi; qolganlari shu yerda qo'shiladi
+  // (ularning kurslari va xonalari ro'yxatga chiqadi). E'londan keyin o'zgarmaydi.
+  const filialniAlmashtir = async (id: number) => {
+    const boshqa = (exam.branchIds || []).filter(x => x !== exam.schoolId);
+    const yangi = boshqa.includes(id) ? boshqa.filter(x => x !== id) : [...boshqa, id];
+    if (await sozlamaSaqla({ branchIds: yangi })) qatnashchilarniYukla();
   };
 
   const xonaniAlmashtir = async (rid: number) => {
@@ -271,6 +290,8 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   const joylashmagan = seats.filter(x => !x.roomId);
   // Onlayn testda xona kerak emas — ruxsatnoma (test havolasi bilan) hammaga ketadi.
   const onlayn = s.onlayn?.yoqilgan;
+  // Hammasi onlayn: xonalar, o'rin tartibi va o'rinlashtirish kerak emas.
+  const faqatOnlayn = !!s.onlayn?.faqat;
   const kutmoqda = seats.filter(x => (onlayn || x.roomId) && !x.admitSentAt).length;
   const ruxsatnomaOldi = seats.filter(x => x.admitSentAt && x.admitStatus === 'yuborildi').length;
   // Ruxsatnoma imtihongacha kerak: e'lon qilingan yoki o'tib ketgan imtihonda ko'rsatilmaydi.
@@ -281,13 +302,33 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Karta sarlavha="Kurslar" izoh={`Faol va sinovdagi o'quvchilar; "Imtihonga kelmaydi" belgilanganlar kirmaydi`} className="lg:col-span-2"
+        <Karta sarlavha="Kimlar qatnashadi" izoh={`Faol va sinovdagi o'quvchilar; "Imtihonga kelmaydi" belgilanganlar kirmaydi`} className="lg:col-span-2"
           amallar={tahrir && kurslar.length > 1 && (
             <>
               <Tugma kichik turi="oddiy" yuklanmoqda={band === 'kurslar'} onClick={() => hammaKurs(true)}>Hammasi</Tugma>
               {biriktirilgan.size > 0 && <Tugma kichik turi="oddiy" onClick={() => hammaKurs(false)}>Tozalash</Tugma>}
             </>
           )}>
+          {schools.length > 1 && (
+            <div className="mb-4">
+              <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">Filiallar</p>
+              <div className="flex flex-wrap gap-1.5">
+                {schools.map(sc => {
+                  const bel = filiallar.includes(sc.id);
+                  return (
+                    <button key={sc.id} type="button" disabled={!tahrir || sozlamaBand || !!exam.publishedAt || sc.id === exam.schoolId}
+                      onClick={() => filialniAlmashtir(sc.id)} aria-pressed={bel}
+                      title={sc.id === exam.schoolId ? 'Imtihon shu filialda yaratilgan — doim qatnashadi' : undefined}
+                      className={`px-3 py-1.5 rounded-xl border text-[12.5px] font-semibold cursor-pointer disabled:cursor-default ${bel ? 'bg-brand text-brand-ust border-brand' : 'bg-ichki border-chiziq text-matn-sokin hover:border-chiziq-kuchli'}`}>
+                      {sc.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11.5px] text-matn-xira mt-1">Umumiy reyting shu filiallar bo'yicha; ularning kurslari va xonalari ro'yxatga chiqadi.</p>
+            </div>
+          )}
+          <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">Kurslar</p>
           {!kurslar.length ? <p className="text-[12.5px] text-matn-xira">Bu filiallarda kurs yo'q</p> : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5">
               {kurslar.map(g => {
@@ -314,72 +355,37 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
               <div className="flex justify-between"><span className="text-matn-sokin">Kurslardan</span><b className="raqam">{q.oquvchilar}</b></div>
               <div className="flex justify-between"><span className="text-matn-sokin">Tashqi qatnashchilar</span><b className="raqam">{q.mehmonlar}</b></div>
               <div className="flex justify-between border-t border-chiziq pt-2"><span className="text-matn">Jami qatnashchi</span><b className="raqam">{jami}</b></div>
-              <div className="flex justify-between"><span className="text-matn-sokin">O'rinlar ({s.sessions.length} smena)</span><b className={`raqam ${sigim < jami ? 'text-xato' : 'text-yaxshi'}`}>{sigim}</b></div>
-              {sigim < jami && <p className="text-[12px] text-xato flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-0.5" /> O'rin yetmaydi: smena qo'shing, xona sxemasini tekshiring yoki shaxmat tartibini o'chiring.</p>}
-              {tahrir && <Tugma turi="asosiy" className="w-full mt-2" ikonka={<Shuffle size={14} />} yuklanmoqda={band === 'orin'} disabled={!jami} onClick={orinlashtir}>{seats.some(x => x.roomId) ? "Qayta o'rinlashtirish" : "O'rinlashtirish"}</Tugma>}
-              {!exam.lockedAt && <p className="text-[11.5px] text-matn-xira">Variant harflari savollar qulflangach aniq bo'ladi (o'rin shu tartibda qoladi).</p>}
-            </div>
-          )}
-          {tahrir && ruxsatnomaVaqti && (onlayn ? seats.length > 0 : seats.some(x => x.roomId)) && s.admit.channel !== 'NONE' && (
-            <div className="mt-4 pt-3 border-t border-chiziq space-y-2">
-              <div className="flex items-center justify-between gap-2 text-[13px]">
-                <span className="text-matn">Ruxsatnoma</span>
-                <span className="text-matn-sokin raqam">{ruxsatnomaOldi} ta oldi{kutmoqda ? ` · ${kutmoqda} ta kutmoqda` : ''}</span>
-              </div>
-              {band === 'ruxsatnoma' && ruxsatnoma ? (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] text-matn-sokin">{ruxsatnoma.yuborildi} ta yuborildi{ruxsatnoma.xato ? `, ${ruxsatnoma.xato} ta yetmadi` : ''} · {ruxsatnoma.qoldi} ta qoldi</span>
-                  <Tugma kichik turi="oddiy" ikonka={<Square size={12} />} onClick={() => { toxtaRef.current = true; }}>To'xtatish</Tugma>
-                </div>
+              {faqatOnlayn ? (
+                <p className="text-[11.5px] text-matn-xira pt-1">Hammasi onlayn: xona kerak emas. Qatnashchilar «Onlayn test» kartasidan qo'shiladi.</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {kutmoqda > 0 && <Tugma kichik ikonka={<Send size={13} />} onClick={() => ruxsatnomaYubor(false)}>{kutmoqda} ta yuborish</Tugma>}
-                  {ruxsatnomaOldi > 0 && <Tugma kichik turi="oddiy" onClick={() => ruxsatnomaYubor(true)}>Hammaga qaytadan</Tugma>}
-                </div>
+                <>
+                  <div className="flex justify-between"><span className="text-matn-sokin">O'rinlar ({s.sessions.length} smena)</span><b className={`raqam ${sigim < jami ? 'text-xato' : 'text-yaxshi'}`}>{sigim}</b></div>
+                  {sigim < jami && <p className="text-[12px] text-xato flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-0.5" /> O'rin yetmaydi: xona qo'shing, xona sxemasini tekshiring yoki shaxmat tartibini o'chiring.</p>}
+                  {tahrir && <Tugma turi="asosiy" className="w-full mt-2" ikonka={<Shuffle size={14} />} yuklanmoqda={band === 'orin'} disabled={!jami} onClick={orinlashtir}>{seats.some(x => x.roomId) ? "Qayta o'rinlashtirish" : "O'rinlashtirish"}</Tugma>}
+                  {!exam.lockedAt && <p className="text-[11.5px] text-matn-xira">Variant harflari savollar qulflangach aniq bo'ladi (o'rin shu tartibda qoladi).</p>}
+                </>
               )}
-              <p className="text-[11.5px] text-matn-xira">{s.admit.auto ? "Imtihondan bir kun oldin, soat 12:00 dan o'zi ham yuboriladi. O'rni o'zgarganga yangisi ketadi." : "Avtomatik yuborish o'chiq (imtihon sozlamasi)."}</p>
             </div>
           )}
         </Karta>
       </div>
 
-      {onlayn && <OnlaynTestKarta exam={exam} tahrir={tahrir} onOzgardi={() => { yukla(); yangila(); }} />}
-
-      {natija && (natija.sigmadi.length > 0 || natija.olibTashlandi > 0) && (
-        <Karta className="border-ogoh/40">
-          <p className="text-[13px] text-matn"><b>{natija.joylashdi}</b> kishi o'rinlashdi.
-            {natija.olibTashlandi > 0 && <> {natija.olibTashlandi} kishi kursdan chiqqani uchun ro'yxatdan olindi.</>}
-            {natija.sigmadi.length > 0 && <span className="text-xato"> {natija.sigmadi.length} kishiga o'rin yetmadi: {natija.sigmadi.slice(0, 12).join(', ')}{natija.sigmadi.length > 12 ? '…' : ''}</span>}
-          </p>
-        </Karta>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Karta sarlavha="Xonalar" izoh="Imtihonda ishlatiladiganlarini belgilang" className="lg:col-span-2">
-          {!q ? <Yuklanmoqda /> : !q.xonalar.length ? <p className="text-[12.5px] text-matn-xira">Xona yo'q — Sozlamalar → Xonalar</p> : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {q.xonalar.map(x => {
-                const bel = !s.roomIds.length || s.roomIds.includes(x.id);
-                const orinlar = xonaOrinlari(x, s.seatMode).length;
-                return (
-                  <div key={x.id} className={`rounded-xl border px-3 py-2.5 ${bel ? 'border-chiziq bg-sirt' : 'border-dashed border-chiziq bg-ichki opacity-70'}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <button disabled={!tahrir} onClick={() => xonaniAlmashtir(x.id)} className="flex items-center gap-2 text-left cursor-pointer disabled:cursor-default">
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center ${bel ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq-kuchli'}`}>{bel && <CheckCircle2 size={11} />}</span>
-                        <span className="text-[13px] font-semibold text-matn">{x.name}</span>
-                        {filiallar.length > 1 && <span className="text-[11px] text-matn-xira">{filialNomi(x.schoolId)}</span>}
-                      </button>
-                      {xonaTahrir && <Tugma kichik turi="oddiy" ikonka={<LayoutGrid size={13} />} onClick={() => setSxema(x)}>Sxema</Tugma>}
-                    </div>
-                    <p className="text-[12px] text-matn-sokin mt-1 pl-6">
-                      {x.rows && x.cols ? `${x.rows} qator × ${x.cols} o'rin` : `sxema yo'q — sig'imdan (${x.capacity}), 6 tadan qator`} · <b className="text-matn">{orinlar}</b> ta o'rin
-                    </p>
-                  </div>
-                );
-              })}
+        <SozlamaKartasi exam={exam} yangila={yangila} kalitlar={OTKAZISH_KALITLARI} tahrir={tahrir} className="lg:col-span-2"
+          sarlavha="Qanday va qachon" izoh="Qog'ozda yoki onlayn, qaysi smenada. Smenalar soni tuzilmada (variantlar har smenaga alohida yasaladi)">
+          {(q, qoy) => (
+            <div className="space-y-4">
+              <TopshirishTanlovi onlayn={q.onlayn} onChange={onlayn => qoy({ onlayn })} kalitRejimi={s.source === 'kalit'} />
+              {q.onlayn.yoqilgan && <OnlaynVaqti onlayn={q.onlayn} onChange={onlayn => qoy({ onlayn })} davom={exam.duration} />}
+              <div className="space-y-1.5">
+                <p className="text-[12px] font-semibold text-matn-sokin">Smenalar</p>
+                <SmenalarRoyxati sessions={q.sessions} onChange={sessions => qoy({ sessions })} />
+              </div>
+              {/* Onlayn qatnashchilar smenaga bo'linmaydi (xonasiz, 1-smena). */}
+              {q.sessions.length > 1 && !q.onlayn.faqat && <SmenagaBolish qiymat={q.sessionFill} onChange={sessionFill => qoy({ sessionFill })} />}
             </div>
           )}
-        </Karta>
+        </SozlamaKartasi>
 
         <Karta sarlavha="Tashqi qatnashchilar" izoh="Markazda o'qimaydigan abituriyentlar (ochiq sinov)">
           {tahrir && (
@@ -424,6 +430,84 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
         </Karta>
       </div>
 
+      {onlayn && <OnlaynTestKarta exam={exam} tahrir={tahrir} onOzgardi={() => { yukla(); yangila(); }} />}
+
+      {natija && (natija.sigmadi.length > 0 || natija.olibTashlandi > 0) && (
+        <Karta className="border-ogoh/40">
+          <p className="text-[13px] text-matn"><b>{natija.joylashdi}</b> kishi o'rinlashdi.
+            {natija.olibTashlandi > 0 && <> {natija.olibTashlandi} kishi kursdan chiqqani uchun ro'yxatdan olindi.</>}
+            {natija.sigmadi.length > 0 && <span className="text-xato"> {natija.sigmadi.length} kishiga o'rin yetmadi: {natija.sigmadi.slice(0, 12).join(', ')}{natija.sigmadi.length > 12 ? '…' : ''}</span>}
+          </p>
+        </Karta>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {!faqatOnlayn && (
+        <Karta sarlavha="Xonalar va o'rinlar" izoh="Imtihonda ishlatiladigan xonalarni belgilang" className="lg:col-span-2">
+          <div className="mb-3">
+            <fieldset disabled={!tahrir || sozlamaBand} className="min-w-0">
+              <OrinTartibi qiymat={s.seatMode} onChange={seatMode => sozlamaSaqla({ settings: { seatMode } })} />
+            </fieldset>
+          </div>
+          {!q ? <Yuklanmoqda /> : !q.xonalar.length ? <p className="text-[12.5px] text-matn-xira">Xona yo'q — Sozlamalar → Xonalar</p> : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {q.xonalar.map(x => {
+                const bel = !s.roomIds.length || s.roomIds.includes(x.id);
+                const orinlar = xonaOrinlari(x, s.seatMode).length;
+                return (
+                  <div key={x.id} className={`rounded-xl border px-3 py-2.5 ${bel ? 'border-chiziq bg-sirt' : 'border-dashed border-chiziq bg-ichki opacity-70'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <button disabled={!tahrir} onClick={() => xonaniAlmashtir(x.id)} className="flex items-center gap-2 text-left cursor-pointer disabled:cursor-default">
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center ${bel ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq-kuchli'}`}>{bel && <CheckCircle2 size={11} />}</span>
+                        <span className="text-[13px] font-semibold text-matn">{x.name}</span>
+                        {filiallar.length > 1 && <span className="text-[11px] text-matn-xira">{filialNomi(x.schoolId)}</span>}
+                      </button>
+                      {xonaTahrir && <Tugma kichik turi="oddiy" ikonka={<LayoutGrid size={13} />} onClick={() => setSxema(x)}>Sxema</Tugma>}
+                    </div>
+                    <p className="text-[12px] text-matn-sokin mt-1 pl-6">
+                      {x.rows && x.cols ? `${x.rows} qator × ${x.cols} o'rin` : `sxema yo'q — sig'imdan (${x.capacity}), 6 tadan qator`} · <b className="text-matn">{orinlar}</b> ta o'rin
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Karta>
+        )}
+
+        <SozlamaKartasi exam={exam} yangila={yangila} kalitlar={RUXSATNOMA_KALITLARI} tahrir={tahrir}
+          sarlavha="Ruxsatnoma" izoh="Qatnashchiga imtihon vaqti, xonasi va o'rni (onlaynda — test havolasi)">
+          {(q, qoy, ozgardi) => (
+            <div className="space-y-3">
+              {tahrir && ruxsatnomaVaqti && (onlayn ? seats.length > 0 : seats.some(x => x.roomId)) && s.admit.channel !== 'NONE' && (
+                <div className="rounded-xl border border-chiziq bg-ichki/60 px-3 py-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-[13px]">
+                    <span className="text-matn font-semibold">Yuborish</span>
+                    <span className="text-matn-sokin raqam">{ruxsatnomaOldi} ta oldi{kutmoqda ? ` · ${kutmoqda} ta kutmoqda` : ''}</span>
+                  </div>
+                  {/* Yuborish saqlangan matn va kanal bilan ketadi — o'zgartirilgani avval saqlansin. */}
+                  {ozgardi && band !== 'ruxsatnoma' ? (
+                    <p className="text-[12px] text-ogoh">Matn yoki kanal o'zgardi — yuborishdan oldin pastda «Saqlash»ni bosing.</p>
+                  ) : band === 'ruxsatnoma' && ruxsatnoma ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] text-matn-sokin">{ruxsatnoma.yuborildi} ta yuborildi{ruxsatnoma.xato ? `, ${ruxsatnoma.xato} ta yetmadi` : ''} · {ruxsatnoma.qoldi} ta qoldi</span>
+                      <Tugma kichik turi="oddiy" ikonka={<Square size={12} />} onClick={() => { toxtaRef.current = true; }}>To'xtatish</Tugma>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {kutmoqda > 0 && <Tugma kichik ikonka={<Send size={13} />} onClick={() => ruxsatnomaYubor(false)}>{kutmoqda} ta yuborish</Tugma>}
+                      {ruxsatnomaOldi > 0 && <Tugma kichik turi="oddiy" onClick={() => ruxsatnomaYubor(true)}>Hammaga qaytadan</Tugma>}
+                    </div>
+                  )}
+                </div>
+              )}
+              <RuxsatnomaSozlamasi s={q} qoy={qoy} standart={matnlar.ruxsatnoma}
+                namuna={ruxsatnomaNamunasi({ admit: q.admit, sessions: s.sessions }, { imtihon: exam.name, sana: exam.date, filial: filialNomi(exam.schoolId), markaz: settings?.orgName || '' })} />
+            </div>
+          )}
+        </SozlamaKartasi>
+      </div>
+
       <Karta sarlavha="O'rinlar" izoh={seats.length ? `${seats.length} qatnashchi · ${seats.filter(x => x.status === 'keldi').length} keldi · ${seats.filter(x => x.status === 'kelmadi').length} kelmadi` : undefined}
         amallar={seats.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -435,7 +519,8 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
           </div>
         )}>
         {!data ? <Yuklanmoqda /> : !seats.length ? (
-          <BoshHolat ikonka={<Users size={20} />} sarlavha="Hali o'rinlashtirilmagan" izoh="Kurslarni tanlang va «O'rinlashtirish»ni bosing." />
+          <BoshHolat ikonka={<Users size={20} />} sarlavha={faqatOnlayn ? "Hali qatnashchi qo'shilmagan" : "Hali o'rinlashtirilmagan"}
+            izoh={faqatOnlayn ? "Kurslarni tanlang va «Onlayn test» kartasida «Qatnashchilarni qo'shish»ni bosing." : "Kurslarni tanlang va «O'rinlashtirish»ni bosing."} />
         ) : xonaId !== 'royxat' ? (
           <div className="space-y-2">
             {tahrir && (

@@ -795,8 +795,8 @@ export interface ExamSettings {
     jarimaNoldan: boolean;
     /** Qo'shimcha ball komponentlari (og'zaki, yozma ish — Excel'dan). */
     qoshimcha: { nom: string; max: number }[];
-    /** Onlayn test: vaqtlar — O'zbekiston vaqti "YYYY-MM-DDTHH:mm"; daqiqa 0 — imtihon davomiyligi. */
-    onlayn: { yoqilgan: boolean; ochiladi: string; yopiladi: string; daqiqa: number };
+    /** Onlayn test: vaqtlar — O'zbekiston vaqti "YYYY-MM-DDTHH:mm"; daqiqa 0 — imtihon davomiyligi; faqat — hammasi onlayn (xonasiz). */
+    onlayn: { yoqilgan: boolean; faqat: boolean; ochiladi: string; yopiladi: string; daqiqa: number };
     /** O'rin hisoblash: 'otkazib' — 1, 2, 2, 4; 'ketma' — 1, 2, 2, 3. */
     orinUsuli: 'otkazib' | 'ketma';
     /** O'tish bali (null — yo'q). */

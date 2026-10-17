@@ -14,11 +14,40 @@ import SorovnomaNatijalari from './SorovnomaNatijalari';
 import QoshimchaBallOynasi from './QoshimchaBall';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
+import { SozlamaKartasi, NatijaQoidalari, NatijaXabariSozlamasi, natijaNamunasi, useMarkazMatnlari } from './sozlamaQismlari';
 import type { ImtihonTafsil } from './turlar';
 
 // 6-bo'lim: natijalar, savol va mavzu tahlili, e'lon. E'londan oldin savollar
 // tahliliga qarash kerak: kuchli o'quvchilar xato qilgan savol — ko'pincha
 // kalit xatosi. E'londan keyin xabar bir marta ketadi (qayta yuborilmaydi).
+// Natija qanday chiqishi (o'tish bali, reyting, Rasch) va xabar matni — shu yerda,
+// «E'lon» bo'limida (2026-10-17); natija hali bo'lmasa ham ochiq.
+
+const NATIJA_KALITLARI = ['otish', 'ranking', 'topN', 'orinUsuli', 'showQuestionsAfter', 'rasch'] as const;
+const XABAR_KALITLARI = ['notify'] as const;
+
+/** Natija qanday chiqadi va natija xabari — e'londan oldin (va keyin ham) o'zgaradi. */
+function NatijaSozlamalari({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => Promise<any> }) {
+  const { settings, ozgartira } = useCRM();
+  const tahrir = ozgartira('imtihonlar.imtihon');
+  const matnlar = useMarkazMatnlari();
+  const kalitRejimi = exam.settings.source === 'kalit';
+  const bloklar = exam.blocks.length > 1 ? exam.blocks.slice(0, 2).map(b => `• ${b.subject}: 25,3 / 31`).join('\n') : '';
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <SozlamaKartasi exam={exam} yangila={yangila} kalitlar={NATIJA_KALITLARI} tahrir={tahrir} sarlavha="Natija qanday chiqadi"
+        izoh={exam.publishedAt ? "E'lon qilingan: o'zgartirsangiz — «Reytingni yangilash»ni bosing" : "E'londa o'quvchi va ota-ona nimani ko'radi"}>
+        {(q, qoy) => <NatijaQoidalari s={q} qoy={qoy} kalitRejimi={kalitRejimi} />}
+      </SozlamaKartasi>
+      <SozlamaKartasi exam={exam} yangila={yangila} kalitlar={XABAR_KALITLARI} tahrir={tahrir} sarlavha="Natija xabari" izoh="E'londan keyin «Xabarlarni yuborish» bilan ketadi">
+        {(q, qoy) => (
+          <NatijaXabariSozlamasi s={q} qoy={qoy} standart={matnlar.natija}
+            namuna={natijaNamunasi({ ...exam.settings, notify: q.notify }, { imtihon: exam.name, sana: exam.date, maks: exam.maxScore, markaz: settings?.orgName || '', bloklar })} />
+        )}
+      </SozlamaKartasi>
+    </div>
+  );
+}
 
 interface Natija {
   id: number; name: string; groupId: number | null; groupName: string; schoolId: number; session: number | null; variantCode: string | null;
@@ -154,7 +183,14 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   // So'rovnoma — o'z natijalari (savol bo'yicha taqsimot).
   if (exam.settings.source === 'sorovnoma') return <SorovnomaNatijalari exam={exam} />;
   if (!natijalar || !xulosa) return <Yuklanmoqda />;
-  if (!natijalar.length) return <Karta><BoshHolat sarlavha="Hali natija yo'q" izoh="Varaqlarni «Skaner» bo'limida o'qiting." /></Karta>;
+  if (!natijalar.length) {
+    return (
+      <div className="space-y-4">
+        <Karta><BoshHolat sarlavha="Hali natija yo'q" izoh="Varaqlarni «Skaner» bo'limida o'qiting. Natija qanday chiqishini hozirdan sozlash mumkin." /></Karta>
+        <NatijaSozlamalari exam={exam} yangila={yangila} />
+      </div>
+    );
+  }
 
   const savollar = tahlil?.savollar || [];
   const shubhaliSavollar = savollar.filter(x => x.shubhali && !x.bekor);
@@ -174,7 +210,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
           { v: 'hisobot', nom: 'Hisobotlar' },
           { v: 'savollar', nom: <>Savollar tahlili{shubhaliSavollar.length > 0 && <span className="ml-1 text-xato">({shubhaliSavollar.length})</span>}</> },
           { v: 'mavzular', nom: 'Mavzular' },
-          { v: 'elon', nom: <>E'lon{xulosa.published && <CheckCircle2 size={13} className="inline ml-1 text-yaxshi" />}</> },
+          { v: 'elon', nom: <>Sozlama va e'lon{xulosa.published && <CheckCircle2 size={13} className="inline ml-1 text-yaxshi" />}</> },
         ]} />
         <div className="flex gap-2">
           <Tugma kichik turi="oddiy" ikonka={<RefreshCw size={13} />} onClick={yukla}>Yangilash</Tugma>
@@ -312,6 +348,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
         </Karta>
       )}
 
+      {bolim === 'elon' && <NatijaSozlamalari exam={exam} yangila={yangila} />}
       {bolim === 'elon' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Karta sarlavha="E'londan oldin">
@@ -329,7 +366,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
             )}
             {xulosa.published && <p className="text-[12px] text-matn-xira mt-2">E'lon qilingan: {new Date(xulosa.publishedAt!).toLocaleString('uz')}. Kalit tuzatilsa — reytingni yangilang.</p>}
           </Karta>
-          <Karta sarlavha="Xabarlar" izoh={s.notify.channel === 'NONE' ? 'Imtihon sozlamasida xabar yuborish o\'chirilgan' : `${{ BOTH: 'Telegram, bo\'lmasa SMS', TELEGRAM: 'Faqat Telegram', SMS: 'Faqat SMS' }[s.notify.channel]} · ${{ PARENT: 'ota-onaga', STUDENT: "o'quvchiga", ALL: 'ota-ona va o\'quvchiga' }[s.notify.to]}`}>
+          <Karta sarlavha="Xabarlar" izoh={s.notify.channel === 'NONE' ? "Xabar yuborish o'chirilgan — yuqoridagi «Natija xabari»da kanalni tanlang" : `${{ BOTH: 'Telegram, bo\'lmasa SMS', TELEGRAM: 'Faqat Telegram', SMS: 'Faqat SMS' }[s.notify.channel]} · ${{ PARENT: 'ota-onaga', STUDENT: "o'quvchiga", ALL: 'ota-ona va o\'quvchiga' }[s.notify.to]}`}>
             <div className="space-y-3 text-[13px]">
               <p className="text-matn-sokin">Yuborilgan: <b className="text-matn">{xulosa.yuborilgan}</b> · qolgan: <b className="text-matn">{xulosa.yuborilmagan}</b></p>
               {yuborish && (

@@ -103,7 +103,7 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
                       <AlertTriangle size={15} className="text-ogoh" /> Bank yetmaydi — savol qo'shing yoki qoidani kamaytiring.
                       <Tugma kichik turi="oddiy" ikonka={<BookOpen size={13} />} onClick={() => navigate(`/exams?tab=savollar&imtihon=${exam.id}`)}>Savollar banki</Tugma>
                     </div>
-                    {tahrir && <p className="text-[12px] text-matn-sokin">O'z test kitobchangiz bo'lsa — imtihon sozlamasida manbani «Faqat kalit» qiling: savollarsiz, faqat javob kaliti bilan tekshiriladi.</p>}
+                    {tahrir && <p className="text-[12px] text-matn-sokin">O'z test kitobchangiz bo'lsa — «Tahrirlash»da manbani «Faqat kalit» qiling: savollarsiz, faqat javob kaliti bilan tekshiriladi.</p>}
                   </div>
                 )}
               </div>
@@ -180,7 +180,7 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             </div>
           )}
         </Karta>
-        <Karta sarlavha="Sozlamalar">
+        <Karta sarlavha="Tuzilma sozlamasi" izoh="Qulfgacha belgilanadi">
           <dl className="text-[12.5px] space-y-1.5">
             <Qator k="Savollar" v={kalitRejimi ? "O'z kitobchasi (faqat kalit)" : 'Savollar bankidan'} />
             <Qator k="Ball tizimi" v={exam.scoring === 'blok' ? 'Blok bali' : 'Foiz'} />
@@ -189,10 +189,9 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             <Qator k="Variantlar" v={`${s.variantCount} ta`} />
             {!kalitRejimi && <Qator k="Aralashtirish" v={[s.shuffleQuestions && 'savollar', s.shuffleOptions && 'javoblar'].filter(Boolean).join(', ') || "yo'q"} />}
             {kalitRejimi && <Qator k="Javob variantlari" v={`${s.optionCount} ta (${HARF_ROYXAT.slice(0, s.optionCount).join(', ')})`} />}
-            <Qator k="O'rinlar" v={s.seatMode === 'shaxmat' ? 'Shaxmat' : "Har o'rin"} />
-            <Qator k="Reyting" v={s.ranking === 'hammasi' ? "Hammaga o'rni" : s.ranking === 'top' ? `Top ${s.topN}` : "Yo'q"} />
-            <Qator k="Xabar" v={{ BOTH: 'Telegram / SMS', TELEGRAM: 'Telegram', SMS: 'SMS', NONE: 'Yuborilmaydi' }[s.notify.channel]} />
+            <Qator k="Jarima" v={s.xatoJarima ? `xato javobga ${Math.round(s.xatoJarima * 100)}%` : "yo'q"} />
           </dl>
+          <p className="text-[11.5px] text-matn-xira mt-3">O'tkazish (onlayn, o'rinlar, ruxsatnoma) — «Qatnashchilar» tabida; o'tish bali, reyting va xabar — «Natijalar» tabida.</p>
         </Karta>
       </div>
       {kalit && !kalitRejimi && <KalitOynasi examId={exam.id} onYop={ozgardi => { setKalit(false); if (ozgardi) yangila(); }} />}
@@ -255,7 +254,7 @@ function KeyingiQadam({ exam, otish }: { exam: ImtihonTafsil; otish: (tab: TabId
   const h = exam.holat;
   const [matn, tugmalar]: [string, [TabId, string][]] =
     exam.publishedAt ? ["Natijalar e'lon qilingan. Tahlil, reyting va xabarlar holati — «Natijalar» tabida.", [['natija', 'Natijalar']]]
-      : !h.orinlar && !h.natijalar ? ["Endi qatnashchilarni o'rinlashtiring — har o'ringa variant beriladi. Keyin javob varaqalarini chop etasiz.", [['orin', "O'rinlashtirish"]]]
+      : !h.orinlar && !h.natijalar ? ["Endi qatnashchilar: kim, qanday (qog'oz yoki onlayn) va qachon topshiradi. Qog'ozda har o'ringa variant beriladi, keyin javob varaqalari chop etiladi.", [['orin', 'Qatnashchilar']]]
         : !h.natijalar ? [`${h.orinlar} ta qatnashchi o'rinlashgan. Javob varaqalarini chop eting; imtihondan keyin to'ldirilgan varaqlar skanerlanadi.`, [['chop', 'Chop etish'], ['skaner', 'Skaner']]]
           : h.skanerlanmagan || h.shubhali ? [`Skanerlangan: ${h.natijalar}. ${h.skanerlanmagan ? `Varag'i yo'q: ${h.skanerlanmagan}. ` : ''}${h.shubhali ? `Tekshirilmagan: ${h.shubhali}.` : ''}`, [['skaner', 'Skaner'], ['natija', 'Natijalar']]]
             : [`Hamma varaq skanerlangan va tekshirilgan (${h.natijalar} ta). Savollar tahlilini ko'rib, natijani e'lon qiling.`, [['natija', "Natijalar va e'lon"]]];
@@ -274,16 +273,16 @@ function Sabab({ q, fan }: { q: Qoida; fan: string }) {
   const s = q.sabab || {};
   const qatorlar: string[] = [];
   if (q.tanlangan) {
-    if (s.yoq) qatorlar.push(`${s.yoq} ta tanlangan savol bankdan o'chirilgan — imtihon sozlamasida qayta tanlang.`);
+    if (s.yoq) qatorlar.push(`${s.yoq} ta tanlangan savol bankdan o'chirilgan — «Tahrirlash»da qayta tanlang.`);
     if (s.faolEmas) qatorlar.push(`${s.faolEmas} ta tanlangan savol faol emas yoki chala — bankda to'ldiring yoki faol qiling.`);
     return qatorlar.length ? <ul className="mt-1 space-y-0.5 text-[11.5px] text-matn-sokin list-disc pl-5">{qatorlar.map((x, i) => <li key={i}>{x}</li>)}</ul> : null;
   }
   if (!s.fandaJami) qatorlar.push(`Bankda «${fan}» fanidan savol yo'q — Savollar bankida shu fanga savol qo'shing.`);
-  if (s.boshqaQiyinlik) qatorlar.push(`Bu mavzuda boshqa qiyinlikdagi ${s.boshqaQiyinlik} ta savol bor — imtihon sozlamasida taqsimotni o'zgartiring.`);
+  if (s.boshqaQiyinlik) qatorlar.push(`Bu mavzuda boshqa qiyinlikdagi ${s.boshqaQiyinlik} ta savol bor — «Tahrirlash»da taqsimotni o'zgartiring.`);
   if (s.boshqaQoida) qatorlar.push(`${s.boshqaQoida} ta mos savolni boshqa (aniqroq) qatorlar oldi.`);
   if (s.qoralama) qatorlar.push(`${s.qoralama} ta mos savol qoralamada — bankda «Faol» qiling.`);
   if (s.xatoli) qatorlar.push(`${s.xatoli} ta mos savol chala (kalit yoki variant yo'q).`);
-  if (s.boshqaTil) qatorlar.push(`${s.boshqaTil} ta mos savol boshqa tilda (imtihon sozlamasidagi «Savollar tili»).`);
+  if (s.boshqaTil) qatorlar.push(`${s.boshqaTil} ta mos savol boshqa tilda («Tahrirlash» → «Savollar tili»).`);
   if (!qatorlar.length) return null;
   return <ul className="mt-1 space-y-0.5 text-[11.5px] text-matn-sokin list-disc pl-5">{qatorlar.map((x, i) => <li key={i}>{x}</li>)}</ul>;
 }

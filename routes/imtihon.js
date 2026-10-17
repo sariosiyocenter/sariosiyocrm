@@ -24,7 +24,7 @@ import {
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
   almashtirishNomzodlari, savolniAlmashtir, sorovnomaBloklari, sorovnomaVariantlari, sorovnomaYorliqlari,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala, moslashQatorlari,
-  varaqAndozaTozala,
+  varaqAndozaTozala, QULFDAN_KEYIN_OZGARADI, filiallarniBirlashtir,
   SAVOL_TURLARI, yakkaSavolTuri, guruhSavolimi, qismSoni, qismTekshiruvi,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
@@ -531,7 +531,9 @@ export async function ruxsatnomaNavbati({ vaqtChegarasi = 20000, hozir = new Dat
   if (uz.getUTCHours() < 12) return { yuborildi: 0, imtihonlar: 0 };
   const ertaga = toDateStr(new Date(hozir.getTime() + 24 * 3600 * 1000));
   const exams = await prisma.exam.findMany({
-    where: { date: ertaga, publishedAt: null, seats: { some: { admitSentAt: null, roomId: { not: null } } } },
+    // Xonasiz o'rin ham: onlayn testda ruxsatnoma (havola bilan) xonasizlarga ketadi — kimga
+    // ketishini ruxsatnomalarniYubor o'zi aniqlaydi (qog'ozda faqat o'rin berilganlarga).
+    where: { date: ertaga, publishedAt: null, seats: { some: { admitSentAt: null } } },
     select: { id: true, settings: true },
   });
   const muddat = Date.now() + vaqtChegarasi;
@@ -952,10 +954,17 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
     if (!qulf) {
       if (b.blocks !== undefined) d.blocks = blokniTozala(b.blocks);
       if (b.scoring !== undefined) d.scoring = b.scoring === 'foiz' ? 'foiz' : 'blok';
-      if (b.branchIds !== undefined) {
-        const ruxsat = await allowedSchoolIds(req.user);
-        d.branchIds = [...new Set((Array.isArray(b.branchIds) ? b.branchIds : []).map(Number))].filter(id => ruxsat.includes(id));
+    }
+    // Qatnashadigan filiallar variantlarga ta'sir qilmaydi — qulfdan keyin ham (Qatnashchilar
+    // tabida), lekin e'londan keyin emas: reyting shu filiallar bo'yicha hisoblangan.
+    if (b.branchIds !== undefined && !eski?.publishedAt) {
+      const { yangi, olibTashlangan } = filiallarniBirlashtir({ eski: eski?.branchIds, kelgan: b.branchIds, ruxsat: await allowedSchoolIds(req.user) });
+      // Filial olib tashlansa — uning kurslari ro'yxatdan chiqadi; o'rinlashgan qatnashchilari bo'lsa, ular yo'qolmasin.
+      const qolganlar = eski && olibTashlangan.length ? await prisma.examSeat.count({ where: { examId: eski.id, schoolId: { in: olibTashlangan } } }) : 0;
+      if (qolganlar) {
+        throw Object.assign(new Error(`Bu filialdan ${qolganlar} qatnashchi ro'yxatda — avval kursini olib tashlab qayta o'rinlashtiring yoki ularni ro'yxatdan oling`), { status: 409 });
       }
+      d.branchIds = yangi;
     }
     if (b.settings !== undefined) {
       const joriy = sozlamaniTozala(eski?.settings);
@@ -965,8 +974,12 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         yangi = sozlamaniTozala({ ...joriy, ...kelgan });
       } else {
         // Qulflangan imtihonda variantlarga ta'sir qilmaydigan sozlamalargina o'zgaradi.
-        const ruxsatli = ['notify', 'ranking', 'topN', 'showQuestionsAfter', 'seatMode', 'sessionFill', 'roomIds', 'variantBubble', 'admit', 'rasch', 'orinUsuli', 'otish'];
-        const qism = Object.fromEntries(Object.entries(kelgan).filter(([k]) => ruxsatli.includes(k)));
+        const qism = Object.fromEntries(Object.entries(kelgan).filter(([k]) => QULFDAN_KEYIN_OZGARADI.includes(k)));
+        // Onlayn test yechilayotgan (yoki yechilgan) bo'lsa — o'chirib bo'lmaydi: sahifani yangilagan qatnashchi testini yo'qotadi.
+        if (qism.onlayn && joriy.onlayn.yoqilgan && sozlamaniTozala({ onlayn: qism.onlayn }).onlayn.yoqilgan === false
+          && await prisma.examResult.count({ where: { examId: eski.id, source: 'onlayn' } })) {
+          throw Object.assign(new Error("Onlayn test boshlangan — endi o'chirib bo'lmaydi"), { status: 409 });
+        }
         if (Array.isArray(kelgan.sessions) && kelgan.sessions.length === joriy.sessions.length) qism.sessions = kelgan.sessions;
         // Varaq dizayni qulfdan keyin ham (varaqlar odatda shundan keyin chop etiladi), lekin
         // birorta varaq skanerlanmagan bo'lsa — aks holda chop etilgan varaq o'qilmay qoladi.
