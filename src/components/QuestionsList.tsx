@@ -7,20 +7,17 @@ import { useBankDaraxt, fanniTop, BANK_YANGILANDI } from './imtihon/bank/useBank
 import type { QoshRejim } from './imtihon/bank/QoshRejimi';
 import SavolQoshish from './imtihon/bank/SavolQoshish';
 import BankJadvali from './imtihon/bank/BankJadvali';
-import BankSozlamalari from './imtihon/bank/BankSozlamalari';
 import Andozalar from './imtihon/bank/Andozalar';
 
-// Savollar banki — butun o'quv markaziga umumiy. Tepada uch bo'lim:
+// Savollar banki — butun o'quv markaziga umumiy. Tepada ikki bo'lim:
 //   «Savollar banki» — ro'yxat (fan → bo'lim → mavzu → qiyinlik → filtrlar; ostida savollar);
-//   «Sozlamalar» (?bolim=sozlama) — bankka oid hamma sozlama shu yerda (egasi, 2026-10-10:
-//     «savollar bankiga oid sozlamalarni o'ziga qo'shish, andoza chapiga»);
 //   «Andoza» (?bolim=andoza).
-// «Statistika» ko'rinishi (?kor=tuzilma) olib tashlangan (egasi: «savollar bankiga statistika
-// kerak emas») — eski havola shunchaki ro'yxatni ochadi; undagi boshqa joyda yo'q amallar
-// (o'quv rejadan mavzular, mavzular tartibi, qiyinlikni natijaga moslash) — «Sozlamalar»da.
+// Bankning sozlamalari (o'quv rejadan mavzular, mavzular tartibi, qiyinlikni natijaga moslash,
+// umumiy matnlar) bankda emas — Imtihonlar → «Sozlamalar» tabida (egasi, 2026-10-17: «savollar
+// bankidan sozlamalarni olib tashla»); eski ?bolim=sozlama havolasi ro'yxatni ochadi.
 // Savol qo'lda yozilmaydi: "Savol qo'shish" — Word, Excel, PDF, rasm yoki matn.
 
-type Bolim = 'bank' | 'sozlama' | 'andoza';
+type Bolim = 'bank' | 'andoza';
 
 export default function QuestionsList() {
   const { ozgartira } = useCRM();
@@ -30,8 +27,6 @@ export default function QuestionsList() {
 
   const BOLIMLAR: { v: Bolim; nom: string }[] = [
     { v: 'bank', nom: 'Savollar banki' },
-    // Sozlamalar — bankni to'ldiradigan xodimga (hammasi o'zgartiruvchi amal).
-    ...(savolTahrir ? [{ v: 'sozlama' as const, nom: 'Sozlamalar' }] : []),
     { v: 'andoza', nom: 'Andoza' },
   ];
   const bolim: Bolim = BOLIMLAR.find(b => b.v === params.get('bolim'))?.v || 'bank';
@@ -76,7 +71,7 @@ export default function QuestionsList() {
 
   return (
     <div className="space-y-3">
-      {/* Bank bo'limlari: Savollar banki | Sozlamalar | Andoza */}
+      {/* Bank bo'limlari: Savollar banki | Andoza */}
       <div className="bg-sirt border border-chiziq rounded-2xl shadow-sm px-3 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="inline-flex flex-wrap self-start rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5" role="tablist" aria-label="Savollar banki bo'limlari">
           {BOLIMLAR.map(b => (
@@ -91,8 +86,6 @@ export default function QuestionsList() {
 
       {bolim === 'andoza' ? (
         <Andozalar daraxt={daraxt} />
-      ) : bolim === 'sozlama' ? (
-        <BankSozlamalari daraxt={daraxt} fanId={fan?.id ?? null} yangila={yangila} onRoyxat={() => ot({ bolim: null })} />
       ) : (
         <BankJadvali daraxt={daraxt} fanId={fan?.id ?? null} onFan={id => ot({ fan: id })} yangilaDaraxt={yangila} yangilash={qayta} yangi={yangi}
           onYangi={ids => setYangi({ ids, n: Date.now() })} onTanlov={setTanlov}

@@ -15,6 +15,8 @@ import TekshirishTab from './imtihon/TekshirishTab';
 import NatijalarTab from './imtihon/NatijalarTab';
 import TarixBolimi from './imtihon/TarixBolimi';
 import ImtihonSozlamalari from './imtihon/ImtihonSozlamalari';
+import BankSozlamalari from './imtihon/bank/BankSozlamalari';
+import { useBankDaraxt } from './imtihon/bank/useBankDaraxt';
 import { sanaMatni } from './imtihon/format';
 import { toDateStr } from '../../lib/lessons.js';
 import type { Exam } from '../types';
@@ -81,8 +83,8 @@ export default function ExamsList() {
     { id: 'skaner', nom: 'Skaner', ikonka: ScanLine, ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar va tarix', ikonka: BarChart3, ochiq: kora('imtihonlar.natija') },
   ].filter(t => t.ochiq) as { id: TabId; nom: string; ikonka: typeof BookOpen }[];
-  // Modul sozlamasi — imtihon tuzuvchiga (yangi imtihon standartlarini o'sha belgilaydi).
-  const sozlamaKorinadi = ozgartira('imtihonlar.imtihon');
+  // Modul sozlamasi — imtihon tuzuvchiga (yangi imtihon standartlari) va bankni to'ldiruvchiga (bank sozlamalari).
+  const sozlamaKorinadi = ozgartira('imtihonlar.imtihon') || ozgartira('imtihonlar.savollar');
   const tab: Bolim = params.get('tab') === 'sozlama' && sozlamaKorinadi ? 'sozlama'
     : (TABLAR.find(t => t.id === params.get('tab'))?.id || (params.has('imtihon') && TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
   const k = params.get('k');
@@ -139,7 +141,7 @@ export default function ExamsList() {
         {/* Bosqich emas — raqamsiz, keng ekranda o'ng chetda. */}
         {sozlamaKorinadi && (
           <button ref={tab === 'sozlama' ? faolRef : undefined} onClick={() => tabga('sozlama')} aria-current={tab === 'sozlama' ? 'page' : undefined}
-            title="Butun imtihon moduli uchun: yangi imtihon qanday boshlanadi, xabar matnlari, AI yordamchi"
+            title="Butun modul uchun: yangi imtihon standartlari, xabar matnlari, AI yordamchi va savollar banki"
             className={`ml-auto flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${tab === 'sozlama' ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
             <Settings size={14} /> Sozlamalar
           </button>
@@ -148,7 +150,14 @@ export default function ExamsList() {
 
       {tab === 'savollar' && <QuestionsList />}
 
-      {tab === 'sozlama' && <ImtihonSozlamalari onBankSozlama={ozgartira('imtihonlar.savollar') ? () => ozgartir({ tab: 'savollar', bolim: 'sozlama', k: null }) : undefined} />}
+      {tab === 'sozlama' && (
+        <div className="space-y-6">
+          {ozgartira('imtihonlar.imtihon') && <ImtihonSozlamalari bankPastda={ozgartira('imtihonlar.savollar')} />}
+          {ozgartira('imtihonlar.savollar') && (
+            <BankSozlamaBolimi aiKalit={!ozgartira('imtihonlar.imtihon')} onRoyxat={() => ozgartir({ tab: 'savollar', bolim: null, k: null })} />
+          )}
+        </div>
+      )}
 
       {royxatKorinadi && <ImtihonlarRoyxati tanlangan={tanlangan} onTanla={id => ozgartir({ imtihon: String(id) })} />}
 
@@ -187,6 +196,22 @@ export default function ExamsList() {
               )
       )}
     </div>
+  );
+}
+
+/** «Sozlamalar» tabida: savollar bankining sozlamalari (ilgari bankning o'z bo'limi edi). */
+function BankSozlamaBolimi({ aiKalit, onRoyxat }: { aiKalit: boolean; onRoyxat: () => void }) {
+  const { daraxt, xato, yangila } = useBankDaraxt();
+  return (
+    <section className="space-y-3" aria-labelledby="bank-sozlama">
+      <div className="px-1">
+        <h2 id="bank-sozlama" className="text-[15px] font-bold text-matn">Savollar banki</h2>
+        <p className="text-[12px] text-matn-xira mt-0.5">Mavzular, qiyinlikni natijaga moslash va umumiy matnlar. Har amal o'z tugmasi bilan darhol saqlanadi.</p>
+      </div>
+      {xato ? <Karta><BoshHolat sarlavha="Bank ochilmadi" izoh={xato}><Tugma onClick={() => yangila()}>Qayta urinish</Tugma></BoshHolat></Karta>
+        : !daraxt ? <Yuklanmoqda />
+          : <BankSozlamalari daraxt={daraxt} fanId={null} yangila={yangila} onRoyxat={onRoyxat} aiKalit={aiKalit} />}
+    </section>
   );
 }
 

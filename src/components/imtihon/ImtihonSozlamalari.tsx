@@ -17,12 +17,12 @@ import { toDateStr } from '../../../lib/lessons.js';
 // har imtihonda o'zgartirsa bo'ladi, oldin yaratilganlariga ta'sir qilmaydi. Bo'limlar
 // imtihonning o'z bosqichlari bilan bir xil (2026-10-17): tuzilma — Imtihonlar tabida,
 // o'tkazish — Qatnashchilar tabida, natija — Natijalar tabida; komponentlar ham o'shalar
-// (sozlamaQismlari). Savollar bankining sozlamalari bankning o'zida.
+// (sozlamaQismlari). Savollar bankining sozlamalari ham shu tabda, pastda (ExamsList).
 
 type Yangi = ImtihonSozlama['yangi'];
 type Sozlama = Yangi['settings'];
 
-export default function ImtihonSozlamalari({ onBankSozlama }: { /** Savollar banki → Sozlamalar ga o'tish (bankni ko'ra oladiganlarga). */ onBankSozlama?: () => void }) {
+export default function ImtihonSozlamalari({ bankPastda }: { /** Savollar bankining sozlamalari shu sahifada, pastda (bankni to'ldira oladiganlarga). */ bankPastda?: boolean }) {
   const { showNotification, settings } = useCRM();
   const { soro } = useImtihonApi();
   const [saqlangan, setSaqlangan] = useState<ImtihonSozlama | null>(null);
@@ -73,7 +73,7 @@ export default function ImtihonSozlamalari({ onBankSozlama }: { /** Savollar ban
           <h1 className="text-[16px] font-bold text-matn">Imtihonlar sozlamalari</h1>
           <p className="text-[12px] text-matn-xira mt-0.5">
             Butun markaz uchun bitta. «Yangi imtihon» shu qiymatlar bilan ochiladi; har imtihonda o'z bosqichida o'zgartiriladi, oldin yaratilganlari o'zgarmaydi.
-            {onBankSozlama && <> Savollar bankiga oidlari — <button type="button" onClick={onBankSozlama} className="font-semibold text-brand hover:underline cursor-pointer">Savollar banki → Sozlamalar</button>.</>}
+            {bankPastda && ' Savollar bankiniki — pastda, o\'z tugmalari bilan darhol saqlanadi.'}
           </p>
         </div>
         <Tugma turi="asosiy" className="shrink-0" ikonka={<Save size={14} />} yuklanmoqda={band} disabled={!ozgardi} onClick={saqla}

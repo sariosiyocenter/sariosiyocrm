@@ -9,12 +9,12 @@ import MatnlarOynasi from '../MatnlarOynasi';
 import { useDarajalar } from './useDarajalar';
 import type { BankDaraxt, BankFan, BankMavzu } from '../../../types';
 
-// Savollar banki → Sozlamalar (egasi, 2026-10-10: «savollar bankiga oid sozlamalarni o'ziga
-// qo'shish, andoza chapiga»). Bankka oid hamma narsa shu yerda: qiyinlik darajalari, fanning
+// Savollar bankining sozlamalari — Imtihonlar → «Sozlamalar» tabida, imtihon sozlamalari
+// ostida (egasi, 2026-10-17: bankning o'zidan olib tashlandi). Qiyinlik darajalari, fanning
 // mavzulari (o'quv rejadan olish, tartibi), qiyinlikni imtihon natijasiga moslash, umumiy
-// matnlar va AI yordamchi. Olib tashlangan «Statistika» ko'rinishidan faqat boshqa joyda yo'q
-// amallar ko'chdi. Qiyinlik darajalari va filtrlar savollar ro'yxatining o'zida tahrirlanadi —
-// bu yerda ikkinchi muharrir yo'q, faqat ko'rinishi va yo'l.
+// matnlar. AI yordamchi kaliti imtihon sozlamalarida; imtihon sozlamasiga ruxsati yo'q
+// xodimga shu yerda (`aiKalit`). Qiyinlik darajalari va filtrlar savollar ro'yxatining o'zida
+// tahrirlanadi — bu yerda ikkinchi muharrir yo'q, faqat ko'rinishi va yo'l.
 
 // Telefonda barmoq bilan bosiladigan o'lcham (36px).
 const SURISH_TUGMA = 'inline-flex items-center justify-center w-9 h-9 shrink-0 rounded-lg text-matn-sokin hover:text-brand hover:bg-ichki disabled:opacity-30 cursor-pointer disabled:cursor-default';
@@ -30,8 +30,10 @@ function bolimlarBoyicha(mavzular: BankMavzu[]): { bolim: string; mavzular: Bank
   return out;
 }
 
-export default function BankSozlamalari({ daraxt, fanId, yangila, onRoyxat }: {
+export default function BankSozlamalari({ daraxt, fanId, yangila, onRoyxat, aiKalit = false }: {
   daraxt: BankDaraxt;
+  /** AI yordamchi kartasi ham (imtihon sozlamalari ko'rinmaydigan xodimga). */
+  aiKalit?: boolean;
   /** Ro'yxatda ochiq turgan fan — «Mavzular» shundan boshlanadi. */
   fanId: number | null;
   yangila: () => Promise<unknown>;
@@ -198,7 +200,7 @@ export default function BankSozlamalari({ daraxt, fanId, yangila, onRoyxat }: {
           )}
         </Karta>
 
-        <AiKalitKartasi />
+        {aiKalit && <AiKalitKartasi />}
       </div>
 
       {matnlar && <MatnlarOynasi onYop={() => setMatnlar(false)} />}
