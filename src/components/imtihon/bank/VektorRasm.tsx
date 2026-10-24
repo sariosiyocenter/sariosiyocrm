@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PenTool, RotateCcw, Undo2, Loader2, AlertTriangle } from 'lucide-react';
+import { PenTool, RotateCcw, Undo2, Loader2, AlertTriangle, History, Wand2 } from 'lucide-react';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Yorliq, INPUT } from '../ui';
 import MikrofonTugma from '../MikrofonTugma';
@@ -7,8 +7,10 @@ import { matnQoshish } from '../../../../lib/matnQoshish.js';
 import { rasmChiz, rasmXatoMatni, svgmi, type ChizilganRasm, type RasmSorovi } from '../../../lib/svgRasm';
 
 // Savol rasmi bloki (savolni ko'rib chiqish kartasida): hozirgi rasm, «Vektor qilib chizish»,
-// «Qayta chizish» (ixtiyoriy ko'rsatma bilan) va «Asl rasmga qaytish». Egasi (2026-10-10):
-// «savollar rasmli bo'ladi yoki o'xshash savol tuzganda — vector qilib rasm tuzsin».
+// ko'rsatma bilan «O'zgartirish» (chizma tahrirlanadi — qolgani joyida), ko'rsatmasiz «Qayta chizish»
+// (boshqacha qilib), «Oldingisi» (shu oynada avvalgi chizmaga qaytish) va «Asl rasmga qaytish».
+// Egasi (2026-10-10): «savollar rasmli bo'ladi yoki o'xshash savol tuzganda — vector qilib rasm tuzsin»;
+// (2026-10-22): «rasm chizish vaqti uzun… rasmni umuman o'zgartira olmayapman».
 //
 // Tanlangan rasm `onChange` bilan hostga beriladi — bu doim saqlashga tayyor havola (Storage):
 // host uni savolning `imageUrl` iga yozadi, boshqa hech narsa qilmaydi. Ko'p savolni birdan
@@ -54,10 +56,31 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
   const [xato, setXato] = useState<{ matn: string; yumshoq: boolean } | null>(null);
   const [korsatma, setKorsatma] = useState('');
   const [natija, setNatija] = useState<ChizilganRasm | null>(null);
+  // Shu oynada almashtirilgan rasmlar (eng oxirgisi — oxirida): AI tahriri yomonlashtirsa, bir bosishda qaytadi.
+  const [tarix, setTarix] = useState<(string | null)[]>([]);
+  const [soniya, setSoniya] = useState(0);
   const tirik = useRef(true);
   const avtoBoshlandi = useRef(false);
 
   const ish = chizilmoqda || !!band;
+  const tahrir = !!korsatma.trim();
+  useEffect(() => {
+    if (!chizilmoqda) return;
+    setSoniya(0);
+    const t = window.setInterval(() => setSoniya(s => s + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [chizilmoqda]);
+  // Chizma 10–40 soniya keladi: shu orada host rasmni almashtirgan bo'lishi mumkin (fayl yuklagan) —
+  // «Oldingisi» ga bosish paytidagisi emas, hozirgisi tushsin.
+  const joriy = useRef(qiymat);
+  useEffect(() => { joriy.current = qiymat; }, [qiymat]);
+  /** Rasm almashtiriladi; hozirgisi «Oldingisi» uchun eslab qolinadi. */
+  const almashtir = (yangi: string | null) => {
+    const hozir = joriy.current;
+    if (yangi === hozir) return;
+    setTarix(t => [...t, hozir].slice(-10));
+    onChange(yangi);
+  };
   const vektor = svgmi(qiymat);
   // Shu kartada chizilgan rasm hali tanlangan bo'lsa — uning ma'lumoti (kamchiliklar, PNG zaxirasi).
   const ozimizniki = natija && natija.url === qiymat ? natija : null;
@@ -76,11 +99,11 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
     setChizilmoqda(true);
     setXato(null);
     try {
-      const rasm = await rasmChiz(soro, sorov);
+      const rasm = await rasmChiz(soro, sorov, { shoshilinch: true });
       if (!tirik.current) return;
       setNatija(rasm);
       setKorsatma('');
-      onChange(rasm.url);
+      almashtir(rasm.url);
     } catch (e: any) {
       if (tirik.current) setXato({ matn: rasmXatoMatni(e), yumshoq: e?.malumot?.sabab === 'kerak-emas' });
     } finally {
@@ -96,6 +119,11 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
     }
     return () => { tirik.current = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const oldingisi = tarix.length > 0 && (
+    <Tugma kichik type="button" turi="oddiy" ikonka={<History size={13} />} disabled={ish} title="Shu oynadagi avvalgi chizmaga qaytish"
+      onClick={() => { setXato(null); setTarix(t => t.slice(0, -1)); onChange(tarix[tarix.length - 1]); }}>Oldingisi</Tugma>
+  );
 
   // Solishtirish uchun: vektor yonida savolning o'z asl rasmi (sahifa surati emas).
   const aslKichik = aiChizgan && rastr(boshQiymat) && boshQiymat !== qiymat ? boshQiymat : null;
@@ -118,7 +146,8 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
             {ish && (
               <div className="absolute inset-0 flex items-center justify-center" role="status">
                 <span className="inline-flex items-center gap-2 rounded-lg bg-white/90 px-2.5 py-1.5 text-[12.5px] font-semibold text-neutral-700">
-                  <Loader2 size={15} className="animate-spin" /> Chizilmoqda… odatda 10–40 soniya
+                  <Loader2 size={15} className="animate-spin" />
+                  {chizilmoqda ? <>{tahrir ? "O'zgartirilmoqda…" : 'Chizilmoqda…'} <span className="raqam">{soniya} s</span></> : 'Chizilmoqda…'}
                 </span>
               </div>
             )}
@@ -136,21 +165,29 @@ export default function VektorRasm({ matn, shart, variantlar, javob, fan, raqam,
       )}
 
       {aiChizgan ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className={`${INPUT} py-1.5 text-[12.5px] flex-1 min-w-44`} value={korsatma} disabled={ish} maxLength={KORSATMA_MAX}
-            placeholder="Nimani o'zgartirish kerak?" aria-label="Qayta chizish uchun ko'rsatma (ixtiyoriy)"
-            onChange={e => setKorsatma(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void chiz(); } }}
-          />
-          <MikrofonTugma disabled={ish} onMatn={t => setKorsatma(m => matnQoshish(m, t, KORSATMA_MAX))} />
-          <Tugma kichik type="button" ikonka={<RotateCcw size={13} />} disabled={ish} onClick={() => void chiz()}>Qayta chizish</Tugma>
-          <Tugma kichik type="button" turi="oddiy" ikonka={<Undo2 size={13} />} disabled={ish} onClick={() => { setXato(null); onChange(boshQiymat); }}>
-            {boshQiymat ? 'Asl rasmga qaytish' : 'Chizmani olib tashlash'}
-          </Tugma>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className={`${INPUT} py-1.5 text-[12.5px] flex-1 min-w-44`} value={korsatma} disabled={ish} maxLength={KORSATMA_MAX}
+              placeholder="Nimani o'zgartirish kerak? Masalan: 750° ni 30° joyida ko'rsat" aria-label="Chizmada nimani o'zgartirish kerak"
+              onChange={e => setKorsatma(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void chiz(); } }}
+            />
+            <MikrofonTugma disabled={ish} onMatn={t => setKorsatma(m => matnQoshish(m, t, KORSATMA_MAX))} />
+            {tahrir
+              ? <Tugma kichik type="button" ikonka={<Wand2 size={13} />} disabled={ish} onClick={() => void chiz()} title="Faqat aytilgan joy o'zgaradi, qolgani joyida qoladi">O'zgartirish</Tugma>
+              : <Tugma kichik type="button" ikonka={<RotateCcw size={13} />} disabled={ish} onClick={() => void chiz()} title="Butunlay boshqacha qilib qayta chizadi">Qayta chizish</Tugma>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {oldingisi}
+            <Tugma kichik type="button" turi="oddiy" ikonka={<Undo2 size={13} />} disabled={ish} onClick={() => { setXato(null); almashtir(boshQiymat); }}>
+              {boshQiymat ? 'Asl rasmga qaytish' : 'Chizmani olib tashlash'}
+            </Tugma>
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <Tugma kichik type="button" ikonka={<PenTool size={13} />} disabled={ish} onClick={() => void chiz()}>{xato && !xato.yumshoq ? 'Qayta urinish' : 'Vektor qilib chizish'}</Tugma>
+          {oldingisi}
           {!ish && !xato && <span className="text-[11.5px] text-matn-xira">{aslRasm || qiymat ? 'AI rasmni chopga mos toza chizma qilib qayta chizadi' : "AI masala matni bo'yicha chopga mos chizma chizadi"}</span>}
         </div>
       )}

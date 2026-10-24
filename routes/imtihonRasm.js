@@ -119,7 +119,8 @@ export function registerImtihonRasmRoutes(app, { storage }) {
   //   aslRasm? — shu savolning asl rasmi yoki sahifa surati: data URL yoki o'zimizning Storage havolasi (3 tagacha);
   //   namuna? — o'xshash masalada ASL masalaning rasmi (SVG matni/havolasi yoki rastr);
   //   avvalgiSvg? — shu savolning avvalgi chizmasi (qayta chizish); tanqid? — uning kamchiliklari; korsatma? — ustoz so'zi;
-  //   sifat? — 'yuqori' | 'tez'; saqla? — false bo'lsa Storage'ga yozilmaydi.
+  //   sifat? — 'yuqori' | 'tez'; shoshilinch? — ustoz oynada kutib turibdi (model poygasi);
+  //   saqla? — false bo'lsa Storage'ga yozilmaydi.
   // Javob: { svg, url, eni, boyi, ogohlar, jiddiy, tuzat, model }.
   app.post('/api/ai/rasm', authenticate, rasmCheklovi, aiKontekst, async (req, res, next) => {
     try {
@@ -147,6 +148,7 @@ export function registerImtihonRasmRoutes(app, { storage }) {
         tanqid: Array.isArray(b.tanqid) ? b.tanqid : [],
         korsatma: String(b.korsatma ?? ''),
         sifat: b.sifat === 'tez' ? 'tez' : 'yuqori',
+        shoshilinch: b.shoshilinch === true,
       });
       const url = b.saqla === false ? null : await svgniYukla(natija.svg);
       res.json({ svg: natija.svg, url, eni: natija.eni, boyi: natija.boyi, ogohlar: natija.ogohlar, jiddiy: natija.jiddiy, tuzat: natija.jiddiy > 0, model: natija.model });

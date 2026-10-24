@@ -83,14 +83,16 @@ function blobDataUrl(blob: Blob): Promise<string> {
 
 /**
  * Bitta savol rasmini chizdiradi va saqlashga tayyor havolasini qaytaradi. Chizmada jiddiy
- * kamchilik topilsa (yozuvlar ustma-ust va h.k.) — AI ga bir marta tuzattiriladi.
+ * kamchilik qolsa (server yozuvlarni o'zi surib ham tuzata olmagan) — AI ga bir marta tuzattiriladi.
+ * `shoshilinch` — ustoz oynada kutib turibdi: server kuchli va odatdagi modelni poyga qildiradi.
  * Xato — ApiXato (matni: rasmXatoMatni; `malumot.sabab === 'kerak-emas'` — savolga rasm kerak emas).
  */
-export async function rasmChiz(soro: Soro, sorov: RasmSorovi, o: { limitniKut?: boolean } = {}): Promise<ChizilganRasm> {
-  let j = await birSorov(soro, sorov, {}, !!o.limitniKut);
+export async function rasmChiz(soro: Soro, sorov: RasmSorovi, o: { limitniKut?: boolean; shoshilinch?: boolean } = {}): Promise<ChizilganRasm> {
+  const shoshilinch = o.shoshilinch ? { shoshilinch: true } : {};
+  let j = await birSorov(soro, sorov, shoshilinch, !!o.limitniKut);
   if (j.tuzat) {
     try {
-      const tuzatilgan = await birSorov(soro, sorov, { avvalgiSvg: j.url || j.svg, tanqid: j.ogohlar }, !!o.limitniKut);
+      const tuzatilgan = await birSorov(soro, sorov, { ...shoshilinch, avvalgiSvg: j.url || j.svg, tanqid: j.ogohlar }, !!o.limitniKut);
       if (tuzatilgan.jiddiy < j.jiddiy) j = tuzatilgan;
     } catch {
       // Tuzatish chiqmadi — birinchi chizma qoladi (kamchiligi `ogohlar` da ko'rinadi).

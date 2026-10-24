@@ -11,6 +11,8 @@ import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import SavolKorinishi from './imtihon/bank/SavolKorinishi';
 import { QiyinlikTanlov, QIYINLIK } from './imtihon/bank/qiyinlik';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
+import VektorRasm from './imtihon/bank/VektorRasm';
+import { svgmi, rasmBelgisiBor, rasmBelgisiz } from '../lib/svgRasm';
 import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
 import { HARFLAR, RAQAM_USTUNLARI, MOSLASH_QATOR, MOSLASH_USTUN, savolXatosi, qiyinlikDarajasi, moslashQatorlari } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri, BelgiGuruhi } from '../types';
@@ -78,6 +80,9 @@ export default function QuestionEditor() {
   const [ishlatilgan, setIshlatilgan] = useState(0);
   const ai = useAiHolat();
   const [aiBand, setAiBand] = useState<string | null>(null);
+  // Savolning asl (AI chizmagan) rasmi — chizma blokidagi «Asl rasmga qaytish» shuni qaytaradi.
+  const [aslRasm, setAslRasm] = useState<string | null>(null);
+  const chizadi = !!ai?.yoqilgan && savolTahrir;
   const [oxshash, setOxshash] = useState(false);
 
   useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
@@ -115,6 +120,7 @@ export default function QuestionEditor() {
         joylashuv: s.joylashuv || 0,
         ong: s.type === 'moslash' && s.answers?.length ? s.answers : ['', '', '', ''],
       });
+      setAslRasm(s.imageUrl && !svgmi(s.imageUrl) ? s.imageUrl : null);
       setSavolTeglari(s.tagIds || []);
       setIshlatilgan(s.usedCount || 0);
       setMuharrirKaliti(k => k + 1);
@@ -184,6 +190,7 @@ export default function QuestionEditor() {
         setQoshildi(n => n + 1);
         if (davom) {
           setQ({ ...BOSH_SHAXSIY, options: Array(q.type === 'yopiq' || q.type === 'moslash' ? q.options.length : 4).fill(''), ong: Array(q.ong.length).fill(''), type: q.type, passage: q.passage });
+          setAslRasm(null);
           setMuharrirKaliti(k => k + 1);
           showNotification("Savol qo'shildi — keyingisini kiriting", 'success');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -248,8 +255,19 @@ export default function QuestionEditor() {
     if (!file) return;
     if (file.size > 2.5 * 1024 * 1024) return showNotification('Rasm 2.5 MB dan kichik bo\'lsin', 'error');
     const r = new FileReader();
-    r.onload = ev => setQ(s => ({ ...s, imageUrl: String(ev.target?.result || '') }));
+    r.onload = ev => {
+      const url = String(ev.target?.result || '');
+      setQ(s => ({ ...s, imageUrl: url }));
+      setAslRasm(url);
+    };
     r.readAsDataURL(file);
+  };
+
+  // AI chizmasi qo'yilsa — matndagi «[rasm]» belgisi ortiqcha (kitobchada so'z bo'lib chiqadi).
+  const chizmaQoy = (url: string | null) => {
+    const belgili = !!url && rasmBelgisiBor(q.text);
+    setQ(s => ({ ...s, imageUrl: url, ...(belgili ? { text: rasmBelgisiz(s.text) } : {}) }));
+    if (belgili) setMuharrirKaliti(k => k + 1);
   };
 
   const variantQoy = (i: number, v: string) => setQ(s => ({ ...s, options: s.options.map((o, j) => (j === i ? v : o)) }));
@@ -411,12 +429,18 @@ export default function QuestionEditor() {
                 { v: 'yopiq', nom: 'Yopiq (variantli)' }, { v: 'raqamli', nom: 'Raqamli javob' }, { v: 'moslash', nom: 'Moslashtirish' }, { v: 'yozma', nom: 'Yozma (ustoz baholaydi)' },
               ]} />
               <RichTextEditor key={`matn-${muharrirKaliti}`} content={q.text} onChange={text => setQ(s => ({ ...s, text }))} />
+              {/* AI chizmasi (egasi, 2026-10-22: «rasmni o'zgartira olmayapman» — bu yerda faqat fayl yuklash bor edi). */}
+              {chizadi && (
+                <VektorRasm key={`chizma-${id ?? 'yangi'}-${qoshildi}`} matn={q.text} variantlar={q.type === 'yopiq' ? q.options : null} javob={q.type === 'yozma' ? null : q.correctAnswer}
+                  fan={fan?.name} qiymat={q.imageUrl} boshQiymat={aslRasm} onChange={chizmaQoy} />
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt hover:bg-ichki px-3 py-2 text-[12px] font-semibold text-matn cursor-pointer">
-                  <ImagePlus size={14} /> Rasm {q.imageUrl ? 'almashtirish' : "qo'shish"}
+                  <ImagePlus size={14} /> {chizadi ? 'Kompyuterdan yuklash' : `Rasm ${q.imageUrl ? 'almashtirish' : "qo'shish"}`}
                   <input type="file" accept="image/*" className="hidden" onChange={rasm} />
                 </label>
-                {q.imageUrl && <><img src={q.imageUrl} alt="" className="h-16 rounded-lg border border-chiziq bg-white" /><Tugma kichik turi="oddiy" onClick={() => setQ({ ...q, imageUrl: null })}>Olib tashlash</Tugma></>}
+                {q.imageUrl && !chizadi && <img src={q.imageUrl} alt="" className="h-16 rounded-lg border border-chiziq bg-white" />}
+                {q.imageUrl && !(chizadi && svgmi(q.imageUrl)) && <Tugma kichik turi="oddiy" onClick={() => setQ({ ...q, imageUrl: null })}>Rasmni olib tashlash</Tugma>}
               </div>
 
               {q.type === 'yopiq' && (
