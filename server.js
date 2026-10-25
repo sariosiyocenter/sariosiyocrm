@@ -12,6 +12,7 @@ import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHi
 import { registerImtihonSozlamaRoutes } from './routes/imtihonSozlama.js';
 import { registerImtihonYechimRoutes } from './routes/imtihonYechim.js';
 import { registerImtihonRasmRoutes } from './routes/imtihonRasm.js';
+import { registerOlchovRoutes } from './routes/olchov.js';
 import { registerImtihonDarsRoutes } from './routes/imtihonDars.js';
 import { auditMiddleware } from './lib/audit.js';
 import { yolHimoyasi } from './lib/yolHimoya.js';
@@ -8677,6 +8678,8 @@ registerImtihonYechimRoutes(app);
 registerImtihonRasmRoutes(app, { storage: supabaseAdmin.storage });
 // Savolning video darsi: AI yechimni ssenariyga aylantiradi, ovoz (MP3) Storage'ga tushadi (routes/imtihonDars.js).
 registerImtihonDarsRoutes(app, { storage: supabaseAdmin.storage });
+// Ish o'lchovi: oyna bosqichlari vaqti va qotishlar — sekin joyni topish uchun (routes/olchov.js).
+registerOlchovRoutes(app);
 // Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
 registerImtihonRoutes(app, {
   sendToOne,

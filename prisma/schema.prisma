@@ -1585,6 +1585,22 @@ model AuditLog {
   @@index([userId, createdAt])
 }
 
+// Ish o'lchovi: sahifa qaysi bosqichda qancha vaqt olgani va qayerda qotgani (src/lib/olchagich.ts,
+// routes/olchov.js). Egasi (2026-10-25): «fayldan yuklashda qotib qoldi … o'zing kuzata olmaysanmi?».
+// Bitta oyna ochilishi — bitta yozuv (sessiya bo'yicha yangilanib boradi); 30 kundan eskisi o'chadi.
+model IshOlchovi {
+  id        Int      @id @default(autoincrement())
+  sessiya   String   @unique
+  joy       String
+  userId    Int?
+  schoolId  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  malumot   Json
+
+  @@index([joy, createdAt])
+}
+
 // Har bir Payme so'rovining izi (audit). Authorization sarlavhasi
 // yozilmaydi. School o'chirilsa ham qoladi — bu moliyaviy jurnal.
 model PaymeLog {

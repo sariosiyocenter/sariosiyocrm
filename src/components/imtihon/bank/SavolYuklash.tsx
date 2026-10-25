@@ -24,6 +24,7 @@ import {
 import { useRasmNavbati, RasmJarayoni, SavolRasmi, rasmIshi, rasmNatijasiniQoy, rasmKerakmi, rasmYetishmaydi, ichkiRasm } from './rasmNavbati';
 import { rasmBelgisiBor, type RasmIshi, type RasmNatijasi } from '../../../lib/svgRasm';
 import { compressAndUpload } from '../../../lib/image';
+import { useOlchagich } from '../useOlchagich';
 import type { BankDaraxt, BankFiltrMalumoti } from '../../../types';
 
 // Savol qo'shish → «Fayldan»: bankka savol kiritishning asosiy yo'li (egasi, 2026-09-29:
@@ -105,6 +106,17 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const band = !!jarayon || saqlanmoqda;
 
+  // O'lchov (egasi, 2026-10-25: «fayldan yuklashda qotib qoldi … qancha vaqtda yuklanayapdi?»): har
+  // bosqich (jarayon matni) qancha vaqt olgani va qayerda qotgani serverga yoziladi (useOlchagich).
+  const olchov = useOlchagich('fayldan-yuklash');
+  const bosqichNomi = jarayon ? jarayon.matn.replace(/\s·.*$/, '') : saqlanmoqda ? 'Saqlanmoqda' : natijalar ? "Ro'yxat bilan ishlash" : 'Fayl tanlash';
+  useEffect(() => { olchov.bosqich(bosqichNomi); }, [bosqichNomi]); // eslint-disable-line react-hooks/exhaustive-deps
+  const soniya = (ms: number) => `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
+  const olchovMatni = olchov.xulosa && [
+    ...olchov.xulosa.bosqichlar.filter(b => b.davom >= 1000 && b.nom !== "Ro'yxat bilan ishlash" && b.nom !== 'Fayl tanlash').map(b => `${b.nom}: ${soniya(b.davom)}`),
+    olchov.xulosa.qotishlar ? `qotish: eng uzuni ${soniya(olchov.xulosa.engUzunQotish)}, jami ${soniya(olchov.xulosa.jamiQotish)}` : '',
+  ].filter(Boolean).join(' · ');
+
   const sahifalar = manbalar.filter((m): m is Extract<Manba, { tur: 'sahifa' }> => m.tur === 'sahifa');
   const excellar = manbalar.filter((m): m is Extract<Manba, { tur: 'excel' }> => m.tur === 'excel');
   const wordlar = manbalar.filter((m): m is Extract<Manba, { tur: 'word' }> => m.tur === 'word');
@@ -127,6 +139,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     let joriyTur = tur;
     let bor = manbalar.length;
     let sahifaSoni = sahifalar.length;
+    olchov.belgi('fayllar', { tur: joriyTur, fayllar: fayllar.map(f => ({ tur: f.type || f.name.split('.').pop() || '', kb: Math.round(f.size / 1024) })) });
     for (const f of fayllar) {
       try {
         if (/\.xlsx?$/i.test(f.name)) {
@@ -382,6 +395,9 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
       const holatlar = royxat.map(q => (tekKalit.has(q.kalit) ? { ...q, tekshiriladi: true } : q));
       setMatnlar(matnYig);
       setNatijalar(holatlar);
+      const olchovSoni = { savollar: holatlar.length, guruhlar: guruhYig.length, sahifalar: sahifalar.length, wordlar: wordlar.length, rasmli: holatlar.filter(q => q.imageUrl || rasmBelgisiBor(q.text)).length };
+      olchov.belgi('natijalar', olchovSoni);
+      olchov.qosh(olchovSoni);
       if (xatolar.length) showNotification(`${xatolar.length} ta qism o'qilmadi: ${xatolar[0]}`, 'error');
       const eslatma = [kalitdan ? `${kalitdan} ta javob kalitdan olindi` : '', ichki ? `${ichki} ta takror tashlandi` : ''].filter(Boolean).join(', ');
       if (eslatma) showNotification(eslatma, 'info');
@@ -436,7 +452,9 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
     const kalitlar = new Set(ishlar.map(i => i.kalit));
     setNatijalar(l => l && l.map(q => (kalitlar.has(q.kalit) ? { ...q, rasm: { band: true } } : q)));
     setAiGuruhlar(l => l.map(g => (kalitlar.has(g.kalit) ? { ...g, rasm: { band: true } } : g)));
+    olchov.belgi('chizish-boshi', { soni: ishlar.length });
     const h = await rasmNavbati.chiz(ishlar, rasmKeldi);
+    olchov.belgi('chizish-oxiri', { chizildi: h.chizildi, chizilmadi: h.chizilmadi });
     // Chizilmagani saqlashga to'sqinlik qilmaydi: belgi matnda qoladi, savol qoralama bo'lib tushadi.
     if (h.chizilmadi) showNotification(`${h.chizildi} ta rasm chizildi, ${h.chizilmadi} tasi chizilmadi: ${h.xato}. Kartadagi «Vektor qilib chizish» bilan qayta urinasiz`, 'error');
     else if (h.chizildi) showNotification(`${h.chizildi} ta rasm chizildi — ko'zdan kechiring`, 'success');
@@ -480,6 +498,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
   const saqla = async () => {
     if (!tanlanganlar.length && !tanlanganGuruhlar.length) return;
     setSaqlanmoqda(true);
+    olchov.belgi('saqlash', { savollar: tanlanganlar.length, guruhlar: tanlanganGuruhlar.length });
     try {
       const matnIdlari = new Map<string, number>();
       for (const m of matnlar.filter(m => tanlanganlar.some(q => q.matnId === m.id))) {
@@ -799,6 +818,7 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
                     {tanlanganGuruhlar.length > 0 && <> · guruhli savol {tanlanganGuruhlar.length}{faolGuruhlar ? ` (faol ${faolGuruhlar}${tanlanganGuruhlar.length - faolGuruhlar ? `, qoralama ${tanlanganGuruhlar.length - faolGuruhlar}` : ''})` : ' (qoralama)'}</>}</>
                   : 'Savollarni belgilang'}
                 {sanoq.kutilmoqda > 0 && <span className="block text-[11px] text-matn-xira">AI ishi tugagach — tasdiqlanganlari faol bo'ladi</span>}
+                {olchovMatni && <span className="block text-[11px] text-matn-xira raqam" title="Har bosqich qancha vaqt olgani va sahifa qancha qotgani (dasturchi uchun yoziladi)">⏱ {olchovMatni}</span>}
               </p>
               <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} disabled={(!tanlanganlar.length && !tanlanganGuruhlar.length) || !!jarayon || rasmNavbati.band || tahrirda !== null} onClick={saqla}>
                 {tanlanganlar.length ? `${tanlanganlar.length} ta savol${tanlanganGuruhlar.length ? ` va ${tanlanganGuruhlar.length} ta guruhni` : 'ni'} bankka qo'shish` : tanlanganGuruhlar.length ? `${tanlanganGuruhlar.length} ta guruhli savolni bankka qo'shish` : "Bankka qo'shish"}
