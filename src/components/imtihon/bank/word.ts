@@ -207,7 +207,7 @@ function raqamlashniOqi(fayllar: Map<string, Uint8Array>): Raqamlash {
     for (const a of Array.from(n.getElementsByTagNameNS('*', 'abstractNum'))) {
       const d: Daraja[] = [];
       for (const l of bolalar(a).filter(c => W(c, 'lvl'))) {
-        d[Number(atr(l, 'ilvl')) || 0] = {
+        d[Math.min(8, Math.max(0, Number(atr(l, 'ilvl')) || 0))] = {
           start: Number(atr(wBola(l, 'start'), 'val') ?? 1),
           fmt: atr(wBola(l, 'numFmt'), 'val') || 'decimal',
           matn: atr(wBola(l, 'lvlText'), 'val') ?? '',
@@ -248,7 +248,10 @@ function rim(n: number): string {
   for (const [v, h] of q) while (n >= v) { s += h; n -= v; }
   return s;
 }
-function sonMatni(n: number, fmt: string): string {
+function sonMatni(n0: number, fmt: string): string {
+  // Raqam fayldan keladi (w:start, w:startOverride): g'alati katta son Rim raqami sikli yoki harf
+  // takrorida sahifani qotirmasin — ro'yxat raqami amalda 1–9999.
+  const n = Math.min(9999, Math.max(1, Math.floor(n0) || 1));
   const harf = (abc: string) => abc[(n - 1) % abc.length].repeat(Math.floor((n - 1) / abc.length) + 1);
   switch (fmt) {
     case 'upperLetter': return harf('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
@@ -277,7 +280,8 @@ function raqamlagich(r: Raqamlash) {
     const uslub = uslubdan(atr(wBola(pPr, 'pStyle'), 'val'));
     const numId = atr(wBola(numPr, 'numId'), 'val') ?? uslub?.numId;
     if (!numId || numId === '0') return '';
-    const ilvl = Number(atr(wBola(numPr, 'ilvl'), 'val') ?? uslub?.ilvl ?? 0) || 0;
+    // Word'da daraja 0–8; kattasi siyrak massivda ming millionlab katakni aylanib chiqardi.
+    const ilvl = Math.min(8, Math.max(0, Number(atr(wBola(numPr, 'ilvl'), 'val') ?? uslub?.ilvl ?? 0) || 0));
     const num = r.nums.get(numId);
     const darajalar = num ? r.darajalar.get(num.abs) : undefined;
     const d = darajalar?.[ilvl];
