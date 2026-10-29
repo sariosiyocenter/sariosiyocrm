@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trash2, AlertTriangle, CheckCircle2, ListChecks, X, LayoutList, Loader2 } from 'lucide-react';
+import { Trash2, AlertTriangle, CheckCircle2, ListChecks, X, LayoutList, Loader2, ChevronDown } from 'lucide-react';
 import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, INPUT, SELECT, Tanlov } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
@@ -8,7 +8,7 @@ import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
 import SavolTanlash, { type TanlovGuruhi } from '../bank/SavolTanlash';
 import { andozaBlokQoidalari, andozaQoidali, qoidalarSoni } from '../bank/andoza';
 import { TUR_NOMI, TUR_IZOHI } from '../../../lib/savolTuri';
-import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul, qismSoni, qismTekshiruvi } from '../../../../lib/imtihon.js';
+import { taqsimla, tengYoy, ulushlargaBol, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul, qismSoni, qismTekshiruvi } from '../../../../lib/imtihon.js';
 import type { Andoza, AndozaTafsil, BankDaraxt, BankFan, BelgiGuruhi, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
 
 // Imtihonning bitta fan bloki (bank rejimi). Odatiy yo'l: fan → savollar soni →
@@ -69,6 +69,10 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   const [andozaOchiq, setAndozaOchiq] = useState(false);
   const qolda = blok.topicRules.filter(r => tanlanganSavollar(r).length);
   const qoldaIds = qolda.flatMap(r => tanlanganSavollar(r));
+  // Odatda bitta qator yetadi (fan, soni, qiyinlik, ball); mavzular jadvali, boshqa turlar, qo'lda
+  // tanlash va andoza — «Batafsil» da. Ulardan biri ishlatilgan blok ochiq turadi (yashirin qolmasin).
+  const [batafsil, setBatafsil] = useState(() => t.aralash === 'qolda' || qoldaIds.length > 0 || !!blok.andoza || !!blok.tanlab
+    || (t.raqamli || 0) + (t.moslash || 0) + (t.yozma || 0) + (t.juft || 0) + (t.qismli || 0) > 0);
 
   // Yangi fan tanlanganda yoki eski imtihon ochilganda — fan id si bilan bog'lanadi.
   useEffect(() => {
@@ -163,6 +167,10 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   useQiyinlik();
   const ustunBor = (i: number) => i === 3 || !QIYINLIK[i].yashirin || ustunJami[i] > 0;
   const tasodifiyYopiq = yig(ustunJami);
+  // Qiyinlik rejadagidek chiqdimi: bankda biror qiyinlik yetmasa, taqsimla qo'shnisidan oladi —
+  // variantlar o'zaro baribir teng, lekin test rejadan osonroq/qiyinroq; buni yashirmaymiz.
+  const rejaQiyinligi: number[] = t.aralash !== 'qolda' && !blok.andoza && t.jami > 0 ? ulushlargaBol(t.jami, QIYINLIK_ARALASHMASI[t.aralash]) : [];
+  const qiyinlikFarqi = rejaQiyinligi.length ? [0, 1, 2].filter(i => ustunJami[i] < rejaQiyinligi[i]) : [];
   const raqamliBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.raqamli), 0);
   const yozmaBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.yozma), 0);
   const moslashBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.moslash || [0]), 0);
@@ -229,7 +237,8 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
   };
 
   return (
-    <div className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-3">
+    <div className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-2.5">
+      {/* Asosiy qator: fan, nechta savol, qiyinlik aralashmasi, ball. */}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex-1 min-w-52">
           <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">{index + 1}-fan</span>
@@ -238,54 +247,84 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name} ({f.faol} ta savol)</option>)}
           </select>
         </label>
-        {scoring === 'blok' && (
-          <label className="w-32">
-            <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Bir savol bali</span>
-            <input className={INPUT} disabled={qulf} inputMode="decimal" value={blok.pointsPerQuestion} aria-label="Bir savol bali"
-              onChange={e => onChange({ ...blok, pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
-          </label>
-        )}
-        <label className="w-28">
-          <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Hisoblanadi</span>
-          <input className={INPUT} disabled={qulf} inputMode="numeric" value={blok.tanlab ?? ''} placeholder="hammasi" aria-label="Nechta javob hisoblanadi"
-            title="«m tadan n tasini yeching»: o'quvchi istalgan n tasini yechadi, birinchi n ta javob hisoblanadi"
-            onChange={e => onChange({ ...blok, tanlab: parseInt(e.target.value.replace(/\D/g, '')) || null })} />
-        </label>
-        {!qulf && onOchir && <button aria-label="Blokni o'chirish" onClick={onOchir} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
-      </div>
-
-      {!qulf && (
-        <div className="flex flex-wrap items-center gap-2 -mt-1">
-          <Tugma kichik turi={blok.andoza ? 'ikkinchi' : 'oddiy'} ikonka={<LayoutList size={13} />} onClick={() => setAndozaOchiq(true)}>
-            {blok.andoza ? 'Boshqa andoza' : 'Andozadan'}
-          </Tugma>
-          {!blok.andoza && <span className="text-[11.5px] text-matn-xira">Savollar banki → Andoza dagi tayyor savollar to'plami</span>}
-        </div>
-      )}
-
-      {fan && blok.andoza ? (
-        <AndozaBloki blok={blok} fan={fan} kopaytma={kopaytma} scoring={scoring} qulf={qulf}
-          onChiqish={() => onChange({ ...blok, andoza: null, taqsimot: undefined, topicRules: [] })} />
-      ) : !fan ? (
-        <p className="text-[12.5px] text-matn-sokin rounded-lg bg-sirt border border-chiziq px-3 py-2">Fan tanlangach — savollar soni, qiyinlik va mavzular.</p>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-            <label className="w-28">
-              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Savollar soni</span>
+        {fan && !blok.andoza && (
+          <>
+            <label className="w-24">
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Savollar</span>
               <input className={INPUT} type="number" min={0} max={300} disabled={qulf || t.aralash === 'qolda'} value={t.aralash === 'qolda' ? tasodifiyYopiq : t.jami} aria-label="Savollar soni"
+                title={t.aralash === 'qolda' ? "Mavzular jadvalida qo'lda taqsimlangan — sonni «Batafsil» da o'zgartiring" : undefined}
                 onChange={e => qayta({ ...t, jami: Math.max(0, Math.min(300, Number(e.target.value) || 0)) })} />
             </label>
             <div>
               <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Qiyinlik</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <Tanlov kichik qiymat={t.aralash === 'qolda' ? ('' as any) : t.aralash} onChange={v => !qulf && qayta({ ...t, aralash: v, jami: t.aralash === 'qolda' ? tasodifiyYopiq : t.jami })}
-                  variantlar={ARALASH_NOMI.map(a => ({ v: a.v, nom: a.nom }))} />
-                {t.aralash === 'qolda' && <span className="text-[11.5px] font-semibold text-ogoh">qo'lda taqsimlangan</span>}
-              </div>
+              <Tanlov kichik qiymat={t.aralash === 'qolda' ? ('' as any) : t.aralash} disabled={qulf} onChange={v => qayta({ ...t, aralash: v, jami: t.aralash === 'qolda' ? tasodifiyYopiq : t.jami })}
+                variantlar={ARALASH_NOMI.map(a => ({ v: a.v, nom: a.nom }))} />
             </div>
-          </div>
+          </>
+        )}
+        {scoring === 'blok' && (
+          <label className="w-24">
+            <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Ball</span>
+            <input className={INPUT} disabled={qulf} inputMode="decimal" value={blok.pointsPerQuestion} aria-label="Bir savol bali" title="Bir savol bali"
+              onChange={e => onChange({ ...blok, pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
+          </label>
+        )}
+        {!qulf && onOchir && <button aria-label="Blokni o'chirish" onClick={onOchir} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
+      </div>
 
+      {/* Xulosa: nechta savol, mavzular, bank yetadimi — va tafsilotlar. */}
+      {fan ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px]">
+          <span className="text-matn-sokin">
+            <b className="text-matn raqam">{jamiSavol}</b> ta savol
+            {scoring === 'blok' && <> · <b className="text-matn raqam">{vergul(Math.round(jamiBall * 100) / 100)}</b> ball</>}
+            {' · '}{blok.andoza ? `andoza «${blok.andoza.nomi}»` : tanlanganMavzular.length >= fan.mavzular.filter(m => yig(m.bor.yopiq) > 0).length ? 'hamma mavzudan' : `${tanlanganMavzular.length} ta mavzudan`}
+            {t.aralash === 'qolda' && !blok.andoza && <span className="text-ogoh font-semibold"> · qo'lda taqsimlangan</span>}
+            {qiyinlikFarqi.length > 0 && (
+              <span className="block text-ogoh font-semibold">
+                Bankda {qiyinlikFarqi.map(i => `${QIYINLIK[i].nom.toLowerCase()} savol kam (${ustunJami[i]} / ${rejaQiyinligi[i]})`).join(', ')} — o'rniga boshqa qiyinlik olindi: test rejadan {qiyinlikFarqi.includes(0) ? 'qiyinroq' : 'osonroq'}. Variantlar o'zaro baribir teng.
+              </span>
+            )}
+            {qoldaIds.length > 0 && <> · {qoldaIds.length} ta tanlangan savol</>}
+          </span>
+          <span className="flex items-center gap-3">
+            {!blok.andoza && (
+              <span className={`inline-flex items-center gap-1 font-semibold ${kamchilik ? 'text-xato' : 'text-yaxshi'}`}>
+                {kamchilik ? <><AlertTriangle size={13} /> bankda yetmaydi</> : <><CheckCircle2 size={13} /> bankda yetadi</>}
+              </span>
+            )}
+            <button type="button" onClick={() => setBatafsil(v => !v)} aria-expanded={batafsil} className="inline-flex items-center gap-1 font-semibold text-brand hover:underline cursor-pointer">
+              {batafsil ? 'Yopish' : 'Batafsil'}<ChevronDown size={14} className={batafsil ? 'rotate-180' : ''} />
+            </button>
+          </span>
+        </div>
+      ) : (
+        <p className="text-[12.5px] text-matn-sokin">Fanni tanlang — savollar hamma mavzudan, muvozanatli qiyinlikda olinadi. Kerak bo'lsa «Batafsil» da mavzularni tanlaysiz.</p>
+      )}
+
+      {fan && batafsil && (
+      <div className="space-y-3 pt-3 border-t border-chiziq">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="w-28">
+          <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Hisoblanadi</span>
+          <input className={INPUT} disabled={qulf} inputMode="numeric" value={blok.tanlab ?? ''} placeholder="hammasi" aria-label="Nechta javob hisoblanadi"
+            onChange={e => onChange({ ...blok, tanlab: parseInt(e.target.value.replace(/\D/g, '')) || null })} />
+        </label>
+        <span className="pb-2.5 text-[11.5px] text-matn-xira max-w-xs">{blok.tanlab ? `O'quvchi ${jamiSavol} tadan ${blok.tanlab} tasini yechadi — birinchi ${blok.tanlab} ta javob hisoblanadi` : "Bo'sh — hamma savol hisoblanadi"}</span>
+        {/* Andoza imtihon tuzishdan olindi (2026-10-30, Moodle kabi: «bankdan tasodifiy» + «aniq savol»,
+            takrorlash — «Avvalgisidek»). Andozali eski blokda faqat uni olib tashlash qoladi (AndozaBloki). */}
+        {!qulf && blok.andoza && (
+          <span className="flex flex-wrap items-center gap-2 pb-0.5 ml-auto">
+            <Tugma kichik turi="ikkinchi" ikonka={<LayoutList size={13} />} onClick={() => setAndozaOchiq(true)}>Boshqa andoza</Tugma>
+          </span>
+        )}
+      </div>
+
+      {blok.andoza ? (
+        <AndozaBloki blok={blok} fan={fan} kopaytma={kopaytma} scoring={scoring} qulf={qulf}
+          onChiqish={() => onChange({ ...blok, andoza: null, taqsimot: undefined, topicRules: [] })} />
+      ) : (
+        <>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
               <span className="text-[12px] font-semibold text-matn-sokin">Mavzular <span className="font-normal text-matn-xira">— {tanlanganMavzular.length} / {fan.mavzular.length} tanlangan</span></span>
@@ -316,7 +355,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
             {qatorlar.map(q => (
               <div key={q.kalit} className={`rounded-xl border border-chiziq p-2.5 ${q.kalit === 'x' ? 'bg-ichki/60' : 'bg-sirt'}`}>
                 <div className="flex items-center justify-between gap-2 mb-2 text-[12.5px]">
-                  <span className={`font-semibold truncate ${q.kalit === 'x' ? 'text-matn-sokin' : 'text-matn'}`}>{q.kalit === 'x' ? 'Istalgan mavzu' : q.nom}</span>
+                  <span className={`font-semibold truncate ${q.kalit === 'x' ? 'text-matn-sokin' : 'text-matn'}`}>{q.kalit === 'x' ? 'Istalgan mavzudan' : q.nom}</span>
                   <span className="text-matn-xira shrink-0">jami <b className="text-matn raqam">{yig(q.sonlar)}</b></span>
                 </div>
                 <div className="grid grid-cols-4 gap-1">
@@ -350,7 +389,7 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
                   return (
                     <tr key={q.kalit} className={q.kalit === 'x' ? 'bg-ichki/40' : ''}>
                       <td className="px-3 py-1.5 text-matn">
-                        {q.kalit === 'x' ? <span className="text-matn-sokin">Istalgan mavzu</span> : q.nom}
+                        {q.kalit === 'x' ? <span className="text-matn-sokin" title="Fanning istalgan mavzusidan — mavzu muhim bo'lmasa">Istalgan mavzudan</span> : q.nom}
                         {bankdaYoq && <span className="ml-1.5 text-[11px] text-xato">bankda yo'q</span>}
                       </td>
                       {q.sonlar.map((n, i) => ustunBor(i) && (
@@ -464,18 +503,11 @@ export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, 
               .map(r => ({ ...r, questionIds: tanlanganSavollar(r).filter(x => x !== id) })).filter(r => r.questionIds.length).map(r => ({ ...r, count: r.questionIds.length }));
             qayta(t, t.aralash === 'qolda' ? jadval : undefined, qoldi);
           }} />
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-chiziq">
-            <p className="text-[12.5px] text-matn">
-              <b className="raqam">{jamiSavol}</b> ta savol
-              {qoldaIds.length > 0 && <span className="text-matn-xira"> ({jamiSavol - qoldaSavol} tasodifiy + {qoldaSavol} tanlangan)</span>}
-              {scoring === 'blok' && <> · <b className="raqam">{vergul(Math.round(jamiBall * 100) / 100)}</b> ball</>}
-            </p>
-            <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${kamchilik ? 'text-xato' : 'text-yaxshi'}`}>
-              {kamchilik ? <><AlertTriangle size={13} /> bankda yetmaydi — qizil kataklarni kamaytiring</> : <><CheckCircle2 size={13} /> bankda yetadi</>}
-            </span>
-          </div>
+          {qoldaIds.length > 0 && <p className="text-[12px] text-matn-xira">{jamiSavol - qoldaSavol} ta tasodifiy + {qoldaSavol} ta tanlangan</p>}
+          {kamchilik && <p className="text-[12px] text-xato">Bankda yetmaydi — jadvaldagi qizil kataklarni kamaytiring yoki bankka savol qo'shing.</p>}
         </>
+      )}
+      </div>
       )}
       {andozaOchiq && (
         <AndozaTanlash daraxt={daraxt} onYop={() => setAndozaOchiq(false)} onTanla={(a, guruhlar) => {
@@ -713,12 +745,16 @@ function AndozaTanlash({ daraxt, onYop, onTanla }: { daraxt: BankDaraxt; onYop: 
 function Katak({ qator, i, n, kopaytma, disabled, onChange }: { qator: Qator; i: number; n: number; kopaytma: number; disabled: boolean; onChange: (v: number) => void }) {
   const oshdi = n > 0 && n * kopaytma > qator.bor[i];
   const bankdaYoq = qator.kalit.startsWith('n:');
+  // Bankda shu mavzu va qiyinlikda savol yo'q — yozib bo'lmaydi va shunday ko'rinadi («yo'q»);
+  // qolgan bo'sh kataklar oq — yozsa bo'lishi ko'rinib tursin.
+  const savolYoq = !bankdaYoq && !qator.bor[i] && !n;
+  const yopiq = disabled || savolYoq;
   return (
-    <div className="inline-flex flex-col items-center">
-      <input aria-label={`${qator.kalit === 'x' ? 'Istalgan mavzu' : qator.nom}: ${i < 3 ? QIYINLIK[i].nom : 'aralash'}`} inputMode="numeric" disabled={disabled}
-        className={`w-12 rounded-lg border px-1 py-1 text-center text-[13px] raqam outline-none focus:border-brand ${n ? 'font-bold text-matn' : 'text-matn-xira'} ${oshdi ? 'border-xato bg-xato-fon' : 'border-chiziq bg-ichki'}`}
-        value={n || ''} placeholder="0" onChange={e => onChange(parseInt(e.target.value.replace(/\D/g, '')))} />
-      <span className={`text-[10px] raqam ${oshdi ? 'text-xato font-semibold' : 'text-matn-xira'}`}>{bankdaYoq ? '—' : `bankda ${qator.bor[i]}`}</span>
+    <div className="inline-flex flex-col items-center" title={savolYoq ? "Bankda bu qiyinlikda savol yo'q" : undefined}>
+      <input aria-label={`${qator.kalit === 'x' ? 'Istalgan mavzudan' : qator.nom}: ${i < 3 ? QIYINLIK[i].nom : 'aralash'}`} inputMode="numeric" disabled={yopiq}
+        className={`w-12 rounded-lg border px-1 py-1 text-center text-[13px] raqam outline-none focus:border-brand disabled:cursor-not-allowed ${n ? 'font-bold text-matn' : 'text-matn-sokin'} ${oshdi ? 'border-xato bg-xato-fon' : yopiq ? 'border-dashed border-chiziq bg-ichki opacity-50' : 'border-chiziq-kuchli bg-sirt'}`}
+        value={n || ''} placeholder={yopiq ? '' : '0'} onChange={e => onChange(parseInt(e.target.value.replace(/\D/g, '')))} />
+      <span className={`text-[10px] raqam ${oshdi ? 'text-xato font-semibold' : 'text-matn-xira'}`}>{bankdaYoq ? '—' : savolYoq ? "yo'q" : `bankda ${qator.bor[i]}`}</span>
     </div>
   );
 }

@@ -9,6 +9,7 @@
 // keyin raqamli (katakli), keyin yozma. Varaq hamma variant va smenada bir xil.
 
 import { RAQAM_BELGILARI, RAQAM_USTUNLARI } from '../../../lib/imtihon.js';
+import { varaqSahifalari2 } from './layout2.ts';
 
 export const W = 210;
 export const H = 297;
@@ -28,7 +29,7 @@ export const SAHIFA_BELGI = 3.2;
 
 export const CHAP = 20;
 export const ONG = 190;
-const KENGLIK = ONG - CHAP;
+export const KENGLIK = ONG - CHAP;
 
 /** QR joyi: 1-sahifada katta, keyingilarida kichik. */
 export const QR_1 = { x: 148, y: 36.5, s: 21 };
@@ -36,36 +37,36 @@ export const QR_KEYINGI = { x: 170, y: 16, s: 20 };
 export const RASM = { x: 172.5, y: 36.5, w: 17.5, h: 21 };
 
 const Y0_BIRINCHI = 88;
-const Y0_KEYINGI = 42;
-const Y1 = 278;
+export const Y0_KEYINGI = 42;
+export const Y1 = 278;
 
 // Yopiq savol qatori
 export const QATOR = 5.6;
 export const DOIRA_R = 2.2;
 export const DOIRA_QADAM = 5.8;
 const RAQAM_JOYI = 8;
-const USTUN_ORALIQ = 3.5;
+export const USTUN_ORALIQ = 3.5;
 
 // Raqamli javob katagi
 export const KATAK_R = 1.75;
 export const KATAK_QADAM_X = 4.8;
 export const KATAK_QADAM_Y = 4.3;
 const KATAK_YOZUV = 6.5;
-const KATAK_KENGLIK = RAQAM_USTUNLARI * KATAK_QADAM_X + 3;
-const KATAK_BALANDLIK = 4 + KATAK_YOZUV + 1 + RAQAM_BELGILARI.length * KATAK_QADAM_Y + 1.5;
+export const KATAK_KENGLIK = RAQAM_USTUNLARI * KATAK_QADAM_X + 3;
+export const KATAK_BALANDLIK = 4 + KATAK_YOZUV + 1 + RAQAM_BELGILARI.length * KATAK_QADAM_Y + 1.5;
 
 // Moslashtirish to'ri: sarlavha, ustun harflari (P–T), 4 qator (A–D).
 const MOSLASH_QADAM_X = 5.4;
 const MOSLASH_QADAM_Y = 4.7;
 const MOSLASH_R = 1.85;
-const MOSLASH_KENGLIK = 7 + 5 * MOSLASH_QADAM_X + 2;
-const MOSLASH_BALANDLIK = 9.5 + 4 * MOSLASH_QADAM_Y + 1.5;
+export const MOSLASH_KENGLIK = 7 + 5 * MOSLASH_QADAM_X + 2;
+export const MOSLASH_BALANDLIK = 9.5 + 4 * MOSLASH_QADAM_Y + 1.5;
 
 // Yozma javob maydoni
-const YOZMA_BALANDLIK = 40;
+export const YOZMA_BALANDLIK = 40;
 // Qismli savol qismi: qisqa javob yoziladigan maydon (bitta savolning qismlari bir qatorda).
-const QISM_BALANDLIK = 11;
-const QISM_ORALIQ = 4;
+export const QISM_BALANDLIK = 11;
+export const QISM_ORALIQ = 4;
 
 // Variant va o'quvchi ID doirachalari (1-sahifa)
 export const VARIANT_Y = 75;
@@ -91,7 +92,14 @@ export interface RaqamliSavol { n: number; y?: string; quti: Quti; yozuv: Quti; 
 export interface YozmaSavol { n: number; y?: string; quti: Quti; ball: number | null; ixcham?: boolean }
 /** Moslashtirish (matritsa): qatorlar A–D, har qatorda P–T doirachalari. */
 export interface MoslashSavol { n: number; y?: string; quti: Quti; qatorlar: Doira[][] }
-export interface BlokSarlavha { matn: string; x: number; y: number }
+/** 2-versiyada `w`, `h` — ustun kengligidagi sarlavha tasmasi (y — qator tepasi). */
+export interface BlokSarlavha { matn: string; x: number; y: number; w?: number; h?: number }
+
+/**
+ * 2-versiya varag'ining 1-sahifasidagi o'ng panel: o'quvchi ID si, kitobcha
+ * varianti va «Abituriyent tomonidan to'ldiriladi» (F.I.Sh, imzo).
+ */
+export interface Panel { x: number; w: number; y: number; idX: number; idW: number; varX: number; varW: number; yozuvY: number; doiraY: number; fishY: number; fishH: number }
 
 export interface Sahifa {
   page: number;
@@ -109,6 +117,12 @@ export interface Sahifa {
   bezak?: Bezak[];
   /** Dizayner rasmlari (logo, chizma) — o'qilmaydi. */
   rasmlar?: (Quti & { src: string })[];
+  /** Varaq dizayni versiyasi (yo'q — 1). 2: rangli, o'ng panelli (layout2.ts). */
+  versiya?: 2;
+  panel?: Panel;
+  /** 2-versiya: yopiq savollar ustunlari (ramka va raqam tasmasi) va fan tasmasi. */
+  ustunlar?: Quti[];
+  fanTasma?: Quti;
 }
 
 export interface Tuzilma {
@@ -130,6 +144,11 @@ export interface VaraqParametrlari {
   sorovnoma?: { savollar: { matn: string; variantlar?: string[] }[]; shkala: string[]; anonim?: boolean } | null;
   /** Erkin varaq (dizayner andozasi) — bo'lsa, savollar shu bloklarga joylanadi. */
   andoza?: VaraqAndoza | null;
+  /**
+   * Varaq dizayni versiyasi — imtihon qulflanganda yoziladi (2). Undan oldin
+   * qulflangan imtihonlar 1: chop etilgan varaqlari o'sha geometriyada o'qiladi.
+   */
+  versiya?: 1 | 2;
 }
 
 /** Matnni taxminiy kenglik bo'yicha qatorlarga bo'lish (Arial, mm). */
@@ -204,7 +223,7 @@ function sorovnomaSahifalari(p: VaraqParametrlari): Sahifa[] {
   return sahifalar;
 }
 
-const HARF = 'ABCDEF';
+export const HARF = 'ABCDEF';
 
 function yangiSahifa(page: number): Sahifa {
   return {
@@ -235,7 +254,7 @@ function yopiqQator(n: number, x: number, y: number, k: number): YopiqSavol {
 }
 
 /** Raqamli javob katagi (bx, by — chap yuqori burchak). */
-function raqamliKatak(n: number, bx: number, by: number): RaqamliSavol {
+export function raqamliKatak(n: number, bx: number, by: number): RaqamliSavol {
   const yozuv = { x: bx + 1.5, y: by + 4, w: RAQAM_USTUNLARI * KATAK_QADAM_X, h: KATAK_YOZUV };
   const ustunlar: Doira[][] = [];
   for (let c = 0; c < RAQAM_USTUNLARI; c++) {
@@ -249,7 +268,7 @@ function raqamliKatak(n: number, bx: number, by: number): RaqamliSavol {
 }
 
 /** Moslashtirish to'ri 4 × 5 (bx, by — chap yuqori burchak). */
-function moslashTori(n: number, bx: number, by: number): MoslashSavol {
+export function moslashTori(n: number, bx: number, by: number): MoslashSavol {
   const qatorlar: Doira[][] = [];
   for (let r = 0; r < 4; r++) {
     const qator: Doira[] = [];
@@ -268,6 +287,7 @@ function moslashTori(n: number, bx: number, by: number): MoslashSavol {
 export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
   if (p.sorovnoma?.savollar.length) return sorovnomaSahifalari(p);
   if (p.andoza?.bloklar?.length) return yorliqlarniQoy(andozaSahifalari(p), p);
+  if (p.versiya === 2) return varaqSahifalari2(p);
   const k = Math.min(6, Math.max(2, p.optionCount || 4));
   const katak = new Map(p.tuzilma.savollar.map(x => [x.n, x]));
   const sahifalar: Sahifa[] = [];
@@ -381,7 +401,7 @@ export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
 }
 
 /** Har katakka ko'rinadigan raqamini qo'yadi (tuzilmadagi `y` — tartib raqamidan farq qilsa). */
-function yorliqlarniQoy(sahifalar: Sahifa[], p: VaraqParametrlari): Sahifa[] {
+export function yorliqlarniQoy(sahifalar: Sahifa[], p: VaraqParametrlari): Sahifa[] {
   const y = new Map(p.tuzilma.savollar.filter(x => x.y).map(x => [x.n, x.y as string]));
   if (!y.size) return sahifalar;
   const qoy = <T extends { n: number }>(l: T[]): T[] => l.map(q => (y.has(q.n) ? { ...q, y: y.get(q.n) } : q));

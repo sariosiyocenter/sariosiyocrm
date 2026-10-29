@@ -104,18 +104,20 @@ export function Yuklanmoqda({ matn = 'Yuklanmoqda…' }: { matn?: string }) {
   );
 }
 
-/** Ikki holatli tanlov (tugmachalar qatori). */
-export function Tanlov<T extends string | number>({ qiymat, variantlar, onChange, kichik }: {
-  qiymat: T; variantlar: { v: NoInfer<T>; nom: React.ReactNode }[]; onChange: (v: NoInfer<T>) => void; kichik?: boolean;
+/** Ikki holatli tanlov (tugmachalar qatori). `disabled` — o'zgarmaydi (masalan, qulfdan keyin) va shunday ko'rinadi. */
+export function Tanlov<T extends string | number>({ qiymat, variantlar, onChange, kichik, disabled }: {
+  qiymat: T; variantlar: { v: NoInfer<T>; nom: React.ReactNode }[]; onChange: (v: NoInfer<T>) => void; kichik?: boolean; disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex flex-wrap rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5">
+    <div className={`inline-flex flex-wrap rounded-xl border border-chiziq bg-ichki p-0.5 gap-0.5 ${disabled ? 'opacity-60' : ''}`}>
       {variantlar.map(o => (
         <button
           key={String(o.v)}
           type="button"
+          disabled={disabled}
+          aria-pressed={o.v === qiymat}
           onClick={() => onChange(o.v)}
-          className={`rounded-[10px] font-semibold transition-colors cursor-pointer ${kichik ? 'px-2.5 py-1 text-[12px]' : 'px-3 py-1.5 text-[12.5px]'} ${o.v === qiymat ? 'bg-sirt text-matn shadow-sm border border-chiziq' : 'text-matn-sokin hover:text-matn border border-transparent'}`}
+          className={`rounded-[10px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed ${kichik ? 'px-2.5 py-1 text-[12px]' : 'px-3 py-1.5 text-[12.5px]'} ${o.v === qiymat ? 'bg-sirt text-matn shadow-sm border border-chiziq' : `text-matn-sokin border border-transparent ${disabled ? '' : 'hover:text-matn'}`}`}
         >
           {o.nom}
         </button>
@@ -124,9 +126,9 @@ export function Tanlov<T extends string | number>({ qiymat, variantlar, onChange
   );
 }
 
-export function Almashtirgich({ yoqilgan, onChange, nom, izoh }: { yoqilgan: boolean; onChange: (v: boolean) => void; nom: React.ReactNode; izoh?: React.ReactNode }) {
+export function Almashtirgich({ yoqilgan, onChange, nom, izoh, disabled }: { yoqilgan: boolean; onChange: (v: boolean) => void; nom: React.ReactNode; izoh?: React.ReactNode; disabled?: boolean }) {
   return (
-    <button type="button" onClick={() => onChange(!yoqilgan)} className="flex items-start gap-3 text-left w-full cursor-pointer group">
+    <button type="button" role="switch" aria-checked={yoqilgan} disabled={disabled} onClick={() => onChange(!yoqilgan)} className={`flex items-start gap-3 text-left w-full cursor-pointer group disabled:cursor-not-allowed ${disabled ? 'opacity-60' : ''}`}>
       <span className={`mt-0.5 shrink-0 w-9 h-5 rounded-full border transition-colors relative ${yoqilgan ? 'bg-brand border-brand' : 'bg-ichki border-chiziq-kuchli'}`}>
         <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all ${yoqilgan ? 'left-[18px]' : 'left-0.5'}`} />
       </span>

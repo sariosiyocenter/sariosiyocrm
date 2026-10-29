@@ -64,15 +64,20 @@ export async function exceldanSavollar(fayl: File, standart: { fan?: string; mav
   return { yaroqli, xatolar, jami: rows.length };
 }
 
-export function shablonniYukla() {
-  const namuna = [
+/**
+ * «Fayldan» oynasidagi Excel shablon — tanlangan fayl turi bo'yicha namuna qatorlar
+ * (bankdagi 4 turdan Excel faqat «4 variantli» va «Yozma» ni o'qiydi; guruhli turlar — Word shablonda).
+ */
+export function shablonniYukla(tur: 'yopiq' | 'yozma' = 'yopiq') {
+  const namuna = tur === 'yozma' ? [
+    { Fan: 'Matematika', Mavzu: 'Matnli masalalar', "Bo'lim": 'Algebra', Tur: 'yozma', Savol: "Poyezd 3 soatda 240 km yurdi. Uning tezligini toping va yechimini yozing.", Javob: '80 km/soat', Ball: 5, Qiyinlik: "o'rta", Til: 'uz', Yechim: '$v = 240 : 3 = 80$ km/soat' },
+    { Fan: 'Matematika', Mavzu: 'Tenglamalar', "Bo'lim": 'Algebra', Tur: 'yozma', Savol: "$2x + 7 = 19$ tenglamani yeching.", Javob: '6', Ball: 3, Qiyinlik: 'oson', Til: 'uz' },
+  ] : [
     { Fan: 'Matematika', Mavzu: 'Kvadrat tenglamalar', "Bo'lim": 'Algebra', Tur: 'yopiq', Savol: '$x^2-5x+6=0$ tenglamaning ildizlari yig\'indisini toping', A: '5', B: '6', C: '-5', D: '1', Javob: 'A', Qiyinlik: "o'rta", Manba: 'DTM 2025', Til: 'uz', Yechim: "Viyet teoremasi: $x_1+x_2=5$" },
-    { Fan: 'Matematika', Mavzu: 'Oddiy kasrlar', "Bo'lim": 'Arifmetika', Tur: 'raqamli', Savol: '$\\frac{3}{4}-\\frac{1}{4}$ ni hisoblang', Javob: '1/2', "Qo'shimcha javoblar": '0,5', Qiyinlik: 'oson', Til: 'uz' },
-    { Fan: 'Matematika', Mavzu: 'Geometriya', Tur: 'moslash', Savol: "Shakllarni xossalari bilan moslang", A: 'Kvadrat', B: 'Romb', C: "To'g'ri to'rtburchak", D: 'Parallelogramm', "Qo'shimcha javoblar": "Diagonallari teng; Diagonallari perpendikulyar; Qarama-qarshi tomonlari parallel; Hamma burchaklari to'g'ri", Javob: 'PQRS|QR|PRS|R', Qiyinlik: "o'rta", Til: 'uz' },
-    { Fan: 'Matematika', Mavzu: 'Matnli masalalar', Tur: 'yozma', Savol: 'Masalani yeching va yechimini yozing: ...', Ball: 5, Qiyinlik: 'qiyin', Til: 'uz' },
+    { Fan: 'Matematika', Mavzu: 'Oddiy kasrlar', "Bo'lim": 'Arifmetika', Tur: 'yopiq', Savol: '$\\frac{3}{4}-\\frac{1}{4}$ ni hisoblang', A: '1/2', B: '1/4', C: '1', D: '2/4', Javob: 'A', Qiyinlik: 'oson', Til: 'uz' },
   ];
   const ws = XLSX.utils.json_to_sheet(namuna, { header: USTUNLAR });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Savollar');
-  XLSX.writeFile(wb, 'savollar-shablon.xlsx');
+  XLSX.writeFile(wb, tur === 'yozma' ? 'yozma-savollar-shablon.xlsx' : 'savollar-shablon.xlsx');
 }

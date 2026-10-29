@@ -10,6 +10,7 @@ import {
   VARIANT_Y, ID_X0, ID_QADAM_X, ID_USTUNLARI, qrMatni,
 } from './layout';
 import type { Sahifa, Doira } from './layout';
+import { varaqSvg2 } from './render2';
 
 export interface VaraqUmumiy {
   markaz: string;
@@ -50,12 +51,12 @@ export interface VaraqEgasi {
   kod?: number | null;
 }
 
-const f = (n: number) => Math.round(n * 100) / 100;
+export const f = (n: number) => Math.round(n * 100) / 100;
 const QORA = '#000';
 const CHIZIQ = '#222';
 const HARF = '#9a9a9a';
 
-function matn(x: number, y: number, s: string, o: { size?: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; rang?: string; mono?: boolean; maxW?: number } = {}): string {
+export function matn(x: number, y: number, s: string, o: { size?: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; rang?: string; mono?: boolean; maxW?: number } = {}): string {
   let size = o.size ?? 3;
   // Uzun ism sig'maganda shrift kichrayadi (taxminiy kenglik: 0.55 × shrift × belgi).
   if (o.maxW) while (size > 2 && s.length * size * (o.bold ? 0.66 : 0.55) > o.maxW) size -= 0.2;
@@ -65,21 +66,22 @@ function matn(x: number, y: number, s: string, o: { size?: number; bold?: boolea
 
 // Doiracha bir marta <symbol> bo'lib chiziladi, keyin <use> bilan qo'yiladi:
 // 400 kishilik chop etishda hujjat bir necha barobar yengil bo'ladi.
-type Belgilar = Map<string, string>;
-function doira(belgilar: Belgilar, d: Doira, harfOlchami = 2.3): string {
+export type Belgilar = Map<string, string>;
+/** `rang` — 2-versiya doirachalari (chiziq va ichidagi harf rangi). */
+export function doira(belgilar: Belgilar, d: Doira, harfOlchami = 2.3, rang = { chiziq: CHIZIQ, harf: HARF, id: 'd' }): string {
   const yozuv = d.belgi ?? d.v;
-  const id = `d${String(d.r).replace('.', '_')}_${String(harfOlchami).replace('.', '_')}_${[...yozuv].map(c => c.charCodeAt(0)).join('_')}`;
+  const id = `${rang.id}${String(d.r).replace('.', '_')}_${String(harfOlchami).replace('.', '_')}_${[...yozuv].map(c => c.charCodeAt(0)).join('_')}`;
   if (!belgilar.has(id)) {
     const w = d.r + 0.2;
     belgilar.set(id, `<symbol id="${id}" viewBox="${-w} ${-w} ${2 * w} ${2 * w}" width="${f(2 * w)}" height="${f(2 * w)}" overflow="visible">` +
-      `<circle r="${d.r}" fill="#fff" stroke="${CHIZIQ}" stroke-width="0.3"/>` +
-      `<text y="${f(harfOlchami * 0.36)}" font-size="${harfOlchami}" font-family="Arial, sans-serif" text-anchor="middle" fill="${HARF}">${esc(yozuv === '-' ? '−' : yozuv)}</text></symbol>`);
+      `<circle r="${d.r}" fill="#fff" stroke="${rang.chiziq}" stroke-width="0.3"/>` +
+      `<text y="${f(harfOlchami * 0.36)}" font-size="${harfOlchami}" font-family="Arial, sans-serif" text-anchor="middle" fill="${rang.harf}">${esc(yozuv === '-' ? '−' : yozuv)}</text></symbol>`);
   }
   const w = d.r + 0.2;
   return `<use href="#${id}" x="${f(d.x - w)}" y="${f(d.y - w)}" width="${f(2 * w)}" height="${f(2 * w)}"/>`;
 }
 
-function qrYol(text: string, x: number, y: number, s: number): string {
+export function qrYol(text: string, x: number, y: number, s: number): string {
   const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
   const n = qr.modules.size;
   const m = s / n;
@@ -123,7 +125,7 @@ function bo_yashNamunasi(q: string[], x: number, y: number, qisqa = false) {
 }
 
 /** Uzun ismni ikki qatorga (so'z chegarasida). */
-function ikkiQator(s: string, max: number): [string, string] {
+export function ikkiQator(s: string, max: number): [string, string] {
   if (s.length <= max) return [s, ''];
   const sozlar = s.split(/\s+/);
   let a = '';
@@ -133,6 +135,7 @@ function ikkiQator(s: string, max: number): [string, string] {
 }
 
 export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | null): string {
+  if (sahifa.versiya === 2) return varaqSvg2(sahifa, u, egasi);
   const q: string[] = [];
   const belgilar: Belgilar = new Map();
   const birinchi = sahifa.page === 1;

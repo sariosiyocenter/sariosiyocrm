@@ -766,6 +766,8 @@ export interface ExamBlock {
 export interface ExamSettings {
     sessions: { id: number; name: string; time: string }[];
     sessionQuestions: 'bir' | 'alohida';
+    /** Variantlarda savollar: 'har' — har variantga o'z savoli (o'rinda mavzu va qiyinlik bir xil); 'bir' — bir xil, tartibi aralashadi. Server standarti — 'har'. */
+    variantSavollari?: 'bir' | 'har';
     variantCount: number;
     shuffleQuestions: boolean;
     shuffleOptions: boolean;
@@ -809,6 +811,8 @@ export interface ExamSettings {
     sorovnoma: { anonim: boolean; shkala: string[]; savollar: { matn: string; variantlar?: string[] }[] };
     /** Erkin javob varaqasi (dizayner andozasining nusxasi); null — standart varaq. */
     varaqAndoza?: import('./lib/omr/layout').VaraqAndoza | null;
+    /** Javob varaqasi dizayni versiyasi — server qulflashda yozadi; yo'q bo'lsa 1 (eski varaq). */
+    varaqVersiya?: 1 | 2;
 }
 
 /** Saqlangan varaq andozasi (dizayner). */

@@ -274,6 +274,8 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
         <Tugma kichik turi="oddiy" ikonka={<List size={14} />} onClick={onRoyxat} aria-label="Barcha imtihonlar"><span className="hidden sm:inline">Barcha imtihonlar</span></Tugma>
         {ozgartira('imtihonlar.imtihon') && (
           <>
+            {/* Yangi imtihon — tanlangan imtihon ochiq turganda ham (ilgari faqat ro'yxatda edi). */}
+            <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={() => navigate('/exams/new')} aria-label="Yangi imtihon"><span className="hidden sm:inline">Yangi imtihon</span></Tugma>
             {/* Nomi, sanasi va tuzilmasi; o'tkazish va natija sozlamalari — o'z tablarida. */}
             <Tugma kichik ikonka={<Settings2 size={14} />} onClick={() => navigate(`/exams/${exam.id}/edit`)} aria-label="Tahrirlash"><span className="hidden sm:inline">Tahrirlash</span></Tugma>
             <Tugma kichik ikonka={<Copy size={14} />} onClick={nusxa} aria-label="Nusxa olish"><span className="hidden sm:inline">Nusxa</span></Tugma>

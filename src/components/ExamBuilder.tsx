@@ -1,26 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2, BookOpen, LayoutList, KeyRound, MessageSquareText, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Lock, Wand2, MessageSquareText, Info, ChevronDown, Layers, FileText, Copy } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
 import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
 import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
-import AndozadanQogoz from './imtihon/AndozadanQogoz';
 import { JarimaTanlovi } from './imtihon/sozlamaQismlari';
+import { sanaMatni } from './imtihon/format';
 import { sozlamaniTozala, varaqTuzilmasi, VARIANT_KODLARI, taqsimla, QIYINLIK_ARALASHMASI, qismSoni, qismTekshiruvi } from '../../lib/imtihon.js';
 import { yangiImtihonBoshi } from '../../lib/imtihonSozlama.js';
 import { toDateStr } from '../../lib/lessons.js';
 import { TUR_NOMI, TUR_IZOHI } from '../lib/savolTuri';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
 
-// Imtihon tuzish: faqat savollar qulflanguncha hal bo'ladigan narsalar — manba, nomi va
-// sanasi, tuzilma (fanlar, ball), variantlar va smenalar soni. Qolgani o'z bosqichida
-// (egasi, 2026-10-17): qatnashchilar, smena vaqti, o'rinlar, onlayn va ruxsatnoma —
-// «Qatnashchilar» tabida; o'tish bali, reyting va xabar — «Natijalar» tabida. Yangi
-// imtihon ularni markazning umumiy sozlamasidan oladi (Imtihonlar → Sozlamalar,
-// lib/imtihonSozlama.js); mavjud imtihonga u ta'sir qilmaydi.
+// Imtihon tuzish (2026-10-29, boshqa tizimlar — DTM, Addmen, ZipGrade, Moodle, Akindi — kabi):
+// 1) «Yangi imtihon» oynasi — nomi, sanasi, savollar qayerdan (bank yoki o'z kitobcham) va qanday
+//    imtihon (DTM / bitta fan / avvalgisidek); 2) reja — har fan bitta qator (nechta savol,
+//    qiyinlik, ball), mavzular va aniq savollar «Batafsil» da, kam ishlatiladiganlar «Qo'shimcha»
+//    da; 3) «Variantlarni yig'ish» — «Imtihonlar» tabida jadval va tasdiqlash. Qatnashchilar,
+//    smena vaqti, o'rinlar, onlayn va ruxsatnoma — «Qatnashchilar» tabida; o'tish bali, reyting
+//    va xabar — «Natijalar» tabida. Yangi imtihon markaz standartidan boshlanadi (lib/imtihonSozlama.js).
 
 const yangiId = () => Math.random().toString(36).slice(2, 9);
 
@@ -29,7 +30,7 @@ const yangiId = () => Math.random().toString(36).slice(2, 9);
  * sozlamalari (forma ochilgandan keyin o'zgargan bo'lishi mumkin) eski qiymat bilan bosilmaydi.
  */
 const TUZILMA_KALITLARI = [
-  'source', 'sessions', 'sessionQuestions', 'variantCount', 'shuffleQuestions', 'shuffleOptions', 'variantBubble',
+  'source', 'sessions', 'sessionQuestions', 'variantSavollari', 'variantCount', 'shuffleQuestions', 'shuffleOptions', 'variantBubble',
   'language', 'optionCount', 'xatoJarima', 'jarimaNoldan', 'ishlatishChegarasi', 'takror',
 ] as const satisfies readonly (keyof ExamSettings)[];
 
@@ -53,13 +54,8 @@ const KALIT_TURLARI = [
   { v: 'yozma', nom: TUR_NOMI.yozma },
 ];
 
-/** Yangi imtihon: savollar qayerdan. Andoza va so'rovnoma — o'z oynasi / muharriri bilan. */
-const MANBALAR = [
-  { v: 'bank', ikonka: <BookOpen size={17} />, nom: 'Bank qoidalari', izoh: "Fan, mavzu va qiyinlik bo'yicha bankdan tanlanadi" },
-  { v: 'andoza', ikonka: <LayoutList size={17} />, nom: 'Bankdagi andoza', izoh: "Tayyor to'plam: aynan shu savollar tushadi" },
-  { v: 'kalit', ikonka: <KeyRound size={17} />, nom: "O'z kitobcham", izoh: "Kitobcha o'zingizniki, CRM ga faqat javob kaliti" },
-  { v: 'sorovnoma', ikonka: <MessageSquareText size={17} />, nom: "So'rovnoma", izoh: "O'quvchi yoki ota-ona fikri, OMR varaq bilan" },
-] as const;
+type Manba = 'bank' | 'kalit';
+type Shablon = 'dtm' | 'bitta' | 'nusxa';
 
 /**
  * /exams/new va /exams/:id/edit bitta komponent: yo'l almashsa (yangi ↔ tahrir, boshqa imtihon)
@@ -75,7 +71,7 @@ function ImtihonFormasi() {
   const [urlParams] = useSearchParams();
   const tahrir = !!id;
   const navigate = useNavigate();
-  const { selectedSchoolId, user, addExam, updateExam, showNotification } = useCRM();
+  const { selectedSchoolId, user, addExam, updateExam, imtihonniYangila, showNotification } = useCRM();
   const { soro } = useImtihonApi();
   // Forma bir marta to'ldiriladi. `showNotification` har chizishda yangi funksiya, `soro` esa
   // token yangilanganda almashadi — ular sabab qayta yuklanib, yozilganlar bosilib ketmasin.
@@ -89,7 +85,9 @@ function ImtihonFormasi() {
   // Yangi imtihon ham kutadi: forma markazning standart qiymatlari bilan ochiladi.
   const [yuklanmoqda, setYuklanmoqda] = useState(!yangiSorovnoma);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
-  const [andozaOyna, setAndozaOyna] = useState(false);
+  // Yangi imtihon avval «Yangi imtihon» oynasidan boshlanadi (nomi, manba, qanday imtihon).
+  const [boshlandi, setBoshlandi] = useState(tahrir);
+  const [qoshimcha, setQoshimcha] = useState(false);
   const [qulf, setQulf] = useState(false);
   const [nom, setNom] = useState('');
   const [sana, setSana] = useState(() => toDateStr());
@@ -138,6 +136,8 @@ function ImtihonFormasi() {
   const kopaytma = sozlama.sessionQuestions === 'alohida' ? sozlama.sessions.length : 1;
   // "Faqat kalit": markazning o'z kitobchasi — mavzu va qiyinlik kerak emas, bank ham.
   const kalitRejimi = sozlama.source === 'kalit';
+  // Variantlarda savollar: sozlamada yo'q bo'lsa — server standarti «har xil».
+  const harXil = (sozlama.variantSavollari ?? 'har') === 'har' && sozlama.variantCount > 1;
 
   const blokQoy = (bi: number, patch: Partial<ExamBlock>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, ...patch } : x)));
   const qoidaQoy = (bi: number, ri: number, patch: Partial<TopicRule>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, topicRules: x.topicRules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : x)));
@@ -155,6 +155,7 @@ function ImtihonFormasi() {
       const settings = tahrir ? Object.fromEntries(kalitlar.map(k => [k, sozlama[k]])) : sozlama;
       const body: any = { name: nom.trim(), date: sana, duration: davom, settings };
       if (!qulf) Object.assign(body, { blocks: bloklar, scoring });
+      // «Imtihonlar» tabida bank yetsa variantlar o'zi yig'iladi — jadval va «Tasdiqlash».
       if (tahrir) {
         await updateExam(Number(id), body);
         navigate(`/exams?tab=imtihonlar&imtihon=${id}`);
@@ -173,23 +174,15 @@ function ImtihonFormasi() {
   // So'rovnoma — o'z muharriri (savollar va shkala).
   if (sozlama.source === 'sorovnoma' || yangiSorovnoma) return <SorovnomaMuharriri id={id} />;
 
-  const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
-
-  const manbaTanla = (v: (typeof MANBALAR)[number]['v']) => {
-    if (v === 'andoza') return setAndozaOyna(true);
-    if (v === 'sorovnoma') return navigate('/exams/new?tur=sorovnoma');
-    s({ source: v });
-  };
-
   // Smenalar soni: variantlar har smenaga alohida yasaladi, shuning uchun qulfgacha. Nomi va vaqti — «Qatnashchilar» tabida.
   const smenaSoni = (n: number) => s({ sessions: Array.from({ length: n }, (_, i) => sozlama.sessions[i] || { id: i + 1, name: `${i + 1}-smena`, time: '' }) });
 
   // DTM tuzilmasi: 5 blok; bank rejimida fanlar bankdagi nomi bo'yicha topiladi.
-  const dtmTuzilmasi = () => {
+  const dtmTuzilmasi = (kalit = kalitRejimi) => {
     setScoring('blok');
     setBloklar(DTM_TUZILMASI.map(b => {
       const yangi = { ...b, id: yangiId() };
-      if (kalitRejimi || !daraxt) return yangi;
+      if (kalit || !daraxt) return yangi;
       const f = fanniTop(daraxt, null, b.subject);
       if (!f) return { ...yangi, subject: '', topicRules: [] };
       const jami = b.topicRules.reduce((a, r) => a + r.count, 0);
@@ -202,44 +195,63 @@ function ImtihonFormasi() {
     }));
   };
 
+  if (!boshlandi) {
+    return (
+      <YangiImtihonOynasi nom={nom} setNom={setNom} sana={sana} setSana={setSana} bankTayyor={!!daraxt}
+        onOrqaga={() => navigate('/exams?tab=imtihonlar')}
+        onSorovnoma={() => navigate('/exams/new?tur=sorovnoma')}
+        onNusxa={async eskiId => {
+          try {
+            const yangi = await soro<Exam>('POST', `exams/${eskiId}/copy`);
+            const nomli = await soro<Exam>('PUT', `exams/${yangi.id}`, { name: nom.trim(), date: sana });
+            imtihonniYangila(nomli);
+            navigate(`/exams/${yangi.id}/edit`);
+          } catch (e: any) {
+            showNotification(e.message, 'error');
+          }
+        }}
+        onDavom={(manba, shablon) => {
+          s({ source: manba });
+          if (manba === 'kalit') {
+            setBloklar([{ id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }]);
+          } else if (shablon === 'dtm') {
+            dtmTuzilmasi(false);
+          } else {
+            setBloklar([{ id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }]);
+          }
+          setBoshlandi(true);
+        }} />
+    );
+  }
+
+  const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
+  // «Qo'shimcha» yopiq turganda — nimalar qo'yilgani bir qatorda.
+  const qoshimchaXulosa = [
+    `${sozlama.sessions.length} smena`,
+    scoring === 'blok' ? 'blok bali' : 'foiz',
+    sozlama.xatoJarima ? `jarima ${Math.round(sozlama.xatoJarima * 100)}%` : "jarima yo'q",
+    !kalitRejimi && (sozlama.shuffleOptions ? 'javoblar aralashadi' : 'javoblar aralashmaydi'),
+    !kalitRejimi && ({ '': 'hamma til', uz: "o'zbekcha", ru: 'ruscha', en: 'inglizcha' } as const)[sozlama.language],
+  ].filter(Boolean).join(' · ');
+
   return (
     <div className="max-w-6xl mx-auto pb-24 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button aria-label="Orqaga" onClick={() => navigate(tahrir ? `/exams?tab=imtihonlar&imtihon=${id}` : '/exams?tab=imtihonlar')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
-          <div>
-            <h1 className="text-[15px] font-bold text-matn">{tahrir ? 'Imtihon tuzilmasi' : 'Yangi imtihon'}</h1>
-            <p className="text-[12px] text-matn-xira">{tuzilma.savolSoni ?? tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <button aria-label="Orqaga" onClick={() => (tahrir ? navigate(`/exams?tab=imtihonlar&imtihon=${id}`) : setBoshlandi(false))}
+            className="w-10 h-10 shrink-0 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
+          <div className="min-w-0">
+            <h1 className="text-[15px] font-bold text-matn truncate">{tahrir ? 'Imtihon rejasi' : nom.trim() || 'Yangi imtihon'}</h1>
+            <p className="text-[12px] text-matn-xira">
+              {kalitRejimi ? "O'z kitobchasi — faqat kalit" : 'Savollar bankidan'} · {tuzilma.savolSoni ?? tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}
+            </p>
           </div>
           {qulf && <Yorliq rang="brand"><Lock size={11} /> Qulflangan</Yorliq>}
         </div>
-        <Tugma turi="asosiy" ikonka={<Save size={14} />} yuklanmoqda={saqlanmoqda} onClick={saqla}>{tahrir ? 'Saqlash' : 'Yaratish'}</Tugma>
+        <Tugma turi="asosiy" ikonka={tahrir ? <Save size={14} /> : undefined} yuklanmoqda={saqlanmoqda} onClick={saqla}>
+          {tahrir ? 'Saqlash' : kalitRejimi ? 'Yaratish' : <>Variantlarni yig'ish <ArrowRight size={14} /></>}
+        </Tugma>
       </div>
-
-      <Karta sarlavha="Savollar qayerdan?" izoh={qulfIzoh || (tahrir ? undefined : 'Shunga qarab keyingi bosqichlar o\'zgaradi')}>
-        {tahrir ? (
-          <Maydon div nom="Savollar manbasi" izoh={kalitRejimi
-            ? "O'z test kitobchangiz (sotib olingan to'plam yoki ustoz tuzgan test): CRM ga faqat har variantning javob kaliti yoziladi, kitobchani o'zingiz chop etasiz."
-            : 'Savollar bankdan olinadi, variantlar va kitobchalarni CRM o\'zi tuzadi va chop etadi.'}>
-            <Tanlov qiymat={sozlama.source} onChange={v => !qulf && s({ source: v })}
-              variantlar={[{ v: 'bank', nom: 'Savollar bankidan' }, { v: 'kalit', nom: "O'z kitobchasi — faqat kalit" }]} />
-          </Maydon>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {MANBALAR.map(m => {
-              const faol = m.v === sozlama.source;
-              return (
-                <button key={m.v} type="button" onClick={() => manbaTanla(m.v)} aria-pressed={faol}
-                  className={`flex flex-col items-start gap-1.5 rounded-2xl border p-3 text-left cursor-pointer transition-colors ${faol ? 'border-brand bg-brand-fon/60 ring-2 ring-brand/20 dark:bg-brand/15' : 'border-chiziq bg-sirt hover:border-chiziq-kuchli'}`}>
-                  <span className="w-8 h-8 rounded-lg bg-brand-fon text-brand flex items-center justify-center dark:bg-brand/20">{m.ikonka}</span>
-                  <span className="text-[13px] font-semibold text-matn">{m.nom}</span>
-                  <span className="text-[11.5px] text-matn-sokin leading-snug">{m.izoh}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </Karta>
 
       <Karta sarlavha="Asosiy">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -247,47 +259,12 @@ function ImtihonFormasi() {
           <Maydon nom="Sana"><input type="date" className={INPUT} value={sana} onChange={e => setSana(e.target.value)} /></Maydon>
           <Maydon nom="Davomiyligi (daqiqa)"><input type="number" min={10} max={600} className={INPUT} value={davom} onChange={e => setDavom(Number(e.target.value))} /></Maydon>
         </div>
-        {!kalitRejimi && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <Maydon nom="Savollar tili" izoh="Bankdan faqat shu tildagi savollar olinadi">
-              <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
-                <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
-              </select>
-            </Maydon>
-            <Maydon nom="Ko'p ishlatilganini olmaslik" izoh={qulfIzoh || (sozlama.ishlatishChegarasi == null
-              ? 'Cheklovsiz — kam ishlatilgani baribir birinchi olinadi'
-              : `Bankdan faqat ${sozlama.ishlatishChegarasi} martagacha ishlatilgan savollar olinadi (qo'lda tanlanganlar — baribir)`)}>
-              <div className="flex items-center gap-2 text-[12.5px] text-matn-sokin">
-                ishlatilgani ≤
-                <div className="w-24">
-                  <input type="number" min={0} max={1000} disabled={qulf} className={INPUT} placeholder="∞" aria-label="Ishlatish chegarasi"
-                    value={sozlama.ishlatishChegarasi ?? ''} onChange={e => s({ ishlatishChegarasi: e.target.value === '' ? null : Math.max(0, Math.min(1000, Math.round(Number(e.target.value) || 0))) })} />
-                </div>
-                marta
-              </div>
-            </Maydon>
-            <Maydon div nom="Takroriy savollar" izoh={qulfIzoh || (sozlama.takror === 'yoq' ? "Tekshirilmaydi — bankdagi bir xil savol ikki marta tushishi mumkin" : sozlama.takror === 'savol' ? "Matni (va rasmi) bir xil savollardan bittasi olinadi" : "Matni va javob variantlari bir xil savollardan bittasi olinadi")}>
-              <Tanlov qiymat={sozlama.takror} onChange={v => !qulf && s({ takror: v })}
-                variantlar={[{ v: 'variant', nom: 'Matn + variantlar' }, { v: 'savol', nom: 'Faqat matn' }, { v: 'yoq', nom: "Yo'q" }]} />
-            </Maydon>
-          </div>
-        )}
-        <p className="mt-4 flex items-start gap-2 rounded-xl bg-ichki px-3 py-2 text-[12px] text-matn-sokin">
-          <Info size={14} className="shrink-0 mt-0.5 text-brand" />
-          <span>Qatnashchilar, smena vaqti, o'rinlar, onlayn test va ruxsatnoma — «Qatnashchilar» tabida; o'tish bali, reyting va xabar — «Natijalar» tabida. {tahrir ? '' : 'Yangi imtihon ularni markaz standartidan oladi (Imtihonlar → Sozlamalar).'}</span>
-        </p>
       </Karta>
 
-      <Karta sarlavha="Tuzilma" izoh={qulfIzoh || (kalitRejimi
+      <Karta sarlavha="Reja" izoh={qulfIzoh || (kalitRejimi
         ? `Har fan — alohida blok, kitobchadagi tartibda. Varaqda har fanda avval ${TUR_NOMI.yopiq.toLowerCase()}, keyin ${TUR_NOMI.raqamli.toLowerCase()}, keyin ${TUR_NOMI.yozma.toLowerCase()} savollar turadi — kitobcha raqamlari shunga mos bo'lsin.`
-        : "Har fan — alohida blok: savollar soni, qiyinlik va mavzular. Taqsimotni tizim o'zi hisoblaydi — jadvalda ko'rinadi, katagini qo'lda ham o'zgartirsa bo'ladi.")}
-        amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={dtmTuzilmasi}>DTM tuzilmasi</Tugma>}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <Maydon div nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
-            <Tanlov qiymat={scoring} onChange={v => !qulf && setScoring(v)} variantlar={[{ v: 'blok', nom: 'Blok bali (DTM)' }, { v: 'foiz', nom: 'Foiz' }]} />
-          </Maydon>
-          <JarimaTanlovi s={sozlama} qoy={s} qulf={qulf} />
-        </div>
+        : "Har fan — bitta qator: nechta savol, qiyinlik va ball. Savollar fanning hamma mavzusidan olinadi; mavzularni tanlash va aniq savollar — «Batafsil» da.")}
+        amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={() => dtmTuzilmasi()}>DTM tuzilmasi</Tugma>}>
         <div className="space-y-3">
           {!kalitRejimi && (daraxt ? bloklar.map((b, bi) => (
             <BlokMuharriri key={b.id} blok={b} index={bi} daraxt={daraxt} scoring={scoring} kopaytma={kopaytma} qulf={qulf}
@@ -343,24 +320,17 @@ function ImtihonFormasi() {
           <datalist id="imt-fanlar">{(daraxt?.fanlar || []).map(f => <option key={f.id} value={f.name} />)}</datalist>
           {!qulf && <Tugma ikonka={<Plus size={14} />} onClick={() => setBloklar(x => [...x, kalitRejimi
             ? { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }
-            : { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }])}>Fan (blok) qo'shish</Tugma>}
+            : { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }])}>Fan qo'shish</Tugma>}
           <div className="flex flex-wrap gap-2 pt-1 text-[12px] text-matn-sokin">
             <Yorliq>{tuzilma.yopiq} ta {TUR_NOMI.yopiq.toLowerCase()}</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta {TUR_NOMI.raqamli.toLowerCase()}</Yorliq>}{(tuzilma.moslash || 0) > 0 && <Yorliq>{tuzilma.moslash} ta {TUR_NOMI.moslash.toLowerCase()}</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta {TUR_NOMI.yozma.toLowerCase()}</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
           </div>
         </div>
       </Karta>
 
-      <Karta sarlavha="Variantlar va smenalar" izoh={qulfIzoh || 'Variantlar har smenaga alohida yasaladi. Smena nomi va vaqti — «Qatnashchilar» tabida'}>
+      <Karta sarlavha="Variantlar" izoh={qulfIzoh || (kalitRejimi ? "Nechta turdagi kitobchangiz bor (A, B, C…) — har biriga kalit alohida kiritiladi" : "O'quvchi varaqda variant harfini bo'yaydi; yonma-yon o'tirganlarga har xil variant tushadi")}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Maydon nom="Smenalar soni">
-              <select className={SELECT} disabled={qulf} value={sozlama.sessions.length} onChange={e => smenaSoni(Number(e.target.value))}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} ta</option>)}
-              </select>
-            </Maydon>
-            <Maydon nom={kalitRejimi ? 'Kitobcha variantlari' : 'Variantlar soni'} izoh={kalitRejimi
-              ? "Nechta turdagi kitobchangiz bor (A, B, C…). Har biriga kalit alohida kiritiladi."
-              : "4 va undan ko'p bo'lsa, yondagi, oldingi, orqadagi va diagonaldagi qo'shnining varianti boshqa bo'ladi"}>
+            <Maydon nom={kalitRejimi ? 'Kitobcha variantlari' : 'Variantlar soni'}>
               <select className={SELECT} disabled={qulf} value={sozlama.variantCount} onChange={e => s({ variantCount: Number(e.target.value) })}>
                 {Array.from({ length: 26 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} ta ({VARIANT_KODLARI.slice(0, n).join(n > 6 ? '' : ', ').slice(0, 14)}{n > 6 ? '…' : ''})</option>)}
               </select>
@@ -373,25 +343,190 @@ function ImtihonFormasi() {
               </Maydon>
             )}
           </div>
-          {sozlama.sessions.length > 1 && (
-            <Maydon div nom="Smenalarga savollar" izoh={sozlama.sessionQuestions === 'alohida' ? "Keyingi smenaga oldingisidagi savollar tushmaydi — bank ko'proq kerak" : 'Hamma smena bir xil savollarni oladi (tartibi har variantda boshqa)'}>
-              <Tanlov qiymat={sozlama.sessionQuestions} onChange={v => !qulf && s({ sessionQuestions: v })} variantlar={[{ v: 'bir', nom: 'Bir xil' }, { v: 'alohida', nom: 'Har smenaga boshqa' }]} />
+          {!kalitRejimi && sozlama.variantCount > 1 && (
+            <Maydon div nom="Variantlarda savollar" izoh={harXil
+              ? "Har variantning o'z savollari: masalan, 9-o'rin hamma variantda «Geometriya · qiyin», lekin savolning o'zi boshqa. Bank kam bo'lsa savol boshqa variantda takrorlanadi (variant ichida — hech qachon)."
+              : 'Hamma variantda shu savollar — faqat tartibi va javob harflari aralashadi'}>
+              <Tanlov qiymat={harXil ? 'har' : 'bir'} disabled={qulf} onChange={v => s({ variantSavollari: v })}
+                variantlar={[{ v: 'har', nom: 'Har xil — mavzu va qiyinligi bir xil' }, { v: 'bir', nom: 'Bir xil — faqat tartibi aralashadi' }]} />
             </Maydon>
           )}
-          {!kalitRejimi && (
-            <>
-              <Almashtirgich yoqilgan={sozlama.shuffleQuestions} onChange={v => !qulf && s({ shuffleQuestions: v })} nom="Fan ichida savollar tartibi aralashsin" izoh="Matnga bog'langan savollar birga qoladi" />
-              <Almashtirgich yoqilgan={sozlama.shuffleOptions} onChange={v => !qulf && s({ shuffleOptions: v })} nom="Javob variantlari aralashsin" izoh="Belgilangan savollardan tashqari (A va B to'g'ri kabi)" />
-            </>
-          )}
-          <Almashtirgich yoqilgan={sozlama.variantBubble} onChange={v => s({ variantBubble: v })} nom="O'quvchi varaqqa kitobcha variantini ham bo'yaydi" izoh="Kitobcha almashib qolsa, skaner ushlaydi" />
         </div>
       </Karta>
 
-      {andozaOyna && (
-        <AndozadanQogoz onYop={() => setAndozaOyna(false)}
-          onTayyor={eid => { setAndozaOyna(false); navigate(`/exams?tab=imtihonlar&imtihon=${eid}`); }} />
-      )}
+      <section className="bg-sirt border border-chiziq rounded-2xl shadow-sm">
+        <button type="button" onClick={() => setQoshimcha(v => !v)} aria-expanded={qoshimcha}
+          className="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-left cursor-pointer">
+          <span className="min-w-0">
+            <span className="block text-[14px] font-bold text-matn">Qo'shimcha sozlamalar</span>
+            {!qoshimcha && <span className="block text-[12px] text-matn-xira mt-0.5">{qoshimchaXulosa}</span>}
+          </span>
+          <ChevronDown size={18} className={`text-matn-xira transition-transform ${qoshimcha ? 'rotate-180' : ''}`} />
+        </button>
+        {qoshimcha && (
+          <div className="px-4 pb-4 space-y-5 border-t border-chiziq pt-4">
+            {/* «O'z kitobcham» yangi imtihonda yo'q — faqat shunday yaratilgan eski imtihonda ko'rinadi. */}
+            {tahrir && kalitRejimi && (
+              <Maydon div nom="Savollar manbasi" izoh={qulfIzoh || (kalitRejimi
+                ? "O'z test kitobchangiz: CRM ga faqat har variantning javob kaliti yoziladi, kitobchani o'zingiz chop etasiz."
+                : 'Savollar bankdan olinadi, variantlar va kitobchalarni CRM o\'zi tuzadi va chop etadi.')}>
+                <Tanlov qiymat={sozlama.source} disabled={qulf} onChange={v => s({ source: v })}
+                  variantlar={[{ v: 'bank', nom: 'Savollar bankidan' }, { v: 'kalit', nom: "O'z kitobchasi — faqat kalit" }]} />
+              </Maydon>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Maydon div nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
+                <Tanlov qiymat={scoring} disabled={qulf} onChange={v => setScoring(v)} variantlar={[{ v: 'blok', nom: 'Blok bali (DTM)' }, { v: 'foiz', nom: 'Foiz' }]} />
+              </Maydon>
+              <JarimaTanlovi s={sozlama} qoy={s} qulf={qulf} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Maydon nom="Smenalar soni" izoh="Nomi va vaqti — «Qatnashchilar» tabida">
+                <select className={SELECT} disabled={qulf} value={sozlama.sessions.length} onChange={e => smenaSoni(Number(e.target.value))}>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} ta</option>)}
+                </select>
+              </Maydon>
+              {sozlama.sessions.length > 1 && (
+                <Maydon div nom="Smenalarga savollar" izoh={sozlama.sessionQuestions === 'alohida' ? "Keyingi smenaga oldingisidagi savollar tushmaydi — bank ko'proq kerak" : 'Hamma smena bir xil savollarni oladi'}>
+                  <Tanlov qiymat={sozlama.sessionQuestions} disabled={qulf} onChange={v => s({ sessionQuestions: v })} variantlar={[{ v: 'bir', nom: 'Bir xil' }, { v: 'alohida', nom: 'Har smenaga boshqa' }]} />
+                </Maydon>
+              )}
+            </div>
+            {!kalitRejimi && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Maydon nom="Savollar tili" izoh="Bankdan faqat shu tildagi savollar olinadi">
+                  <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
+                    <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
+                  </select>
+                </Maydon>
+                <Maydon nom="Ko'p ishlatilganini olmaslik" izoh={sozlama.ishlatishChegarasi == null
+                  ? 'Cheklovsiz — kam ishlatilgani baribir birinchi olinadi'
+                  : `Bankdan faqat ${sozlama.ishlatishChegarasi} martagacha ishlatilgan savollar olinadi (qo'lda tanlanganlar — baribir)`}>
+                  <div className="flex items-center gap-2 text-[12.5px] text-matn-sokin">
+                    ishlatilgani ≤
+                    <div className="w-24">
+                      <input type="number" min={0} max={1000} disabled={qulf} className={INPUT} placeholder="∞" aria-label="Ishlatish chegarasi"
+                        value={sozlama.ishlatishChegarasi ?? ''} onChange={e => s({ ishlatishChegarasi: e.target.value === '' ? null : Math.max(0, Math.min(1000, Math.round(Number(e.target.value) || 0))) })} />
+                    </div>
+                    marta
+                  </div>
+                </Maydon>
+                <Maydon div nom="Takroriy savollar" izoh={sozlama.takror === 'yoq' ? "Tekshirilmaydi — bankdagi bir xil savol ikki marta tushishi mumkin" : sozlama.takror === 'savol' ? "Matni (va rasmi) bir xil savollardan bittasi olinadi" : "Matni va javob variantlari bir xil savollardan bittasi olinadi"}>
+                  <Tanlov qiymat={sozlama.takror} disabled={qulf} onChange={v => s({ takror: v })}
+                    variantlar={[{ v: 'variant', nom: 'Matn + variantlar' }, { v: 'savol', nom: 'Faqat matn' }, { v: 'yoq', nom: "Yo'q" }]} />
+                </Maydon>
+              </div>
+            )}
+            <div className="space-y-3">
+              {!kalitRejimi && (
+                <>
+                  <Almashtirgich yoqilgan={sozlama.shuffleOptions} disabled={qulf} onChange={v => s({ shuffleOptions: v })} nom="Javob variantlari aralashsin" izoh="Belgilangan savollardan tashqari (A va B to'g'ri kabi)" />
+                  <Almashtirgich yoqilgan={sozlama.shuffleQuestions && !harXil} disabled={qulf || harXil} onChange={v => s({ shuffleQuestions: v })} nom="Fan ichida savollar tartibi aralashsin"
+                    izoh={harXil ? "«Har xil» variantlarda o'rinlar hamma variantda bir xil — tartib aralashmaydi" : "Matnga bog'langan savollar birga qoladi"} />
+                </>
+              )}
+              <Almashtirgich yoqilgan={sozlama.variantBubble} onChange={v => s({ variantBubble: v })} nom="O'quvchi varaqqa kitobcha variantini ham bo'yaydi" izoh="Kitobcha almashib qolsa, skaner ushlaydi" />
+            </div>
+            <p className="flex items-start gap-2 rounded-xl bg-ichki px-3 py-2 text-[12px] text-matn-sokin">
+              <Info size={14} className="shrink-0 mt-0.5 text-brand" />
+              <span>Qatnashchilar, smena vaqti, o'rinlar, onlayn test va ruxsatnoma — «Qatnashchilar» tabida; o'tish bali, reyting va xabar — «Natijalar» tabida. {tahrir ? '' : 'Yangi imtihon ularni markaz standartidan oladi (Imtihonlar → Sozlamalar).'}</span>
+            </p>
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+/**
+ * «Yangi imtihon» — boshqa tizimlardagidek avval uchta savol: nomi va sanasi, savollar qayerdan
+ * (bank yoki o'z kitobchasi) va qanday imtihon (DTM / bitta fan / avvalgisidek). Qolgani — standart.
+ */
+function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, onDavom, onNusxa, onSorovnoma }: {
+  nom: string; setNom: (v: string) => void; sana: string; setSana: (v: string) => void; bankTayyor: boolean;
+  onOrqaga: () => void; onDavom: (manba: Manba, shablon: Shablon) => void; onNusxa: (examId: number) => Promise<void>;
+  onSorovnoma: () => void;
+}) {
+  const { exams } = useCRM();
+  // Savollar doim bankdan: «o'z kitobcham» (faqat kalit) ishlatilmagan — oynadan olindi (2026-10-29).
+  // Server va eski imtihonlar uchun u rejim qoladi.
+  const [shablon, setShablon] = useState<Shablon>('dtm');
+  const [nusxaId, setNusxaId] = useState<number | ''>('');
+  const [band, setBand] = useState(false);
+  // Nusxa uchun — bankdan yoki kalitli imtihonlar (so'rovnoma emas), yangisi tepada.
+  const avvalgilar = [...exams].filter(e => e.settings?.source !== 'sorovnoma')
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id).slice(0, 60);
+  const tayyor = !!nom.trim() && (shablon === 'nusxa' ? !!nusxaId : shablon !== 'dtm' || bankTayyor);
+
+  const davom = async () => {
+    if (!tayyor) return;
+    if (shablon === 'nusxa') {
+      setBand(true);
+      try { await onNusxa(Number(nusxaId)); } finally { setBand(false); }
+      return;
+    }
+    onDavom('bank', shablon);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto pb-24 space-y-4">
+      <div className="flex items-center gap-3">
+        <button aria-label="Orqaga" onClick={onOrqaga} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
+        <div>
+          <h1 className="text-[16px] font-bold text-matn">Yangi imtihon</h1>
+          <p className="text-[12px] text-matn-xira">Ikkita savol — qolganini keyin o'zgartirsa bo'ladi</p>
+        </div>
+      </div>
+
+      <Karta sarlavha="1. Nomi va sanasi">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Maydon nom="Nomi" className="sm:col-span-2"><input autoFocus className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Oylik DTM sinov — noyabr" /></Maydon>
+          <Maydon nom="Sana"><input type="date" className={INPUT} value={sana} onChange={e => setSana(e.target.value)} /></Maydon>
+        </div>
+      </Karta>
+
+      {(
+        <Karta sarlavha="2. Qanday imtihon?" izoh="Savollar bankdan olinadi — variantlar, kitobcha va kalitni CRM o'zi tuzadi">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <TanlovKartasi faol={shablon === 'dtm'} onClick={() => setShablon('dtm')} ikonka={<Layers size={18} />} nomi="DTM blok testi" izoh="5 fan · 90 savol · 1.1 / 3.1 / 2.1 ball" />
+            <TanlovKartasi faol={shablon === 'bitta'} onClick={() => setShablon('bitta')} ikonka={<FileText size={18} />} nomi="Bitta fan" izoh="Fanni va savollar sonini o'zingiz tanlaysiz" />
+            <TanlovKartasi faol={shablon === 'nusxa'} onClick={() => setShablon('nusxa')} ikonka={<Copy size={18} />} nomi="Avvalgisidek" izoh="Oldingi imtihonning rejasi nusxalanadi" />
+          </div>
+          {shablon === 'nusxa' && (
+            <div className="mt-3">
+              <Maydon nom="Qaysi imtihondek">
+                <select className={SELECT} value={nusxaId} onChange={e => setNusxaId(e.target.value ? Number(e.target.value) : '')}>
+                  <option value="">Imtihonni tanlang</option>
+                  {avvalgilar.map(e => <option key={e.id} value={e.id}>{e.name} — {sanaMatni(e.date)} · {e.totalQuestions} savol</option>)}
+                </select>
+              </Maydon>
+            </div>
+          )}
+          {shablon === 'dtm' && !bankTayyor && <p className="mt-2 text-[12px] text-matn-xira">Savollar banki yuklanmoqda…</p>}
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-matn-sokin">
+            <button type="button" onClick={onSorovnoma} className="inline-flex items-center gap-1 text-brand hover:underline cursor-pointer"><MessageSquareText size={13} /> So'rovnoma</button>
+          </p>
+        </Karta>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-matn-xira max-w-md">Variantlar soni, smenalar, ball va boshqalar markaz standartidan olinadi — keyingi oynada o'zgartirsa bo'ladi.</p>
+        <Tugma turi="asosiy" yuklanmoqda={band} disabled={!tayyor} onClick={davom}>Davom etish <ArrowRight size={14} /></Tugma>
+      </div>
+    </div>
+  );
+}
+
+/** «Yangi imtihon» dagi katta tanlov tugmasi: ikonka, nomi va bir qator izoh. */
+function TanlovKartasi({ faol, onClick, ikonka, nomi, izoh }: { faol: boolean; onClick: () => void; ikonka: React.ReactNode; nomi: string; izoh: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={faol}
+      className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left cursor-pointer transition-colors ${faol ? 'border-brand bg-brand-fon/60 ring-2 ring-brand/20 dark:bg-brand/15' : 'border-chiziq bg-sirt hover:border-chiziq-kuchli'}`}>
+      <span className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${faol ? 'bg-brand text-brand-ust' : 'bg-ichki text-matn-sokin'}`}>{ikonka}</span>
+      <span className="min-w-0">
+        <span className="block text-[13.5px] font-semibold text-matn">{nomi}</span>
+        <span className="block text-[12px] text-matn-sokin mt-0.5 leading-snug">{izoh}</span>
+      </span>
+    </button>
   );
 }

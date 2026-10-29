@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, Eye, Loader2, ListChecks, FileDown, PenTool, AlertTriangle } from 'lucide-react';
+import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, Eye, Loader2, FileDown, PenTool, AlertTriangle } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, Tanlov } from './ui';
@@ -14,7 +14,6 @@ import { varaqTuzilmasi } from '../../../lib/imtihon.js';
 import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
 import { varaqParametrlari } from './varaqParam';
-import TanlanganSavollar from './TanlanganSavollar';
 import VaraqDizayni from './dizayner/VaraqDizayni';
 
 // 3-bo'lim. Chapda — chop etiladigan hujjatlar (Addmen QPG kabi ikki guruh:
@@ -23,7 +22,7 @@ import VaraqDizayni from './dizayner/VaraqDizayni';
 // qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). Bu yerda faqat
 // hujjatlar: andozadan imtihon yaratish «Yangi imtihon»da (2026-10-17).
 
-type Hujjat = 'savollar' | 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
+type Hujjat = 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
 
 export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => void }) {
   const { settings, schools, showNotification, kora } = useCRM();
@@ -165,14 +164,10 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
   };
 
-  // Savol almashtirilsa — kitobcha va kalit qaytadan olinadi.
-  const [keshAvlod, setKeshAvlod] = useState(0);
-  const savolOzgardi = () => { kesh.current.clear(); setKeshAvlod(n => n + 1); };
-
   // Jonli ko'rinish: hujjat yoki sozlama o'zgarsa qayta chiziladi.
   const [korinish, setKorinish] = useState<{ html: string } | { xato: string } | null>(null);
   useEffect(() => {
-    if (!exam.lockedAt || !data || hujjat === 'savollar' || hujjat === 'dizayn') return;
+    if (!exam.lockedAt || !data || hujjat === 'dizayn') return;
     let bekor = false;
     setKorinish(null);
     const t = setTimeout(() => {
@@ -183,7 +178,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
       }).catch(e => { if (!bekor) setKorinish({ xato: e.message }); });
     }, 150);
     return () => { bekor = true; clearTimeout(t); };
-  }, [hujjat, smena, xona, yakka, rasmli, qogoz, kitobchaKodi, ko, data, exam, keshAvlod]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hujjat, smena, xona, yakka, rasmli, qogoz, kitobchaKodi, ko, data, exam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!exam.lockedAt) {
     return (
@@ -197,7 +192,6 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const HUJJATLAR: { guruh: string; royxat: { id: Hujjat; nom: string; izoh: string; ikonka: React.ReactNode; ochiq: boolean }[] }[] = [
     {
       guruh: "Savol qog'ozi", royxat: [
-        { id: 'savollar', nom: 'Tanlangan savollar', izoh: "ko'rish va almashtirish", ikonka: <ListChecks size={16} />, ochiq: kitobchaBor },
         { id: 'kitobcha', nom: 'Kitobchalar', izoh: `${variantlar.length} variant · ksero uchun`, ikonka: <BookOpen size={16} />, ochiq: kitobchaBor },
         { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi && !sorovnoma },
       ],
@@ -255,9 +249,6 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
                     {s.sessions.map(x => <option key={x.id} value={x.id}>{smenaNomi(x.id)}</option>)}
                   </select>
                 </Maydon>
-              )}
-              {hujjat === 'savollar' && (
-                <p className="text-[12px] text-matn-sokin">Andoza yoki qoidalar bo'yicha tushgan savollar. Yoqmaganini ↻ bilan o'sha mavzu va qiyinlikdagi boshqasiga yoki # bilan QID bo'yicha aniq savolga almashtiring — kitobcha va kalit o'zi yangilanadi. Natija kelgach almashtirib bo'lmaydi.</p>
               )}
               {hujjat === 'kitobcha' && (
                 <>
@@ -332,7 +323,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
           </Karta>
         </div>
 
-        {hujjat === 'dizayn' ? <VaraqDizayni exam={exam} yangila={yangila} umumiy={umumiy} /> : hujjat === 'savollar' ? <TanlanganSavollar exam={exam} onOzgardi={savolOzgardi} /> : (
+        {hujjat === 'dizayn' ? <VaraqDizayni exam={exam} yangila={yangila} umumiy={umumiy} /> : (
           <Korinish holat={korinish} kenglik={varaqTuri && qogoz === 'A4x2' ? 1123 : varaqTuri && qogoz === 'A5' ? 560 : 794}
             izoh={hujjat === 'kalit' ? 'hamma variant' : hujjat === 'universal' ? 'namuna' : 'birinchi beti — chop etishda hammasi'}
             tugma={

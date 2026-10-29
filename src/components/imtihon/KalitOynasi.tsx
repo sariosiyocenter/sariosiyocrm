@@ -37,10 +37,23 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
   const variantlar = (k?.variants || []).filter(v => v.session === session);
   const savolMap = useMemo(() => new Map((k?.savollar || []).map(s => [s.id, s])), [k]);
   const savollarTartibi = useMemo(() => {
-    // Birinchi variant tartibida, shu smenaning savollari.
-    const v = variantlar[0];
-    return v ? v.items.map(it => ({ n: it.y ?? it.n, q: it.q, t: it.t })) : [];
+    // Shu smenaning hamma variantidagi savollar, o'rin tartibida: «har xil» variantlarda B, C… ning
+    // o'z savollari bor. Har savol yonida — qaysi variantlarda (bekor/tuzatish o'shalarga ta'sir qiladi).
+    const royxat: { n: number | string; q: number; t: string; kodlar: string[] }[] = [];
+    const joyi = new Map<number, (typeof royxat)[number]>();
+    const uzunlik = Math.max(0, ...variantlar.map(v => v.items.length));
+    for (let i = 0; i < uzunlik; i++) for (const v of variantlar) {
+      const it = v.items[i];
+      if (!it || it.q == null) continue;
+      const bor = joyi.get(it.q);
+      if (bor) { if (!bor.kodlar.includes(v.code)) bor.kodlar.push(v.code); continue; }
+      const x = { n: it.y ?? it.n, q: it.q, t: it.t, kodlar: [v.code] };
+      joyi.set(it.q, x);
+      royxat.push(x);
+    }
+    return royxat;
   }, [variantlar]);
+  const variantlarSoni = variantlar.length;
 
   const saqla = async (qid: number, patch: { cancelled?: Record<string, any>; keyFix?: Record<string, any> }) => {
     if (!k) return;
@@ -60,8 +73,12 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
     }
   };
 
-  const bekor = async (qid: number, turi: 'hammaga' | 'chiqarish' | null) => {
-    const matn = turi === 'hammaga' ? "Bu savol uchun hammaga ball beriladi." : turi === 'chiqarish' ? 'Bu savol hisobdan chiqariladi (eng yuqori ball kamayadi).' : 'Savol yana hisobga olinadi.';
+  const bekor = async (qid: number, turi: 'hammaga' | 'chiqarish' | null, kodlar: string[] = []) => {
+    // «Har xil» variantlarda savol hamma variantda emas: chiqarilsa faqat o'sha variantlarning eng yuqori bali kamayadi.
+    const qisman = kodlar.length > 0 && kodlar.length < variantlarSoni;
+    const matn = turi === 'hammaga' ? `Bu savol uchun ${qisman ? `${kodlar.join(', ')} variantdagilarga` : 'hammaga'} ball beriladi.`
+      : turi === 'chiqarish' ? `Bu savol hisobdan chiqariladi (eng yuqori ball kamayadi).${qisman ? ` Savol faqat ${kodlar.join(', ')} variantda — boshqa variantlarning eng yuqori bali o'zgarmaydi, reyting adolatli bo'lishi uchun «Bekor: hammaga ball» ma'qulroq.` : ''}`
+        : 'Savol yana hisobga olinadi.';
     if (!(await confirm(`${matn} Hamma natija qayta hisoblanadi. Davom etilsinmi?`))) return;
     const c = { ...k!.cancelled };
     if (turi) c[qid] = turi; else delete c[qid];
@@ -121,7 +138,7 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
             </table>
           ) : (
             <ul className="space-y-2">
-              {savollarTartibi.map(({ n, q, t }) => {
+              {savollarTartibi.map(({ n, q, t, kodlar }) => {
                 const s = savolMap.get(q);
                 if (!s) return null;
                 const bekorQilingan = k.cancelled[q];
@@ -133,6 +150,7 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 mb-1">
                           <span className="text-[12px] font-bold text-matn raqam">{n}.</span>
+                          {variantlarSoni > 1 && kodlar.length < variantlarSoni && <Yorliq rang="brand">{kodlar.join(', ')} variant</Yorliq>}
                           <Yorliq>{s.subject}</Yorliq><Yorliq>{s.topic}</Yorliq>
                           {bekorQilingan && <Yorliq rang="ogoh">{bekorQilingan === 'hammaga' ? 'Bekor: hammaga ball' : 'Bekor: hisobdan chiqarildi'}</Yorliq>}
                           {tuzatish && <Yorliq rang="ogoh">Kalit tuzatilgan: {tuzatish.join(', ')}</Yorliq>}
@@ -168,8 +186,8 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
                             <Tugma kichik ikonka={<Undo2 size={13} />} yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, null)}>Qaytarish</Tugma>
                           ) : (
                             <>
-                              <Tugma kichik ikonka={<Ban size={13} />} yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'hammaga')}>Bekor: hammaga ball</Tugma>
-                              <Tugma kichik turi="oddiy" yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'chiqarish')}>Hisobdan chiqarish</Tugma>
+                              <Tugma kichik ikonka={<Ban size={13} />} yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'hammaga', kodlar)}>Bekor: hammaga ball</Tugma>
+                              <Tugma kichik turi="oddiy" yuklanmoqda={saqlanmoqda === q} onClick={() => bekor(q, 'chiqarish', kodlar)}>Hisobdan chiqarish</Tugma>
                             </>
                           )}
                           {t === 'moslash' && (

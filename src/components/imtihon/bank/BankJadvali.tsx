@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard, Languages, PenTool } from 'lucide-react';
+import { Plus, Eye, Tags, Trash2, RotateCcw, Sparkles, Eraser, ChevronLeft, ChevronRight, ChevronDown, Loader2, Search, X, SlidersHorizontal, Pencil, Folder, MoreHorizontal, Lightbulb, Wand2, LayoutList, Clapperboard, Languages, PenTool, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
@@ -314,6 +314,11 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(null); }
   };
   const ids = [...tanlangan];
+  // Qoralama ogohi: soni — butun fan bo'yicha (filtr hisobi mavzuga bog'liq emas).
+  const qoralamaSoni = filtr?.holat?.qoralama || 0;
+  // «Faol qilish» faqat qoralamalarga: faol va arxivdagilar tegilmaydi. «Qoralama» saralashida
+  // boshqa sahifadan tanlanganlar ham qoralama; aks holda — ekrandagi holati ma'lumlari.
+  const tanlanganQoralamalar = s.holat === 'qoralama' ? ids : (royxat?.items || []).filter(q => tanlangan.has(q.id) && q.status === 'qoralama').map(q => q.id);
 
   const korish = useCallback((id: number, chizish = false) => {
     setBand('korish');
@@ -664,6 +669,16 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     xabarBer('Ishlatilish hisobi nolga tushirildi');
     ozgardi();
   });
+  // Imtihonga faqat faol savol tushadi; fayl va AI dan kelganlarning ko'pi qoralama — bir bosishda faol qilinadi.
+  const faolQil = (idlar: number[]) => ish('faol', async () => {
+    const r = await soro<{ yangilandi: number; chala: number }>('PUT', 'questions/bulk', { ids: idlar, status: 'faol' });
+    const faol = idlar.length - r.chala;   // idlar — faqat qoralamalar, chala ham ular orasidan
+    xabarBer(r.chala
+      ? `${faol} ta savol faol qilindi. ${r.chala} tasi to'liq emas (javobi yoki varianti yo'q) — qoralamada qoldi`
+      : `${faol} ta savol faol qilindi — endi imtihonga tushadi`);
+    setTanlangan(new Set());
+    ozgardi();
+  });
   const ochir = (idlar: number[]) => ish('ochir', async () => {
     setMenyu(null);
     if (!(await confirm({ title: `${idlar.length} ta savol o'chirilsinmi?`, message: "Imtihonda ishlatilganlari o'chirilmaydi — arxivga (yashirin) o'tadi.", confirmLabel: "O'chirish", danger: true }))) return;
@@ -946,6 +961,18 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             </span>
           </div>
 
+          {savolTahrir && qoralamaSoni > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-ogoh/30 bg-ogoh-fon px-3 py-2 text-[12.5px] text-matn">
+              <AlertTriangle size={15} className="shrink-0 text-ogoh" />
+              <span className="flex-1 min-w-48">
+                {s.holat === 'qoralama'
+                  ? <>Qoralama savollar ko'rsatilmoqda. Tekshirib, belgilang va pastdagi <b>«Faol qilish»</b> ni bosing.</>
+                  : <>Bu fanda <b className="raqam">{qoralamaSoni}</b> ta savol qoralama — imtihonga tushmaydi. Imtihonga faqat faol savollar olinadi.</>}
+              </span>
+              {s.holat !== 'qoralama' && <Tugma kichik turi="oddiy" onClick={() => { setTanlov({ tur: 'hamma' }); setS(x => ({ ...x, holat: 'qoralama' })); }}>Ko'rsatish</Tugma>}
+            </div>
+          )}
+
           {!royxat || !filtr ? <div className="bg-sirt border border-chiziq rounded-2xl"><Yuklanmoqda /></div> : !royxat.items.length ? (
             <div className="bg-sirt border border-dashed border-chiziq-kuchli rounded-2xl">
               {saralangan ? (
@@ -1006,6 +1033,10 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                   <span className="px-2 text-[12.5px] font-bold whitespace-nowrap"><span className="raqam">{tanlangan.size}</span> ta tanlandi</span>
                   {savolTahrir && filtr && (
                     <>
+                      {tanlanganQoralamalar.length > 0 && (
+                        <PanelTugma ikonka={band === 'faol' ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} disabled={band === 'faol'}
+                          title="Qoralama savollar imtihonga tushmaydi — faol qilinsa tushadi" onClick={() => faolQil(tanlanganQoralamalar)}>Faol qilish{tanlanganQoralamalar.length !== ids.length ? ` (${tanlanganQoralamalar.length})` : ""}</PanelTugma>
+                      )}
                       <PanelTugma ikonka={<Folder size={14} />} onClick={e => setMenyu({ tur: 'mavzu', rect: e.currentTarget.getBoundingClientRect(), ids })}>Mavzuga</PanelTugma>
                       <PanelTugma onClick={e => setMenyu({ tur: 'daraja', rect: e.currentTarget.getBoundingClientRect(), ids })}>Qiyinlik</PanelTugma>
                       {guruhlar.map(g => (

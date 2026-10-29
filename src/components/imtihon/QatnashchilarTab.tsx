@@ -7,6 +7,7 @@ import { Karta, Tugma, Yorliq, Maydon, INPUT, SELECT, Tanlov, Yuklanmoqda, BoshH
 import XonaSxemasi from './XonaSxemasi';
 import { xonaOrinlari } from '../../../lib/imtihon.js';
 import { toDateStr } from '../../../lib/lessons.js';
+import { sanaMatni } from './format';
 import type { ImtihonTafsil } from './turlar';
 import OnlaynTestKarta from './OnlaynTestKarta';
 import { mehmonlarniOqi, mehmonShabloni } from './mehmonExcel';
@@ -296,6 +297,21 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
   const ruxsatnomaOldi = seats.filter(x => x.admitSentAt && x.admitStatus === 'yuborildi').length;
   // Ruxsatnoma imtihongacha kerak: e'lon qilingan yoki o'tib ketgan imtihonda ko'rsatilmaydi.
   const ruxsatnomaVaqti = !exam.publishedAt && exam.date >= toDateStr();
+  // Natija kelgach server qayta o'rinlashtirmaydi (409) — tugma oldindan o'chiq turadi.
+  const natijaBor = exam._count.results > 0 || seats.some(x => x.resultId);
+  // Kurs belgilangani o'rin bermaydi: o'rinsizlar soni — «O'rinlashtirish» kerakligi ko'rinsin.
+  const orinsiz = data && q ? Math.max(0, jami - seats.filter(x => x.roomId).length) : 0;
+  // Yuborish qutisi doim ko'rinadi; yuborib bo'lmasa — sababi (kanal sababi — kartadagi tahrir qiymatidan).
+  const yuborganlar = onlayn ? seats.length > 0 : seats.some(x => x.roomId);
+  const ruxsatnomaSababi = exam.publishedAt ? "Natijalar e'lon qilingan — ruxsatnoma endi kerak emas."
+    : !ruxsatnomaVaqti ? "Imtihon sanasi o'tgan — ruxsatnoma yuborilmaydi."
+      : !yuborganlar ? (onlayn ? "Hali qatnashchi yo'q — «Onlayn test» kartasidan qo'shing." : "Hali hech kim o'rinlashtirilmagan — avval «O'rinlashtirish»ni bosing.")
+        : null;
+  // Server ertangi imtihonga soat 12:00 (O'zbekiston) dan keyin o'zi yuboradi (ruxsatnomaNavbati).
+  // Sana satridan UTC da bir kun ayriladi — brauzer vaqt zonasiga bog'liq emas.
+  const [yil, oy, kun] = String(exam.date).slice(0, 10).split('-').map(Number);
+  const avtoKuni = new Date(Date.UTC(yil, oy - 1, kun - 1)).toISOString().slice(0, 10);
+  const avtoOtdi = toDateStr() > avtoKuni;
   const lidBolmagan = seats.filter(x => x.mehmon && !x.leadId && x.phone).length;
   const royxat = seats.filter(x => !qidiruv || x.name.toLowerCase().includes(qidiruv.toLowerCase()) || x.sheetCode.includes(qidiruv.toUpperCase()));
 
@@ -361,7 +377,9 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
                 <>
                   <div className="flex justify-between"><span className="text-matn-sokin">O'rinlar ({s.sessions.length} smena)</span><b className={`raqam ${sigim < jami ? 'text-xato' : 'text-yaxshi'}`}>{sigim}</b></div>
                   {sigim < jami && <p className="text-[12px] text-xato flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-0.5" /> O'rin yetmaydi: xona qo'shing, xona sxemasini tekshiring yoki shaxmat tartibini o'chiring.</p>}
-                  {tahrir && <Tugma turi="asosiy" className="w-full mt-2" ikonka={<Shuffle size={14} />} yuklanmoqda={band === 'orin'} disabled={!jami} onClick={orinlashtir}>{seats.some(x => x.roomId) ? "Qayta o'rinlashtirish" : "O'rinlashtirish"}</Tugma>}
+                  {orinsiz > 0 && !natijaBor && sigim >= jami && <p className="text-[12px] text-ogoh flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-0.5" /> {orinsiz} kishi hali o'rinsiz — kurs belgilangani o'rin bermaydi, «O'rinlashtirish»ni bosing.</p>}
+                  {tahrir && <Tugma turi="asosiy" className="w-full mt-2" ikonka={<Shuffle size={14} />} yuklanmoqda={band === 'orin'} disabled={!jami || natijaBor} onClick={orinlashtir}>{seats.some(x => x.roomId) ? "Qayta o'rinlashtirish" : "O'rinlashtirish"}</Tugma>}
+                  {tahrir && natijaBor && <p className="text-[11.5px] text-matn-xira">Natijalar kiritilgan — qayta o'rinlashtirib bo'lmaydi. Bitta qatnashchini «O'rinlar» ro'yxatidan ko'chiring.</p>}
                   {!exam.lockedAt && <p className="text-[11.5px] text-matn-xira">Variant harflari savollar qulflangach aniq bo'ladi (o'rin shu tartibda qoladi).</p>}
                 </>
               )}
@@ -477,16 +495,27 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
 
         <SozlamaKartasi exam={exam} yangila={yangila} kalitlar={RUXSATNOMA_KALITLARI} tahrir={tahrir}
           sarlavha="Ruxsatnoma" izoh="Qatnashchiga imtihon vaqti, xonasi va o'rni (onlaynda — test havolasi)">
-          {(q, qoy, ozgardi) => (
+          {(q, qoy, ozgardi) => {
+            const sabab = ruxsatnomaSababi || (q.admit.channel === 'NONE' ? "Kanal «Yubormaslik» — ruxsatnoma yuborilmaydi. Pastda kanalni tanlang." : null);
+            return (
             <div className="space-y-3">
-              {tahrir && ruxsatnomaVaqti && (onlayn ? seats.length > 0 : seats.some(x => x.roomId)) && s.admit.channel !== 'NONE' && (
+              {tahrir && (
                 <div className="rounded-xl border border-chiziq bg-ichki/60 px-3 py-2.5 space-y-2">
                   <div className="flex items-center justify-between gap-2 text-[13px]">
                     <span className="text-matn font-semibold">Yuborish</span>
                     <span className="text-matn-sokin raqam">{ruxsatnomaOldi} ta oldi{kutmoqda ? ` · ${kutmoqda} ta kutmoqda` : ''}</span>
                   </div>
+                  {!sabab && kutmoqda > 0 && (
+                    <p className="text-[12px] text-matn-sokin">
+                      {!s.admit.auto ? "O'zi yuborilmaydi — pastdagi tugma bilan yuboring."
+                        : avtoOtdi ? "O'zi yuborish vaqti (imtihondan bir kun oldin, 12:00) o'tgan — qo'lda yuboring."
+                          : <>O'zi yuboriladi: <b className="text-matn">{sanaMatni(avtoKuni)}, 12:00 dan keyin</b> · {kutmoqda} ta qatnashchiga.</>}
+                    </p>
+                  )}
                   {/* Yuborish saqlangan matn va kanal bilan ketadi — o'zgartirilgani avval saqlansin. */}
-                  {ozgardi && band !== 'ruxsatnoma' ? (
+                  {sabab ? (
+                    <p className="text-[12px] text-matn-xira">{sabab}</p>
+                  ) : ozgardi && band !== 'ruxsatnoma' ? (
                     <p className="text-[12px] text-ogoh">Matn yoki kanal o'zgardi — yuborishdan oldin pastda «Saqlash»ni bosing.</p>
                   ) : band === 'ruxsatnoma' && ruxsatnoma ? (
                     <div className="flex items-center justify-between gap-2">
@@ -504,7 +533,8 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
               <RuxsatnomaSozlamasi s={q} qoy={qoy} standart={matnlar.ruxsatnoma}
                 namuna={ruxsatnomaNamunasi({ admit: q.admit, sessions: s.sessions }, { imtihon: exam.name, sana: exam.date, filial: filialNomi(exam.schoolId), markaz: settings?.orgName || '' })} />
             </div>
-          )}
+            );
+          }}
         </SozlamaKartasi>
       </div>
 

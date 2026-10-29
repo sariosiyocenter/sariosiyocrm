@@ -72,7 +72,7 @@ export function JarimaTanlovi({ s, qoy, qulf }: { s: Pick<S, 'xatoJarima' | 'jar
       ? `Har xato javobga savol balining ${JARIMALAR.find(j => j.v === s.xatoJarima)?.nom || s.xatoJarima} qismi ayiriladi; bo'sh javobga jarima yo'q`
       : "Yo'q — xato javob 0 ball (manfiy ball yo'q)"}>
       <div className="space-y-2">
-        <Tanlov qiymat={s.xatoJarima} onChange={v => !qulf && qoy({ xatoJarima: v })} variantlar={JARIMALAR} />
+        <Tanlov qiymat={s.xatoJarima} disabled={qulf} onChange={v => qoy({ xatoJarima: v })} variantlar={JARIMALAR} />
         {s.xatoJarima > 0 && (
           <label className="flex items-center gap-2 text-[12.5px] text-matn cursor-pointer">
             <input type="checkbox" disabled={qulf} className="w-3.5 h-3.5 accent-[var(--color-brand)]" checked={s.jarimaNoldan} onChange={e => qoy({ jarimaNoldan: e.target.checked })} />

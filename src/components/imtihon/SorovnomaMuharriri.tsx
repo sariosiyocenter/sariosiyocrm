@@ -100,7 +100,7 @@ export default function SorovnomaMuharriri({ id }: { id?: string }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <Almashtirgich yoqilgan={anonim} onChange={v => !qulf && setAnonim(v)} nom="Anonim"
+            <Almashtirgich yoqilgan={anonim} disabled={qulf} onChange={v => setAnonim(v)} nom="Anonim"
               izoh={anonim ? "Ism va ID so'ralmaydi — universal varaqlar, har skanerlangan varaq alohida javob" : "Har qatnashchiga shaxsiy varaq (O'rinlashtirishda kurslarni biriktiring) — natijani kurs bo'yicha ko'rasiz"} />
           </div>
           {schools.length > 1 && (

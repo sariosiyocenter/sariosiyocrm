@@ -10,10 +10,11 @@ import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
 import { TUR_NOMI } from '../../lib/savolTuri';
 import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
+import VariantJadvali, { harXilmi, type JadvalMalumoti } from './VariantJadvali';
 import type { ImtihonTafsil, TabId } from './turlar';
 
-// 1-bo'lim: tuzilma, bank yetarliligi, savollarni qulflash (variantlar
-// serverda yasaladi) va kalit.
+// 1-bo'lim: tuzilma, bank yetarliligi, variantlarni yig'ish (o'rin × variant jadvali) va
+// tasdiqlab qulflash (variantlar serverda yasaladi), qulfdan keyin jadvalda almashtirish va kalit.
 
 interface Qoida {
   mavzu: string; tur: string; qiyinlik: number; kerak: number; bor: number; yetadi: boolean; tanlangan?: boolean;
@@ -39,27 +40,53 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
   const [ogohlar, setOgohlar] = useState<string[]>([]);
   const [band, setBand] = useState(false);
   const [kalit, setKalit] = useState(false);
+  // Qulfgacha yig'ilgan variantlar (saqlanmaydi — qulflash shu urug' bilan aynan shularni yasaydi).
+  const [korinish, setKorinish] = useState<(JadvalMalumoti & { takror: number; ogohlantirishlar: string[]; iz: string }) | null>(null);
+  const [yigilmoqda, setYigilmoqda] = useState(false);
+  // Qulfdan keyin — saqlangan variantlar.
+  const [jadval, setJadval] = useState<(JadvalMalumoti & { natijaBor: boolean; almashtirsaBoladi: boolean }) | null>(null);
   const s = exam.settings;
+  const har = harXilmi(exam);
 
   const kalitRejimi = s.source === 'kalit';
   const tekshir = useCallback(() => soro<{ bloklar: any[]; kalitlar?: KalitHolat[] }>('GET', `exams/${exam.id}/check`).then(r => { setBank(r.bloklar); setKalitlar(r.kalitlar || null); }).catch(e => showNotification(e.message, 'error')), [exam.id, soro, showNotification]);
   useEffect(() => { if (!exam.lockedAt) tekshir(); }, [exam.lockedAt, tekshir]);
 
+  const yigish = useCallback(async (yangi = false) => {
+    setYigilmoqda(true);
+    setKamchilik(null);
+    try {
+      const r = await soro<NonNullable<typeof korinish>>('POST', `exams/${exam.id}/yigish`, { yangi });
+      setKorinish(r);
+    } catch (e: any) {
+      if (e instanceof ApiXato && e.malumot?.kamchiliklar) setKamchilik(e.malumot.kamchiliklar);
+      setKorinish(null);
+      showNotification(e.message, 'error');
+    } finally {
+      setYigilmoqda(false);
+    }
+  }, [exam.id, soro, showNotification]);
+  const jadvalniYukla = useCallback(() => soro<NonNullable<typeof jadval>>('GET', `exams/${exam.id}/jadval`).then(setJadval).catch(e => showNotification(e.message, 'error')), [exam.id, soro, showNotification]);
+  useEffect(() => { if (exam.lockedAt && s.source === 'bank') jadvalniYukla(); else setJadval(null); }, [exam.lockedAt, s.source, jadvalniYukla]);
+
   const qulfla = async () => {
     const savol = kalitRejimi
       ? "Kiritilgan kalitdan variantlar yasaladi. Shundan keyin imtihon tuzilmasi o'zgarmaydi (natija kiritilmaguncha qulfni ochish mumkin; kalitni esa keyin ham tuzatsa bo'ladi). Davom etilsinmi?"
-      : "Savollar bankdan tanlanib, variantlar yasaladi. Shundan keyin imtihon tuzilmasi o'zgarmaydi (natija kiritilmaguncha qulfni ochish mumkin). Davom etilsinmi?";
+      : "Jadvaldagi variantlar tasdiqlanadi: kalit, kitobcha va skaner shulardan. Tuzilma endi o'zgarmaydi; natija kelguncha savolni almashtirish yoki qulfni ochish mumkin. Davom etilsinmi?";
     if (!(await confirm(savol))) return;
     setBand(true);
     setKamchilik(null);
     try {
-      const r = await soro<{ ogohlantirishlar: string[]; variantlar: number }>('POST', `exams/${exam.id}/lock`);
+      const r = await soro<{ ogohlantirishlar: string[]; variantlar: number }>('POST', `exams/${exam.id}/lock`, korinish ? { iz: korinish.iz } : {});
       setOgohlar(r.ogohlantirishlar || []);
-      showNotification(`${r.variantlar} ta variant tayyor`, 'success');
+      setKorinish(null);
+      showNotification(`${r.variantlar} ta variant tasdiqlandi`, 'success');
       await yangila();
     } catch (e: any) {
       if (e instanceof ApiXato && e.malumot?.kamchiliklar) setKamchilik(e.malumot.kamchiliklar);
       showNotification(e.message, 'error');
+      // Bank o'zgargan: yangi holat bilan qayta yig'iladi — foydalanuvchi ko'rib, keyin tasdiqlaydi.
+      if (e instanceof ApiXato && e.malumot?.ozgardi) yigish();
     } finally {
       setBand(false);
     }
@@ -81,6 +108,13 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
 
   const hammasiYetadi = kalitRejimi ? !!kalitlar?.length && kalitlar.every(k => k.tayyor) : bank?.every(b => b.qoidalar.every(q => q.yetadi));
   const smenalar = [...new Set(exam.variantlar.map(v => v.session))];
+  // Bank yetsa — variantlar o'zi yig'iladi (urug' saqlangan: qayta ochilganda o'sha jadval).
+  const bankRejimi = s.source === 'bank';
+  useEffect(() => {
+    // Yig'ish urug'ni saqlaydi (yozadi) — faqat tuzuvchiga; ko'ruvchi tugmasiz jadvalni ko'rmaydi.
+    if (tahrir && !exam.lockedAt && bankRejimi && hammasiYetadi && !korinish && !yigilmoqda && !kamchilik) yigish();
+  }, [tahrir, exam.lockedAt, bankRejimi, hammasiYetadi]); // eslint-disable-line react-hooks/exhaustive-deps
+  const takrorIzohi = (n: number) => (n ? `${n} o'rinda savol boshqa variantda ham bor (sariq) — shu mavzu va qiyinlikda bankda savol kam` : "Takror yo'q");
 
   if (s.source === 'sorovnoma') return <SorovnomaTuzilma exam={exam} yangila={yangila} />;
 
@@ -92,6 +126,36 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             <KalitMuharriri exam={exam} onSaqlandi={() => { tekshir(); yangila(); }} />
           </Karta>
         ) : !exam.lockedAt ? (
+          <>
+          {hammasiYetadi && (
+            <Karta sarlavha="Variantlar" izoh={har ? "Har o'rinda mavzu va qiyinlik hamma variantda bir xil, savollar esa har xil" : "Hamma variantda bir xil savollar — tartibi va javob harflari aralashadi"}
+              amallar={tahrir && korinish && <Tugma kichik turi="oddiy" ikonka={<RefreshCw size={13} />} yuklanmoqda={yigilmoqda} onClick={() => yigish(true)}>Qayta yig'ish</Tugma>}>
+              {!korinish ? (yigilmoqda ? <Yuklanmoqda /> : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-[12.5px] text-matn-sokin flex-1 min-w-48">Bankdan variantlar yig'iladi va jadvalda ko'rinadi — tasdiqlamaguningizcha hech narsa saqlanmaydi.</p>
+                  {tahrir && <Tugma turi="asosiy" onClick={() => yigish()}>Variantlarni yig'ish</Tugma>}
+                </div>
+              )) : (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-dashed border-chiziq-kuchli bg-ichki/60 px-3 py-2 text-[12.5px] text-matn">
+                    <b>Yig'ildi, hali qulflanmagan.</b> <span className="text-matn-sokin">Tekshiring, keyin «Tasdiqlash va qulflash». Savolni almashtirish — tasdiqlangandan keyin (natija kelguncha).</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Yorliq>{korinish.variantlar[0]?.items.length || 0} o'rin × {new Set(korinish.variantlar.map(v => v.code)).size} variant</Yorliq>
+                    <Yorliq rang="yaxshi">{Object.keys(korinish.savollar).length} ta savol</Yorliq>
+                    {har && <Yorliq rang={korinish.takror ? 'ogoh' : 'yaxshi'}>{korinish.takror ? `${korinish.takror} ta takror` : "takror yo'q"}</Yorliq>}
+                  </div>
+                  {har && korinish.takror > 0 && <p className="text-[12px] text-ogoh">{takrorIzohi(korinish.takror)}. Variant ichida savol takrorlanmaydi.</p>}
+                  <VariantJadvali exam={exam} data={korinish} almashtiradi={false} />
+                  {tahrir && (
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Tugma turi="asosiy" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={yigilmoqda} onClick={qulfla}>Tasdiqlash va qulflash</Tugma>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Karta>
+          )}
           <Karta sarlavha="Savollar banki yetadimi" izoh={s.sessionQuestions === 'alohida' && s.sessions.length > 1 ? `Har smenaga alohida savol: kerakli son ${s.sessions.length} barobar` : 'Faqat faol va to\'liq to\'ldirilgan savollar hisoblanadi'}
             amallar={<Tugma kichik turi="oddiy" ikonka={<RefreshCw size={13} />} onClick={tekshir}>Qayta tekshirish</Tugma>}>
             {!bank ? <Yuklanmoqda /> : (
@@ -106,6 +170,20 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
                     {tahrir && <p className="text-[12px] text-matn-sokin">O'z test kitobchangiz bo'lsa — «Tahrirlash»da manbani «Faqat kalit» qiling: savollarsiz, faqat javob kaliti bilan tekshiriladi.</p>}
                   </div>
                 )}
+              </div>
+            )}
+          </Karta>
+          </>
+        ) : bankRejimi ? (
+          <Karta sarlavha="Variantlar tasdiqlangan" izoh={`Qulflangan: ${new Date(exam.lockedAt).toLocaleString('uz')} · ${har ? "har variantning o'z savollari" : 'hamma variantda bir xil savollar'}`}
+            amallar={kora('imtihonlar.kalit') && <Tugma kichik ikonka={<KeyRound size={14} />} onClick={() => setKalit(true)}>Kalit</Tugma>}>
+            {!jadval ? <Yuklanmoqda /> : (
+              <div className="space-y-2">
+                <VariantJadvali exam={exam} data={jadval} almashtiradi={tahrir && jadval.almashtirsaBoladi} onAlmashdi={() => { jadvalniYukla(); yangila(); }} />
+                <p className="text-[12px] text-matn-xira">
+                  {jadval.natijaBor ? "Natijalar bor — savollarni endi almashtirib bo'lmaydi." : tahrir ? "Katakni bosing — shu o'ringa boshqa savol qo'yish (kitobcha va kalit o'zi yangilanadi). " : ''}
+                  Variant o'rinlashtirishda har o'ringa beriladi — qo'shnilarda har xil.
+                </p>
               </div>
             )}
           </Karta>
@@ -167,8 +245,11 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             <div className="space-y-3">
               <p className="text-[12.5px] text-matn-sokin">{kalitRejimi
                 ? "Hamma kitobcha variantining kaliti kiritilgach — qulflang. Javob varaqalari shundan keyin chop etiladi."
-                : "Savollar tayyor bo'lgach — qulflang. Variantlar serverda yasaladi, kalit faqat ruxsati borlarga ko'rinadi."}</p>
-              {tahrir && <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={kalitRejimi ? !hammasiYetadi : bank !== null && !hammasiYetadi} onClick={qulfla}>Savollarni qulflash</Tugma>}
+                : !hammasiYetadi ? "Bank yetgach variantlar yig'iladi: chapdagi qatorlarni to'ldiring."
+                  : "Variantlar jadvalini ko'rib chiqing, keyin tasdiqlang. Kalit faqat ruxsati borlarga ko'rinadi."}</p>
+              {tahrir && (kalitRejimi
+                ? <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!hammasiYetadi} onClick={qulfla}>Savollarni qulflash</Tugma>
+                : <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!korinish || yigilmoqda} onClick={qulfla}>Tasdiqlash va qulflash</Tugma>)}
               {kalitRejimi && kalitlar && !hammasiYetadi && (
                 <p className="text-[12px] text-matn-xira">Kalit to'liq emas: {kalitlar.map(k => `${k.code} ${k.toldirilgan}/${k.jami}`).join(', ')}</p>
               )}
@@ -187,7 +268,8 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             <Qator k="Smenalar" v={s.sessions.map(x => `${x.name}${x.time ? ` (${x.time})` : ''}`).join(', ')} />
             {s.sessions.length > 1 && <Qator k="Smenalarga savol" v={s.sessionQuestions === 'alohida' ? 'Har biriga boshqa' : 'Bir xil'} />}
             <Qator k="Variantlar" v={`${s.variantCount} ta`} />
-            {!kalitRejimi && <Qator k="Aralashtirish" v={[s.shuffleQuestions && 'savollar', s.shuffleOptions && 'javoblar'].filter(Boolean).join(', ') || "yo'q"} />}
+            {bankRejimi && s.variantCount > 1 && <Qator k="Variantlarda savollar" v={har ? 'Har xil' : 'Bir xil'} />}
+            {!kalitRejimi && <Qator k="Aralashtirish" v={[!har && s.shuffleQuestions && 'savollar', s.shuffleOptions && 'javoblar'].filter(Boolean).join(', ') || "yo'q"} />}
             {kalitRejimi && <Qator k="Javob variantlari" v={`${s.optionCount} ta (${HARF_ROYXAT.slice(0, s.optionCount).join(', ')})`} />}
             <Qator k="Jarima" v={s.xatoJarima ? `xato javobga ${Math.round(s.xatoJarima * 100)}%` : "yo'q"} />
           </dl>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Sparkles, Camera, FileUp, Trash2, Pencil, Loader2, FileText, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Camera, FileUp, Trash2, Pencil, Loader2, FileText, RotateCcw, FileSpreadsheet } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useImtihonApi } from '../useImtihonApi';
 import { useAiHolat } from '../useAiHolat';
@@ -10,7 +10,7 @@ import { DarajaTanlov, darajaMaydonlari } from './qiyinlik';
 import { useDarajalar } from './useDarajalar';
 import { fanniTop, mavzuniTop } from './useBankDaraxt';
 import { type Tekshiruv, sahifaRasmlari, mazmuniBor, xatoMatni, Korinish, Tahrir, yechimSora, YECHISH_BOLAGI } from './aiUmumiy';
-import { exceldanSavollar } from './excel';
+import { exceldanSavollar, shablonniYukla } from './excel';
 import QrShablonTugma from './QrShablonTugma';
 import QoshRejimi, { type QoshRejim } from './QoshRejimi';
 import { AiGuruhKarta, guruhlarniSaqla, guruhFaolmi, mavzuniTopYokiYarat, type AiGuruh } from './AiGuruhKarta';
@@ -693,6 +693,10 @@ export default function SavolYuklash({ daraxt, fanId: boshFan = null, mavzuId: b
             <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <QrShablonTugma tur={tur} />
+                {(tur === 'yopiq' || tur === 'yozma') && (
+                  <button type="button" onClick={() => shablonniYukla(tur)} title="Ustunlar: Fan, Mavzu, Bo'lim, Tur, Savol, A–F, Javob, Ball, Qiyinlik, Manba, Til, Yechim, Holat — AI siz o'qiladi"
+                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-matn-sokin hover:text-brand cursor-pointer w-fit"><FileSpreadsheet size={13} /> Excel shablon</button>
+                )}
               </span>
               <Tugma turi="asosiy" ikonka={<Sparkles size={14} />} yuklanmoqda={!!jarayon} disabled={!aiKerak && !aiSiz}
                 onClick={() => ajrat()}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX, Info } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
@@ -29,6 +29,34 @@ interface Element {
   topilmadi?: boolean;
 }
 
+// O'qilgan varaqlar navbati imtihon bo'yicha modulda turadi: tabdan chiqib qaytsa (yoki
+// «Tekshirish»ga o'tsa) ro'yxat va aniqlanmagan varaqlar yo'qolmaydi. Sahifa yangilansa — tozalanadi.
+const BOSH_NAVBAT: Element[] = [];
+const navbatlar = new Map<number, Element[]>();
+const tinglovchilar = new Set<() => void>();
+let oxirgiId = 0;
+// Har qatorda kichik rasm (data-URL) bor: navbat cheksiz o'smasin — saqlanganlarning eskisi tushadi
+// (ular serverda, «Tekshirish»da ko'rinadi); muammoli qatorlar qoladi.
+const NAVBAT_CHEGARASI = 300;
+
+const obuna = (t: () => void) => { tinglovchilar.add(t); return () => { tinglovchilar.delete(t); }; };
+
+function navbatniOzgartir(examId: number, f: (n: Element[]) => Element[]) {
+  let n = f(navbatlar.get(examId) || BOSH_NAVBAT);
+  if (n.length > NAVBAT_CHEGARASI) {
+    let ortiqcha = n.length - NAVBAT_CHEGARASI;
+    // Navbat yangisi tepada — eng eski saqlanganlar oxiridan olinadi.
+    n = [...n].reverse().filter(e => !(ortiqcha > 0 && e.holat === 'tayyor' && ortiqcha--)).reverse();
+  }
+  navbatlar.set(examId, n);
+  tinglovchilar.forEach(t => t());
+}
+
+function useNavbat(examId: number) {
+  const navbat = useSyncExternalStore(obuna, () => navbatlar.get(examId) || BOSH_NAVBAT);
+  const setNavbat = useCallback((f: (n: Element[]) => Element[]) => navbatniOzgartir(examId, f), [examId]);
+  return [navbat, setNavbat] as const;
+}
 
 export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; onTekshirish?: () => void }) {
   const { ozgartira, showNotification, students } = useCRM();
@@ -46,17 +74,22 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
   const [rejim, setRejim] = useState<'fayl' | 'kamera' | 'qolda'>('fayl');
   // "Skaner holati"dan qo'lda kiritishga o'tilgan qatnashchi.
   const [qoldaOrin, setQoldaOrin] = useState<Orin | null>(null);
-  const [navbat, setNavbat] = useState<Element[]>([]);
+  const [navbat, setNavbat] = useNavbat(exam.id);
   const [ishlamoqda, setIshlamoqda] = useState(false);
   const ishchiRef = useRef<OmrIshchi | null>(null);
-  const idRef = useRef(0);
   const s = exam.settings;
 
   const params: VaraqParametrlari = useMemo(() => varaqParametrlari(exam), [exam]);
   const sahifalar = useMemo(() => varaqSahifalari(params), [params]);
 
   const ishchi = () => (ishchiRef.current ??= new OmrIshchi());
-  useEffect(() => () => ishchiRef.current?.yop(), []);
+  // Tabdan chiqilsa o'qish to'xtaydi (ishchi yopiladi): o'qilayotgan varaq «qotib» qolmasin — xato bo'lib turadi.
+  useEffect(() => () => {
+    ishchiRef.current?.yop();
+    navbatniOzgartir(exam.id, n => (n.some(e => e.holat === 'oqilmoqda')
+      ? n.map(e => (e.holat === 'oqilmoqda' ? { ...e, holat: 'xato', xato: "Tabdan chiqildi — o'qish to'xtadi. Bu faylni qayta yuklang (qayta skanerlash xavfsiz)" } : e))
+      : n));
+  }, [exam.id]);
 
   const yangilaEl = (id: number, patch: Partial<Element>) => setNavbat(n => n.map(e => (e.id === id ? { ...e, ...patch } : e)));
 
@@ -102,7 +135,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       for (const file of Array.from(files)) {
         try {
           for await (const { bitmap, nom } of faylSahifalari(file)) {
-            const el: Element = { id: ++idRef.current, nom, holat: 'oqilmoqda' };
+            const el: Element = { id: ++oxirgiId, nom, holat: 'oqilmoqda' };
             setNavbat(n => [el, ...n]);
             try {
               const r = await ishchi().oqi(bitmap, params);
@@ -189,7 +222,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
         </Karta>
       )}
       {rejim === 'kamera' && <KameraSkaner params={params} ishchi={ishchi} onVaraq={async (natija, rasm) => {
-        const el: Element = { id: ++idRef.current, nom: 'Kamera', holat: 'saqlanmoqda', oqish: natija, rasm };
+        const el: Element = { id: ++oxirgiId, nom: 'Kamera', holat: 'saqlanmoqda', oqish: natija, rasm };
         setNavbat(n => [el, ...n]);
         await yubor(el, {}, 'kamera');
       }} />}
@@ -337,7 +370,8 @@ function Chiziq({ qism, jami }: { qism: number; jami: number }) {
 function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; onYubor: (q: { sheetCode?: string; studentId?: number }) => void }) {
   const [kod, setKod] = useState('');
   const [qidiruv, setQidiruv] = useState('');
-  const mos = useMemo(() => (qidiruv.length < 2 ? [] : orinlar.filter(o => o.studentId && o.name.toLowerCase().includes(qidiruv.toLowerCase())).slice(0, 6)), [qidiruv, orinlar]);
+  // Tashqi qatnashchining o'quvchi ID si yo'q — u o'z o'rnining varaq kodi bilan bog'lanadi.
+  const mos = useMemo(() => (qidiruv.length < 2 ? [] : orinlar.filter(o => (o.studentId || o.mehmon) && o.name.toLowerCase().includes(qidiruv.toLowerCase())).slice(0, 6)), [qidiruv, orinlar]);
   const ikonka = el.holat === 'tayyor'
     ? (el.natija!.shubhalar ? <AlertTriangle size={17} className="text-ogoh" /> : <CheckCircle2 size={17} className="text-yaxshi" />)
     : el.holat === 'xato' || el.holat === 'aniqlanmadi' ? <XCircle size={17} className="text-xato" /> : <Loader2 size={17} className="animate-spin text-brand" />;
@@ -366,7 +400,7 @@ function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; 
                   <input className={`${INPUT} w-56 py-1.5 pl-8`} placeholder="O'quvchi ismi" value={qidiruv} onChange={e => setQidiruv(e.target.value)} />
                   {mos.length > 0 && (
                     <div className="absolute z-10 mt-1 w-72 rounded-xl border border-chiziq bg-sirt shadow-lg">
-                      {mos.map(o => <button key={o.id} onClick={() => onYubor({ studentId: o.studentId! })} className="block w-full text-left px-3 py-2 text-[12.5px] hover:bg-ichki cursor-pointer">{o.name} <span className="text-matn-xira">· {o.groupName}</span></button>)}
+                      {mos.map(o => <button key={o.id} onClick={() => onYubor(o.studentId ? { studentId: o.studentId } : { sheetCode: o.sheetCode })} className="block w-full text-left px-3 py-2 text-[12.5px] hover:bg-ichki cursor-pointer">{o.name} <span className="text-matn-xira">· {o.mehmon ? 'tashqi' : o.groupName}</span></button>)}
                     </div>
                   )}
                 </div>
