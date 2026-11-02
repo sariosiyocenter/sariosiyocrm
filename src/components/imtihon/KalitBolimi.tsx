@@ -22,7 +22,6 @@ interface KalitJavobi {
   ballSxemalari: Record<string, Sxema>;
   xatoJarima: number;
   boglanish?: Qoidalar['boglanish'];
-  javobOgirligi?: Qoidalar['javobOgirligi'];
   olchangan?: Qoidalar['olchangan'];
   bolimOtish?: Qoidalar['bolimOtish'];
 }
@@ -74,7 +73,7 @@ export default function KalitBolimi({ exam, yangila }: { exam: ImtihonTafsil; ya
     setBand(true);
     try {
       const r = await soro<{ cancelled: any; keyFix: any; ballSxemalari: Record<string, Sxema>; qaytaHisoblandi: number } & Partial<Qoidalar>>('PUT', `exams/${exam.id}/key`, patch);
-      setK({ ...k, cancelled: r.cancelled, keyFix: r.keyFix, ballSxemalari: r.ballSxemalari || {}, boglanish: r.boglanish, javobOgirligi: r.javobOgirligi, olchangan: r.olchangan, bolimOtish: r.bolimOtish });
+      setK({ ...k, cancelled: r.cancelled, keyFix: r.keyFix, ballSxemalari: r.ballSxemalari || {}, boglanish: r.boglanish, olchangan: r.olchangan, bolimOtish: r.bolimOtish });
       showNotification(`${xabar}${r.qaytaHisoblandi ? ` — ${r.qaytaHisoblandi} ta natija qayta hisoblandi` : ''}`, 'success');
       setBelgi(new Set());
       await yangila();
@@ -151,7 +150,7 @@ export default function KalitBolimi({ exam, yangila }: { exam: ImtihonTafsil; ya
         </Karta>
 
         <MurakkabQoidalar exam={exam} belgilangan={belgilangan} tuzatadi={tuzatadi} band={band} onSaqla={(p, x) => saqla(p, x)}
-          q={{ boglanish: k.boglanish || {}, javobOgirligi: k.javobOgirligi || {}, olchangan: k.olchangan || [], bolimOtish: k.bolimOtish || {} }} />
+          q={{ boglanish: k.boglanish || {}, olchangan: k.olchangan || [], bolimOtish: k.bolimOtish || {} }} />
 
         <Karta sarlavha="Kalit qayerdan">
           <p className="text-[12.5px] text-yaxshi">Savol qog'ozidan o'zi keldi · {variantlar.length} variant</p>

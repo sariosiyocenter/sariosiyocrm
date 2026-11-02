@@ -38,7 +38,7 @@ export function saralashKodi(el: { holat: string; xato?: string; oqish?: IshchiN
   if (el.holat === 'aniqlanmadi') {
     if (el.takrorId) return 'TID';
     if (o?.qr?.turi === 'S' && el.topilmadi) return 'IVT';
-    if (o?.qr?.turi === 'U' || o?.qr?.turi === 'A' || (!o?.qr && o?.idHolat !== undefined)) {
+    if (o?.qr?.turi === 'U' || (!o?.qr && o?.idHolat !== undefined)) {
       if (o?.idHolat === 'kop') return 'DID';
       if (o?.idHolat === 'bosh') return 'BID';
       if (o?.idHolat === 'chala') return 'LID';

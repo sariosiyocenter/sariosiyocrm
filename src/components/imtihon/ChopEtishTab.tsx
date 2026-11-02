@@ -52,9 +52,7 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
   const setKo = (patch: Partial<KitobchaSozlama>) => setKoHolat(x => { const y = { ...x, ...patch }; try { localStorage.setItem('imt_kitobcha', JSON.stringify(y)); } catch { /* eslab qolinmaydi */ } return y; });
   const kalitKorinadi = kora('imtihonlar.kalit');
   const kitobchaBor = s.source === 'bank';
-  const sorovnoma = s.source === 'sorovnoma';
-  const anonim = sorovnoma && !!s.sorovnoma?.anonim;
-  const [hujjat, setHujjat] = useState<Hujjat>(qism === 'qogoz' ? (kitobchaBor ? 'kitobcha' : 'kalit') : qism !== 'varaq' && kitobchaBor ? 'kitobcha' : anonim ? 'universal' : 'varaq');
+  const [hujjat, setHujjat] = useState<Hujjat>(qism === 'qogoz' ? (kitobchaBor ? 'kitobcha' : 'kalit') : qism !== 'varaq' && kitobchaBor ? 'kitobcha' : 'varaq');
   const markaz = settings?.orgName || '';
 
   const orinlar = useMemo(() => (data?.seats || []).filter(o => o.session === smena && o.roomId && (!xona || o.roomId === xona))
@@ -76,7 +74,6 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
   const umumiy = {
     markaz, imtihon: exam.name, sana: exam.date, examId: exam.id, session: smena, smena: smenaNomi(smena),
     logo: settings?.logo || null, manzil: settings?.address || null, telefon: telefon ? `Tel: ${telefon}` : null, fanlar,
-    ...(sorovnoma ? { sarlavha: "SO'ROVNOMA VARAQASI", anonim } : {}),
   };
   const filialNomi = (id: number) => schools.find(x => x.id === id)?.name || null;
   const variantlar = useMemo(() => exam.variantlar.filter(v => v.session === smena).map(v => v.code), [exam, smena]);
@@ -137,12 +134,6 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
     }
     if (turi === 'universal') {
       const n = korinish ? (qogoz === 'A4x2' ? 2 : 1) : Math.max(1, Math.min(500, universalSoni));
-      // Anonim so'rovnoma: har nusxaga o'z kodi (betlari birga o'qiladi, qayta skanerlash ikki marta sanalmaydi).
-      if (anonim) {
-        const kod = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
-        const svglar = Array.from({ length: n }, () => { const k = kod(); return sahifalar.map(sh => varaqSvg(sh, { ...umumiy, anonimKod: k }, null)); }).flat();
-        return { sarlavha: `${exam.name} — so'rovnoma varaqlari`, ...varaqlarniJoyla(svglar, qogoz) };
-      }
       const bitta = sahifalar.map(sh => varaqSvg(sh, umumiy, null));
       return { sarlavha: `${exam.name} — universal varaqlar`, ...varaqlarniJoyla(Array.from({ length: n }, () => bitta).flat(), qogoz) };
     }
@@ -194,7 +185,7 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
       if (!code) throw new Error("Bu smenada variant yo'q");
       const [d, kalit] = await Promise.all([
         olish<KitobchaMalumoti>(`exams/${exam.id}/booklets?session=${smena}`),
-        kalitKorinadi && !sorovnoma ? olish<KalitMalumoti>(`exams/${exam.id}/key`) : Promise.resolve(null),
+        kalitKorinadi ? olish<KalitMalumoti>(`exams/${exam.id}/key`) : Promise.resolve(null),
       ]);
       setEkran({ d, kalit, code });
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
@@ -229,17 +220,17 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
     {
       guruh: "Savol qog'ozi", qism: 'qogoz', royxat: [
         { id: 'kitobcha', nom: 'Kitobchalar', izoh: `${variantlar.length} variant · ksero uchun`, ikonka: <BookOpen size={16} />, ochiq: kitobchaBor },
-        { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi && !sorovnoma },
+        { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi },
         { id: 'yechim', nom: 'Yechimlar', izoh: 'har variant tartibida · tahlil darsi uchun', ikonka: <Lightbulb size={16} />, ochiq: kalitKorinadi && kitobchaBor },
       ],
     },
     {
-      guruh: sorovnoma ? "So'rovnoma kuni" : 'Imtihon kuni', qism: 'varaq', royxat: [
-        { id: 'varaq', nom: sorovnoma ? "So'rovnoma varaqlari (ismli)" : 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: !anonim },
-        { id: 'universal', nom: anonim ? "So'rovnoma varaqlari (anonim)" : 'Universal varaqlar', izoh: anonim ? 'ism va ID siz · nechta kerak bo\'lsa' : "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
-        { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: !anonim },
-        { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: !anonim },
-        { id: 'dizayn', nom: 'Varaq dizayni', izoh: s.varaqAndoza?.bloklar?.length ? `andoza: ${s.varaqAndoza.nomi || 'nomsiz'}` : "standart · bloklarni o'zingiz joylang", ikonka: <PenTool size={16} />, ochiq: !sorovnoma },
+      guruh: 'Imtihon kuni', qism: 'varaq', royxat: [
+        { id: 'varaq', nom: 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: true },
+        { id: 'universal', nom: 'Universal varaqlar', izoh: "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
+        { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: true },
+        { id: 'vedomost', nom: 'Nazoratchi vedomosti', izoh: `${xonalar.length} xona · imzo bilan`, ikonka: <ClipboardList size={16} />, ochiq: true },
+        { id: 'dizayn', nom: 'Varaq dizayni', izoh: s.varaqAndoza?.bloklar?.length ? `andoza: ${s.varaqAndoza.nomi || 'nomsiz'}` : "standart · bloklarni o'zingiz joylang", ikonka: <PenTool size={16} />, ochiq: true },
       ],
     },
   ];
@@ -368,7 +359,7 @@ export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTaf
                 </>
               )}
               {hujjat === 'universal' && (
-                <Maydon nom="Nechta" izoh={anonim ? "Har nusxaning o'z kodi bor — betlari birga o'qiladi, qayta skanerlansa ikki marta sanalmaydi" : "O'quvchi ID raqamini o'zi bo'yaydi (vedomostda bor)"}>
+                <Maydon nom="Nechta" izoh="O'quvchi ID raqamini o'zi bo'yaydi (vedomostda bor)">
                   <input type="number" min={1} max={500} className={INPUT} value={universalSoni} onChange={e => setUniversalSoni(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} />
                 </Maydon>
               )}

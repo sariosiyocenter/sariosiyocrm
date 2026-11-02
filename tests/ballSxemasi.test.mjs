@@ -53,7 +53,7 @@ test("savolTahlili: kuchlilar topgan savolda korrelyatsiya musbat, kuchsizlar to
   assert.equal(t.get(11).quyiFoiz, 0);
 });
 
-// Murakkab qoidalar (2026-11-02): bog'lash, og'irlik, o'lchangan ball, bo'lim o'tish bali.
+// Murakkab qoidalar (2026-11-02): bog'lash, o'lchangan ball, bo'lim o'tish bali.
 import { otishHolati, olchanganBall } from '../lib/imtihon.js';
 test("bog'lash: 4-savol faqat 3-savol to'g'ri bo'lsa hisoblanadi", () => {
   const r = natijaniHisobla({ items, javoblar, blocks, settings: { boglanish: { 4: '3' } } });
@@ -63,10 +63,11 @@ test("bog'lash: 4-savol faqat 3-savol to'g'ri bo'lsa hisoblanadi", () => {
   const r2 = natijaniHisobla({ items, javoblar, blocks, settings: { boglanish: { 4: '1' } } });
   assert.equal(r2.ball, 2);
 });
-test("javob og'irligi: tanlangan javob bali, maksimum — eng katta og'irlik", () => {
+test("javob og'irligi olib tashlangan (faqat o'quv markaz): eski sozlama e'tiborga olinmaydi", () => {
   const r = natijaniHisobla({ items: [it(1, 0)], javoblar: { 1: 'C' }, blocks, settings: { javobOgirligi: { 1: [4, 3, 2, 1] } } });
-  assert.equal(r.ball, 2);
-  assert.equal(r.maks, 4);
+  assert.equal(r.ball, 0);
+  assert.equal(r.maks, 1);
+  assert.equal(r.detail[0].holat, 'xato');
 });
 test("o'lchangan ball: jadval oralig'ida chiziqli", () => {
   const s = { olchangan: [[0, 200], [40, 760], [44, 800]] };

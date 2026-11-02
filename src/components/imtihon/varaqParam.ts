@@ -9,8 +9,7 @@ export function varaqParametrlari(exam: Pick<Exam, 'blocks' | 'scoring' | 'setti
   return {
     tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as VaraqParametrlari['tuzilma'],
     optionCount: s.optionCount, variantCount: s.variantCount, variantBubble: s.variantBubble,
-    sorovnoma: s.source === 'sorovnoma' && s.sorovnoma ? { savollar: s.sorovnoma.savollar, shkala: s.sorovnoma.shkala, anonim: s.sorovnoma.anonim } : null,
-    andoza: s.source !== 'sorovnoma' && s.varaqAndoza?.bloklar?.length ? s.varaqAndoza : null,
+    andoza: s.varaqAndoza?.bloklar?.length ? s.varaqAndoza : null,
     // Versiyasiz qulflangan imtihon — eski (1) varaq; qoralama qulflanganda 2 oladi, ko'rinishi ham shunday.
     qoida: s.oqishQoidasi ?? null,
     versiya: s.varaqVersiya === 2 || (!s.varaqVersiya && !exam.lockedAt) ? 2 : 1,

@@ -4,7 +4,6 @@ import { Lock, Unlock, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ArrowRi
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
-import SorovnomaTuzilma from './SorovnomaTuzilma';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
 import { TUR_NOMI } from '../../lib/savolTuri';
@@ -126,8 +125,6 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
     await tekshir();
     await yigish(true);
   };
-
-  if (s.source === 'sorovnoma') return <SorovnomaTuzilma exam={exam} yangila={yangila} />;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] gap-4 items-start">

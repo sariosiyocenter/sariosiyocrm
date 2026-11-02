@@ -22,7 +22,7 @@ import {
   sozlamaniTozala, turi, savolVariantlari, savolXatosi, varaqTuzilmasi, variantlarniYasash,
   kalitdanVariantlar, kalitToplamlari, kalitTuzilmasi, kalitQiymati,
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
-  almashtirishNomzodlari, savolniAlmashtir, sorovnomaBloklari, sorovnomaVariantlari, sorovnomaYorliqlari,
+  almashtirishNomzodlari, savolniAlmashtir,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala, moslashQatorlari,
   varaqAndozaTozala, QULFDAN_KEYIN_OZGARADI, takrorFarqi, VARAQ_VERSIYA, filiallarniBirlashtir,
   qidiruvKirishi, telefonMos, onlaynReyting,
@@ -1032,12 +1032,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           }
           qism.varaqAndoza = kelgan.varaqAndoza;
         }
-        // So'rovnoma qulflangach: savollar soni va har savolning yorliqlari soni o'zgarmasa — matnlar tahrirlanadi.
-        if (joriy.source === 'sorovnoma' && kelgan.sorovnoma) {
-          const t = sozlamaniTozala({ ...joriy, sorovnoma: kelgan.sorovnoma }).sorovnoma;
-          const shakl = sv => sv.savollar.map(q => sorovnomaYorliqlari(sv, q).length).join(',');
-          if (shakl(t) === shakl(joriy.sorovnoma)) qism.sorovnoma = { ...t, anonim: joriy.sorovnoma.anonim };
-        }
         yangi = sozlamaniTozala({ ...joriy, ...qism });
       }
       // Kalit va bekor qilingan savollar faqat /key va /manual-key orqali o'zgaradi.
@@ -1052,15 +1046,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       // Doirachalar soni bank rejimida qulflashda savollardan olinadi; "faqat
       // kalit" rejimida kitobchaga qarab qo'lda tanlanadi (qulfgacha).
       if (qulf || yangi.source !== 'kalit') yangi.optionCount = joriy.optionCount;
-      // So'rovnoma: blok savollardan, doirachalar — eng uzun shkala.
-      if (!qulf && yangi.source === 'sorovnoma') {
-        if (!yangi.sorovnoma.savollar.length) throw Object.assign(new Error("So'rovnomaga kamida bitta savol yozing"), { status: 400 });
-        d.blocks = sorovnomaBloklari(yangi);
-        d.scoring = 'foiz';
-        yangi.optionCount = Math.max(2, ...yangi.sorovnoma.savollar.map(q => sorovnomaYorliqlari(yangi.sorovnoma, q).length));
-        yangi.variantCount = 1;
-        yangi.variantBubble = false;
-      }
       d.settings = yangi;
     }
     const blocks = d.blocks ?? eski?.blocks;
@@ -1201,7 +1186,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const e = await prisma.exam.findUnique({ where: { id: parseInt(req.params.id) } });
       if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
       if (sozlamaniTozala(e.settings).source === 'kalit') return res.json({ manba: 'kalit', bloklar: [], kalitlar: kalitHolati(e) });
-      if (sozlamaniTozala(e.settings).source === 'sorovnoma') return res.json({ manba: 'sorovnoma', bloklar: [] });
       const orgIds = await organizationSchoolIds(req.user);
       // Hamma holatdagi savollar — "nega yetmayapti" (qoralama, boshqa qiyinlik, boshqa til) ni aytish uchun.
       const bank = await bankniOl(orgIds);
@@ -1223,19 +1207,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
 
       // "Faqat kalit": variantlar kiritilgan kalitdan, bank ishlatilmaydi.
       const s0 = sozlamaniTozala(e.settings);
-      // So'rovnoma: kalitsiz, har smenaga bitta variant.
-      if (s0.source === 'sorovnoma') {
-        const variants = sorovnomaVariantlari(s0);
-        const hozir = new Date();
-        await prisma.$transaction([
-          prisma.examVariant.deleteMany({ where: { examId: id } }),
-          prisma.examVariant.createMany({ data: variants.map(v => ({ examId: id, session: v.session, code: v.code, items: v.items })) }),
-          prisma.exam.update({ where: { id }, data: { lockedAt: hozir, status: IMTIHON_HOLATLARI.TAYYOR, totalQuestions: tuzilma.savolSoni ?? tuzilma.jami, maxScore: 0 } }),
-        ]);
-        await orinVariantlariniYangila(id, 1);
-        const yangi = await prisma.exam.findUnique({ where: { id } });
-        return res.json({ exam: imtihonJavobi(yangi, req), ogohlantirishlar: [], variantlar: variants.length });
-      }
       if (s0.source === 'kalit') {
         const r = kalitdanVariantlar({ blocks: e.blocks, scoring: e.scoring, settings: s0 });
         if (r.xatolar.length) {
@@ -1573,7 +1544,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         ballSxemalari: s.ballSxemalari,
         xatoJarima: s.xatoJarima,
         boglanish: s.boglanish,
-        javobOgirligi: s.javobOgirligi,
         olchangan: s.olchangan,
         bolimOtish: s.bolimOtish,
       });
@@ -1592,14 +1562,14 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         cancelled: req.body.cancelled !== undefined ? req.body.cancelled : joriy.cancelled,
         keyFix: req.body.keyFix !== undefined ? req.body.keyFix : joriy.keyFix,
         ballSxemalari: req.body.ballSxemalari !== undefined ? req.body.ballSxemalari : joriy.ballSxemalari,
-        ...Object.fromEntries(['boglanish', 'javobOgirligi', 'olchangan', 'bolimOtish'].map(k => [k, req.body[k] !== undefined ? req.body[k] : joriy[k]])),
+        ...Object.fromEntries(['boglanish', 'olchangan', 'bolimOtish'].map(k => [k, req.body[k] !== undefined ? req.body[k] : joriy[k]])),
       });
       // Ball sxemasi yoki bekor qilish maksimal ballni o'zgartiradi — birinchi variant bo'yicha qayta (javobsiz hisob).
       const v0 = await prisma.examVariant.findFirst({ where: { examId: id }, orderBy: [{ session: 'asc' }, { code: 'asc' }] });
       const maxScore = v0 ? natijaniHisobla({ items: v0.items, javoblar: {}, blocks: e.blocks, settings: yangi }).maks : e.maxScore;
       const yangilangan = await prisma.exam.update({ where: { id }, data: { settings: yangi, maxScore } });
       const soni = await hammasiniQaytaHisobla(yangilangan);
-      res.json({ cancelled: yangi.cancelled, keyFix: yangi.keyFix, ballSxemalari: yangi.ballSxemalari, boglanish: yangi.boglanish, javobOgirligi: yangi.javobOgirligi, olchangan: yangi.olchangan, bolimOtish: yangi.bolimOtish, qaytaHisoblandi: soni });
+      res.json({ cancelled: yangi.cancelled, keyFix: yangi.keyFix, ballSxemalari: yangi.ballSxemalari, boglanish: yangi.boglanish, olchangan: yangi.olchangan, bolimOtish: yangi.bolimOtish, qaytaHisoblandi: soni });
     } catch (err) { next(err); }
   });
 
@@ -1959,16 +1929,6 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           const session = s.sessions.some(x => x.id === parseInt(b.session)) ? parseInt(b.session) : 1;
           seat = await prisma.examSeat.create({ data: { examId, studentId, schoolId: st.schoolId, session, sheetCode: varaqKodi(), status: 'keldi' }, include: seatInclude });
         }
-      } else if (b.anonim === true && s.source === 'sorovnoma' && s.sorovnoma.anonim) {
-        // Anonim so'rovnoma: nusxa kodi bo'lsa — o'sha nusxa (betlari birga, qayta skanerlash
-        // yangi javob qo'shmaydi); bo'lmasa (eski universal varaq) — har varaq yangi qatnashchi.
-        const session = s.sessions.some(x => x.id === parseInt(b.session)) ? parseInt(b.session) : 1;
-        const kod = /^[A-Z0-9]{4,12}$/.test(String(b.anonimKod || '')) ? `${examId}A${b.anonimKod}` : null;
-        if (kod) seat = await prisma.examSeat.findFirst({ where: { examId, sheetCode: kod }, include: seatInclude });
-        if (!seat) {
-          const soni = await prisma.examSeat.count({ where: { examId, studentId: null } });
-          seat = await prisma.examSeat.create({ data: { examId, schoolId: e.schoolId, guestName: `Anonim ${soni + 1}`, session, sheetCode: kod || varaqKodi(), status: 'keldi' }, include: seatInclude });
-        }
       } else {
         return res.status(400).json({ error: "Varaq kodi yoki o'quvchi kerak" });
       }
@@ -1988,7 +1948,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         .map(f => ({ n: parseInt(f?.n), sabab: String(f?.sabab || '').slice(0, 120), ...(Array.isArray(f?.f) ? { f: f.f.slice(0, 20).map(Number) } : {}) }))
         .filter(f => f.n > 0 && tur.has(f.n));
 
-      // Bitta variantli imtihonda (so'rovnoma ham) variant doim A.
+      // Bitta variantli imtihonda variant doim A.
       let variant = seat.variant || (s.variantCount === 1 ? 'A' : null);
       const bubbled = VARIANT_KODLARI.slice(0, s.variantCount).includes(String(b.variant || '').toUpperCase()) ? String(b.variant).toUpperCase() : null;
       if (bubbled && bubbled !== variant) {
@@ -2005,7 +1965,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       // Bu sahifa oldin boshqa javoblar bilan o'qilgan — ehtimol boshqa o'quvchining varag'i.
       // Operator «almashtir» demaguncha yozilmaydi (Addmen duplicate-ID oynasi: eski varaq rasmi bilan).
       const oldingiSahifa = oldingi?.pages?.[page];
-      if (oldingiSahifa && b.takror !== 'almashtir' && !b.anonim) {
+      if (oldingiSahifa && b.takror !== 'almashtir') {
         const farq = takrorFarqi(oldingi.raw, answers);
         if (farq.boshqa) {
           const ism = seat.student?.name || seat.guestName || '';

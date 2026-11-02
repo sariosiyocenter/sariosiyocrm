@@ -28,10 +28,6 @@ export interface VaraqUmumiy {
   fanlar?: string;
   /** Varaq sarlavhasi (standart — "JAVOBLAR VARAQASI"). */
   sarlavha?: string;
-  /** Anonim so'rovnoma: universal varaqda ism va ID so'ralmaydi. */
-  anonim?: boolean;
-  /** Anonim nusxa kodi (QR da) — bir nusxaning betlari bitta javob bo'ladi. */
-  anonimKod?: string;
 }
 
 /** Shaxsiy varaq egasi. null — universal (nomsiz) varaq. */
@@ -150,7 +146,7 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
     q.push(`<rect x="${f(p.x - s / 2)}" y="${f(p.y - s / 2)}" width="${s}" height="${s}" fill="${toliq ? QORA : '#fff'}" stroke="${CHIZIQ}" stroke-width="0.25"/>`);
   });
 
-  const qrText = egasi ? qrMatni({ sheetCode: egasi.sheetCode, page: sahifa.page }) : qrMatni({ examId: u.examId, session: u.session, anonimKod: u.anonimKod, page: sahifa.page });
+  const qrText = egasi ? qrMatni({ sheetCode: egasi.sheetCode, page: sahifa.page }) : qrMatni({ examId: u.examId, session: u.session, page: sahifa.page });
   q.push(qrYol(qrText, sahifa.qr.x, sahifa.qr.y, sahifa.qr.s));
 
   if (birinchi) {
@@ -215,13 +211,6 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
       q.push(matn(QR_1.x + QR_1.s / 2, 69.6, egasi.variant || '—', { size: 7, bold: true, anchor: 'middle' }));
       q.push(matn(RASM.x + RASM.w / 2, 62.6, "O'RIN", { size: 2, anchor: 'middle', rang: '#555' }));
       q.push(matn(RASM.x + RASM.w / 2, 69.6, egasi.orin != null ? String(egasi.orin) : '—', { size: 7, bold: true, anchor: 'middle' }));
-    } else if (u.anonim) {
-      // Anonim so'rovnoma: ism ham, ID ham yo'q.
-      blok(q, CHAP, 29, ONG - CHAP, 42.5, 'ESLATMA');
-      ["Har savolga bittadan javob belgilang — shkaladagi raqam doirachasini bo'yang.", "Qora yoki ko'k ruchka; doirachani to'liq bo'yang.", "So'rovnoma anonim: ismingizni yozmang.", "Fikringiz biz uchun muhim — rahmat!"]
-        .forEach((s, i) => q.push(matn(CHAP + 2, 38 + i * 3.8, `${i + 1}. ${s}`, { size: 2.5, rang: '#222', maxW: 120 })));
-      bo_yashNamunasi(q, CHAP + 2, 56);
-      q.push(matn(ONG - 25, 68, `ANONIM · ${u.session}-smena`, { size: 2.6, bold: true, anchor: 'end' }));
     } else {
       // Universal varaq: ism qo'lda yoziladi, ID doirachalardan o'qiladi.
       blok(q, CHAP, 29, 43, 42.5, 'ESLATMA');

@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Lock, Wand2, LayoutList, MessageSquareText, Info, ChevronDown, Layers, FileText, Copy } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Lock, Wand2, LayoutList, Info, ChevronDown, Layers, FileText, Copy } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
 import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
-import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
 import { JarimaTanlovi } from './imtihon/sozlamaQismlari';
 import AndozadanQogoz from './imtihon/AndozadanQogoz';
 import { sanaMatni } from './imtihon/format';
@@ -69,7 +68,6 @@ export default function ExamBuilder() {
 
 function ImtihonFormasi() {
   const { id } = useParams();
-  const [urlParams] = useSearchParams();
   const tahrir = !!id;
   const navigate = useNavigate();
   const { selectedSchoolId, user, addExam, updateExam, imtihonniYangila, showNotification } = useCRM();
@@ -81,10 +79,8 @@ function ImtihonFormasi() {
   const xabar = useRef(showNotification);
   useEffect(() => { xabar.current = showNotification; });
 
-  // So'rovnoma — o'z muharriri (pastda): unga markaz standartlari kerak emas.
-  const yangiSorovnoma = !tahrir && urlParams.get('tur') === 'sorovnoma';
   // Yangi imtihon ham kutadi: forma markazning standart qiymatlari bilan ochiladi.
-  const [yuklanmoqda, setYuklanmoqda] = useState(!yangiSorovnoma);
+  const [yuklanmoqda, setYuklanmoqda] = useState(true);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   // Yangi imtihon avval «Yangi imtihon» oynasidan boshlanadi (nomi, manba, qanday imtihon).
   const [boshlandi, setBoshlandi] = useState(tahrir);
@@ -120,7 +116,7 @@ function ImtihonFormasi() {
   // Markazning umumiy sozlamasi (Imtihonlar → Sozlamalar): yangi imtihon shu qiymatlar bilan
   // boshlanadi. O'qilmasa — tizim standarti bilan davom etiladi (forma ochilmay qolmasin).
   useEffect(() => {
-    if (id || yangiSorovnoma || standartQollandi.current) return;
+    if (id || standartQollandi.current) return;
     let tirik = true;
     soro<{ sozlama: unknown }>('GET', 'imtihon-sozlama').then(r => {
       if (!tirik || standartQollandi.current) return;
@@ -131,7 +127,7 @@ function ImtihonFormasi() {
       setSozlama(m.settings as ExamSettings);
     }).catch(() => { /* tizim standarti qoladi */ }).finally(() => { if (tirik) setYuklanmoqda(false); });
     return () => { tirik = false; };
-  }, [id, soro, yangiSorovnoma]);
+  }, [id, soro]);
 
   const tuzilma = useMemo(() => varaqTuzilmasi(bloklar, scoring), [bloklar, scoring]);
   const s = (patch: Partial<ExamSettings>) => setSozlama(x => ({ ...x, ...patch }));
@@ -174,8 +170,6 @@ function ImtihonFormasi() {
   };
 
   if (yuklanmoqda) return <Yuklanmoqda />;
-  // So'rovnoma — o'z muharriri (savollar va shkala).
-  if (sozlama.source === 'sorovnoma' || yangiSorovnoma) return <SorovnomaMuharriri id={id} />;
 
   // Smenalar soni: variantlar har smenaga alohida yasaladi, shuning uchun qulfgacha. Nomi va vaqti — «Qatnashchilar» tabida.
   const smenaSoni = (n: number) => s({ sessions: Array.from({ length: n }, (_, i) => sozlama.sessions[i] || { id: i + 1, name: `${i + 1}-smena`, time: '' }) });
@@ -202,7 +196,6 @@ function ImtihonFormasi() {
     return (
       <YangiImtihonOynasi nom={nom} setNom={setNom} sana={sana} setSana={setSana} bankTayyor={!!daraxt}
         onOrqaga={() => navigate('/exams?tab=imtihonlar')}
-        onSorovnoma={() => navigate('/exams/new?tur=sorovnoma')}
         onAndoza={() => setAndozaOyna(true)}
         andozaOyna={andozaOyna && <AndozadanQogoz onYop={() => setAndozaOyna(false)} onTayyor={eid => { setAndozaOyna(false); navigate(`/exams?tab=imtihonlar&imtihon=${eid}`); }} />}
         onNusxa={async eskiId => {
@@ -447,10 +440,10 @@ function ImtihonFormasi() {
  * «Yangi imtihon» — boshqa tizimlardagidek avval uchta savol: nomi va sanasi, savollar qayerdan
  * (bank yoki o'z kitobchasi) va qanday imtihon (DTM / bitta fan / avvalgisidek). Qolgani — standart.
  */
-function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, onDavom, onNusxa, onSorovnoma, onAndoza, andozaOyna }: {
+function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, onDavom, onNusxa, onAndoza, andozaOyna }: {
   nom: string; setNom: (v: string) => void; sana: string; setSana: (v: string) => void; bankTayyor: boolean;
   onOrqaga: () => void; onDavom: (manba: Manba, shablon: Shablon) => void; onNusxa: (examId: number) => Promise<void>;
-  onSorovnoma: () => void; onAndoza: () => void; andozaOyna: React.ReactNode;
+  onAndoza: () => void; andozaOyna: React.ReactNode;
 }) {
   const { exams } = useCRM();
   // Savollar doim bankdan: «o'z kitobcham» (faqat kalit) ishlatilmagan — oynadan olindi (2026-10-29).
@@ -459,8 +452,8 @@ function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, 
   const [shablon, setShablon] = useState<Shablon>('andoza');
   const [nusxaId, setNusxaId] = useState<number | ''>('');
   const [band, setBand] = useState(false);
-  // Nusxa uchun — bankdan yoki kalitli imtihonlar (so'rovnoma emas), yangisi tepada.
-  const avvalgilar = [...exams].filter(e => e.settings?.source !== 'sorovnoma')
+  // Nusxa uchun — avvalgi imtihonlar, yangisi tepada.
+  const avvalgilar = [...exams]
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id).slice(0, 60);
   // Andoza oynasi nomi va sanasini o'zi so'raydi (andoza nomidan).
   const tayyor = shablon === 'andoza' || (!!nom.trim() && (shablon === 'nusxa' ? !!nusxaId : shablon !== 'dtm' || bankTayyor));
@@ -515,9 +508,6 @@ function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, 
             </div>
           )}
           {shablon === 'dtm' && !bankTayyor && <p className="mt-2 text-[12px] text-matn-xira">Savollar banki yuklanmoqda…</p>}
-          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-matn-sokin">
-            <button type="button" onClick={onSorovnoma} className="inline-flex items-center gap-1 text-brand hover:underline cursor-pointer"><MessageSquareText size={13} /> So'rovnoma</button>
-          </p>
         </Karta>
       )}
 

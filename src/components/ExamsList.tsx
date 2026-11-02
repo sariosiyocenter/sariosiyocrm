@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronDown, Lock, Printer, History, KeyRound, Settings, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
+import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronDown, Lock, Printer, History, KeyRound, Settings, Settings2, Copy, Trash2, List, Clock } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -88,10 +88,9 @@ export default function ExamsList() {
   const tanlangan = modul === 'imtihonlar' ? Number(params.get('imtihon')) || null : null;
   const { exam, xato, yangila } = useImtihonTafsil(tanlangan);
 
-  const sorovnoma = exam?.settings.source === 'sorovnoma';
   const BOLIMLAR = ([
-    { id: 'qogoz', nom: sorovnoma ? "So'rovnoma" : "Savol qog'ozi", ochiq: kora('imtihonlar.imtihon') },
-    { id: 'kalit', nom: 'Kalit va baholash', ochiq: kora('imtihonlar.imtihon') && !sorovnoma },
+    { id: 'qogoz', nom: "Savol qog'ozi", ochiq: kora('imtihonlar.imtihon') },
+    { id: 'kalit', nom: 'Kalit va baholash', ochiq: kora('imtihonlar.imtihon') },
     { id: 'varaq', nom: 'Qatnashchilar va varaq', ochiq: kora('imtihonlar.imtihon') },
     { id: 'oqish', nom: "Varaq o'qish", ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar', ochiq: kora('imtihonlar.natija') },
@@ -274,7 +273,6 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
           </label>
           <Yorliq rang={HOLAT_RANGI[exam.status] || 'kulrang'}>{exam.lockedAt && exam.status !== "E'lon qilindi" && <Lock size={10} />}{exam.status}</Yorliq>
           {s.source === 'kalit' && <Yorliq><KeyRound size={10} />kalit bilan</Yorliq>}
-          {s.source === 'sorovnoma' && <Yorliq rang="brand"><MessageSquareText size={10} />so'rovnoma{s.sorovnoma?.anonim ? ', anonim' : ''}</Yorliq>}
         </div>
         <p className="text-[12px] text-matn-xira mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <span className="inline-flex items-center gap-1"><Calendar size={12} />{sanaMatni(exam.date)}</span>
@@ -373,7 +371,6 @@ function ImtihonlarJadvali({ onOch }: { onOch: (id: number, b?: ImtihonBolimi) =
                       <button onClick={() => onOch(e.id)} className="font-semibold text-matn hover:text-brand text-left cursor-pointer">{e.name}</button>
                       <div className="text-[12px] text-matn-xira mt-0.5 flex flex-wrap gap-x-2">
                         {e.settings?.source === 'kalit' && <span className="inline-flex items-center gap-1"><KeyRound size={11} />o'z kitobchasi</span>}
-                        {e.settings?.source === 'sorovnoma' && <span className="inline-flex items-center gap-1"><MessageSquareText size={11} />so'rovnoma</span>}
                         {filiallar && <span>{filiallar}</span>}
                       </div>
                     </td>

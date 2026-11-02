@@ -103,11 +103,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     if (o.icr?.length) body.icr = o.icr;
     if (qoshimcha.sheetCode) body.sheetCode = qoshimcha.sheetCode;
     else if (o.qr?.turi === 'S') body.sheetCode = o.qr.sheetCode;
-    if (!body.sheetCode && s.source === 'sorovnoma' && s.sorovnoma?.anonim && (o.qr?.turi === 'U' || o.qr?.turi === 'A') && !qoshimcha.studentId) {
-      body.anonim = true;
-      body.session = o.qr.session ?? 1;
-      if (o.qr.turi === 'A') body.anonimKod = o.qr.kod;
-    } else if (!body.sheetCode) {
+    if (!body.sheetCode) {
       const sid = qoshimcha.studentId ?? (o.idRaqam ? idniTop(o.idRaqam) : 0);
       if (!sid) { yangilaEl(el.id, { holat: 'aniqlanmadi', xato: o.qr ? "O'quvchi ID raqami o'qilmadi — o'quvchini tanlang" : "QR o'qilmadi — varaq kodini kiriting" }); return; }
       body.studentId = sid;

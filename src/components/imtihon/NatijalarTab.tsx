@@ -14,7 +14,6 @@ import SavollarJadvali from './SavollarJadvali';
 import OquvchiKartasi from './OquvchiKartasi';
 import KalitMuharriri from './KalitMuharriri';
 import HisobotlarBolimi from './HisobotlarBolimi';
-import SorovnomaNatijalari from './SorovnomaNatijalari';
 import QoshimchaBallOynasi from './QoshimchaBall';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
@@ -190,8 +189,6 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
     }
   };
 
-  // So'rovnoma — o'z natijalari (savol bo'yicha taqsimot).
-  if (exam.settings.source === 'sorovnoma') return <SorovnomaNatijalari exam={exam} />;
   if (!natijalar || !xulosa) return <Yuklanmoqda />;
   if (!natijalar.length) {
     return (

@@ -146,8 +146,6 @@ export interface VaraqParametrlari {
   variantBubble: boolean;
   /** Yozma savollarning bali (varaqda ko'rsatish uchun), {n: ball}. */
   yozmaBallari?: Record<number, number>;
-  /** So'rovnoma: har qatorda savol matni va o'ng tomonda shkala doirachalari. */
-  sorovnoma?: { savollar: { matn: string; variantlar?: string[] }[]; shkala: string[]; anonim?: boolean } | null;
   /** Erkin varaq (dizayner andozasi) — bo'lsa, savollar shu bloklarga joylanadi. */
   andoza?: VaraqAndoza | null;
   /**
@@ -171,64 +169,6 @@ function qatorlarga(matn: string, olcham: number, maxW: number, maxQator: number
   if (joriy) l.push(joriy);
   if (l.length > maxQator) { l.length = maxQator; l[maxQator - 1] = l[maxQator - 1].replace(/.{0,2}$/, '…'); }
   return l;
-}
-
-/**
- * So'rovnoma varag'i: har savol — bitta qator (matni chapda, 2 qatorgacha),
- * o'ngda shkala doirachalari (ichida 1, 2, 3…; qiymat — A, B, C…). Umumiy shkala
- * yorliqlari tepada izoh bo'lib chiqadi; o'z yorlig'i bor savolda — matn oxirida.
- */
-function sorovnomaSahifalari(p: VaraqParametrlari): Sahifa[] {
-  const sv = p.sorovnoma!;
-  const kMax = Math.max(2, ...sv.savollar.map(q => (q.variantlar?.length || sv.shkala.length)));
-  const QADAM = 7.2;
-  const x0 = ONG - (kMax - 1) * QADAM - 3;   // birinchi doiracha markazi
-  const matnW = x0 - 5 - (CHAP + 8);
-  const sahifalar: Sahifa[] = [];
-  let s = yangiSahifa(1);
-  sahifalar.push(s);
-  s.bezak = [];
-  // Anonim bo'lmasa — universal varaqda o'quvchi ID si (shaxsiy varaqda QR yetadi).
-  if (!sv.anonim) {
-    for (let c = 0; c < ID_USTUNLARI; c++) {
-      const ustun: Doira[] = [];
-      for (let d = 0; d < 10; d++) ustun.push({ x: ID_X0 + c * ID_QADAM_X, y: ID_Y0 + d * ID_QADAM_Y, r: ID_R, v: String(d) });
-      s.idUstunlari.push(ustun);
-    }
-  }
-  let y = Y0_BIRINCHI;
-  const sarlavha = () => {
-    // Umumiy shkala izohi: "1 — Mutlaqo qo'shilmayman · 2 — …".
-    const izoh = sv.shkala.map((x, i) => `${i + 1} — ${x}`).join('   ·   ');
-    s.bezak!.push({ x: CHAP, y: y + 3, matn: izoh, olcham: 2.5, rang: '#333', maxW: ONG - CHAP });
-    for (let d = 0; d < kMax; d++) s.bezak!.push({ x: x0 + d * QADAM, y: y + 8.2, matn: String(d + 1), olcham: 2.6, qalin: true, anchor: 'middle' });
-    y += 10;
-  };
-  sarlavha();
-  sv.savollar.forEach((q, i) => {
-    const yorliq = q.variantlar?.length ? q.variantlar : null;
-    const k = yorliq?.length || sv.shkala.length;
-    const matn = yorliq ? `${q.matn} (${yorliq.map((x, j) => `${j + 1} — ${x}`).join(', ')})` : q.matn;
-    const qatorlar = qatorlarga(matn, 2.7, matnW, 2);
-    const h = qatorlar.length > 1 ? 9.6 : 6.6;
-    if (y + h > Y1) {
-      s = yangiSahifa(sahifalar.length + 1);
-      s.bezak = [];
-      sahifalar.push(s);
-      y = Y0_KEYINGI;
-      sarlavha();
-    }
-    const cy = y + h / 2;
-    s.bezak!.push({ x: CHAP + 6, y: cy + 1, matn: `${i + 1}.`, olcham: 2.8, qalin: true, anchor: 'end' });
-    qatorlar.forEach((t, j) => s.bezak!.push({ x: CHAP + 8, y: cy + 1 - (qatorlar.length - 1) * 1.7 + j * 3.4, matn: t, olcham: 2.7, maxW: matnW }));
-    const doiralar: Doira[] = [];
-    for (let d = 0; d < k; d++) doiralar.push({ x: x0 + d * QADAM, y: cy, r: DOIRA_R, v: HARF[d], belgi: String(d + 1) });
-    // Raqam yozuvi bezakda — savol raqami doirachalar yonida chizilmaydi (x manfiy emas, lekin bo'sh).
-    s.yopiq.push({ n: i + 1, raqam: { x: -100, y: cy }, doiralar });
-    y += h + 0.8;
-  });
-  for (const sh of sahifalar) sh.pages = sahifalar.length;
-  return sahifalar;
 }
 
 export const HARF = 'ABCDEF';
@@ -293,7 +233,6 @@ export function moslashTori(n: number, bx: number, by: number): MoslashSavol {
  * bo'lsa — savollar uning bloklariga joylanadi (andozaSahifalari).
  */
 export function varaqSahifalari(p: VaraqParametrlari): Sahifa[] {
-  if (p.sorovnoma?.savollar.length) return sorovnomaSahifalari(p);
   if (p.andoza?.bloklar?.length) return yorliqlarniQoy(andozaSahifalari(p), p);
   if (p.versiya === 2) return varaqSahifalari2(p);
   const k = Math.min(6, Math.max(2, p.optionCount || 4));
@@ -671,23 +610,17 @@ export function andozaXatolari(a: VaraqAndoza, p: { tuzilma: Tuzilma | null; opt
 }
 
 /** QR matni. Shaxsiy varaq: varaq kodi; universal: imtihon va smena. */
-/**
- * QR matni. Shaxsiy varaq: varaq kodi; universal: imtihon va smena; anonim
- * so'rovnoma: imtihon, smena va nusxa kodi (bir nusxaning betlari birga, ismsiz).
- */
-export function qrMatni(v: { sheetCode?: string; examId?: number; session?: number; anonimKod?: string; page: number }): string {
+export function qrMatni(v: { sheetCode?: string; examId?: number; session?: number; page: number }): string {
   if (v.sheetCode) return `IMT1|S|${v.sheetCode}|${v.page}`;
-  if (v.anonimKod) return `IMT1|A|${v.examId}|${v.session || 1}|${v.anonimKod}|${v.page}`;
   return `IMT1|U|${v.examId}|${v.session || 1}|${v.page}`;
 }
 
-export interface QrMalumot { turi: 'S' | 'U' | 'A'; sheetCode?: string; examId?: number; session?: number; kod?: string; page: number }
+export interface QrMalumot { turi: 'S' | 'U'; sheetCode?: string; examId?: number; session?: number; page: number }
 
 export function qrniOqi(matn: string): QrMalumot | null {
   const q = String(matn || '').trim().split('|');
   if (q[0] !== 'IMT1') return null;
   if (q[1] === 'S' && q[2]) return { turi: 'S', sheetCode: q[2], page: parseInt(q[3]) || 1 };
   if (q[1] === 'U' && parseInt(q[2])) return { turi: 'U', examId: parseInt(q[2]), session: parseInt(q[3]) || 1, page: parseInt(q[4]) || 1 };
-  if (q[1] === 'A' && parseInt(q[2]) && q[4]) return { turi: 'A', examId: parseInt(q[2]), session: parseInt(q[3]) || 1, kod: q[4], page: parseInt(q[5]) || 1 };
   return null;
 }

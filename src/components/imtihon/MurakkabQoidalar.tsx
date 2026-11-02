@@ -3,12 +3,11 @@ import { X } from 'lucide-react';
 import { Karta, Tugma, INPUT } from './ui';
 import type { ImtihonTafsil } from './turlar';
 
-// «Kalit va baholash» dagi murakkab qoidalar (Addmen «Question linking», «Option weights»,
+// «Kalit va baholash» dagi murakkab qoidalar (Addmen «Question linking»,
 // «Scaled score», bo'lim cut-off). Har saqlashda natijalar qayta hisoblanadi.
 
 export interface Qoidalar {
   boglanish: Record<string, string>;
-  javobOgirligi: Record<string, number[]>;
   olchangan: [number, number][];
   bolimOtish: Record<string, number>;
 }
@@ -20,7 +19,6 @@ export default function MurakkabQoidalar({ exam, q, belgilangan, tuzatadi, band,
   onSaqla: (patch: Partial<Qoidalar>, xabar: string) => void;
 }) {
   const [bog, setBog] = useState({ n: '', shart: '' });
-  const [og, setOg] = useState('4, 3, 2, 1, 0');
   const [jadval, setJadval] = useState(() => q.olchangan.map(([a, b]) => `${a}\t${b}`).join('\n'));
   const [bolim, setBolim] = useState<Record<string, string>>(() => Object.fromEntries(exam.blocks.map((_, i) => [String(i), q.bolimOtish[String(i)] ? String(q.bolimOtish[String(i)]) : ''])));
   const sarlavha = 'block text-[12px] font-semibold text-matn mb-1.5';
@@ -49,30 +47,6 @@ export default function MurakkabQoidalar({ exam, q, belgilangan, tuzatadi, band,
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-
-        <section>
-          <span className={sarlavha}>Javob og'irligi (so'rovnoma, psixologik test)</span>
-          <p className="text-[11.5px] text-matn-xira mb-1.5">Asl A, B, C… javoblarning bali. To'g'ri javob yo'q — har javob o'z ballini oladi. Jadvalda savollarni belgilang.</p>
-          <div className="flex gap-1.5">
-            <input className={INPUT} aria-label="Og'irliklar" value={og} onChange={e => setOg(e.target.value)} />
-            <Tugma kichik turi="oddiy" disabled={!belgilangan.length} onClick={() => {
-              const w = og.split(/[,;\s]+/).filter(Boolean).map(son).map(x => (Number.isFinite(x) ? x : 0));
-              const yangi = { ...q.javobOgirligi };
-              for (const n of belgilangan) yangi[n] = w;
-              onSaqla({ javobOgirligi: yangi }, `${belgilangan.length} ta savolga og'irlik qo'yildi`);
-            }}>Belgilanganlarga ({belgilangan.length})</Tugma>
-          </div>
-          {Object.keys(q.javobOgirligi).length > 0 && (
-            <p className="mt-1.5 text-[12px] text-matn-sokin">
-              Og'irlikli: {Object.keys(q.javobOgirligi).join(', ')}{' '}
-              <button className="text-brand hover:underline cursor-pointer" onClick={() => {
-                const yangi = { ...q.javobOgirligi };
-                for (const n of belgilangan.length ? belgilangan : Object.keys(yangi)) delete yangi[n];
-                onSaqla({ javobOgirligi: yangi }, "Og'irlik olib tashlandi");
-              }}>{belgilangan.length ? 'belgilanganlardan olish' : 'hammasini olish'}</button>
-            </p>
           )}
         </section>
 

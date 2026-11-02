@@ -776,8 +776,6 @@ export interface ExamSettings {
     ballSxemalari?: Record<string, { togri: number; xato: number; bosh: number; nom?: string }>;
     /** Savollarni bog'lash: {"17": "3"} — 17-savol faqat 3-savol to'g'ri bo'lsa. */
     boglanish?: Record<string, string>;
-    /** Javob og'irligi: savolning asl A, B, C… javobi bali. */
-    javobOgirligi?: Record<string, number[]>;
     /** O'lchangan ball jadvali: [xom, ball]. */
     olchangan?: [number, number][];
     /** Bo'lim bo'yicha o'tish bali (foiz), bo'lim indeksi bo'yicha. */
@@ -800,7 +798,7 @@ export interface ExamSettings {
     admit: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; auto: boolean; template: string };
     rasch: { enabled: boolean; grades: { label: string; min: number }[] };
     /** 'bank' — variantlar savollar bankidan; 'kalit' — markazning o'z kitobchasi, faqat kalit kiritiladi. */
-    source: 'bank' | 'kalit' | 'sorovnoma';
+    source: 'bank' | 'kalit';
     /** "Faqat kalit" rejimi: {'smena|variant': [1-savol kaliti, ...]} (kalit ruxsatisiz bo'sh keladi). */
     keys: Record<string, string[]>;
     /** Shu rejimda savollarning mavzusi (ixtiyoriy, tahlil uchun) — keys bilan bir xil shakl. */
@@ -822,8 +820,6 @@ export interface ExamSettings {
     ishlatishChegarasi: number | null;
     /** Takroriy savol: 'variant' — matn va variantlar, 'savol' — faqat matn, 'yoq' — tekshirilmaydi. */
     takror: 'yoq' | 'savol' | 'variant';
-    /** So'rovnoma (source 'sorovnoma'): savollar, umumiy shkala, anonim. */
-    sorovnoma: { anonim: boolean; shkala: string[]; savollar: { matn: string; variantlar?: string[] }[] };
     /** Erkin javob varaqasi (dizayner andozasining nusxasi); null — standart varaq. */
     varaqAndoza?: import('./lib/omr/layout').VaraqAndoza | null;
     oqishQoidasi?: import('./lib/omr/reader').OqishQoidasi;
