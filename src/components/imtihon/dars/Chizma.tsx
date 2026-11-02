@@ -12,7 +12,13 @@ import type { ChizmaElementi } from './darsTurlari';
 const KENGLIK = 400;
 const BALANDLIK_MAX = 360;
 const CHET = 26;
-const RANG: Record<string, string> = { asosiy: 'var(--dars-bor)', urgu: 'var(--dars-urgu)', ikkinchi: '#f2c46b' };
+const RANG: Record<string, string> = { asosiy: 'var(--dars-bor)', urgu: 'var(--dars-urgu)', ikkinchi: 'var(--dars-sariq)' };
+/** Yopiq shakl (aylana, ko'pburchak) chizilgach ichi shu shaffoflikda to'ladi — Manimdagi fill_opacity. */
+const TOLDIRISH_SHAFFOF = 0.13;
+/** Shakl chizilib bo'lgach to'ladi (chiziq animatsiyasi ~1.1 s). */
+const TOLDIRISH_KECHIKISH = 0.9;
+/** Harf (+ indeks/shtrix) — LaTeX dagidek kursivda: A, B₁, x, α'. */
+const KURSIV = /^[A-Za-zα-ω][0-9₀-₉'′]*$/;
 const GRAFIK_NUQTALARI = 240;
 const OQ_KECHIKISH = 0.6;
 /** Juda yassi grafikda balandlik kenglikning kamida shuncha ulushi bo'ladi. */
@@ -41,7 +47,15 @@ function Chiziq({ d, rang, uzuq, qalin = 2.2, kechikish = 0 }: { d: string; rang
 }
 
 function Belgi({ x, y, matn, rang, kechikish = 0.4, kattaroq }: { x: number; y: number; matn: string; rang: string; kechikish?: number; kattaroq?: boolean }) {
-  return <text x={x} y={y} fill={rang} fontSize={kattaroq ? 15 : 13} fontWeight={600} textAnchor="middle" dominantBaseline="middle" className="dars-chiz-paydo" style={{ animationDelay: `${kechikish}s` }}>{matn}</text>;
+  return (
+    <text x={x} y={y} fill={rang} fontSize={kattaroq ? 16 : 14.5} fontStyle={KURSIV.test(matn) ? 'italic' : undefined}
+      textAnchor="middle" dominantBaseline="middle" className="dars-belgi" style={{ animationDelay: `${kechikish}s` }}>{matn}</text>
+  );
+}
+
+/** Yopiq shaklning xira ichi — chiziq chizilib bo'lgach paydo bo'ladi (uzuq shakl to'ldirilmaydi). */
+function Toldirish({ d, rang }: { d: string; rang: string }) {
+  return <path d={d} fill={rang} fillOpacity={TOLDIRISH_SHAFFOF} stroke="none" className="dars-toldir" style={{ animationDelay: `${TOLDIRISH_KECHIKISH}s` }} />;
 }
 
 function strelka(a: [number, number], b: [number, number]): string {
@@ -101,7 +115,7 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
       const [x, y] = px(e.x, e.y);
       return (
         <g>
-          <circle cx={x} cy={y} r={4} fill={rang} className="dars-chiz-paydo" />
+          <circle cx={x} cy={y} r={4.5} fill={rang} className="dars-osish" />
           {e.nom && <Belgi x={x + 11} y={y - 11} matn={e.nom} rang={rang} kechikish={0.2} />}
         </g>
       );
@@ -126,9 +140,11 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
     case 'aylana': {
       const [x, y] = px(e.x, e.y);
       const r = e.r * s;
+      const d = `M${x + r},${y}A${r},${r} 0 1 0 ${x - r},${y}A${r},${r} 0 1 0 ${x + r},${y}`;
       return (
         <g>
-          <Chiziq d={`M${x + r},${y}A${r},${r} 0 1 0 ${x - r},${y}A${r},${r} 0 1 0 ${x + r},${y}`} rang={rang} uzuq={e.uzuq} />
+          {!e.uzuq && <Toldirish d={d} rang={rang} />}
+          <Chiziq d={d} rang={rang} uzuq={e.uzuq} />
           {e.nom && <Belgi x={x + r * 0.78} y={y - r * 0.78 - 10} matn={e.nom} rang={rang} kechikish={0.8} />}
         </g>
       );
@@ -167,16 +183,29 @@ const Element = React.memo(function Element({ e, px, s, ch, kesim, uchlar }: { e
       }
       const r = 20;
       // Kichik burchak tomonga: yoy yo'nalishi vektorlar ko'paytmasi ishorasidan.
-      const supurish = u1 * w2 - u2 * w1 > 0 ? 1 : 0;
+      const vektorKop = u1 * w2 - u2 * w1;
+      const supurish = vektorKop > 0 ? 1 : 0;
       const d = `M${vx + u1 * r},${vy + u2 * r}A${r},${r} 0 0 ${supurish} ${vx + w1 * r},${vy + w2 * r}`;
-      return <g><Chiziq d={d} rang={rang} qalin={1.8} />{e.nom && <Belgi x={vx + (bis1 / bisUz) * (r + 13)} y={vy + (bis2 / bisUz) * (r + 13)} matn={e.nom} rang={rang} kechikish={0.6} />}</g>;
+      // Nur birinchi tomondan ikkinchisiga aylanib, yoyni "ochadi" (ekranda soat yo'nalishi — musbat).
+      const burchak = (Math.atan2(vektorKop, u1 * w1 + u2 * w2) * 180) / Math.PI;
+      const nur = r + 12;
+      return (
+        <g>
+          <path d={`M${vx},${vy}L${vx + u1 * nur},${vy + u2 * nur}`} stroke={rang} strokeWidth={1.6} strokeLinecap="round" className="dars-nur"
+            style={{ '--burchak': `${burchak.toFixed(1)}deg`, transformOrigin: `${vx}px ${vy}px` } as React.CSSProperties} />
+          <Chiziq d={d} rang={rang} qalin={1.8} />
+          {e.nom && <Belgi x={vx + (bis1 / bisUz) * (r + 13)} y={vy + (bis2 / bisUz) * (r + 13)} matn={e.nom} rang={rang} kechikish={0.9} />}
+        </g>
+      );
     }
     case 'kopburchak': {
       const nuqtalar = e.nuqtalar.map(n => px(n.x, n.y));
       const [mx, my] = nuqtalar.reduce(([a, b], [x, y]) => [a + x / nuqtalar.length, b + y / nuqtalar.length], [0, 0]);
+      const yopiq = e.yopiq !== false;
       return (
         <g>
-          <Chiziq d={yol(nuqtalar, e.yopiq !== false)} rang={rang} uzuq={e.uzuq} />
+          {yopiq && !e.uzuq && nuqtalar.length > 2 && <Toldirish d={yol(nuqtalar, true)} rang={rang} />}
+          <Chiziq d={yol(nuqtalar, yopiq)} rang={rang} uzuq={e.uzuq} />
           {e.nuqtalar.map((n, i) => {
             if (!n.nom) return null;
             const [x, y] = nuqtalar[i];

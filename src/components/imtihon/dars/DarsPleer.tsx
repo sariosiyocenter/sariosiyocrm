@@ -9,7 +9,8 @@ import { darsVaqti, type Dars } from './darsTurlari';
 // "yozilib" chiqadi. Shuning uchun dars telefonda ham tiniq, hajmi esa videodan o'nlab marta kichik.
 // Ovoz bo'lmasa (hali yozilmagan yoki ochilmadi) — dars subtitr bilan, taxminiy vaqtda o'ynaydi.
 // Chizmali darsda (egasi, 2026-10-14) doska ikkiga bo'linadi: bir tomonda chizma yoki savol rasmi
-// (qadam-baqadam chiziladi — Chizma.tsx), ikkinchi tomonda yozuv.
+// (qadam-baqadam chiziladi — Chizma.tsx), ikkinchi tomonda yozuv. Ko'rinishi — 3Blue1Brown (Manim)
+// uslubida (egasi, 2026-11-02): ranglar, shrift va animatsiyalar src/index.css dagi .dars-* da.
 
 const TEZLIKLAR = [1, 1.25, 1.5, 0.75];
 /** Ekran shu oraliqda yangilanadi (soniya) — har kadrda emas: kuchsiz telefonda ham silliq. */
@@ -147,7 +148,7 @@ export default function DarsPleer({ dars }: { dars: Dars }) {
         const javob = i === qadamlar.length - 1;
         return (
           <section key={i} ref={faol ? joriyEl : undefined} aria-current={faol ? 'step' : undefined}
-            className={`relative pl-4 py-2 transition-opacity duration-300 ${faol || tugadi ? 'opacity-100' : 'opacity-45'} ${javob ? 'mt-1 rounded-lg bg-white/[0.06] pr-3' : ''}`}>
+            className={`relative pl-4 py-2 transition-opacity duration-300 ${faol || tugadi ? 'opacity-100' : 'opacity-45'} ${javob ? 'dars-javob mt-2 rounded-lg bg-white/[0.04] pr-3' : ''}`}>
             <span aria-hidden className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-full" style={{ background: faol || javob ? 'var(--dars-urgu)' : 'rgb(255 255 255 / 0.2)' }} />
             <h5 className="text-[11px] font-bold uppercase tracking-[0.09em]" style={{ color: 'var(--dars-urgu)' }}>
               <span className="raqam">{i + 1}</span>{x.sarlavha && <> · {x.sarlavha}</>}
