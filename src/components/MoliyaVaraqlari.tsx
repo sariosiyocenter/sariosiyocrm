@@ -1,6 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Download, Loader2, Printer, RefreshCw, Search } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Moliya → Hisobot varag'i: kunlik kassa, oylik moliya, qarzdorlik, ustoz oyliklari.
@@ -10,7 +11,7 @@ import { useCRM } from '../context/CRMContext';
  * bir xil ta'rifda; bu yerda faqat ko'rsatish, Excelga yuklash va chop etish.
  */
 
-type Varaq = 'kunlik' | 'oylik' | 'qarz' | 'ustoz';
+type Varaq = 'kunlik' | 'oylik' | 'qarz' | 'ustoz' | 'oylikQarz';
 
 const som = (n: number) => Math.round(n).toLocaleString('ru-RU');
 const dmy = (d: string) => { const [y, m, k] = d.split('-'); return `${k}.${m}.${y}`; };
@@ -444,7 +445,7 @@ function QarzVaraq() {
 interface UstozOylik {
     oy: string;
     jami: { asosiy: number; kpi: number; hisoblangan: number; tolangan: number; qoldi: number; berilgan: number; soni: number };
-    ustozlar: { id: number; ism: string; lavozim: string; asosiy: number; kpi: number; bonus: number; jarima: number; hisoblangan: number; tolangan: number; qoldi: number; berilgan: boolean; sana: string | null; izoh: string; darslar: number;
+    ustozlar: { id: number; ism: string; lavozim: string; asosiy: number; kpi: number; bonus: number; jarima: number; hisoblangan: number; tolangan: number; qoldi: number; berilgan: boolean; yopiq: boolean; jamiQarz: number; sana: string | null; izoh: string; darslar: number;
         kurslar: { id: number; nom: string; oquvchi: number; darslar: number; tushgan: number; haq: number; shart: string; ikkinchi: boolean }[] }[];
 }
 
@@ -454,7 +455,7 @@ function UstozVaraq() {
     const [ochiq, setOchiq] = useState<Set<number>>(new Set());
     const almashtir = (id: number) => setOchiq(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
     const excel = d && (() => excelgaYukla(`Ustoz-oyliklari-${d.oy}`, [
-        { nom: 'Ustozlar', qatorlar: [['Ustoz', 'Lavozim', 'Asosiy oylik', 'KPI (kurslardan)', 'Bonus', 'Jarima', 'Hisoblangan', 'To‘langan', 'Qolgan', 'Holat'], ...d.ustozlar.map(u => [u.ism, u.lavozim, u.asosiy, u.kpi, u.bonus, u.jarima, u.hisoblangan, u.tolangan, u.qoldi, u.berilgan ? 'Berilgan' : 'Berilmagan'])] },
+        { nom: 'Ustozlar', qatorlar: [['Ustoz', 'Lavozim', 'Asosiy oylik', 'KPI (kurslardan)', 'Bonus', 'Jarima', 'Hisoblangan', 'To‘langan', 'Qolgan', 'Holat'], ...d.ustozlar.map(u => [u.ism, u.lavozim, u.asosiy, u.kpi, u.bonus, u.jarima, u.hisoblangan, u.tolangan, u.qoldi, ustozHolati(u)])] },
         { nom: 'Kurslar', qatorlar: [['Ustoz', 'Kurs', 'O‘quvchi', 'Darslar', 'Tushgan pul', 'Ustoz haqi', 'Shart'], ...d.ustozlar.flatMap(u => u.kurslar.map(k => [u.ism, k.nom + (k.ikkinchi ? ' (2-ustoz)' : ''), k.oquvchi, k.darslar, k.tushgan, k.haq, k.shart]))] },
     ]));
     return (
@@ -484,12 +485,15 @@ function UstozVaraq() {
                             </Jadval>
                         ) : <Bosh>Faol ustoz yo‘q</Bosh>}
                     </Blok>
-                    <p className="chop-yoq text-[11.5px] text-matn-xira">Kurslardan — har kursga tushgan puldan ustoz ulushi (kursdagi shartga ko‘ra). Oylik berilgach to‘langan summa va bonus/jarima haqiqiy yozuvdan olinadi.</p>
+                    <p className="chop-yoq text-[11.5px] text-matn-xira">Kurslardan — har kursga tushgan puldan ustoz ulushi (kursdagi shartga ko‘ra). Yopilgan oyda summa, bonus va jarima qotirilgan hisobdan, to‘langan — shu oyga tushgan pul. Yopilmagan oy — hozirgi hisob-kitob.</p>
                 </div>
             )}
         </div>
     );
 }
+
+const ustozHolati = (u: { yopiq: boolean; berilgan: boolean; tolangan: number }) =>
+    !u.yopiq ? 'Yopilmagan' : u.berilgan ? 'Berilgan' : u.tolangan > 0 ? 'Qisman' : 'Berilmagan';
 
 function FragmentQator({ u, ochiq, onBos }: { u: UstozOylik['ustozlar'][number]; ochiq: boolean; onBos: () => void }) {
     return (
@@ -502,7 +506,7 @@ function FragmentQator({ u, ochiq, onBos }: { u: UstozOylik['ustozlar'][number];
                 <td className={`${TD} ${O} font-medium text-matn`}>{som(u.hisoblangan)}{(u.bonus || u.jarima) ? <span className="block text-[11px] text-matn-xira font-normal">{u.bonus ? `+${som(u.bonus)} bonus` : ''}{u.bonus && u.jarima ? ', ' : ''}{u.jarima ? `−${som(u.jarima)} jarima` : ''}</span> : null}</td>
                 <td className={`${TD} ${O} text-yaxshi`}>{som(u.tolangan)}</td>
                 <td className={`${TD} ${O} ${u.qoldi ? 'font-medium text-xato' : ''}`}>{som(u.qoldi)}</td>
-                <td className={`${TD} whitespace-nowrap`}>{u.berilgan ? <span className="text-yaxshi">Berilgan</span> : <span className="text-ogoh">Berilmagan</span>}</td>
+                <td className={`${TD} whitespace-nowrap`}><span className={u.berilgan ? 'text-yaxshi' : !u.yopiq ? 'text-matn-sokin' : 'text-ogoh'}>{ustozHolati(u)}</span></td>
             </tr>
             {ochiq && (
                 <tr className="bg-ichki/40">
@@ -521,6 +525,58 @@ function FragmentQator({ u, ochiq, onBos }: { u: UstozOylik['ustozlar'][number];
     );
 }
 
+// --- 5. Xodimlar oyligi bo'yicha qarz ------------------------------------------------
+
+interface OylikQarzi {
+    joriyOy: string;
+    jami: { yopiqQarz: number; joriy: number; avans: number; qarzdor: number };
+    royxat: { id: number; ism: string; lavozim: string; yopiqQarz: number; avans: number; joriy: number; jami: number; engEski: string | null; yopilmagan: string[] }[];
+}
+
+function OylikQarzVaraq() {
+    const { data: d, yuklanmoqda, xato, yangila } = useHisobot<OylikQarzi>('oylik-qarz', {});
+    const navigate = useNavigate();
+    const excel = d && (() => excelgaYukla(`Oylik-qarzlari-${d.joriyOy}`, [
+        { nom: 'Oylik qarzlari', qatorlar: [['Xodim', 'Lavozim', 'Yopilgan oylar qarzi', 'Avans', `${oyMatni(d.joriyOy)} (taxminan)`, 'Jami', 'Eng eski qarz'],
+            ...d.royxat.map(x => [x.ism, x.lavozim, x.yopiqQarz, x.avans, x.joriy, x.jami, x.engEski ? oyMatni(x.engEski) : ''])] },
+    ]));
+    return (
+        <div className="space-y-4">
+            <Asboblar onExcel={excel || undefined} onYangila={yangila} yuklanmoqda={yuklanmoqda}><span /></Asboblar>
+            <Holat yuklanmoqda={yuklanmoqda} xato={xato} bor={!!d} onQayta={yangila} />
+            {d && (
+                <div id="hisobot-chop" className={`space-y-4 ${yuklanmoqda ? 'opacity-60' : ''}`}>
+                    <h2 className="text-[16px] font-semibold text-matn">Xodimlar oyligi bo‘yicha qarz</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Karta nom="Yopilgan oylar qarzi" qiymat={som(d.jami.yopiqQarz)} ton={d.jami.yopiqQarz ? 'xato' : 'yaxshi'} izoh={`${d.jami.qarzdor} xodimga${d.jami.avans ? ` · avans ${som(d.jami.avans)}` : ''}`} />
+                        <Karta nom={`${oyMatni(d.joriyOy)} (taxminan)`} qiymat={som(d.jami.joriy)} izoh="oy yopilganda aniqlanadi" />
+                        <Karta nom="Jami kerak bo‘ladigan pul" qiymat={som(d.jami.yopiqQarz - d.jami.avans + d.jami.joriy)} ton="brand" izoh="kassani rejalash uchun" />
+                    </div>
+                    <Blok sarlavha="Xodimlar bo‘yicha" izoh="qatorni bosing — xodim kartasi ochiladi">
+                        {d.royxat.length ? (
+                            <Jadval bosh={[['Xodim'], ['Yopilgan oylar qarzi', true], [`${oyMatni(d.joriyOy).split(' ')[0]} (taxminan)`, true], ['Jami', true], ['Eng eski qarz']]}>
+                                {d.royxat.map(x => (
+                                    <tr key={x.id} className="cursor-pointer hover:bg-ichki/50" onClick={() => navigate(`/hr/${x.id}`)}>
+                                        <td className={`${TD} text-matn font-medium`}>{x.ism}<span className="block text-[11px] text-matn-xira font-normal">{x.lavozim}</span></td>
+                                        <td className={`${TD} ${O} ${x.yopiqQarz ? 'text-xato font-medium' : 'text-matn-xira'}`}>{som(x.yopiqQarz)}{x.avans ? <span className="block text-[11px] text-ogoh font-normal">avans {som(x.avans)}</span> : null}</td>
+                                        <td className={`${TD} ${O} text-matn-sokin italic`}>≈ {som(x.joriy)}</td>
+                                        <td className={`${TD} ${O} font-medium text-matn`}>{som(x.jami)}</td>
+                                        <td className={`${TD} whitespace-nowrap`}>
+                                            {x.engEski ? <span className="text-xato">{oyMatni(x.engEski)}</span> : <span className="text-yaxshi">Qarz yo‘q</span>}
+                                            {x.yopilmagan.length > 0 && <span className="block text-[11px] text-ogoh">yopilmagan: {x.yopilmagan.map(m => oyMatni(m).split(' ')[0]).join(', ')}</span>}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </Jadval>
+                        ) : <Bosh>Xodimlarga qarz yo‘q</Bosh>}
+                    </Blok>
+                    <p className="chop-yoq text-[11.5px] text-matn-xira">Yopilgan oy — xodim kartasida «Oyni yopish» bosilgan oy: summa qotgan. Berilgan pul eng eski qarzdan yopiladi. Joriy oy — hozirgi asosiy oylik va kurslardan ulush.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // --- Asosiy -----------------------------------------------------------------------
 
 export default function MoliyaVaraqlari() {
@@ -530,6 +586,7 @@ export default function MoliyaVaraqlari() {
         kora('moliya.hisobot') && { id: 'oylik' as const, nom: 'Oylik moliya' },
         kora('moliya.hisobot') && { id: 'qarz' as const, nom: 'Qarzdorlik' },
         kora('xodimlar.maosh') && { id: 'ustoz' as const, nom: 'Ustoz oyliklari' },
+        kora('xodimlar.maosh') && { id: 'oylikQarz' as const, nom: 'Oylik qarzlari' },
     ].filter(Boolean) as { id: Varaq; nom: string }[];
     const [varaq, setVaraq] = useState<Varaq | null>(null);
     const joriy = varaq && mavjud.some(m => m.id === varaq) ? varaq : mavjud[0]?.id;
@@ -549,6 +606,7 @@ export default function MoliyaVaraqlari() {
             {joriy === 'oylik' && <OylikVaraq />}
             {joriy === 'qarz' && <QarzVaraq />}
             {joriy === 'ustoz' && <UstozVaraq />}
+            {joriy === 'oylikQarz' && <OylikQarzVaraq />}
         </div>
     );
 }

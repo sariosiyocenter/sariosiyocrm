@@ -43,6 +43,8 @@ import { USTOZ_NOMLARI, ustozNomlari, ustozKurslari } from './lib/ustozlar.js';
 import { kursdaOqiydi } from './lib/oquvchiHolati.js';
 import { vercelKonteksti, fondaTugat } from './lib/fonIshi.js';
 import { ochirishQoldi, OCHIRISH_MUDDATI_XATO, XARAJAT_OCHIRISH_DAQIQA } from './lib/xarajat.js';
+import { oylikDaftari1, taqsimTavsifi, oylikTolovXabari } from './lib/oylik.js';
+import { AVVALGI_OY, oyTogri, joriyOyKaliti, hisobJami, oyMatni } from './lib/oylikDaftar.js';
 import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor, adminChatlari } from './services/klikTasdiq.js';
 import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
@@ -1139,6 +1141,7 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
     const [davomatSoni, oylikSoni] = await Promise.all([
       prisma.staffAttendance.count({ where: { userId: targetId } }),
       prisma.salaryPayment.count({ where: { userId: targetId } })
+        .then(async n => n + await prisma.salaryAccrual.count({ where: { userId: targetId } }))
     ]);
     // Rahbar baribir butunlay o'chirishni tanlasa (force), bog'langan yozuvlarni
     // ham olib tashlaymiz. Moliyadagi oylik xarajati esa QOLADI: pul haqiqatan
@@ -1150,6 +1153,7 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
       await prisma.$transaction(async (tx) => {
         await tx.staffAttendance.deleteMany({ where: { userId: targetId } });
         await tx.salaryPayment.deleteMany({ where: { userId: targetId } });
+        await tx.salaryAccrual.deleteMany({ where: { userId: targetId } });
       });
     } else if (davomatSoni > 0 || oylikSoni > 0) {
       const qismlar = [];
@@ -1271,7 +1275,7 @@ app.get('/api/salary-payments', authenticate, async (req, res, next) => {
     if (filialXatosi) return res.status(403).json({ error: filialXatosi });
     const payments = await prisma.salaryPayment.findMany({
       where: { userId: parseInt(userId) },
-      orderBy: { month: 'desc' }
+      orderBy: [{ paidAt: 'desc' }, { id: 'desc' }]
     });
     res.json(payments);
   } catch (error) { next(error); }
@@ -1311,86 +1315,134 @@ async function oylikXabariniYubor(userId, schoolId, matn) {
   }
 }
 
-// Oylik berish. Xarajat va oylik yozuvi bitta tranzaksiyada yaratiladi:
-// ilgari xarajat avval yozilar, oylik yozuvi yiqilsa (masalan o'sha oy uchun
-// allaqachon to'langan bo'lsa) Moliyada yetim xarajat qolib ketardi va har
-// urinishda takrorlanardi.
-app.post('/api/salary-payments', authenticate, async (req, res, next) => {
+/**
+ * Xodim oyligi daftari: oylar bo'yicha hisoblangan, berilgan, qoldiq; jami qarz va avans.
+ * Qoida — lib/oylikDaftar.js.
+ */
+app.get('/api/salary-ledger', authenticate, async (req, res, next) => {
   try {
-    const { userId, month, amount, baseSalary, bonuses, fines, note } = req.body;
-    const parsedUserId = parseInt(userId);
-    const parsedAmount = parseInt(amount);
-    if (!Number.isInteger(parsedUserId)) return res.status(400).json({ error: "Xodim tanlanmagan" });
-    if (!month) return res.status(400).json({ error: "Oy ko'rsatilmagan" });
-    if (!Number.isFinite(parsedAmount)) return res.status(400).json({ error: "Summa noto'g'ri" });
-    const filialXatosi = await xodimFilialiXatosi(req, parsedUserId);
+    const userId = parseInt(req.query.userId);
+    if (!Number.isInteger(userId)) return res.status(400).json({ error: 'userId required' });
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
     if (filialXatosi) return res.status(403).json({ error: filialXatosi });
-
-    const employee = await prisma.user.findUnique({
-      where: { id: parsedUserId },
-      select: { name: true, schoolId: true }
-    });
-    if (!employee) return res.status(404).json({ error: 'Xodim topilmadi' });
-
-    // Xodimning o'z filiali. Ilgari req.user.schoolId olinardi va filial
-    // almashtirilgan bo'lsa yozuv boshqa filialga tushib ketardi.
-    const schoolId = employee.schoolId || req.schoolScope || req.user.schoolId;
-    if (!schoolId) return res.status(400).json({ error: "Xodim filialga biriktirilmagan" });
-
-    const empName = employee.name || 'Xodim';
-
-    try {
-      const payment = await prisma.$transaction(async (tx) => {
-        const expense = await tx.expense.create({
-          data: {
-            amount: parsedAmount,
-            category: 'Ish haqi',
-            date: new Date().toISOString().split('T')[0],
-            description: empName + ' \u2014 ' + month + ' oy maoshi',
-            schoolId
-          }
-        });
-        return await tx.salaryPayment.create({
-          data: {
-            userId: parsedUserId,
-            month,
-            amount: parsedAmount,
-            baseSalary: parseInt(baseSalary) || 0,
-            bonuses: parseInt(bonuses) || 0,
-            fines: parseInt(fines) || 0,
-            note: note || null,
-            expenseId: expense.id,
-            schoolId
-          }
-        });
-      });
-
-      // Xodim oylik olganini bilsin. Rahbar aynan shuni so'ragan edi:
-      // "moliya bo'limida ham telegramdan ham aks etmayapdi".
-      const satrlar = [
-        '\u{1F4B0} Oylik berildi',
-        '',
-        '\u{1F464} ' + empName,
-        '\u{1F4C5} Oy: ' + month,
-        '\u{1F4B5} Summa: ' + parsedAmount.toLocaleString('ru-RU') + " so'm",
-      ];
-      if (parseInt(bonuses) > 0) satrlar.push('⭐ Bonus: ' + parseInt(bonuses).toLocaleString('ru-RU'));
-      if (parseInt(fines) > 0)   satrlar.push('⚠️ Ushlanma: ' + parseInt(fines).toLocaleString('ru-RU'));
-      if (note) satrlar.push('\u{1F4DD} ' + note);
-      const xabar = await oylikXabariniYubor(parsedUserId, schoolId, satrlar.join(String.fromCharCode(10)));
-
-      res.json({ ...payment, telegram: xabar });
-    } catch (err) {
-      if (err.code === 'P2002') {
-        return res.status(400).json({ error: "Bu oy uchun oylik allaqachon berilgan. O'zgartirish uchun \"Tahrirlash\" tugmasidan foydalaning." });
-      }
-      throw err;
-    }
+    res.json(await oylikDaftari1(userId));
   } catch (error) { next(error); }
 });
 
-// Berilgan oylikni tuzatish. Ilgari bunday yo'l umuman yo'q edi — xato summa
-// kiritilsa yozuvni o'chirib, qaytadan yaratishdan boshqa chora qolmasdi.
+/** Xodim yozuvi va uning o'z filiali; topilmasa javob shu yerda qaytariladi (null). */
+async function oylikXodimi(req, res, userId) {
+  if (!Number.isInteger(userId)) { res.status(400).json({ error: "Xodim tanlanmagan" }); return null; }
+  const filialXatosi = await xodimFilialiXatosi(req, userId);
+  if (filialXatosi) { res.status(403).json({ error: filialXatosi }); return null; }
+  const xodim = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, schoolId: true } });
+  if (!xodim) { res.status(404).json({ error: 'Xodim topilmadi' }); return null; }
+  // Xodimning o'z filiali. Ilgari req.user.schoolId olinardi va filial
+  // almashtirilgan bo'lsa yozuv boshqa filialga tushib ketardi.
+  const schoolId = xodim.schoolId || req.schoolScope || req.user.schoolId;
+  if (!schoolId) { res.status(400).json({ error: "Xodim filialga biriktirilmagan" }); return null; }
+  return { ...xodim, schoolId };
+}
+
+// Bazadagi ustunlar Int (INT4) — undan kattasi 500 bilan yiqilardi.
+const OYLIK_MAKS_SUMMA = 2_147_483_647;
+// Shu vaqt ichida bir xil summa qayta kelsa — ikki marta bosish deb rad etiladi.
+const TAKROR_TOLOV_MS = 60 * 1000;
+const oylikSummasi = (v, { musbat = false } = {}) => {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n) || n < 0 || n > OYLIK_MAKS_SUMMA || (musbat && n === 0)) return null;
+  return n;
+};
+
+/**
+ * Oyni yopish: hisoblangan oylikni qotirish (yoki qotirilganini tuzatish).
+ * KPI o'quvchilar to'lagan sari o'zgaradi — yopilgandan keyin summa o'zgarmaydi
+ * va qarzga qo'shiladi. month = "0000-00" — CRM gacha bo'lgan qarz.
+ */
+app.post('/api/salary-accruals', authenticate, async (req, res, next) => {
+  try {
+    const xodim = await oylikXodimi(req, res, parseInt(req.body.userId));
+    if (!xodim) return;
+    const month = String(req.body.month || '');
+    if (month !== AVVALGI_OY && !oyTogri(month)) return res.status(400).json({ error: "Oy noto'g'ri" });
+    if (month !== AVVALGI_OY && month > joriyOyKaliti()) return res.status(400).json({ error: "Kelgusi oyni yopib bo'lmaydi" });
+    const qism = {};
+    for (const k of ['baseSalary', 'kpi', 'bonuses', 'fines']) {
+      const v = oylikSummasi(req.body[k] ?? 0);
+      if (v === null) return res.status(400).json({ error: "Summa noto'g'ri" });
+      qism[k] = v;
+    }
+    const amount = hisobJami(qism);
+    if (amount < 0) return res.status(400).json({ error: "Jami summa manfiy bo'lmasin" });
+    if (amount > OYLIK_MAKS_SUMMA) return res.status(400).json({ error: "Summa juda katta" });
+    const note = req.body.note ? String(req.body.note).slice(0, 300) : null;
+    const accrual = await prisma.salaryAccrual.upsert({
+      where: { userId_month: { userId: xodim.id, month } },
+      update: { ...qism, amount, note },
+      create: { userId: xodim.id, month, ...qism, amount, note, schoolId: xodim.schoolId },
+    });
+    res.json(accrual);
+  } catch (error) { next(error); }
+});
+
+// Oyni qayta ochish: hisob o'chadi, berilgan pul joyida qoladi (avansga o'tadi).
+app.delete('/api/salary-accruals/:id', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const accrual = await prisma.salaryAccrual.findUnique({ where: { id } });
+    if (!accrual) return res.status(404).json({ error: 'Oy hisobi topilmadi' });
+    const filialXatosi = await xodimFilialiXatosi(req, accrual.userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
+    await prisma.salaryAccrual.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// Oylik berish — haqiqatan berilgan pul. Oyga bir nechta bo'lishi mumkin
+// (5 mln bugun, qolgani keyin); qaysi oyni yopishi daftar qoidasida.
+// Xarajat va to'lov yozuvi bitta tranzaksiyada: ilgari xarajat avval yozilar,
+// to'lov yiqilsa Moliyada yetim xarajat qolib ketardi.
+app.post('/api/salary-payments', authenticate, async (req, res, next) => {
+  try {
+    const xodim = await oylikXodimi(req, res, parseInt(req.body.userId));
+    if (!xodim) return;
+    const summa = oylikSummasi(req.body.amount, { musbat: true });
+    if (summa === null) return res.status(400).json({ error: "Summa noto'g'ri" });
+    const note = req.body.note ? String(req.body.note).slice(0, 300) : null;
+    const ism = xodim.name || 'Xodim';
+
+    // Ilgari oyga bitta to'lov cheklovi ikki marta bosishni ushlardi; endi oyga bir
+    // necha to'lov mumkin, shuning uchun bir daqiqa ichidagi aynan bir xil to'lov rad etiladi.
+    const takror = await prisma.salaryPayment.findFirst({
+      where: { userId: xodim.id, amount: summa, paidAt: { gte: new Date(Date.now() - TAKROR_TOLOV_MS) } },
+      select: { id: true },
+    });
+    if (takror) return res.status(409).json({ error: "Shu summa hozirgina berilgan. Ikkinchi marta berish kerak bo'lsa, bir daqiqadan keyin qayta urinib ko'ring." });
+
+    const oldin = await oylikDaftari1(xodim.id);
+    const payment = await prisma.$transaction(async (tx) => {
+      const expense = await tx.expense.create({
+        data: {
+          amount: summa,
+          category: 'Ish haqi',
+          date: new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10),
+          description: `${ism} — oylik (${taqsimTavsifi(oldin, summa)})`,
+          schoolId: xodim.schoolId,
+        }
+      });
+      return tx.salaryPayment.create({
+        data: { userId: xodim.id, amount: summa, note, expenseId: expense.id, schoolId: xodim.schoolId }
+      });
+    });
+
+    // Xodim oylik olganini va qancha qarz qolganini bilsin.
+    const keyin = await oylikDaftari1(xodim.id);
+    const xabar = await oylikXabariniYubor(xodim.id, xodim.schoolId, oylikTolovXabari({ ism, summa, oldin, keyin, izoh: note }));
+    res.json({ ...payment, telegram: xabar });
+  } catch (error) { next(error); }
+});
+
+// Berilgan pulni tuzatish (summa xato kiritilgan bo'lsa).
 app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
   try {
     const pid = parseInt(req.params.id);
@@ -1398,18 +1450,17 @@ app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
 
     const existing = await prisma.salaryPayment.findUnique({ where: { id: pid } });
     if (!existing) return res.status(404).json({ error: 'Oylik yozuvi topilmadi' });
+    const filialXatosi = await xodimFilialiXatosi(req, existing.userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
 
-    const { amount, baseSalary, bonuses, fines, note } = req.body;
+    const { amount, note } = req.body;
     const data = {};
     if (amount !== undefined) {
-      const v = parseInt(amount);
-      if (!Number.isFinite(v)) return res.status(400).json({ error: "Summa noto'g'ri" });
+      const v = oylikSummasi(amount, { musbat: true });
+      if (v === null) return res.status(400).json({ error: "Summa noto'g'ri" });
       data.amount = v;
     }
-    if (baseSalary !== undefined) data.baseSalary = parseInt(baseSalary) || 0;
-    if (bonuses !== undefined) data.bonuses = parseInt(bonuses) || 0;
-    if (fines !== undefined) data.fines = parseInt(fines) || 0;
-    if (note !== undefined) data.note = note || null;
+    if (note !== undefined) data.note = note ? String(note).slice(0, 300) : null;
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ error: "O'zgartirish uchun ma'lumot yo'q" });
     }
@@ -1432,7 +1483,7 @@ app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
       const satrlar = [
         '\u{1F504} Oylik tuzatildi',
         '',
-        '\u{1F4C5} Oy: ' + existing.month,
+        '\u{1F4C5} ' + (existing.month ? 'Oy: ' + oyMatni(existing.month) : 'Berilgan sana: ' + existing.paidAt.toLocaleDateString('ru-RU')),
         '\u{1F4B5} Yangi summa: ' + updated.amount.toLocaleString('ru-RU') + " so'm",
       ];
       if (updated.note) satrlar.push('\u{1F4DD} ' + updated.note);
@@ -4738,6 +4789,7 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
       prisma.teacherAttendance.deleteMany({ where: { schoolId } }),
       prisma.staffAttendance.deleteMany({ where: { schoolId } }),
       prisma.salaryPayment.deleteMany({ where: { schoolId } }),
+      prisma.salaryAccrual.deleteMany({ where: { schoolId } }),
       prisma.payment.deleteMany({ where: { schoolId } }),
       // 3. Delete other school-level records
       prisma.smsLog.deleteMany({ where: { schoolId } }),

@@ -17,6 +17,7 @@ import BranchCheckboxes from './ui/BranchCheckboxes';
 import { useLang } from '../context/LanguageContext';
 import { ochirishQoldi } from '../../lib/xarajat.js';
 import { ustozKursimi } from '../lib/teacherState';
+import OylikDaftari, { type Daftar } from './oylik/OylikDaftari';
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN:           'Admin',
@@ -148,8 +149,9 @@ export default function StaffDetails() {
     const [attLoading,  setAttLoading]  = useState(false);
     const [attPicker,   setAttPicker]   = useState<string | null>(null);
 
-    // Salary payments
-    const [salaryPayments, setSalaryPayments] = useState<any[]>([]);
+    // Oylik daftari: oylar bo'yicha hisob, berilgan pul, qarz (lib/oylikDaftar.js)
+    const [daftar, setDaftar] = useState<Daftar | null>(null);
+    const [daftarReload, setDaftarReload] = useState(0);
     const [payMonth, setPayMonth] = useState(today.getMonth());
     const [payYear,  setPayYear]  = useState(today.getFullYear());
     const [payConfirm, setPayConfirm] = useState(false);
@@ -236,10 +238,12 @@ export default function StaffDetails() {
             .finally(() => setLoading(false));
     }, [id, token]);
 
-    // Fetch salary payment history
+    // Oylik daftari
     useEffect(() => {
         if (!staffUser || !token || !maoshKorinadi) return;
-        fetch(`/api/salary-payments?userId=${staffUser.id}`, {
+        // Boshqa xodimga o'tilganda oldingisining qarzi bir lahza ham ko'rinmasin.
+        if (daftar && (daftar as any)._userId !== staffUser.id) setDaftar(null);
+        fetch(`/api/salary-ledger?userId=${staffUser.id}`, {
             headers: { Authorization: `Bearer ${token}` }
         })
         .then(async r => {
@@ -249,12 +253,12 @@ export default function StaffDetails() {
             }
             return r.json();
         })
-        .then(data => setSalaryPayments(Array.isArray(data) ? data : []))
+        .then(data => setDaftar(data && Array.isArray(data.oylar) ? { ...data, _userId: staffUser.id } : null))
         .catch((err) => {
-            setSalaryPayments([]);
-            showNotification("Oylik tarixini yuklab bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+            setDaftar(null);
+            showNotification("Oylik daftarini yuklab bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
         });
-    }, [staffUser?.id, token]);
+    }, [staffUser?.id, token, daftarReload]);
 
     // Fetch attendance whenever user/month changes
     useEffect(() => {
@@ -580,14 +584,17 @@ export default function StaffDetails() {
 
     // Salary payment helpers
     const payMonthStr = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
-    const currentPayment = salaryPayments.find(p => p.month === payMonthStr) || null;
+    // Tanlangan oy yopilgan bo'lsa — qotirilgan hisobi (berilgan pul va qoldiq bilan).
+    const currentPayment: any = (() => {
+        const o = daftar?.oylar.find(m => m.month === payMonthStr && m.yopiq);
+        return o ? { ...o, paidAt: o.closedAt } : null;
+    })();
+    const daftarniYangila = () => { setDaftarReload(n => n + 1); retryLoad(); };
 
     /**
-     * To'langan oylikning tarkibi.
-     *
-     * Bazada guruhlar ulushi alohida saqlanmaydi — u qolgan qismdan kelib
-     * chiqadi: jami = asosiy + guruhlar + bonus − jarima. Shu sababli
-     * ko'rsatilgan raqamlar doim jami bilan mos tushadi.
+     * Yopilgan oy hisobining tarkibi: jami = asosiy + guruhlar + bonus − jarima.
+     * Guruhlar ulushi qolgan qismdan chiqariladi — ko'rsatilgan raqamlar doim
+     * jami bilan mos tushadi (eski yozuvlarda u alohida saqlanmagan).
      */
     const paymentTarkibi = (p: any) => {
         const asosiy = Number(p?.baseSalary) || 0;
@@ -596,6 +603,9 @@ export default function StaffDetails() {
         const jami   = Number(p?.amount) || 0;
         return { asosiy, bonus, jarima, jami, guruhlar: jami - asosiy - bonus + jarima };
     };
+    // Joriy oy yopilmagan bo'lsa — xulosadagi taxminiy summa shu hisobdan.
+    const joriyOy = daftar?.joriyOy;
+    const joriyTaxmin = joriyOy && payMonthStr === joriyOy && !kpiLoading ? totalSalary : null;
 
     /** Tahrir oynasini berilgan oylik bilan to'ldirib ochadi. */
     const openPaymentEdit = (p: any) => {
@@ -614,17 +624,18 @@ export default function StaffDetails() {
     const prevPayMonth = () => { if (payMonth === 0) { setPayMonth(11); setPayYear(y => y-1); } else setPayMonth(m => m-1); };
     const nextPayMonth = () => { if (payMonth === 11) { setPayMonth(0); setPayYear(y => y+1); } else setPayMonth(m => m+1); };
 
+    /** Oyni yopish: hozirgi hisob (asosiy + KPI + bonus − jarima) qotiriladi va qarzga qo'shiladi. */
     const paySalary = async () => {
         setPaying(true);
         try {
-            const res = await fetch('/api/salary-payments', {
+            const res = await fetch('/api/salary-accruals', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     userId: staffUser.id,
                     month: payMonthStr,
-                    amount: totalSalary,
                     baseSalary,
+                    kpi: kpiAmount,
                     bonuses: totalBonus,
                     fines: totalFine,
                 }),
@@ -633,32 +644,20 @@ export default function StaffDetails() {
                 const d = await res.json().catch(() => ({}));
                 throw new Error(d.error || ('Server ' + res.status));
             }
-            const payment = await res.json();
-            setSalaryPayments(prev => [...prev.filter(p => p.month !== payMonthStr), payment]);
+            await res.json();
             setBonuses([]);
             setFines([]);
             setPayConfirm(false);
-            // Telegram xabari yuborilgani ham aytilsin: rahbar "telegramdan aks
-            // etmayapdi" deganda aynan shu ko'rinmasligi muammo bo'lgan.
-            showNotification(
-                payment?.telegram?.sent
-                    ? "Oylik berildi, Moliyaga yozildi va xodimga Telegram xabari yuborildi"
-                    : "Oylik berildi va Moliyaga xarajat sifatida yozildi"
-                      + (payment?.telegram?.reason === 'telegram ulanmagan'
-                          ? " (xodim Telegram botga ulanmagani uchun xabar yuborilmadi)" : ""),
-                'success'
-            );
-            // Moliyadagi xarajatlar ro'yxati faqat /api/init dan keladi, shuning
-            // uchun yangi xarajat ko'rinishi uchun ma'lumotni yangilaymiz.
-            retryLoad();
+            showNotification(`${getMonthName(payMonth)} yopildi — ${totalSalary.toLocaleString('ru-RU')} so'm qarzga qo'shildi. Pulni «Oylik berish» orqali bering.`, 'success');
+            daftarniYangila();
         } catch (err: any) {
-            showNotification("Oylikni saqlab bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+            showNotification("Oyni yopib bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
         }
         setPaying(false);
     };
 
-    /** Berilgan oylikni tuzatish. Ilgari buning yo'li yo'q edi — faqat
-     *  o'chirib, qaytadan berish mumkin edi. */
+    /** Yopilgan oy hisobini tuzatish (bonus, jarima, summa). Eski yozuvli oyga
+     *  ham ishlaydi — o'sha oy uchun haqiqiy hisob yoziladi. */
     const saveSalaryEdit = async () => {
         if (!editingPayment || savingPayEdit) return;
         const asosiy = parseInt(editPayBase)  || 0;
@@ -668,24 +667,24 @@ export default function StaffDetails() {
         const val = asosiy + guruh + bonus - jarima;
         if (!Number.isFinite(val)) { showNotification("Summa noto'g'ri", 'error'); return; }
         if (val < 0) { showNotification("Jami summa manfiy bo'lmasin", 'error'); return; }
+        if (asosiy < 0 || guruh < 0 || bonus < 0 || jarima < 0) { showNotification("Qismlar manfiy bo'lmasin", 'error'); return; }
         setSavingPayEdit(true);
         try {
-            const res = await fetch(`/api/salary-payments/${editingPayment.id}`, {
-                method: 'PUT',
+            const res = await fetch('/api/salary-accruals', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
-                    amount: val, baseSalary: asosiy, bonuses: bonus, fines: jarima, note: editPayNote
+                    userId: staffUser.id, month: editingPayment.month,
+                    baseSalary: asosiy, kpi: guruh, bonuses: bonus, fines: jarima, note: editPayNote
                 })
             });
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
                 throw new Error(d.error || ('Server ' + res.status));
             }
-            const updated = await res.json();
-            setSalaryPayments(prev => prev.map(p => p.id === updated.id ? updated : p));
             setEditingPayment(null);
-            showNotification("Oylik yangilandi", 'success');
-            retryLoad();
+            showNotification("Oy hisobi yangilandi", 'success');
+            daftarniYangila();
         } catch (err: any) {
             showNotification("O'zgartirib bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
         } finally {
@@ -693,24 +692,20 @@ export default function StaffDetails() {
         }
     };
 
-    const deleteSalaryPayment = async (pid: number) => {
-        // A salary record used to vanish on a single click, and the row was dropped from
-        // the table whether or not the server accepted the delete — it came back on the
-        // next refresh, which reads as the app losing data.
-        const record = salaryPayments.find(p => p.id === pid);
-        const label = record ? `${record.month} — ${Number(record.amount).toLocaleString()} so'm` : 'ushbu yozuv';
-        if (!await confirm(`Oylik to'lov yozuvi o'chirilsinmi?\n\n${label}\n\nBu amalni orqaga qaytarib bo'lmaydi.`)) return;
-
+    /** Oyni qayta ochish: hisob o'chadi, berilgan pul joyida qoladi. */
+    const reopenMonth = async (accrual: any) => {
+        if (!accrual?.id) return;
+        if (!await confirm(`${getMonthName(payMonth)} ${payYear} qayta ochilsinmi?\n\nQotirilgan hisob (${Number(accrual.amount).toLocaleString('ru-RU')} so'm) o'chadi. Berilgan pullar o'chmaydi — avans bo'lib turadi va oy qayta yopilganda unga tushadi.`)) return;
         try {
-            const res = await fetch(`/api/salary-payments/${pid}`, {
+            const res = await fetch(`/api/salary-accruals/${accrual.id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || `Server ${res.status}`);
-            setSalaryPayments(prev => prev.filter(p => p.id !== pid));
-            showNotification("Oylik to'lov yozuvi o'chirildi", 'success');
+            showNotification("Oy qayta ochildi", 'success');
+            daftarniYangila();
         } catch (err: any) {
-            showNotification("O'chirib bo'lmadi: " + (err?.message || "aloqa xatosi"), 'error');
+            showNotification("Qayta ochib bo'lmadi: " + (err?.message || "aloqa xatosi"), 'error');
         }
     };
 
@@ -956,7 +951,7 @@ export default function StaffDetails() {
                                                 return v >= 1000000 ? `${(v / 1000000).toFixed(1)} mln` : v.toLocaleString();
                                             })()}
                                             sub={currentPayment
-                                                ? `to'langan · ${new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')}`
+                                                ? (currentPayment.qoldiq > 0 ? `yopilgan · ${currentPayment.qoldiq.toLocaleString('ru-RU')} qoldi` : `yopilgan · to'langan`)
                                                 : (kpiPercent ? `asosiy + ${kpiPercent}% ulush` : (kpiAmount > 0 ? 'asosiy + guruhlar' : 'asosiy oylik'))}
                                             color="emerald" />
                                         <StatCard label={t('attendance')} value={`${presentDays} kun`} sub={absentDays > 0 ? `${absentDays} kun kelmagan` : t('present_this_month_sub')} color={absentDays > 0 ? 'amber' : ''} />
@@ -1085,7 +1080,7 @@ export default function StaffDetails() {
                                                     )}
                                                     <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-chiziq">
                                                         <span className="font-semibold text-matn">
-                                                            {currentPayment ? "To'langan ✓" : "To'lanadi"}
+                                                            {currentPayment ? (currentPayment.qoldiq > 0 ? 'Hisoblangan' : "To'langan ✓") : "To'lanadi"}
                                                         </span>
                                                         <span className={`num font-semibold ${currentPayment ? 'text-emerald-500' : 'text-brand'}`}>
                                                             {(currentPayment ? currentPayment.amount : totalSalary).toLocaleString()}
@@ -1093,7 +1088,7 @@ export default function StaffDetails() {
                                                     </div>
                                                     {currentPayment && (
                                                         <p className="text-[11px] text-matn-xira mt-1 text-right">
-                                                            {new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')} · Moliyaga yozilgan
+                                                            {currentPayment.qoldiq > 0 ? `Berilgan ${currentPayment.berilgan.toLocaleString('ru-RU')} · qoldiq ${currentPayment.qoldiq.toLocaleString('ru-RU')}` : 'Oy yopilgan, pul berilgan'}
                                                         </p>
                                                     )}
                                                 </div>
@@ -1127,6 +1122,12 @@ export default function StaffDetails() {
                             {/* ── ISH HAQI ── */}
                             {activeTab === 'maosh' && maoshKorinadi && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
+
+                                    <OylikDaftari
+                                        daftar={daftar} xodimId={staffUser.id} xodimIsmi={staffUser.name} token={token || ''}
+                                        tahrir={maoshTahrir} tanlanganOy={payMonthStr} joriyTaxmin={joriyTaxmin}
+                                        onOyTanla={m => { const [y, mo] = m.split('-').map(Number); setPayYear(y); setPayMonth(mo - 1); }}
+                                        onYangila={daftarniYangila} xabar={showNotification} />
 
                                     {/* Inline base salary editor */}
                                     <div className="flex items-center gap-4 p-4 bg-brand/5 border border-brand/15 rounded-2xl">
@@ -1204,19 +1205,25 @@ export default function StaffDetails() {
                                         </div>
                                     </div>
 
-                                    {/* Payment status banner */}
-                                    {currentPayment ? (
-                                        <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl">
+                                    {/* Tanlangan oy holati: yopilgan (hisob qotgan) yoki ochiq */}
+                                    {currentPayment ? (() => {
+                                        const tolangan = currentPayment.qoldiq <= 0;
+                                        const rang = tolangan
+                                            ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400'
+                                            : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400';
+                                        return (
+                                        <div className={`flex items-center justify-between gap-3 flex-wrap p-4 border rounded-2xl ${rang}`}>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0">
-                                                    <CheckCircle2 size={20} className="text-white" />
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tolangan ? 'bg-emerald-500' : 'bg-amber-500'}`}>
+                                                    {tolangan ? <CheckCircle2 size={20} className="text-white" /> : <Clock size={18} className="text-white" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tracking-wide">
-                                                        {getMonthName(payMonth)} {payYear} — {t('salary_paid')} ✓
+                                                    <p className="text-xs font-black tracking-wide">
+                                                        {getMonthName(payMonth)} {payYear} — {tolangan ? "yopilgan, to'langan ✓" : currentPayment.berilgan > 0 ? 'yopilgan, qisman berilgan' : 'yopilgan, pul berilmagan'}
                                                     </p>
-                                                    <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500 mt-0.5">
-                                                        {currentPayment.amount.toLocaleString()} UZS · {new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')}
+                                                    <p className="text-[11px] font-bold mt-0.5 opacity-90">
+                                                        Hisoblangan {currentPayment.amount.toLocaleString('ru-RU')} · berilgan {currentPayment.berilgan.toLocaleString('ru-RU')}
+                                                        {!tolangan && ` · qoldiq ${currentPayment.qoldiq.toLocaleString('ru-RU')}`}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1227,21 +1234,24 @@ export default function StaffDetails() {
                                                         className="flex items-center gap-1.5 text-[11px] font-bold text-brand border border-brand/30 hover:bg-brand/10 transition-colors cursor-pointer px-3 py-1.5 rounded-xl">
                                                         <Pencil size={12} /> Tahrirlash
                                                     </button>
-                                                    {ochirishQoldi(currentPayment.paidAt) > 0 && (<button onClick={() => deleteSalaryPayment(currentPayment.id)}
-                                                        title="O'chirish"
-                                                        className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
-                                                        <Trash2 size={14} />
-                                                    </button>)}
+                                                    {!currentPayment.eski && (
+                                                        <button onClick={() => reopenMonth(currentPayment)}
+                                                            title="Oyni qayta ochish — hisob qayta hisoblanadi"
+                                                            className="text-[11px] font-bold text-matn-sokin hover:text-rose-500 transition-colors cursor-pointer px-3 py-1.5 rounded-xl">
+                                                            Qayta ochish
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
-                                    ) : (
-                                        <div className="flex items-center gap-3 p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl">
-                                            <div className="w-10 h-10 bg-rose-100 dark:bg-rose-950/40 rounded-xl flex items-center justify-center shrink-0">
-                                                <Clock size={18} className="text-rose-500" />
+                                        );
+                                    })() : (
+                                        <div className="flex items-center gap-3 p-4 bg-brand/5 border border-brand/20 rounded-2xl">
+                                            <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center shrink-0">
+                                                <Clock size={18} className="text-brand" />
                                             </div>
-                                            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
-                                                {getMonthName(payMonth)} {payYear} — {t('salary_not_paid')}
+                                            <p className="text-[11px] font-bold text-brand">
+                                                {getMonthName(payMonth)} {payYear} — hali yopilmagan. Hisob o'quvchilar to'lagan sari o'zgaradi; tayyor bo'lsa pastda «Oyni yopish» ni bosing.
                                             </p>
                                         </div>
                                     )}
@@ -1255,7 +1265,7 @@ export default function StaffDetails() {
                                             <div className="bg-sirt border border-chiziq rounded-2xl p-5">
                                                 <div className="flex items-baseline justify-between mb-4">
                                                     <h3 className="text-[13px] font-semibold text-matn">Maosh strukturasi</h3>
-                                                    <span className="text-[11px] text-matn-xira">to'langan · {getMonthName(payMonth)} {payYear}</span>
+                                                    <span className="text-[11px] text-matn-xira">qotirilgan · {getMonthName(payMonth)} {payYear}{currentPayment.eski ? ' · eski yozuv' : ''}</span>
                                                 </div>
                                                 <div className="space-y-2.5 text-[13px]">
                                                     <div className="flex justify-between gap-3">
@@ -1281,8 +1291,16 @@ export default function StaffDetails() {
                                                         </div>
                                                     )}
                                                     <div className="flex justify-between gap-3 pt-2.5 mt-1 border-t border-chiziq">
-                                                        <span className="font-semibold text-matn">Jami to'langan</span>
-                                                        <span className="num font-semibold text-emerald-500">{tk.jami.toLocaleString()} UZS</span>
+                                                        <span className="font-semibold text-matn">Jami hisoblangan</span>
+                                                        <span className="num font-semibold text-matn">{tk.jami.toLocaleString()} UZS</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-matn-sokin">Berilgan</span>
+                                                        <span className="num text-emerald-500">{currentPayment.berilgan.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-matn-sokin">Qoldiq</span>
+                                                        <span className={`num ${currentPayment.qoldiq > 0 ? 'text-rose-500 font-semibold' : 'text-matn-xira'}`}>{Math.max(0, currentPayment.qoldiq).toLocaleString()}</span>
                                                     </div>
                                                 </div>
                                                 {currentPayment.note && (
@@ -1489,13 +1507,15 @@ export default function StaffDetails() {
                                                     {!maoshTahrir ? null : !payConfirm ? (
                                                         <button
                                                             onClick={() => setPayConfirm(true)}
-                                                            className="mt-6 w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                                            <Banknote size={14} /> {t('pay_salary_btn')}
+                                                            // KPI yuklanmay turib yopilsa, ustoz ulushi 0 bo'lib qotib qolardi.
+                                                            disabled={kpiLoading || ((staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && !kpiData)}
+                                                            className="mt-6 w-full py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                                            <Banknote size={14} /> {kpiLoading ? 'KPI hisoblanmoqda…' : <>Oyni yopish — {totalSalary.toLocaleString('ru-RU')}</>}
                                                         </button>
                                                     ) : (
                                                         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-3">
                                                             <p className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400 text-center">
-                                                                {t('confirm_pay_salary').replace('{name}', staffUser.name).replace('{amount}', totalSalary.toLocaleString())}
+                                                                {`${getMonthName(payMonth)} oyi ${totalSalary.toLocaleString('ru-RU')} so'mda yopilsinmi? Summa qotadi va ${staffUser.name}ga qarz bo'lib yoziladi. Pul berilmaydi — uni «Oylik berish» orqali berasiz.`}
                                                             </p>
                                                             <div className="flex gap-2">
                                                                 <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-chiziq text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
@@ -1503,7 +1523,7 @@ export default function StaffDetails() {
                                                                 </button>
                                                                 <button onClick={paySalary} disabled={paying}
                                                                     className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
-                                                                    {paying ? t('saving') : <><CheckCircle2 size={12} /> {t('yes_paid')}</>}
+                                                                    {paying ? t('saving') : <><CheckCircle2 size={12} /> Ha, yopish</>}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -1513,54 +1533,7 @@ export default function StaffDetails() {
                                             )}
                                         </div>
 
-                                    {/* Payment history */}
-                                    {salaryPayments.length > 0 && (
-                                        <div className="space-y-3">
-                                            <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5 border-t border-dashed border-chiziq pt-4">
-                                                <Clock size={10} /> {t('payments_history')}
-                                            </span>
-                                            <div className="bg-sirt rounded-2xl overflow-hidden border border-chiziq">
-                                                <table className="w-full text-left">
-                                                    <thead>
-                                                        <tr className="bg-ichki border-b border-chiziq">
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('month')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('base_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">+Bonus</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">−Jarima</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('total_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('date_short')}</th>
-                                                            <th className="p-3" />
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                                        {salaryPayments.map(p => {
-                                                            const [yr, mo] = p.month.split('-');
-                                                            return (
-                                                                <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
-                                                                    <td className="p-3 text-[11px] font-bold text-matn">
-                                                                        {getMonthName(parseInt(mo)-1)} {yr}
-                                                                    </td>
-                                                                    <td className="p-3 text-[11px] font-bold text-matn-2">{p.baseSalary.toLocaleString()}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-emerald-600">{p.bonuses > 0 ? `+${p.bonuses.toLocaleString()}` : '—'}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-rose-600">{p.fines > 0 ? `-${p.fines.toLocaleString()}` : '—'}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-brand">{p.amount.toLocaleString()}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-matn-xira">{new Date(p.paidAt).toLocaleDateString('uz-UZ')}</td>
-                                                                    <td className="p-3">
-                                                                        {maoshTahrir && ochirishQoldi(p.paidAt) > 0 && (
-                                                                            <button onClick={() => deleteSalaryPayment(p.id)}
-                                                                                className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer">
-                                                                                <Trash2 size={13} />
-                                                                            </button>
-                                                                        )}
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Berilgan pullar ro'yxati yuqorida — OylikDaftari ichida. */}
                                 </div>
                             )}
 

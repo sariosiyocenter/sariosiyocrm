@@ -9,6 +9,9 @@ import { authenticate, allowedSchoolIds, ALL_BRANCHES } from '../middleware/auth
 import { loadRowsByStudent, rulesForStudents, monthCoverage } from '../services/ledger.js';
 import { allocate } from '../lib/allocation.js';
 import { USTOZ_NOMLARI, ustozNomlari } from '../lib/ustozlar.js';
+import { oylikDaftarlari } from '../lib/oylik.js';
+import { joriyOyKaliti } from '../lib/oylikDaftar.js';
+import { ROL_NOMLARI } from '../lib/ruxsatlar.js';
 
 const HISOB_TURLARI = ['Chegirma', 'Oylik'];
 const USULLAR = [
@@ -239,20 +242,28 @@ async function ustozOyligi(schoolIds, oy, { kpiHisobla, filialXodimlariWhere }) 
     select: { id: true, name: true, role: true, schoolId: true, salary: true, kpiPercent: true },
     orderBy: { name: 'asc' },
   });
-  const tolovlar = await prisma.salaryPayment.findMany({ where: { userId: { in: xodimlar.map(x => x.id) }, month: oy } });
-  const tolov = new Map(tolovlar.map(t => [t.userId, t]));
+  // Yopilgan oy — qotirilgan hisob va unga tushgan pul (lib/oylikDaftar.js);
+  // yopilmagani — joriy hisob-kitob, hali berilmagan.
+  const daftarlar = await oylikDaftarlari(xodimlar.map(x => x.id));
   const natija = [];
   // Har ustoz uchun hisob og'ir (taqsimot) — 4 tadan parallel.
   for (let i = 0; i < xodimlar.length; i += 4) {
     const qism = await Promise.all(xodimlar.slice(i, i + 4).map(async (x) => {
       const kpi = await kpiHisobla({ id: x.id, name: x.name, schoolId: x.schoolId, kpiPercent: x.kpiPercent }, oy);
-      const t = tolov.get(x.id);
-      const asosiy = yaxlit(t ? t.baseSalary : x.salary);
-      const hisoblangan = asosiy + yaxlit(kpi.kpiAmount) + (t ? t.bonuses - t.fines : 0);
+      const daftar = daftarlar.get(x.id);
+      const o = daftar?.oylar.find(m => m.month === oy && m.yopiq);
+      const asosiy = yaxlit(o ? o.baseSalary : x.salary);
+      const kpiSumma = o ? yaxlit(o.kpi) : yaxlit(kpi.kpiAmount);
+      const hisoblangan = o ? o.amount : asosiy + kpiSumma;
+      const tolangan = o ? o.berilgan : 0;
+      const qoldi = o ? o.qoldiq : hisoblangan;
+      const oxirgi = o?.tolovlar.at(-1);
       return {
         id: x.id, ism: x.name, lavozim: x.role === 'TEACHER' ? "O'qituvchi" : "Yordamchi o'qituvchi",
-        asosiy, kpi: yaxlit(kpi.kpiAmount), bonus: t?.bonuses || 0, jarima: t?.fines || 0,
-        hisoblangan, tolangan: t ? t.amount : 0, qoldi: t ? 0 : hisoblangan, berilgan: !!t, sana: t ? t.paidAt : null, izoh: t?.note || '',
+        asosiy, kpi: kpiSumma, bonus: o?.bonuses || 0, jarima: o?.fines || 0,
+        hisoblangan, tolangan, qoldi, yopiq: !!o, berilgan: !!o && qoldi <= 0,
+        sana: oxirgi ? oxirgi.paidAt : null, izoh: o?.note || '',
+        jamiQarz: daftar?.yopiqQarz || 0,
         darslar: kpi.totalLessons || 0,
         kurslar: (kpi.groups || []).map(g => ({ id: g.id, nom: g.name, oquvchi: g.studentCount, darslar: g.lessons, tushgan: g.total, haq: g.pay, shart: g.payLabel, ikkinchi: !!g.ikkinchi })),
       };
@@ -267,6 +278,56 @@ async function ustozOyligi(schoolIds, oy, { kpiHisobla, filialXodimlariWhere }) 
       qoldi: natija.reduce((s, x) => s + x.qoldi, 0), berilgan: natija.filter(x => x.berilgan).length, soni: natija.length,
     },
     ustozlar: natija,
+  };
+}
+
+/**
+ * Xodimlar oyligi bo'yicha markazning qarzi (egasi, 2026-11-02): kimga va qancha
+ * berishimiz kerak. Yopilgan oylar — aniq; joriy oy yopilmagan bo'lsa — taxminiy
+ * (asosiy + ustozga KPI hozirgi holatda).
+ */
+async function oylikQarz(schoolIds, { kpiHisobla, filialXodimlariWhere }) {
+  const joriyOy = joriyOyKaliti();
+  const xodimlar = await prisma.user.findMany({
+    // Arxivdagi xodim ham olinadi: ketgan xodimga qarz qolgan bo'lishi mumkin.
+    where: { ...filialXodimlariWhere(schoolIds), role: { not: 'SELLER' } },
+    select: { id: true, name: true, role: true, position: true, schoolId: true, salary: true, kpiPercent: true, status: true },
+    orderBy: { name: 'asc' },
+  });
+  const daftarlar = await oylikDaftarlari(xodimlar.map(x => x.id), joriyOy);
+  const royxat = [];
+  for (let i = 0; i < xodimlar.length; i += 4) {
+    const qism = await Promise.all(xodimlar.slice(i, i + 4).map(async (x) => {
+      const d = daftarlar.get(x.id);
+      const arxiv = x.status === 'Arxiv';
+      if (arxiv && !(d.yopiqQarz > 0)) return null;
+      const joriyYopiq = d.oylar.some(o => o.month === joriyOy && o.yopiq);
+      let joriy = 0;
+      if (!joriyYopiq && !arxiv) {
+        const kpi = USTOZ_ROLLAR.includes(x.role)
+          ? await kpiHisobla({ id: x.id, name: x.name, schoolId: x.schoolId, kpiPercent: x.kpiPercent }, joriyOy)
+          : { kpiAmount: 0 };
+        joriy = yaxlit(x.salary) + yaxlit(kpi.kpiAmount);
+      }
+      return {
+        id: x.id, ism: x.name, lavozim: (x.position || ROL_NOMLARI[x.role] || x.role) + (arxiv ? ' · arxivda' : ''),
+        yopiqQarz: d.yopiqQarz, avans: d.avans, joriy, jami: Math.max(0, d.yopiqQarz - d.avans + joriy),
+        engEski: d.engEski, yopilmagan: d.oylar.filter(o => !o.yopiq && o.month < joriyOy).map(o => o.month),
+      };
+    }));
+    royxat.push(...qism.filter(Boolean));
+  }
+  const korinadi = royxat.filter(x => x.yopiqQarz || x.avans || x.joriy);
+  korinadi.sort((a, b) => (b.yopiqQarz > 0) - (a.yopiqQarz > 0) || String(a.engEski).localeCompare(String(b.engEski)) || b.jami - a.jami);
+  return {
+    joriyOy,
+    jami: {
+      yopiqQarz: korinadi.reduce((s, x) => s + x.yopiqQarz, 0),
+      joriy: korinadi.reduce((s, x) => s + x.joriy, 0),
+      avans: korinadi.reduce((s, x) => s + x.avans, 0),
+      qarzdor: korinadi.filter(x => x.yopiqQarz > 0).length,
+    },
+    royxat: korinadi,
   };
 }
 
@@ -296,4 +357,5 @@ export function registerHisobotRoutes(app, deps) {
     const oy = req.query.oy ? oyTekshir(req.query.oy) : bugun().slice(0, 7);
     return oy ? ustozOyligi(ids, oy, deps) : { xato: "Oy noto'g'ri (YYYY-MM)" };
   });
+  yol('oylik-qarz', (req, ids) => oylikQarz(ids, deps));
 }

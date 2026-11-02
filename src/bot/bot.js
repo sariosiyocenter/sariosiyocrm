@@ -12,6 +12,8 @@ import { tashkilotSozlamasi } from '../../middleware/auth.js';
 import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
+import { oylikDaftari1 } from '../../lib/oylik.js';
+import { oyMatni } from '../../lib/oylikDaftar.js';
 import { natijaTokeni } from '../../routes/imtihon.js';
 import { davomatXabariniYuborish } from '../../services/davomatXabari.js';
 import { sozlamaniTozala, sanaMatni, vergul } from '../../lib/imtihon.js';
@@ -1247,7 +1249,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         // xabar bir xil bo'lardi — shuning uchun "telegramda aks etmayapti".
         // SalaryPayment User ga bog'langan, Teacher ga emas: ikkalasi ism
         // bo'yicha topiladi (server.js dagi KPI hisobi ham shunday qiladi).
-        let paid = [];
+        let daftar = null;
         let staff = null;
         try {
             // Xodim yozuvi Teacher.userId orqali topiladi. Ilgari u ism bo'yicha
@@ -1256,25 +1258,31 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             staff = teacher.userId
                 ? await prisma.user.findUnique({ where: { id: teacher.userId } })
                 : await prisma.user.findFirst({ where: { name: teacher.name, schoolId: teacher.schoolId } });
-            if (staff) {
-                paid = await prisma.salaryPayment.findMany({
-                    where: { userId: staff.id },
-                    orderBy: { month: 'desc' },
-                    take: 6
-                });
-            }
+            if (staff) daftar = await oylikDaftari1(staff.id);
         } catch (e) {
             console.error('Oylik tarixini olishda xato:', e.message);
         }
 
+        // Ustoz qancha olgani va markaz unga yana qancha qarzligini ko'rsin
+        // (lib/oylikDaftar.js — CRM dagi xodim kartasi bilan bir xil hisob).
+        if (daftar && (daftar.yopiqQarz > 0 || daftar.avans > 0)) {
+            lines.push('');
+            if (daftar.yopiqQarz > 0) {
+                lines.push('📌 Markazning sizdan qarzi: ' + daftar.yopiqQarz.toLocaleString() + ' UZS');
+                daftar.oylar.filter(o => o.yopiq && o.qoldiq > 0)
+                    .forEach(o => lines.push('▫️ ' + oyMatni(o.month) + ': ' + o.qoldiq.toLocaleString() + ' qoldi'));
+            }
+            if (daftar.avans > 0) lines.push('💳 Avans: ' + daftar.avans.toLocaleString() + ' UZS (keyingi oydan ushlanadi)');
+        }
+
+        const paid = daftar ? [...daftar.tolovlar].reverse().slice(0, 6) : [];
         if (paid.length > 0) {
             lines.push('');
-            lines.push('✅ Berilgan oyliklar:');
+            lines.push('✅ Oxirgi berilgan pullar:');
             paid.forEach(p => {
-                let row = '▫️ ' + p.month + ': ' + p.amount.toLocaleString() + ' UZS';
-                if (p.bonuses) row += ' (+' + p.bonuses.toLocaleString() + ' bonus)';
-                if (p.fines) row += ' (−' + p.fines.toLocaleString() + ' jarima)';
-                lines.push(row);
+                const sana = new Date(p.paidAt).toLocaleDateString('ru-RU');
+                const qayer = p.taqsim.map(t => oyMatni(t.month)).join(', ') || 'avans';
+                lines.push('▫️ ' + sana + ': ' + p.amount.toLocaleString() + ' UZS (' + qayer + ')');
             });
         } else {
             lines.push('');

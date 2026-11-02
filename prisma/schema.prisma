@@ -499,6 +499,7 @@ model School {
   applyTokens      ApplyToken[]
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
+  salaryAccruals   SalaryAccrual[]
   topics           Topic[]
   syllabuses       Syllabus[]
   messageTemplates MessageTemplate[]
@@ -801,18 +802,23 @@ model User {
   sellerLeads      SaaSLead[]       @relation("SellerLeads")
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
+  salaryAccruals   SalaryAccrual[]
   teacherProfile   Teacher?         @relation("TeacherAccount")
 
   @@index([schoolId])
 }
 
+// Xodimga haqiqatan berilgan pul. Oyga bir nechta bo'lishi mumkin; qaysi oyni
+// yopgani saqlanmaydi — lib/oylikDaftar.js sana tartibida eng eski qarzdan
+// taqsimlaydi. `month` faqat eski yozuvlarda (2026-11 gacha: oyga bitta to'lov,
+// hisob bilan birga) — yangi to'lovda null.
 model SalaryPayment {
   id         Int      @id @default(autoincrement())
   userId     Int
   user       User     @relation(fields: [userId], references: [id])
-  month      String   // "2026-06"
+  month      String?  // eski yozuv: "2026-06"
   amount     Int
-  baseSalary Int
+  baseSalary Int      @default(0)
   bonuses    Int      @default(0)
   fines      Int      @default(0)
   note       String?
@@ -821,9 +827,30 @@ model SalaryPayment {
   schoolId   Int
   school     School   @relation(fields: [schoolId], references: [id])
 
-  @@unique([userId, month])
   @@index([schoolId])
   @@index([userId])
+}
+
+// Oy yopilganda qotirilgan oylik hisobi: asosiy + KPI + bonus − jarima.
+// KPI o'quvchilar to'lagan sari o'zgaradi, shuning uchun summa yopilganda saqlanadi.
+// month = "0000-00" — CRM ga o'tishdan oldingi qarz.
+model SalaryAccrual {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  month      String
+  baseSalary Int      @default(0)
+  kpi        Int      @default(0)
+  bonuses    Int      @default(0)
+  fines      Int      @default(0)
+  amount     Int
+  note       String?
+  closedAt   DateTime @default(now())
+  schoolId   Int
+  school     School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([userId, month])
+  @@index([schoolId])
 }
 
 model StaffAttendance {

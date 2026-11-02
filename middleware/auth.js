@@ -268,7 +268,7 @@ const OWNED_RESOURCES = {
   payments: 'payment', expenses: 'expense', transports: 'transport', courses: 'course',
   topics: 'topic', syllabuses: 'syllabus', rooms: 'room', exams: 'exam',
   questions: 'question', passages: 'passage', scores: 'score', attendances: 'attendance', routes: 'route',
-  'salary-payments': 'salaryPayment', 'delivery-logs': 'deliveryLog',
+  'salary-payments': 'salaryPayment', 'salary-accruals': 'salaryAccrual', 'delivery-logs': 'deliveryLog',
   'exam-results': 'examResult', 'staff-attendance': 'staffAttendance', users: 'user',
 };
 
