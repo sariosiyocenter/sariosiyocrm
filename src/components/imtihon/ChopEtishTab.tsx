@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, Eye, Loader2, FileDown, PenTool, AlertTriangle } from 'lucide-react';
+import { BookOpen, KeyRound, FileText, Files, DoorOpen, ClipboardList, Printer, Info, Eye, Loader2, FileDown, PenTool, AlertTriangle, Lightbulb, Sheet, Presentation } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Almashtirgich, Yuklanmoqda, Tanlov } from './ui';
@@ -7,7 +7,8 @@ import { useOrinlar } from './QatnashchilarTab';
 import { chopEt, type ChopParam } from '../../lib/chopEtish';
 import { varaqSahifalari, andozaXatolari } from '../../lib/omr/layout';
 import { varaqSvg, varaqlarniJoyla, type Qogoz } from '../../lib/omr/render';
-import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS, kalitVaragiHtml, KALIT_CSS, KORINISH_CSS, KITOBCHA_STANDART } from './chop';
+import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS, kalitVaragiHtml, KALIT_CSS, KORINISH_CSS, KITOBCHA_STANDART, yechimlarHtml, YECHIM_CSS } from './chop';
+import EkranKorsatish from './EkranKorsatish';
 import type { KitobchaMalumoti, KalitMalumoti, KitobchaSozlama } from './chop';
 import { yuklabOl } from '../../lib/zip';
 import { varaqTuzilmasi } from '../../../lib/imtihon.js';
@@ -22,9 +23,13 @@ import VaraqDizayni from './dizayner/VaraqDizayni';
 // qator → o'rin tartibida (dasta xonaga shu tartibda kiradi). Bu yerda faqat
 // hujjatlar: andozadan imtihon yaratish «Yangi imtihon»da (2026-10-17).
 
-type Hujjat = 'kitobcha' | 'kalit' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
+type Hujjat = 'kitobcha' | 'kalit' | 'yechim' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
 
-export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => void }) {
+/**
+ * `qism` — imtihon bo'limi: «Savol qog'ozi» da kitobcha va kalit, «Qatnashchilar va varaq» da
+ * imtihon kuni hujjatlari (varaqlar, eshik ro'yxati, vedomost, dizayn). Berilmasa — hammasi.
+ */
+export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTafsil; yangila: () => void; qism?: 'qogoz' | 'varaq' }) {
   const { settings, schools, showNotification, kora } = useCRM();
   const { soro } = useImtihonApi();
   const { data } = useOrinlar(exam.id);
@@ -39,7 +44,9 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
   // Bitta qatnashchi varag'i: o'rni o'zgargan yoki varag'i buzilganlar uchun.
   const [yakka, setYakka] = useState<number>(0);
   const [kitobchaKodi, setKitobchaKodi] = useState('');
-  const [band, setBand] = useState<false | 'chop' | 'word'>(false);
+  const [band, setBand] = useState<false | 'chop' | 'word' | 'excel' | 'ekran'>(false);
+  // Ekranda ko'rsatish (proyektor): kitobcha ma'lumoti va (ruxsat bo'lsa) kalit.
+  const [ekran, setEkran] = useState<{ d: KitobchaMalumoti; kalit: KalitMalumoti | null; code: string } | null>(null);
   // Kitobcha ko'rinishi (Addmen QPG "Output") — brauzerda eslab qolinadi.
   const [ko, setKoHolat] = useState<KitobchaSozlama>(() => { try { return { ...KITOBCHA_STANDART, ...JSON.parse(localStorage.getItem('imt_kitobcha') || '{}') }; } catch { return KITOBCHA_STANDART; } });
   const setKo = (patch: Partial<KitobchaSozlama>) => setKoHolat(x => { const y = { ...x, ...patch }; try { localStorage.setItem('imt_kitobcha', JSON.stringify(y)); } catch { /* eslab qolinmaydi */ } return y; });
@@ -47,7 +54,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const kitobchaBor = s.source === 'bank';
   const sorovnoma = s.source === 'sorovnoma';
   const anonim = sorovnoma && !!s.sorovnoma?.anonim;
-  const [hujjat, setHujjat] = useState<Hujjat>(kitobchaBor ? 'kitobcha' : anonim ? 'universal' : 'varaq');
+  const [hujjat, setHujjat] = useState<Hujjat>(qism === 'qogoz' ? (kitobchaBor ? 'kitobcha' : 'kalit') : qism !== 'varaq' && kitobchaBor ? 'kitobcha' : anonim ? 'universal' : 'varaq');
   const markaz = settings?.orgName || '';
 
   const orinlar = useMemo(() => (data?.seats || []).filter(o => o.session === smena && o.roomId && (!xona || o.roomId === xona))
@@ -112,6 +119,12 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
       const d = await olish<KalitMalumoti>(`exams/${exam.id}/key`);
       return { sarlavha: `${exam.name} — javoblar kaliti`, css: ROYXAT_CSS + KALIT_CSS, body: kalitVaragiHtml(exam, markaz, d, smena) };
     }
+    if (turi === 'yechim') {
+      const kodlar = kitobchaKodi ? [kitobchaKodi] : korinish ? variantlar.slice(0, 1) : variantlar;
+      if (!kodlar.length) return null;
+      const d = await olish<KalitMalumoti>(`exams/${exam.id}/key?yechim=1`);
+      return { sarlavha: `${exam.name} — yechimlar ${kodlar.join(', ')}`, css: katexCss() + ROYXAT_CSS + KALIT_CSS + YECHIM_CSS, body: yechimlarHtml(exam, markaz, d, smena, kodlar) };
+    }
     if (turi === 'varaq') {
       const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : korinish ? orinlar.slice(0, 1) : orinlar;
       if (!tanlanganlar.length) {
@@ -164,6 +177,29 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
     } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
   };
 
+  // Addmen QPG «Excel output» + «Shuffle index»: savollar, javoblar va har savolning variantlardagi o'rni.
+  const excelYukla = async () => {
+    setBand('excel');
+    try {
+      const d = await olish<KalitMalumoti>(`exams/${exam.id}/key?yechim=1`);
+      const { kitobchaExcel, kitobchaExcelNomi } = await import('./kitobchaExcel');
+      yuklabOl(kitobchaExcel(exam, d, smena), kitobchaExcelNomi(exam));
+    } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
+  };
+
+  const ekrandaOch = async () => {
+    setBand('ekran');
+    try {
+      const code = kitobchaKodi || variantlar[0];
+      if (!code) throw new Error("Bu smenada variant yo'q");
+      const [d, kalit] = await Promise.all([
+        olish<KitobchaMalumoti>(`exams/${exam.id}/booklets?session=${smena}`),
+        kalitKorinadi && !sorovnoma ? olish<KalitMalumoti>(`exams/${exam.id}/key`) : Promise.resolve(null),
+      ]);
+      setEkran({ d, kalit, code });
+    } catch (e: any) { showNotification(e.message, 'error'); } finally { setBand(false); }
+  };
+
   // Jonli ko'rinish: hujjat yoki sozlama o'zgarsa qayta chiziladi.
   const [korinish, setKorinish] = useState<{ html: string } | { xato: string } | null>(null);
   useEffect(() => {
@@ -174,7 +210,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
       tayyorla(hujjat, true).then(p => {
         if (bekor) return;
         setKorinish(p ? { html: `<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><style>${p.css}${KORINISH_CSS}</style></head><body>${p.body}</body></html>` }
-          : { xato: hujjat === 'kitobcha' ? "Bu smenada variant yo'q" : "Bu smenada o'rinlashtirilgan qatnashchi yo'q — «Qatnashchilar» tabida o'rinlashtirilgach ko'rinadi" });
+          : { xato: hujjat === 'kitobcha' || hujjat === 'yechim' ? "Bu smenada variant yo'q" : "Bu smenada o'rinlashtirilgan qatnashchi yo'q — «Qatnashchilar» tabida o'rinlashtirilgach ko'rinadi" });
       }).catch(e => { if (!bekor) setKorinish({ xato: e.message }); });
     }, 150);
     return () => { bekor = true; clearTimeout(t); };
@@ -189,15 +225,16 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
   if (!data) return <Yuklanmoqda />;
 
   const smenadagilar = (data.seats || []).filter(o => o.session === smena && o.roomId).length;
-  const HUJJATLAR: { guruh: string; royxat: { id: Hujjat; nom: string; izoh: string; ikonka: React.ReactNode; ochiq: boolean }[] }[] = [
+  const HUJJATLAR_HAMMASI: { guruh: string; qism: 'qogoz' | 'varaq'; royxat: { id: Hujjat; nom: string; izoh: string; ikonka: React.ReactNode; ochiq: boolean }[] }[] = [
     {
-      guruh: "Savol qog'ozi", royxat: [
+      guruh: "Savol qog'ozi", qism: 'qogoz', royxat: [
         { id: 'kitobcha', nom: 'Kitobchalar', izoh: `${variantlar.length} variant · ksero uchun`, ikonka: <BookOpen size={16} />, ochiq: kitobchaBor },
         { id: 'kalit', nom: 'Javoblar kaliti', izoh: 'hamma variantlar, tekshiruvchi uchun', ikonka: <KeyRound size={16} />, ochiq: kalitKorinadi && !sorovnoma },
+        { id: 'yechim', nom: 'Yechimlar', izoh: 'har variant tartibida · tahlil darsi uchun', ikonka: <Lightbulb size={16} />, ochiq: kalitKorinadi && kitobchaBor },
       ],
     },
     {
-      guruh: sorovnoma ? "So'rovnoma kuni" : 'Imtihon kuni', royxat: [
+      guruh: sorovnoma ? "So'rovnoma kuni" : 'Imtihon kuni', qism: 'varaq', royxat: [
         { id: 'varaq', nom: sorovnoma ? "So'rovnoma varaqlari (ismli)" : 'Javob varaqalari', izoh: `${orinlar.length} kishi · shaxsiy, QR bilan`, ikonka: <FileText size={16} />, ochiq: !anonim },
         { id: 'universal', nom: anonim ? "So'rovnoma varaqlari (anonim)" : 'Universal varaqlar', izoh: anonim ? 'ism va ID siz · nechta kerak bo\'lsa' : "ro'yxatda yo'qlar uchun", ikonka: <Files size={16} />, ochiq: true },
         { id: 'eshik', nom: "Eshik ro'yxati", izoh: `${xonalar.length} xona · alifbo tartibida`, ikonka: <DoorOpen size={16} />, ochiq: !anonim },
@@ -206,10 +243,12 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
       ],
     },
   ];
+  const HUJJATLAR = HUJJATLAR_HAMMASI.filter(g => !qism || g.qism === qism);
   const tanlanganNomi = HUJJATLAR.flatMap(g => g.royxat).find(h => h.id === hujjat)?.nom;
   const varaqTuri = hujjat === 'varaq' || hujjat === 'universal';
   const xonaKerak = hujjat === 'varaq' || hujjat === 'eshik' || hujjat === 'vedomost';
   const sanoq = hujjat === 'kitobcha' ? `${kitobchaKodi ? 1 : variantlar.length} ta kitobcha`
+    : hujjat === 'yechim' ? `${kitobchaKodi ? 1 : variantlar.length} variant`
     : hujjat === 'kalit' ? `${variantlar.length} variant`
       : hujjat === 'varaq' ? `${yakka ? 1 : orinlar.length} ta varaq${sahifalar.length > 1 ? ` × ${sahifalar.length} bet` : ''}`
         : hujjat === 'universal' ? `${universalSoni} ta varaq` : `${xonalar.filter(([id]) => !xona || id === xona).length} xona`;
@@ -218,6 +257,7 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
 
   return (
     <div className="space-y-4">
+      {ekran && <EkranKorsatish exam={exam} d={ekran.d} kalit={ekran.kalit} session={smena} code={ekran.code} onYop={() => setEkran(null)} />}
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 items-start">
         <div className="space-y-4">
           <Karta ichki="p-2">
@@ -250,14 +290,17 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
                   </select>
                 </Maydon>
               )}
+              {(hujjat === 'kitobcha' || hujjat === 'yechim') && (
+                <Maydon nom="Variant">
+                  <select className={SELECT} value={kitobchaKodi} onChange={e => setKitobchaKodi(e.target.value)}>
+                    <option value="">Hammasi ({variantlar.join(', ')})</option>
+                    {variantlar.map(c => <option key={c} value={c}>Variant {c}</option>)}
+                  </select>
+                </Maydon>
+              )}
+              {hujjat === 'yechim' && <p className="text-[12px] text-matn-sokin">Har savol: to'g'ri javob (shu variant harfida), savol matni va bankdagi yechimi. Yechimi yo'q savollar belgilanadi — bankda «Yechim» maydonini to'ldirsa bo'ladi.</p>}
               {hujjat === 'kitobcha' && (
                 <>
-                  <Maydon nom="Variant">
-                    <select className={SELECT} value={kitobchaKodi} onChange={e => setKitobchaKodi(e.target.value)}>
-                      <option value="">Hammasi ({variantlar.join(', ')})</option>
-                      {variantlar.map(c => <option key={c} value={c}>Variant {c}</option>)}
-                    </select>
-                  </Maydon>
                   <Maydon div nom="Ustunlar">
                     <Tanlov qiymat={ko.ustun} onChange={v => setKo({ ustun: v })} variantlar={[{ v: 1, nom: '1 ustun' }, { v: 2, nom: '2 ustun' }]} />
                   </Maydon>
@@ -265,6 +308,24 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
                     <Almashtirgich yoqilgan={ko.bolimSarlavha} onChange={v => setKo({ bolimSarlavha: v })} nom="Fan sarlavhalari" izoh="Masalan: Matematika — 1–30-savollar, har biri 3,1 ball" />
                     <Almashtirgich yoqilgan={ko.izoh} onChange={v => setKo({ izoh: v })} nom="Savol izohlari" izoh="Bankdagi izoh maydoni savol ostida" />
                     <Almashtirgich yoqilgan={ko.ikkiTil} onChange={v => setKo({ ikkiTil: v })} nom="Ikki tilli" izoh="Tarjimasi bor savollar ikkinchi tilda ham" />
+                    {ko.ikkiTil && (
+                      <div className="pl-11">
+                        <Tanlov qiymat={ko.ikkiTilJoy} onChange={v => setKo({ ikkiTilJoy: v })} variantlar={[{ v: 'ostida', nom: 'Ostida' }, { v: 'yonma', nom: 'Yonma-yon' }]} />
+                        {ko.ikkiTilJoy === 'yonma' && <p className="text-[11px] text-matn-xira mt-1">Chapda asl, o'ngda tarjima — kitobcha bir ustunli bo'ladi.</p>}
+                      </div>
+                    )}
+                    <Almashtirgich yoqilgan={ko.yorliq} onChange={v => setKo({ yorliq: v })} nom="Bet ostida imtihon va variant" izoh="Betlar aralashib ketsa, qaysi kitobchaniki ekani ko'rinadi" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Maydon nom="Suv belgisi" izoh="Har betda qiya, och">
+                      <input className={INPUT} list="suv-belgilar" maxLength={40} placeholder="yo'q" value={ko.suvBelgi} onChange={e => setKo({ suvBelgi: e.target.value })} />
+                      <datalist id="suv-belgilar"><option value="NUSXA" /><option value="NAMUNA" /><option value="MAXFIY" />{markaz && <option value={markaz} />}</datalist>
+                    </Maydon>
+                    <Maydon nom="Qoralama betlari" izoh="Oxirida, katakli">
+                      <select className={SELECT} value={ko.qoralama} onChange={e => setKo({ qoralama: Number(e.target.value) })}>
+                        {[0, 1, 2, 3, 4].map(n => <option key={n} value={n}>{n ? `${n} bet` : "Yo'q"}</option>)}
+                      </select>
+                    </Maydon>
                   </div>
                   {nusxalar.length > 0 && (
                     <div className="rounded-xl bg-ichki border border-chiziq p-2.5">
@@ -329,9 +390,13 @@ export default function ChopEtishTab({ exam, yangila }: { exam: ImtihonTafsil; y
             tugma={
               <span className="flex flex-wrap gap-2">
                 {hujjat === 'kitobcha' && (
-                  <Tugma ikonka={<FileDown size={15} />} yuklanmoqda={band === 'word'} disabled={!!band || !variantlar.length} onClick={wordYukla} title="Word'da tahrirlab chop etish uchun (formulalar — Word formulasi)">Word (.docx)</Tugma>
+                  <>
+                    <Tugma ikonka={<Presentation size={15} />} yuklanmoqda={band === 'ekran'} disabled={!!band || !variantlar.length} onClick={ekrandaOch} title="Proyektorda savollarni bittalab ko'rsatish (tahlil darsi)">Ekranda</Tugma>
+                    {kalitKorinadi && <Tugma ikonka={<Sheet size={15} />} yuklanmoqda={band === 'excel'} disabled={!!band || !variantlar.length} onClick={excelYukla} title="Har variant savollari va javoblari + aralash indeksi (qaysi savol qaysi variantda nechanchi)">Excel</Tugma>}
+                    <Tugma ikonka={<FileDown size={15} />} yuklanmoqda={band === 'word'} disabled={!!band || !variantlar.length} onClick={wordYukla} title="Word'da tahrirlab chop etish uchun (formulalar — Word formulasi)">Word</Tugma>
+                  </>
                 )}
-                <Tugma turi="asosiy" ikonka={<Printer size={15} />} yuklanmoqda={band === 'chop'} disabled={!!band || boshMi || varaqXato || (hujjat === 'kitobcha' && !variantlar.length)} onClick={chopEtish}>
+                <Tugma turi="asosiy" ikonka={<Printer size={15} />} yuklanmoqda={band === 'chop'} disabled={!!band || boshMi || varaqXato || ((hujjat === 'kitobcha' || hujjat === 'yechim') && !variantlar.length)} onClick={chopEtish}>
                   Chop etish · {sanoq}
                 </Tugma>
               </span>

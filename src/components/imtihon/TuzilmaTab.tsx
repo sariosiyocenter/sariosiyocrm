@@ -9,6 +9,7 @@ import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
 import { TUR_NOMI } from '../../lib/savolTuri';
 import KalitOynasi from './KalitOynasi';
+import QogozPaneli from './QogozPaneli';
 import KalitMuharriri from './KalitMuharriri';
 import VariantJadvali, { harXilmi, type JadvalMalumoti } from './VariantJadvali';
 import type { ImtihonTafsil, TabId } from './turlar';
@@ -116,11 +117,21 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
   }, [tahrir, exam.lockedAt, bankRejimi, hammasiYetadi]); // eslint-disable-line react-hooks/exhaustive-deps
   const takrorIzohi = (n: number) => (n ? `${n} o'rinda savol boshqa variantda ham bor (sariq) — shu mavzu va qiyinlikda bankda savol kam` : "Takror yo'q");
 
+  // Chap paneldagi sozlama saqlandi (qulf kerak bo'lsa ochildi) — bank qayta tekshiriladi, yangi tanlov.
+  const panelOzgardi = async () => {
+    setKorinish(null);
+    setOgohlar([]);
+    setKamchilik(null);
+    await yangila();
+    await tekshir();
+    await yigish(true);
+  };
+
   if (s.source === 'sorovnoma') return <SorovnomaTuzilma exam={exam} yangila={yangila} />;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] gap-4 items-start">
+      <div className="space-y-4 lg:order-2 min-w-0">
         {!exam.lockedAt && kalitRejimi ? (
           <Karta sarlavha="Kitobcha kaliti" izoh={`O'z kitobchangiz: har variantning (${s.variantCount > 1 ? 'A, B, …' : 'A'}) to'g'ri javoblari. Varaqdagi savol raqamlari kitobchadagi bilan bir xil bo'lishi kerak.`}>
             <KalitMuharriri exam={exam} onSaqlandi={() => { tekshir(); yangila(); }} />
@@ -215,7 +226,46 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
           </Karta>
         )}
 
-        <Karta sarlavha="Tuzilma">
+      </div>
+
+      <div className="space-y-4 lg:order-1 min-w-0">
+        {bankRejimi && <QogozPaneli exam={exam} onOzgardi={panelOzgardi} />}
+        <Karta sarlavha={exam.lockedAt ? 'Keyingi qadam' : 'Tasdiqlash'}>
+          {!exam.lockedAt ? (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-matn-sokin">{kalitRejimi
+                ? "Hamma kitobcha variantining kaliti kiritilgach — qulflang. Javob varaqalari shundan keyin chop etiladi."
+                : !hammasiYetadi ? "Bank yetgach variantlar yig'iladi: chapdagi qatorlarni to'ldiring."
+                  : "Variantlar jadvalini ko'rib chiqing, keyin tasdiqlang. Kalit faqat ruxsati borlarga ko'rinadi."}</p>
+              {tahrir && (kalitRejimi
+                ? <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!hammasiYetadi} onClick={qulfla}>Savollarni qulflash</Tugma>
+                : <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!korinish || yigilmoqda} onClick={qulfla}>Tasdiqlash va qulflash</Tugma>)}
+              {kalitRejimi && kalitlar && !hammasiYetadi && (
+                <p className="text-[12px] text-matn-xira">Kalit to'liq emas: {kalitlar.map(k => `${k.code} ${k.toldirilgan}/${k.jami}`).join(', ')}</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <KeyingiQadam exam={exam} otish={otish} />
+              {tahrir && exam._count.results === 0 && <Tugma className="w-full" turi="oddiy" ikonka={<Unlock size={14} />} yuklanmoqda={band} onClick={qulfniOch}>Qulfni ochish</Tugma>}
+            </div>
+          )}
+        </Karta>
+        {!bankRejimi && <Karta sarlavha="Tuzilma sozlamasi" izoh="Qulfgacha belgilanadi">
+          <dl className="text-[12.5px] space-y-1.5">
+            <Qator k="Savollar" v={kalitRejimi ? "O'z kitobchasi (faqat kalit)" : 'Savollar bankidan'} />
+            <Qator k="Ball tizimi" v={exam.scoring === 'blok' ? 'Blok bali' : 'Foiz'} />
+            <Qator k="Smenalar" v={s.sessions.map(x => `${x.name}${x.time ? ` (${x.time})` : ''}`).join(', ')} />
+            {s.sessions.length > 1 && <Qator k="Smenalarga savol" v={s.sessionQuestions === 'alohida' ? 'Har biriga boshqa' : 'Bir xil'} />}
+            <Qator k="Variantlar" v={`${s.variantCount} ta`} />
+            {bankRejimi && s.variantCount > 1 && <Qator k="Variantlarda savollar" v={har ? 'Har xil' : 'Bir xil'} />}
+            {!kalitRejimi && <Qator k="Aralashtirish" v={[!har && s.shuffleQuestions && 'savollar', s.shuffleOptions && 'javoblar'].filter(Boolean).join(', ') || "yo'q"} />}
+            {kalitRejimi && <Qator k="Javob variantlari" v={`${s.optionCount} ta (${HARF_ROYXAT.slice(0, s.optionCount).join(', ')})`} />}
+            <Qator k="Jarima" v={s.xatoJarima ? `xato javobga ${Math.round(s.xatoJarima * 100)}%` : "yo'q"} />
+          </dl>
+          <p className="text-[11.5px] text-matn-xira mt-3">O'tkazish (onlayn, o'rinlar, ruxsatnoma) — «Qatnashchilar va varaq» bo'limida; o'tish bali, reyting va xabar — «Natijalar» da.</p>
+        </Karta>}
+        <Karta sarlavha="Andoza va tuzilma">
           <div className="space-y-2">
             {exam.blocks.map((b, i) => (
               <div key={i} className="rounded-xl border border-chiziq p-3">
@@ -238,44 +288,6 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
           </div>
         </Karta>
       </div>
-
-      <div className="space-y-4">
-        <Karta sarlavha="Keyingi qadam">
-          {!exam.lockedAt ? (
-            <div className="space-y-3">
-              <p className="text-[12.5px] text-matn-sokin">{kalitRejimi
-                ? "Hamma kitobcha variantining kaliti kiritilgach — qulflang. Javob varaqalari shundan keyin chop etiladi."
-                : !hammasiYetadi ? "Bank yetgach variantlar yig'iladi: chapdagi qatorlarni to'ldiring."
-                  : "Variantlar jadvalini ko'rib chiqing, keyin tasdiqlang. Kalit faqat ruxsati borlarga ko'rinadi."}</p>
-              {tahrir && (kalitRejimi
-                ? <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!hammasiYetadi} onClick={qulfla}>Savollarni qulflash</Tugma>
-                : <Tugma turi="asosiy" className="w-full" ikonka={<Lock size={14} />} yuklanmoqda={band} disabled={!korinish || yigilmoqda} onClick={qulfla}>Tasdiqlash va qulflash</Tugma>)}
-              {kalitRejimi && kalitlar && !hammasiYetadi && (
-                <p className="text-[12px] text-matn-xira">Kalit to'liq emas: {kalitlar.map(k => `${k.code} ${k.toldirilgan}/${k.jami}`).join(', ')}</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <KeyingiQadam exam={exam} otish={otish} />
-              {tahrir && exam._count.results === 0 && <Tugma className="w-full" turi="oddiy" ikonka={<Unlock size={14} />} yuklanmoqda={band} onClick={qulfniOch}>Qulfni ochish</Tugma>}
-            </div>
-          )}
-        </Karta>
-        <Karta sarlavha="Tuzilma sozlamasi" izoh="Qulfgacha belgilanadi">
-          <dl className="text-[12.5px] space-y-1.5">
-            <Qator k="Savollar" v={kalitRejimi ? "O'z kitobchasi (faqat kalit)" : 'Savollar bankidan'} />
-            <Qator k="Ball tizimi" v={exam.scoring === 'blok' ? 'Blok bali' : 'Foiz'} />
-            <Qator k="Smenalar" v={s.sessions.map(x => `${x.name}${x.time ? ` (${x.time})` : ''}`).join(', ')} />
-            {s.sessions.length > 1 && <Qator k="Smenalarga savol" v={s.sessionQuestions === 'alohida' ? 'Har biriga boshqa' : 'Bir xil'} />}
-            <Qator k="Variantlar" v={`${s.variantCount} ta`} />
-            {bankRejimi && s.variantCount > 1 && <Qator k="Variantlarda savollar" v={har ? 'Har xil' : 'Bir xil'} />}
-            {!kalitRejimi && <Qator k="Aralashtirish" v={[!har && s.shuffleQuestions && 'savollar', s.shuffleOptions && 'javoblar'].filter(Boolean).join(', ') || "yo'q"} />}
-            {kalitRejimi && <Qator k="Javob variantlari" v={`${s.optionCount} ta (${HARF_ROYXAT.slice(0, s.optionCount).join(', ')})`} />}
-            <Qator k="Jarima" v={s.xatoJarima ? `xato javobga ${Math.round(s.xatoJarima * 100)}%` : "yo'q"} />
-          </dl>
-          <p className="text-[11.5px] text-matn-xira mt-3">O'tkazish (onlayn, o'rinlar, ruxsatnoma) — «Qatnashchilar» tabida; o'tish bali, reyting va xabar — «Natijalar» tabida.</p>
-        </Karta>
-      </div>
       {kalit && !kalitRejimi && <KalitOynasi examId={exam.id} onYop={ozgardi => { setKalit(false); if (ozgardi) yangila(); }} />}
       {kalit && kalitRejimi && <KalitMuharririOynasi exam={exam} onYop={() => { setKalit(false); yangila(); }} />}
     </div>
@@ -288,7 +300,9 @@ const HARF_ROYXAT = ['A', 'B', 'C', 'D', 'E', 'F'];
 function tuzilmaQatorlari(rules: ImtihonTafsil['blocks'][number]['topicRules']) {
   const m = new Map<string, { nom: string; jami: number; qism: Map<string, number> }>();
   for (const r of rules) {
-    const nom = r.questionIds?.length ? 'Tanlangan savollar' : r.topic || 'Istalgan mavzu';
+    const nom = r.questionIds?.length
+      ? (r.oxshash ? "Andoza savollari (boshqa variantlarda — o'xshashi)" : 'Tanlangan savollar')
+      : r.topic || 'Istalgan mavzu';
     if (!m.has(nom)) m.set(nom, { nom, jami: 0, qism: new Map() });
     const x = m.get(nom)!;
     x.jami += r.count;

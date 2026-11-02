@@ -54,9 +54,14 @@ export function tozalaHtml(html: string): string {
   return ildiz.innerHTML;
 }
 
-function formula(tex: string, blok: boolean): string {
+// Qog'ozda (kitobcha) qator ichidagi kasr, integral, limit… odatda juda mayda chiqadi — chop etilganda
+// o'qib bo'lmaydi. U yerda ular to'liq o'lchamda (\displaystyle) chiziladi, qator ichida qolgan holda.
+const KATTA_AMAL = /\\(d?frac|tfrac|int|iint|oint|sum|prod|lim|binom|dbinom)(?![a-z])/;
+
+function formula(tex: string, blok: boolean, qogoz = false): string {
   try {
-    return katex.renderToString(tex, { displayMode: blok, throwOnError: false, output: 'html', strict: 'ignore' });
+    const t = qogoz && !blok && KATTA_AMAL.test(tex) ? `\\displaystyle ${tex}` : tex;
+    return katex.renderToString(t, { displayMode: blok, throwOnError: false, output: 'html', strict: 'ignore' });
   } catch {
     // Sintaksis xatosini KaTeX o'zi chizadi (throwOnError: false); bu yerga boshqa xato tushadi (masalan
     // juda chuqur ichma-ich qavs — RangeError). Natija innerHTML ga yoziladi, shuning uchun formulaning
@@ -65,8 +70,11 @@ function formula(tex: string, blok: boolean): string {
   }
 }
 
-/** Matn tugunlaridagi $...$ ni KaTeX ga aylantiradi (HTML teglariga tegmaydi). */
-export function formulaliHtml(html: string): string {
+/**
+ * Matn tugunlaridagi $...$ ni KaTeX ga aylantiradi (HTML teglariga tegmaydi).
+ * qogoz — chop etiladigan kitobcha uchun: kasr va integrallar qator ichida ham to'liq o'lchamda.
+ */
+export function formulaliHtml(html: string, qogoz = false): string {
   const toza = tozalaHtml(html);
   if (!toza.includes('$')) return toza;
   const doc = new DOMParser().parseFromString(`<div>${toza}</div>`, 'text/html');
@@ -88,7 +96,7 @@ export function formulaliHtml(html: string): string {
         frag.appendChild(span);
       } else if (b.startsWith('$') && b.endsWith('$') && b.length > 2) {
         const span = doc.createElement('span');
-        span.innerHTML = formula(b.slice(1, -1), false);
+        span.innerHTML = formula(b.slice(1, -1), false, qogoz);
         frag.appendChild(span);
       } else frag.appendChild(doc.createTextNode(b));
     }

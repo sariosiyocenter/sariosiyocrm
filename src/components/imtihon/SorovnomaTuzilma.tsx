@@ -57,7 +57,7 @@ export default function SorovnomaTuzilma({ exam, yangila }: { exam: ImtihonTafsi
           ) : (
             <div className="space-y-3">
               <p className="text-[12.5px] text-matn-sokin">Varaqlarni chop eting, to'ldirilganini skanerlang — natija «Natijalar»da savol bo'yicha taqsimot bo'lib chiqadi.</p>
-              <Tugma className="w-full" ikonka={<Printer size={14} />} onClick={() => navigate(`/exams?tab=chop&imtihon=${exam.id}`)}>Chop etish</Tugma>
+              <Tugma className="w-full" ikonka={<Printer size={14} />} onClick={() => navigate(`/exams?tab=imtihonlar&imtihon=${exam.id}&b=varaq&k=chop`)}>Chop etish</Tugma>
               {tahrir && exam._count.results === 0 && <Tugma className="w-full" turi="oddiy" ikonka={<Unlock size={14} />} yuklanmoqda={band} onClick={qulfniOch}>Qulfni ochish</Tugma>}
             </div>
           )}

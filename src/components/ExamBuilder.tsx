@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Lock, Wand2, MessageSquareText, Info, ChevronDown, Layers, FileText, Copy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Lock, Wand2, LayoutList, MessageSquareText, Info, ChevronDown, Layers, FileText, Copy } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
@@ -8,6 +8,7 @@ import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
 import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
 import SorovnomaMuharriri from './imtihon/SorovnomaMuharriri';
 import { JarimaTanlovi } from './imtihon/sozlamaQismlari';
+import AndozadanQogoz from './imtihon/AndozadanQogoz';
 import { sanaMatni } from './imtihon/format';
 import { sozlamaniTozala, varaqTuzilmasi, VARIANT_KODLARI, taqsimla, QIYINLIK_ARALASHMASI, qismSoni, qismTekshiruvi } from '../../lib/imtihon.js';
 import { yangiImtihonBoshi } from '../../lib/imtihonSozlama.js';
@@ -55,7 +56,7 @@ const KALIT_TURLARI = [
 ];
 
 type Manba = 'bank' | 'kalit';
-type Shablon = 'dtm' | 'bitta' | 'nusxa';
+type Shablon = 'andoza' | 'dtm' | 'bitta' | 'nusxa';
 
 /**
  * /exams/new va /exams/:id/edit bitta komponent: yo'l almashsa (yangi ↔ tahrir, boshqa imtihon)
@@ -87,6 +88,8 @@ function ImtihonFormasi() {
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   // Yangi imtihon avval «Yangi imtihon» oynasidan boshlanadi (nomi, manba, qanday imtihon).
   const [boshlandi, setBoshlandi] = useState(tahrir);
+  // Bankdagi andozadan (Addmen «Blueprint → Generate Paper») — o'z oynasi.
+  const [andozaOyna, setAndozaOyna] = useState(false);
   const [qoshimcha, setQoshimcha] = useState(false);
   const [qulf, setQulf] = useState(false);
   const [nom, setNom] = useState('');
@@ -136,8 +139,8 @@ function ImtihonFormasi() {
   const kopaytma = sozlama.sessionQuestions === 'alohida' ? sozlama.sessions.length : 1;
   // "Faqat kalit": markazning o'z kitobchasi — mavzu va qiyinlik kerak emas, bank ham.
   const kalitRejimi = sozlama.source === 'kalit';
-  // Variantlarda savollar: sozlamada yo'q bo'lsa — server standarti «har xil».
-  const harXil = (sozlama.variantSavollari ?? 'har') === 'har' && sozlama.variantCount > 1;
+  // Variantlarda savollar: sozlamada yo'q bo'lsa — server standarti «bir xil» (Addmen kabi).
+  const harXil = (sozlama.variantSavollari ?? 'bir') === 'har' && sozlama.variantCount > 1;
 
   const blokQoy = (bi: number, patch: Partial<ExamBlock>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, ...patch } : x)));
   const qoidaQoy = (bi: number, ri: number, patch: Partial<TopicRule>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, topicRules: x.topicRules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : x)));
@@ -200,6 +203,8 @@ function ImtihonFormasi() {
       <YangiImtihonOynasi nom={nom} setNom={setNom} sana={sana} setSana={setSana} bankTayyor={!!daraxt}
         onOrqaga={() => navigate('/exams?tab=imtihonlar')}
         onSorovnoma={() => navigate('/exams/new?tur=sorovnoma')}
+        onAndoza={() => setAndozaOyna(true)}
+        andozaOyna={andozaOyna && <AndozadanQogoz onYop={() => setAndozaOyna(false)} onTayyor={eid => { setAndozaOyna(false); navigate(`/exams?tab=imtihonlar&imtihon=${eid}`); }} />}
         onNusxa={async eskiId => {
           try {
             const yangi = await soro<Exam>('POST', `exams/${eskiId}/copy`);
@@ -348,7 +353,7 @@ function ImtihonFormasi() {
               ? "Har variantning o'z savollari: masalan, 9-o'rin hamma variantda «Geometriya · qiyin», lekin savolning o'zi boshqa. Bank kam bo'lsa savol boshqa variantda takrorlanadi (variant ichida — hech qachon)."
               : 'Hamma variantda shu savollar — faqat tartibi va javob harflari aralashadi'}>
               <Tanlov qiymat={harXil ? 'har' : 'bir'} disabled={qulf} onChange={v => s({ variantSavollari: v })}
-                variantlar={[{ v: 'har', nom: 'Har xil — mavzu va qiyinligi bir xil' }, { v: 'bir', nom: 'Bir xil — faqat tartibi aralashadi' }]} />
+                variantlar={[{ v: 'bir', nom: 'Bir xil savollar, tartibi aralashadi' }, { v: 'har', nom: 'Har xil savollar (mavzu va qiyinligi bir xil)' }]} />
             </Maydon>
           )}
         </div>
@@ -442,24 +447,27 @@ function ImtihonFormasi() {
  * «Yangi imtihon» — boshqa tizimlardagidek avval uchta savol: nomi va sanasi, savollar qayerdan
  * (bank yoki o'z kitobchasi) va qanday imtihon (DTM / bitta fan / avvalgisidek). Qolgani — standart.
  */
-function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, onDavom, onNusxa, onSorovnoma }: {
+function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, onDavom, onNusxa, onSorovnoma, onAndoza, andozaOyna }: {
   nom: string; setNom: (v: string) => void; sana: string; setSana: (v: string) => void; bankTayyor: boolean;
   onOrqaga: () => void; onDavom: (manba: Manba, shablon: Shablon) => void; onNusxa: (examId: number) => Promise<void>;
-  onSorovnoma: () => void;
+  onSorovnoma: () => void; onAndoza: () => void; andozaOyna: React.ReactNode;
 }) {
   const { exams } = useCRM();
   // Savollar doim bankdan: «o'z kitobcham» (faqat kalit) ishlatilmagan — oynadan olindi (2026-10-29).
   // Server va eski imtihonlar uchun u rejim qoladi.
-  const [shablon, setShablon] = useState<Shablon>('dtm');
+  // Asosiy yo'l — bankdagi andoza (Addmen Blueprint): siz tuzgan savollar ro'yxatidan setlar.
+  const [shablon, setShablon] = useState<Shablon>('andoza');
   const [nusxaId, setNusxaId] = useState<number | ''>('');
   const [band, setBand] = useState(false);
   // Nusxa uchun — bankdan yoki kalitli imtihonlar (so'rovnoma emas), yangisi tepada.
   const avvalgilar = [...exams].filter(e => e.settings?.source !== 'sorovnoma')
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id).slice(0, 60);
-  const tayyor = !!nom.trim() && (shablon === 'nusxa' ? !!nusxaId : shablon !== 'dtm' || bankTayyor);
+  // Andoza oynasi nomi va sanasini o'zi so'raydi (andoza nomidan).
+  const tayyor = shablon === 'andoza' || (!!nom.trim() && (shablon === 'nusxa' ? !!nusxaId : shablon !== 'dtm' || bankTayyor));
 
   const davom = async () => {
     if (!tayyor) return;
+    if (shablon === 'andoza') return onAndoza();
     if (shablon === 'nusxa') {
       setBand(true);
       try { await onNusxa(Number(nusxaId)); } finally { setBand(false); }
@@ -474,20 +482,24 @@ function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, 
         <button aria-label="Orqaga" onClick={onOrqaga} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
         <div>
           <h1 className="text-[16px] font-bold text-matn">Yangi imtihon</h1>
-          <p className="text-[12px] text-matn-xira">Ikkita savol — qolganini keyin o'zgartirsa bo'ladi</p>
+          <p className="text-[12px] text-matn-xira">Qayerdan tuzilishini tanlang — qolganini keyin o'zgartirsa bo'ladi</p>
         </div>
       </div>
 
-      <Karta sarlavha="1. Nomi va sanasi">
+      {shablon !== 'andoza' && (
+      <Karta sarlavha="Nomi va sanasi">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Maydon nom="Nomi" className="sm:col-span-2"><input autoFocus className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Oylik DTM sinov — noyabr" /></Maydon>
           <Maydon nom="Sana"><input type="date" className={INPUT} value={sana} onChange={e => setSana(e.target.value)} /></Maydon>
         </div>
       </Karta>
+      )}
 
       {(
-        <Karta sarlavha="2. Qanday imtihon?" izoh="Savollar bankdan olinadi — variantlar, kitobcha va kalitni CRM o'zi tuzadi">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <Karta sarlavha="Qanday imtihon?" izoh="Savollar bankdan olinadi — variantlar, kitobcha va kalitni CRM o'zi tuzadi">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <TanlovKartasi faol={shablon === 'andoza'} onClick={() => setShablon('andoza')} ikonka={<LayoutList size={18} />} nomi="Bankdagi andozadan"
+              izoh="Siz tuzgan savollar ro'yxati — har variantga o'sha mavzu va qiyinlikdagi savollar" />
             <TanlovKartasi faol={shablon === 'dtm'} onClick={() => setShablon('dtm')} ikonka={<Layers size={18} />} nomi="DTM blok testi" izoh="5 fan · 90 savol · 1.1 / 3.1 / 2.1 ball" />
             <TanlovKartasi faol={shablon === 'bitta'} onClick={() => setShablon('bitta')} ikonka={<FileText size={18} />} nomi="Bitta fan" izoh="Fanni va savollar sonini o'zingiz tanlaysiz" />
             <TanlovKartasi faol={shablon === 'nusxa'} onClick={() => setShablon('nusxa')} ikonka={<Copy size={18} />} nomi="Avvalgisidek" izoh="Oldingi imtihonning rejasi nusxalanadi" />
@@ -509,6 +521,7 @@ function YangiImtihonOynasi({ nom, setNom, sana, setSana, bankTayyor, onOrqaga, 
         </Karta>
       )}
 
+      {andozaOyna}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-matn-xira max-w-md">Variantlar soni, smenalar, ball va boshqalar markaz standartidan olinadi — keyingi oynada o'zgartirsa bo'ladi.</p>
         <Tugma turi="asosiy" yuklanmoqda={band} disabled={!tayyor} onClick={davom}>Davom etish <ArrowRight size={14} /></Tugma>

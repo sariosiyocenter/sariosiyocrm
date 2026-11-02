@@ -41,7 +41,7 @@ export interface HisobotTavsifi {
   v: HisobotTuri; nom: string; tur: 'pdf' | 'excel';
   /** Kalit ruxsati kerak. */ kalit?: boolean;
   /** Savollar tahlili kerak. */ tahlil?: boolean;
-  /** Ikkinchi imtihon tanlanadi (Merge test). */ birlash?: boolean;
+  /** Boshqa imtihon(lar) tanlanadi (Merge test). */ birlash?: boolean;
   /** Ustunlarni tanlash ishlaydi. */ ustunli?: boolean;
   /** Har o'quvchiga alohida bo'lim — alohida PDF bo'lishi mumkin. */ shaxsiy?: boolean;
   /** Kelmaganlar ro'yxati. */ kelmagan?: boolean;
@@ -60,7 +60,7 @@ export const HISOBOT_TURLARI: HisobotTavsifi[] = [
   { v: '1231', nom: "O'sish grafigi (bir necha imtihon)", tur: 'pdf', shaxsiy: true },
   { v: '1241', nom: 'Savollar tahlili', tur: 'pdf', tahlil: true },
   { v: '1251', nom: "Kelmaganlar ro'yxati", tur: 'pdf', kelmagan: true },
-  { v: '1311', nom: 'Ikki imtihon birlashtirilgan', tur: 'pdf', birlash: true },
+  { v: '1311', nom: 'Bir necha imtihon birlashtirilgan', tur: 'pdf', birlash: true },
   { v: '2111', nom: "Ball ro'yxati (qisqa)", tur: 'excel', ustunli: true },
   { v: '2112', nom: "Ball ro'yxati (fanlar bali)", tur: 'excel', ustunli: true },
   { v: '2113', nom: "Ball ro'yxati (kengaytirilgan)", tur: 'excel', ustunli: true },
@@ -73,7 +73,7 @@ export const HISOBOT_TURLARI: HisobotTavsifi[] = [
   { v: '2311', nom: 'Kalit', tur: 'excel', kalit: true },
   { v: '2321', nom: "Kelmaganlar ro'yxati", tur: 'excel', kelmagan: true },
   { v: '2331', nom: "Hamma ma'lumot", tur: 'excel' },
-  { v: '2411', nom: 'Ikki imtihon birlashtirilgan', tur: 'excel', birlash: true },
+  { v: '2411', nom: 'Bir necha imtihon birlashtirilgan', tur: 'excel', birlash: true },
 ];
 
 /** Ball ro'yxatlarida tanlanadigan ustunlar (Addmen "Select columns"). */
@@ -104,8 +104,8 @@ export interface HisobotKirish {
   tahlil: SavolTahlilQatori[];
   s: HisobotSozlama;
   filialNomi: (id: number) => string;
-  /** Birlashtirish (Addmen "Merge test"): ikkinchi imtihon (masalan 2-qism). */
-  ikkinchi?: { nomi: string; maxScore: number; natijalar: HisobotNatija[] } | null;
+  /** Birlashtirish (Addmen "Merge test"): qo'shiladigan boshqa imtihonlar (2-qism, oylik testlar…). 2213 — faqat birinchisi. */
+  boshqalar?: { nomi: string; maxScore: number; natijalar: HisobotNatija[] }[] | null;
 }
 
 // lib/imtihon.js dagi funksiya (JS) — turini aniq beramiz.
@@ -481,42 +481,78 @@ export function savollarTahliliHtml(k: HisobotKirish): string {
 
 // --- Birlashtirish (Merge test) -------------------------------------------------
 
-export interface BirlashQatori { kalit: string; kod: number | null; name: string; groupName: string; birinchi: number | null; ikkinchi: number | null; jami: number; foiz: number; orin: number }
+/** Birlashtiriladigan boshqa imtihonlar — ko'pi bilan shuncha (jadval A4 yotiqqa sig'sin). */
+export const BIRLASH_MAKS = 9;
+
+export interface BirlashQatori {
+  kalit: string; kod: number | null; name: string; groupName: string;
+  /** Har imtihon bali: [0] — joriy imtihon, keyin `boshqalar` tartibida; null — natija yo'q. */
+  ballar: (number | null)[];
+  jami: number; foiz: number;
+  /** Qatnashgan imtihonlari foizlarining o'rtachasi (hamma imtihonga kelmaganlar uchun adolatliroq). */
+  ortacha: number;
+  /** Nechta imtihonda natijasi bor. */
+  soni: number;
+  orin: number;
+}
 const birlashKaliti = (r: HisobotNatija) => (r.studentId ? `s${r.studentId}` : `g${r.name.trim().toLowerCase()}`);
 
-/** Ikki imtihon natijalari o'quvchi bo'yicha (tashqi qatnashchi — ismi bo'yicha) qo'shiladi, o'rin jami bo'yicha. */
+/** Birlashtirishdagi imtihonlar: joriy + tanlanganlar (nomi va eng yuqori bali). */
+export function birlashImtihonlari(k: HisobotKirish): { nomi: string; maxScore: number }[] {
+  return [{ nomi: k.exam.name, maxScore: k.exam.maxScore }, ...(k.boshqalar || []).map(b => ({ nomi: b.nomi, maxScore: b.maxScore }))];
+}
+
+/**
+ * Bir necha imtihon natijalari o'quvchi bo'yicha (tashqi qatnashchi — ismi bo'yicha) qo'shiladi
+ * (Addmen «Merge test»), o'rin — jami ball bo'yicha. Natijasi yo'q imtihon 0 deb qo'shiladi.
+ */
 export function birlashtir(k: HisobotKirish): BirlashQatori[] {
-  const ik = k.ikkinchi;
-  if (!ik) return [];
-  const m = new Map<string, BirlashQatori>();
-  for (const r of k.royxat) m.set(birlashKaliti(r), { kalit: birlashKaliti(r), kod: r.kod, name: r.name, groupName: r.groupName, birinchi: r.score, ikkinchi: null, jami: 0, foiz: 0, orin: 0 });
-  const filtr = new Set(k.royxat.map(birlashKaliti));
-  for (const r of ik.natijalar) {
-    const x = m.get(birlashKaliti(r));
-    if (x) x.ikkinchi = r.score;
-    // Kurs/ID filtri birinchi imtihon ro'yxatiga qo'llangan: faqat birinchisida yo'q, lekin filtrsiz holatda qo'shiladi.
-    else if (!filtr.size || k.royxat.length === k.malumot.natijalar.length) m.set(birlashKaliti(r), { kalit: birlashKaliti(r), kod: r.kod, name: r.name, groupName: r.groupName, birinchi: null, ikkinchi: r.score, jami: 0, foiz: 0, orin: 0 });
-  }
-  const maks = (k.exam.maxScore || 0) + (ik.maxScore || 0);
-  const l = [...m.values()].map(x => ({ ...x, jami: yaxlit((x.birinchi || 0) + (x.ikkinchi || 0)) }))
-    .map(x => ({ ...x, foiz: maks ? Math.round((x.jami / maks) * 1000) / 10 : 0 }))
-    .sort((a, b) => b.jami - a.jami || a.name.localeCompare(b.name, 'uz'));
+  const boshqalar = (k.boshqalar || []).slice(0, BIRLASH_MAKS);
+  if (!boshqalar.length) return [];
+  const imt = birlashImtihonlari({ ...k, boshqalar });
+  const soni = imt.length;
+  const m = new Map<string, { kalit: string; kod: number | null; name: string; groupName: string; ballar: (number | null)[] }>();
+  const qator = (r: HisobotNatija) => ({ kalit: birlashKaliti(r), kod: r.kod, name: r.name, groupName: r.groupName, ballar: Array<number | null>(soni).fill(null) });
+  for (const r of k.royxat) { const x = qator(r); x.ballar[0] = r.score; m.set(x.kalit, x); }
+  // Kurs/ID filtri joriy imtihon ro'yxatiga qo'llangan: faqat boshqasida bor o'quvchi filtrsiz holatdagina qo'shiladi.
+  const filtrsiz = k.royxat.length === k.malumot.natijalar.length;
+  boshqalar.forEach((b, i) => {
+    for (const r of b.natijalar) {
+      let x = m.get(birlashKaliti(r));
+      if (!x && filtrsiz) { x = qator(r); m.set(x.kalit, x); }
+      if (x) x.ballar = x.ballar.map((v0, j) => (j === i + 1 ? r.score : v0));
+    }
+  });
+  const maks = imt.reduce((a, x) => a + (x.maxScore || 0), 0);
+  const l: BirlashQatori[] = [...m.values()].map(x => {
+    const jami = yaxlit(x.ballar.reduce<number>((a, b) => a + (b || 0), 0));
+    const foizlar = x.ballar.map((b, j) => (b == null || !imt[j].maxScore ? null : (b / imt[j].maxScore) * 100)).filter((f): f is number => f != null);
+    return {
+      ...x, jami,
+      foiz: maks ? Math.round((jami / maks) * 1000) / 10 : 0,
+      ortacha: foizlar.length ? Math.round((foizlar.reduce((a, f) => a + f, 0) / foizlar.length) * 10) / 10 : 0,
+      soni: x.ballar.filter(b => b != null).length,
+      orin: 0,
+    };
+  }).sort((a, b) => b.jami - a.jami || a.name.localeCompare(b.name, 'uz'));
   const orin = reytingOrinlari(l.map(x => ({ id: x.kalit, score: x.jami })), undefined, k.exam.settings.orinUsuli).orin as Map<string, number>;
-  l.forEach(x => { x.orin = orin.get(x.kalit) || 0; });
-  if (k.s.tartib === 'alifbo') l.sort((a, b) => a.name.localeCompare(b.name, 'uz'));
-  else if (k.s.tartib === 'id') l.sort((a, b) => (a.kod ?? 1e9) - (b.kod ?? 1e9));
-  return l;
+  const tartiblangan = l.map(x => ({ ...x, orin: orin.get(x.kalit) || 0 }));
+  if (k.s.tartib === 'alifbo') tartiblangan.sort((a, b) => a.name.localeCompare(b.name, 'uz'));
+  else if (k.s.tartib === 'id') tartiblangan.sort((a, b) => (a.kod ?? 1e9) - (b.kod ?? 1e9));
+  return tartiblangan;
 }
 
 export function birlashHtml(k: HisobotKirish): string {
   const l = birlashtir(k);
-  const ik = k.ikkinchi!;
-  return `<section class="bet">${sarlavha(k, 'Birlashtirilgan natija', `+ ${esc(ik.nomi)} · ${l.length} kishi`)}
+  const imt = birlashImtihonlari(k);
+  // 3 tadan ko'p imtihon — yotiq sahifa (ustunlar sig'sin).
+  const yotiq = imt.length > 3;
+  return `<section class="bet${yotiq ? ' yotiq' : ''}">${sarlavha(k, 'Birlashtirilgan natija', `${imt.length} ta imtihon · ${l.length} kishi`)}
     <table><tr><th class="m">№</th><th class="m">O'rin</th><th class="m">ID</th><th>Familiya va ism</th><th>Kurs</th>
-      <th class="m">${esc(k.exam.name)}<br><small>/ ${v(k.exam.maxScore)}</small></th><th class="m">${esc(ik.nomi)}<br><small>/ ${v(ik.maxScore)}</small></th><th class="m">Jami</th><th class="m">%</th></tr>
+      ${imt.map(x => `<th class="m${yotiq ? ' kichik' : ''}">${esc(x.nomi)}<br><small>/ ${v(x.maxScore)}</small></th>`).join('')}<th class="m">Jami<br><small>/ ${v(imt.reduce((a, x) => a + x.maxScore, 0))}</small></th><th class="m">%</th><th class="m" title="Qatnashgan imtihonlari foizining o'rtachasi">O'rt. %</th></tr>
     ${l.map((x, i) => `<tr><td class="m">${i + 1}</td><td class="m"><b>${x.orin}</b></td><td class="m mono">${x.kod ?? ''}</td><td>${esc(x.name)}</td><td>${esc(x.groupName)}</td>
-      <td class="m">${x.birinchi == null ? '—' : v(x.birinchi)}</td><td class="m">${x.ikkinchi == null ? '—' : v(x.ikkinchi)}</td><td class="m"><b>${v(x.jami)}</b></td><td class="m">${v(x.foiz)}</td></tr>`).join('')}
-    </table><p class="belgilar">«—» — o'sha imtihonda natija yo'q (0 deb qo'shildi).</p></section>`;
+      ${x.ballar.map(b => `<td class="m">${b == null ? '—' : v(b)}</td>`).join('')}<td class="m"><b>${v(x.jami)}</b></td><td class="m">${v(x.foiz)}</td><td class="m">${v(x.ortacha)}${x.soni < imt.length ? `<small> (${x.soni})</small>` : ''}</td></tr>`).join('')}
+    </table><p class="belgilar">«—» — o'sha imtihonda natija yo'q (jamiga 0 deb qo'shildi). O'rt. % — faqat qatnashgan imtihonlari bo'yicha; qavsda — nechtasida qatnashgani.</p></section>`;
 }
 
 export const HISOBOT_CSS = `
@@ -676,9 +712,10 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
       return o;
     }));
   }
-  if (turi === '2213' && k.ikkinchi) {
-    const ikkinchi = new Map(k.ikkinchi.natijalar.map(r => [birlashKaliti(r), r]));
-    const n2 = Math.max(0, ...k.ikkinchi.natijalar.flatMap(r => r.detail.map(d => d.n)));
+  const ikkinchiImt = k.boshqalar?.[0];
+  if (turi === '2213' && ikkinchiImt) {
+    const ikkinchi = new Map(ikkinchiImt.natijalar.map(r => [birlashKaliti(r), r]));
+    const n2 = Math.max(0, ...ikkinchiImt.natijalar.flatMap(r => r.detail.map(d => d.n)));
     varaq('Ikki imtihon javoblari', royxat.map((r, i) => {
       const o = asos(r, i);
       const d1 = new Map(r.detail.map(x => [x.n, x]));
@@ -708,10 +745,13 @@ export function excelYukla(k: HisobotKirish, turi: HisobotTuri) {
       return o;
     }));
   }
-  if (turi === '2411' && k.ikkinchi) {
+  if (turi === '2411' && k.boshqalar?.length) {
+    // Ustun nomi takrorlanmasin (bir xil nomli imtihonlar): «Nomi (2)».
+    const nomlar = birlashImtihonlari(k).map((x, i, a) => (a.findIndex(y => y.nomi === x.nomi) < i ? `${x.nomi} (${i + 1})` : x.nomi));
     varaq('Birlashtirilgan', birlashtir(k).map((x, i) => ({
       '№': i + 1, "O'rin": x.orin, ID: x.kod ?? '', 'Familiya va ism': x.name, Kurs: x.groupName,
-      [k.exam.name]: x.birinchi ?? '', [k.ikkinchi!.nomi]: x.ikkinchi ?? '', Jami: x.jami, 'Foiz (%)': x.foiz,
+      ...Object.fromEntries(nomlar.map((n, j) => [n, x.ballar[j] ?? ''])),
+      Jami: x.jami, 'Foiz (%)': x.foiz, "O'rtacha foiz": x.ortacha, Qatnashgan: x.soni,
     })));
   }
   if (turi === '2321' || hammasi) {

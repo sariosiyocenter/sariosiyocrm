@@ -3,7 +3,10 @@
 // qilib saqlaydi) — formulalar, kirill va rasm muammosiz chiqadi.
 
 import { esc } from '../../lib/chopEtish';
-import { formulaliHtml, oddiyMatn } from '../../lib/matn';
+import { formulaliHtml as formulaliHtmlAsl, oddiyMatn } from '../../lib/matn';
+
+/** Kitobchada formulalar qog'oz o'lchamida (kasr va integral qator ichida ham to'liq). */
+const formulaliHtml = (html: string): string => formulaliHtmlAsl(html, true);
 import { HARFLAR, QISM_HARFLARI, raqamYorligi } from '../../../lib/imtihon.js';
 import type { Exam } from '../../types';
 
@@ -59,6 +62,10 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .javoblar.ikki { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; }
 .javoblar.tort { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 3mm; }
 .javoblar p { margin: 0; }
+/* Javobdagi $…$ formula alohida qatorga tushib, harfdan (A, B…) ajralib qolmasin — harf bilan bir qatorda, chapda. */
+.javoblar .katex-display, .guruh-javoblar .katex-display, .moslash .katex-display { display: inline; margin: 0; }
+.javoblar .katex-display > .katex, .guruh-javoblar .katex-display > .katex, .moslash .katex-display > .katex { display: inline-block; text-align: left; }
+.javoblar li, .guruh-javoblar li, .moslash li { align-items: baseline; }
 .izoh { margin: 1mm 0 0 7.6mm; font-size: 9pt; font-style: italic; color: #333; }
 .matn-quti { border: 0.8pt solid #000; padding: 2.4mm 3mm; margin: 0 0 3mm; break-inside: avoid; }
 .matn-quti .sarlavha { font-weight: 700; font-size: 9.5pt; margin-bottom: 1mm; }
@@ -81,6 +88,15 @@ body { font: 10.5pt/1.38 Arial, Helvetica, sans-serif; color: #000; }
 .guruh-javoblar p { margin: 0; }
 .qismlar { margin: 1.2mm 0 0 7.6mm; }
 .guruh > .bosh > b { white-space: nowrap; }
+/* Ikki til yonma-yon: chapda asl, o'ngda tarjima (bir ustunli kitobchada). */
+.ikki-til { display: grid; grid-template-columns: 1fr 1fr; column-gap: 5mm; flex: 1; min-width: 0; }
+.ikki-til > .tj-ustun { border-left: 0.5pt solid #999; padding-left: 4mm; color: #222; }
+.ikki-til .javoblar { margin-left: 0; }
+/* Suv belgisi: chop etishda har betda (fixed element har betga takrorlanadi). */
+.suv-belgi { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg); font-weight: 700; color: rgba(0,0,0,.07); white-space: nowrap; pointer-events: none; z-index: 0; letter-spacing: 2pt; }
+.oxiri { column-span: all; text-align: center; font-size: 9.5pt; color: #333; margin: 4mm 0 0; }
+.qoralama { break-before: page; height: 262mm; box-sizing: border-box; border: 0.6pt solid #999; background-image: radial-gradient(#aaa 0.5pt, transparent 0.7pt); background-size: 5mm 5mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.qoralama p { margin: 2mm 3mm; display: inline-block; background: #fff; padding: 0 1.5mm; font-size: 9pt; color: #444; }
 `;
 
 /** Savol raqami harfsiz ("36a" → "36"): blok oraliqlari va qismli savolning umumiy raqami uchun. */
@@ -118,17 +134,48 @@ function guruhHtml(azolar: KitobchaElementi[], savolMap: Map<number, KitobchaMal
     <div class="izoh">${korsatma}</div></div>`;
 }
 
-/** Kitobcha ko'rinishi (Addmen QPG "Output": ustunlar, bo'lim sarlavhasi, izohlar, ikkinchi til). */
-export interface KitobchaSozlama { ustun: 1 | 2; bolimSarlavha: boolean; izoh: boolean; ikkiTil: boolean }
-export const KITOBCHA_STANDART: KitobchaSozlama = { ustun: 2, bolimSarlavha: true, izoh: false, ikkiTil: false };
+/**
+ * Kitobcha ko'rinishi (Addmen QPG "Output"): ustunlar, bo'lim sarlavhasi, izohlar, ikkinchi til (ostida
+ * yoki yonma-yon), suv belgisi, qoralama betlari va bet ostidagi yorliq (imtihon · variant · bet).
+ */
+export interface KitobchaSozlama {
+  ustun: 1 | 2; bolimSarlavha: boolean; izoh: boolean; ikkiTil: boolean;
+  ikkiTilJoy: 'ostida' | 'yonma';
+  /** Har betda qiya yozuv ("NUSXA", markaz nomi); bo'sh — yo'q. */
+  suvBelgi: string;
+  /** Oxirida nechta qoralama beti (0–4). */
+  qoralama: number;
+  /** Bet ostida: imtihon nomi va variant (bet raqami doim bor). */
+  yorliq: boolean;
+}
+export const KITOBCHA_STANDART: KitobchaSozlama = { ustun: 2, bolimSarlavha: true, izoh: false, ikkiTil: false, ikkiTilJoy: 'ostida', suvBelgi: '', qoralama: 0, yorliq: true };
 
-function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[] }, o: KitobchaSozlama): string {
+/** `til`: 'asl' — faqat asl, 'ikkala' — asl / tarjima bir qatorda, 'tarjima' — tarjimasi (bo'lmasa asl). */
+function variantHtml(q: KitobchaMalumoti['savollar'][number], it: { m?: number[] }, til: 'asl' | 'ikkala' | 'tarjima'): string {
   const tartib = it.m && it.m.length ? it.m : q.options.map((_, i) => i);
-  const tj = o.ikkiTil ? q.tarjima?.options || [] : [];
-  const qisqa = tartib.every(i => oddiyMatn(q.options[i] || '').length + oddiyMatn(tj[i] || '').length <= 28 && !/<img/i.test(q.options[i] || ''));
+  const tjl = q.tarjima?.options || [];
+  const asosiy = til === 'tarjima' ? q.options.map((x, i) => (tjl[i]?.trim() ? tjl[i] : x)) : q.options;
+  const tj = til === 'ikkala' ? tjl : [];
+  const qisqa = tartib.every(i => oddiyMatn(asosiy[i] || '').length + oddiyMatn(tj[i] || '').length <= 28 && !/<img/i.test(asosiy[i] || ''));
   // Savolda belgilangan joylashuv (Addmen DISPLAY CHOICES) ustun turadi.
   const sinf = q.joylashuv === 1 ? '' : q.joylashuv === 2 ? ' ikki' : q.joylashuv === 4 ? ' tort' : qisqa ? ' ikki' : '';
-  return `<ol class="javoblar${sinf}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(q.options[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
+  return `<ol class="javoblar${sinf}">${tartib.map((asl, i) => `<li><b>${HARFLAR[i]})</b><span>${formulaliHtml(asosiy[asl] || '')}${tj[asl]?.trim() ? `<span class="tj"> / ${formulaliHtml(tj[asl])}</span>` : ''}</span></li>`).join('')}</ol>`;
+}
+
+/** CSS `content: "…"` ichiga xavfsiz matn. */
+const cssMatn = (s: string): string => s.replace(/[\\"]/g, m => `\\${m}`).replace(/[\r\n]+/g, ' ');
+
+/** Bet osti yorlig'i: har variantga nomli bet (`@page kN`) — chapda imtihon va variant, o'rtada bet raqami. */
+function yorliqCss(exam: Exam, kodlar: string[]): string {
+  return kodlar.map((code, i) => `@page k${i} { @bottom-left { content: "${cssMatn(`${exam.name} · Variant ${code}`)}"; font: 8pt Arial, sans-serif; color: #555; } }`).join('\n');
+}
+
+/** Suv belgisi: matn uzunligiga qarab o'lcham (betdan chiqib ketmasin). */
+function suvBelgiHtml(matn: string): string {
+  const t = matn.trim().slice(0, 40);
+  if (!t) return '';
+  const pt = Math.round(Math.max(28, Math.min(96, 560 / Math.max(1, t.length))));
+  return `<div class="suv-belgi" style="font-size:${pt}pt">${esc(t)}</div>`;
 }
 
 /** Moslashtirish: chap ustun A–D va o'ng ustun P–T yonma-yon. */
@@ -143,7 +190,9 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
   const savolMap = new Map(d.savollar.map(q => [q.id, q]));
   const matnMap = new Map(d.matnlar.map(p => [p.id, p]));
   const s = exam.settings;
-  return tanlov.map(({ session, code }) => {
+  const yonma = o.ikkiTil && o.ikkiTilJoy === 'yonma';
+  const qoshimcha = `${o.yorliq ? `<style>${yorliqCss(exam, tanlov.map(t => t.code))}</style>` : ''}${suvBelgiHtml(o.suvBelgi || '')}`;
+  return qoshimcha + tanlov.map(({ session, code }, ti) => {
     const v = d.variants.find(x => x.session === session && x.code === code);
     if (!v) return '';
     const sessiya = s.sessions.find(x => x.id === session);
@@ -200,16 +249,24 @@ export function kitobchaHtml(exam: Exam, markaz: string, d: KitobchaMalumoti, ta
           qismlar.push(`<div class="matn-quti"><div class="sarlavha">${p.title ? `${esc(p.title)}. ` : ''}Matnni o'qing va ${raqamYorligi(it)}–${raqamYorligi(v.items[oxiri - 1] || { n: oxiri })}-savollarga javob bering.</div>${formulaliHtml(p.text)}${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ''}</div>`);
         }
       } else if (!it.pa) joriyMatn = null;
+      const tjMatn = o.ikkiTil && q.tarjima?.text?.trim() ? q.tarjima.text : '';
+      const izoh = o.izoh && q.remark ? `<div class="remark">Izoh: ${esc(q.remark)}</div>` : '';
+      const rasm = q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : '';
+      // Yonma-yon: chapda asl matn va javoblar, o'ngda tarjimasi — har biri o'z tilida.
+      if (yonma && tjMatn && it.t === 'yopiq') {
+        qismlar.push(`<div class="savol"><div class="bosh"><b>${raqamYorligi(it)}.</b><div class="ikki-til"><div class="matn">${formulaliHtml(q.text)}${rasm}${variantHtml(q, it, 'asl')}</div><div class="matn tj-ustun">${formulaliHtml(tjMatn)}${variantHtml(q, it, 'tarjima')}</div></div></div>${izoh}</div>`);
+        return;
+      }
       let pastki = '';
-      if (it.t === 'yopiq') pastki = variantHtml(q, it, o);
+      if (it.t === 'yopiq') pastki = variantHtml(q, it, o.ikkiTil && !yonma ? 'ikkala' : 'asl');
       else if (it.t === 'raqamli') pastki = `<div class="izoh">Javobni javob varaqasidagi ${raqamYorligi(it)}-katakka yozing va bo'yang.</div>`;
       else if (it.t === 'moslash') pastki = moslashHtml(q);
       else pastki = `<div class="izoh">Yechimni javob varaqasidagi ${raqamYorligi(it)}-maydonga yozing (${it.p} ball).</div>`;
-      const tarjima = o.ikkiTil && q.tarjima?.text?.trim() ? `<div class="tarjima">${formulaliHtml(q.tarjima.text)}</div>` : '';
-      const izoh = o.izoh && q.remark ? `<div class="remark">Izoh: ${esc(q.remark)}</div>` : '';
-      qismlar.push(`<div class="savol"><div class="bosh"><b>${raqamYorligi(it)}.</b><div class="matn">${formulaliHtml(q.text)}${tarjima}</div></div>${q.imageUrl ? `<img src="${esc(q.imageUrl)}" alt="">` : ''}${pastki}${izoh}</div>`);
+      const tarjima = tjMatn ? (yonma ? `<div class="ikki-til"><div></div><div class="tj-ustun">${formulaliHtml(tjMatn)}</div></div>` : `<div class="tarjima">${formulaliHtml(tjMatn)}</div>`) : '';
+      qismlar.push(`<div class="savol"><div class="bosh"><b>${raqamYorligi(it)}.</b><div class="matn">${formulaliHtml(q.text)}${tarjima}</div></div>${rasm}${pastki}${izoh}</div>`);
     });
-    return `<section class="kitobcha">${muqova}<div class="savollar${o.ustun === 1 ? ' bir' : ''}">${qismlar.join('')}</div></section>`;
+    const qoralama = Array.from({ length: Math.max(0, Math.min(4, Math.round(o.qoralama || 0))) }, () => '<div class="qoralama"><p>Qoralama uchun — tekshirilmaydi</p></div>').join('');
+    return `<section class="kitobcha"${o.yorliq ? ` style="page: k${ti}"` : ''}>${muqova}<div class="savollar${o.ustun === 1 || yonma ? ' bir' : ''}">${qismlar.join('')}<p class="oxiri">— Variant ${esc(code)} savollari tugadi. Javob varaqangizni tekshiring. —</p></div>${qoralama}</section>`;
   }).join('');
 }
 
@@ -264,7 +321,52 @@ export interface KalitMalumoti {
   variants: { session: number; code: string; items: { n: number; y?: string; q: number | null; t: string; b: number; javob: string | string[] | null; m?: number[]; bekor?: string | null }[] }[];
   cancelled: Record<string, string>;
   keyFix: Record<string, string[]>;
+  /** `?yechim=1` bilan: savol matni va yechimi (yechimlar varag'i, Excel). */
+  savollar?: { id: number; text: string; subject?: string; topic?: string; type: string; options: string[]; solution?: string | null; solutionStatus?: string; imageUrl?: string | null }[];
 }
+
+/**
+ * Yechimlar varag'i (Addmen QPG «Solutions»): har variant tartibida — raqam, to'g'ri javob (varaqdagi
+ * harfda), savol matni va bankdagi yechimi. Kalit kabi maxfiy: tekshiruvchi va tahlil darsi uchun.
+ */
+export function yechimlarHtml(exam: Exam, markaz: string, d: KalitMalumoti, session: number, kodlar: string[]): string {
+  const savolMap = new Map((d.savollar || []).map(q => [q.id, q]));
+  return d.variants.filter(v => v.session === session && kodlar.includes(v.code)).map(v => {
+    const bloklar = exam.blocks.map((b, bi) => ({ nomi: b.subject, items: v.items.filter(it => it.b === bi) })).filter(b => b.items.length);
+    const yechimi = (it: KalitMalumoti['variants'][number]['items'][number]) => {
+      const q = it.q != null ? savolMap.get(it.q) : null;
+      const tuz = it.q != null ? d.keyFix[it.q] : null;
+      const javob = tuz && it.t === 'yopiq' && it.m ? tuz.map(h => HARFLAR[it.m!.indexOf(HARFLAR.indexOf(String(h).toUpperCase()))]).filter(Boolean).join('')
+        : tuz ? tuz.join('; ') : Array.isArray(it.javob) ? it.javob.join('; ') : it.javob || '';
+      const bekor = it.bekor || (it.q != null ? d.cancelled[it.q] : null);
+      const yech = q?.solution?.trim() ? `<div class="yechim-matn">${formulaliHtml(q.solution)}</div>` : '<div class="yechim-yoq">Bankda yechimi yo\'q.</div>';
+      return `<div class="yechim"><div class="ybosh"><b>${esc(raqamYorligi(it))}.</b>${it.t === 'yozma' ? '<span class="yj">yozma</span>' : `<span class="yj">Javob: <b>${esc(javob)}</b></span>`}${bekor ? `<span class="ybekor">${bekor === 'hammaga' ? 'bekor — hammaga ball' : 'hisobdan chiqarilgan'}</span>` : ''}</div>
+        <div class="ysavol">${formulaliHtml(q?.text || '')}</div>${yech}</div>`;
+    };
+    return `<section class="bet yechimlar">
+      <div class="kalit-bosh"><div><div class="markaz">${esc(markaz)}</div><h1>Yechimlar</h1><h2>${esc(exam.name)} · ${esc(exam.date)}</h2></div><div class="variant"><small>VARIANT</small><b>${esc(v.code)}</b></div></div>
+      ${bloklar.map(b => `<h3>${esc(b.nomi)}</h3>${b.items.map(yechimi).join('')}`).join('')}
+      <p class="maxfiy">Maxfiy hujjat — imtihon tugaguncha tarqatilmasin.</p>
+    </section>`;
+  }).join('');
+}
+
+export const YECHIM_CSS = `
+.yechimlar h3 { font-size: 12pt; margin: 4mm 0 2mm; border-bottom: 0.8pt solid #000; padding-bottom: 1mm; }
+.yechim { break-inside: avoid; margin: 0 0 3.5mm; padding-bottom: 2.5mm; border-bottom: 0.4pt dashed #aaa; }
+.ybosh { display: flex; gap: 3mm; align-items: baseline; }
+.ybosh > b { min-width: 7mm; }
+.yj { font-size: 10pt; }
+.yj b { font-size: 12pt; }
+.ybekor { font-size: 9pt; color: #a00; }
+.ysavol { font-size: 9.5pt; color: #333; margin: 1mm 0 1.2mm 10mm; }
+.ysavol p, .yechim-matn p { margin: 0 0 1mm; }
+.ysavol img { max-height: 30mm; max-width: 60%; }
+.yechim-matn { margin-left: 10mm; font-size: 10.5pt; }
+.yechim-matn img { max-width: 100%; max-height: 60mm; }
+.yechim-yoq { margin-left: 10mm; font-size: 9pt; color: #777; font-style: italic; }
+.katex { font-size: 1.04em; }
+`;
 
 /**
  * Javoblar kaliti (Addmen QPG "answer key"): har variant alohida bo'lim (kichik testda bir betga bir nechtasi sig'adi) — fan

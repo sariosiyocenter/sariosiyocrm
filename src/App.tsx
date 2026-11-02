@@ -69,6 +69,7 @@ const AuditLog        = lazyRetry(() => import('./components/AuditLog'));
 const Hisobotlar      = lazyRetry(() => import('./components/Hisobotlar'));
 const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
 const NatijaSahifasi  = lazyRetry(() => import('./components/NatijaSahifasi'));
+const NatijalarPortali = lazyRetry(() => import('./components/NatijalarPortali'));
 const OnlaynTest      = lazyRetry(() => import('./components/OnlaynTest'));
 const ReytingEkrani   = lazyRetry(() => import('./components/imtihon/ReytingEkrani'));
 
@@ -94,7 +95,7 @@ export default function App() {
   // Payme to'lovidan keyin qaytish sahifasi — kirishsiz, faqat buyurtma holati.
   const isPayRoute = window.location.pathname.startsWith('/pay/');
   // Imtihon natijasi — ota-onaga xabardagi imzolangan havola (kirishsiz).
-  const isNatijaRoute = window.location.pathname.startsWith('/natija/') || window.location.pathname.startsWith('/test/');
+  const isNatijaRoute = window.location.pathname.startsWith('/natija/') || window.location.pathname.startsWith('/natijalar/') || window.location.pathname.startsWith('/test/');
 
   // Ochiq sahifalar sessiya yuklanishini kutmaydi: ota-ona Payme'dan qaytganda
   // (brauzerida CRM tokeni bo'lsa ham) darhol natijani ko'rsin.
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="/apply/:schoolId" element={<PublicApply />} />
           <Route path="/pay/:orderId" element={<PublicPay />} />
           <Route path="/natija/:token" element={<NatijaSahifasi />} />
+          <Route path="/natijalar/:token" element={<NatijalarPortali />} />
           <Route path="/test/:token" element={<OnlaynTest />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

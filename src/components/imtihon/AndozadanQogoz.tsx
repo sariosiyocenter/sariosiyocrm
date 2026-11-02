@@ -38,6 +38,9 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
   // Addmen "Use <=", "Duplicate content", "Question / Option shuffled sets".
   const [chegara, setChegara] = useState('');
   const [takror, setTakror] = useState<'variant' | 'savol' | 'yoq'>('variant');
+  // «Har xil» — har variantda andoza savoli o'rniga o'sha mavzu va qiyinlikdagi boshqa savol (A da — o'zi);
+  // «Bir xil» — hamma variantda andozaning o'zi, faqat tartibi va javoblari aralashadi.
+  const [harXil, setHarXil] = useState(true);
   const [aralashSavol, setAralashSavol] = useState(true);
   const [aralashVariant, setAralashVariant] = useState(true);
   const [holat, setHolat] = useState<Record<number, Holat>>({});
@@ -126,7 +129,9 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
       if (!fan) return showNotification(`«${a.name}»: fani bankda topilmadi`, 'error');
       const tafsil: AndozaTafsil | undefined = andozaQoidali(a) ? { ...a, savollar: [] } : holat[a.id]?.tafsil;
       if (!tafsil) return showNotification(`«${a.name}» hali tekshirilmoqda — biroz kuting`, 'error');
-      const { topicRules } = andozaBlokQoidalari(tafsil, fan, guruhlar);
+      const { topicRules: asosiy } = andozaBlokQoidalari(tafsil, fan, guruhlar);
+      // Savollar ro'yxatidagi andoza: «har xil» da har savolning o'xshashi olinadi.
+      const topicRules = harXil ? asosiy.map(r => (r.questionIds?.length ? { ...r, oxshash: true } : r)) : asosiy;
       if (!topicRules.length) return showNotification(`«${a.name}» da qog'ozga tushadigan savol yo'q`, 'error');
       blocks.push({ id: `b${i + 1}`, subject: fan.name, fanId: fan.id, pointsPerQuestion: bal, andoza: { id: a.id, nomi: a.name }, topicRules });
     }
@@ -138,7 +143,9 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
         settings: {
           // Savollar bu yerda doim bankdan (markaz standarti «faqat kalit» bo'lsa ham).
           ...(markaz || {}), source: 'bank',
-          variantCount: variantlar, shuffleQuestions: aralashSavol, shuffleOptions: aralashVariant,
+          // «Har xil»: har raqamda hamma variantda bir mavzu va qiyinlik, savol boshqa (tartibi aralashmaydi).
+          // «Bir xil»: hamma variantda andozaning o'sha savollari, tartibi aralashadi.
+          variantCount: variantlar, variantSavollari: harXil && variantlar > 1 ? 'har' : 'bir', shuffleQuestions: harXil ? false : aralashSavol, shuffleOptions: aralashVariant,
           ishlatishChegarasi: chegara.trim() === '' ? null : Math.max(0, Math.round(Number(chegara) || 0)), takror,
         },
       });
@@ -204,7 +211,7 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
                           <span className="block font-semibold text-matn truncate">{i >= 0 && <span className="raqam text-brand mr-1">{i + 1}.</span>}{a.name}</span>
                           <span className="block text-[11.5px] text-matn-xira">
                             {bosh ? "bo'sh — avval savol qo'shing"
-                              : <>{fan?.name || (daraxt ? 'fan topilmadi' : '…')} · {qoidali ? <>qoidali · <span className="raqam">{qoidalarSoni(a)}</span> savol</> : <><span className="raqam">{a.savolSoni} / {a.soni}</span> savol</>}</>}
+                              : <>{fan?.name || (daraxt ? 'fan topilmadi' : '…')} · {qoidali ? <>qoidali · <span className="raqam">{qoidalarSoni(a)}</span> savol</> : a.savolSoni < a.soni ? <><span className="raqam">{a.savolSoni}</span> ta savol <span className="text-amber-600 dark:text-amber-400">(rejada {a.soni} ta — {a.soni - a.savolSoni} tasi hali qo'shilmagan)</span></> : <><span className="raqam">{a.savolSoni}</span> ta savol</>}</>}
                           </span>
                         </span>
                         {i >= 0 && holatBelgisi(a)}
@@ -246,11 +253,27 @@ export default function AndozadanQogoz({ boshAndozaId, onYop, onTayyor }: {
               </Maydon>
             </div>
           )}
+          <Maydon nom="Variantlarda savollar">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                [true, 'Har xil savollar', "Har raqamda hamma variantda bir mavzu va qiyinlik, savol esa boshqa. A variantda — andozaning o'zi."],
+                [false, 'Bir xil savollar', "Hamma variantda andozadagi savollar, faqat tartibi va javob harflari boshqa."],
+              ] as const).map(([v, nomi, izoh]) => (
+                <button key={nomi} type="button" onClick={() => setHarXil(v)} aria-pressed={harXil === v}
+                  className={`text-left rounded-xl border px-3 py-2 cursor-pointer transition-colors ${harXil === v ? 'border-brand bg-brand-fon/60 dark:bg-brand/10' : 'border-chiziq hover:bg-ichki'}`}>
+                  <span className="block text-[12.5px] font-semibold text-matn">{nomi}</span>
+                  <span className="block text-[11.5px] text-matn-xira">{izoh}</span>
+                </button>
+              ))}
+            </div>
+          </Maydon>
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] text-matn">
-            <label className="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={aralashSavol} onChange={e => { tegildi.current = true; setAralashSavol(e.target.checked); }} />Savollar tartibi aralashtirilsin</label>
+            {!harXil && <label className="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={aralashSavol} onChange={e => { tegildi.current = true; setAralashSavol(e.target.checked); }} />Savollar tartibi aralashtirilsin</label>}
             <label className="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-[var(--color-brand)]" checked={aralashVariant} onChange={e => { tegildi.current = true; setAralashVariant(e.target.checked); }} />Javob variantlari aralashtirilsin</label>
           </div>
-          <p className="text-[11.5px] text-matn-xira">Hamma variantda savollar bir xil — andozadagi savollarning o'zi{aralashSavol || aralashVariant ? `, ${[aralashSavol && 'tartibi', aralashVariant && 'javoblari'].filter(Boolean).join(' va ')} aralashtiriladi` : ''} (A, B, C… kitobchalar). Tushgan savollarni «Chop etish → Tanlangan savollar»da ko'rib, almashtirasiz.</p>
+          <p className="text-[11.5px] text-matn-xira">{harXil
+            ? "Bankda o'xshashi kam bo'lsa, savol boshqa variantda takrorlanadi (yonma-yon o'tirganlarga emas) — ogohlantirish chiqadi."
+            : `Hamma variantda andozadagi savollar${aralashSavol || aralashVariant ? `, ${[aralashSavol && 'tartibi', aralashVariant && 'javoblari'].filter(Boolean).join(' va ')} aralashtiriladi` : ''}.`} Keyin imtihon sahifasidagi variantlar jadvalida istalgan savolni bosib, boshqasiga almashtirasiz.</p>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-t border-chiziq">
           <span className="text-[12.5px] text-matn-sokin">{tanlov.length ? <><b className="text-matn raqam">{jami}</b> ta savol · {variantlar} variant</> : 'Andozani tanlang'}</span>

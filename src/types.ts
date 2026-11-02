@@ -715,6 +715,8 @@ export interface TopicRule {
     points?: number;
     /** Qo'lda tanlangan savollar — har variantga shular tushadi. */
     questionIds?: number[];
+    /** Andozadan «har xil»: `questionIds` A variantda, qolganlarida har biri o'rniga o'sha mavzu va qiyinlikdagi o'xshashi. */
+    oxshash?: boolean;
     /** Qismli savol (type 'qismli'): bitta savoldagi qismlar soni; `count` — qismlar (kataklar) soni. */
     qism?: number;
     /** Qismli savol: qism javobini kim tekshiradi — 'son' (skaner, raqamli katak) yoki 'ustoz' (yozma maydon). */
@@ -768,6 +770,19 @@ export interface ExamSettings {
     sessionQuestions: 'bir' | 'alohida';
     /** Variantlarda savollar: 'har' — har variantga o'z savoli (o'rinda mavzu va qiyinlik bir xil); 'bir' — bir xil, tartibi aralashadi. Server standarti — 'har'. */
     variantSavollari?: 'bir' | 'har';
+    /** «Har xil» da savol to'plamlari soni (Addmen Group); 0 — har variant o'z to'plami. */
+    toplamlar?: number;
+    /** Ball sxemalari: varaq raqami → to'g'ri / xato / bo'sh bali (Addmen «Scoring schemes»). */
+    ballSxemalari?: Record<string, { togri: number; xato: number; bosh: number; nom?: string }>;
+    /** Savollarni bog'lash: {"17": "3"} — 17-savol faqat 3-savol to'g'ri bo'lsa. */
+    boglanish?: Record<string, string>;
+    /** Javob og'irligi: savolning asl A, B, C… javobi bali. */
+    javobOgirligi?: Record<string, number[]>;
+    /** O'lchangan ball jadvali: [xom, ball]. */
+    olchangan?: [number, number][];
+    /** Bo'lim bo'yicha o'tish bali (foiz), bo'lim indeksi bo'yicha. */
+    bolimOtish?: Record<string, number>;
+    qotirBloklar?: number[];
     variantCount: number;
     shuffleQuestions: boolean;
     shuffleOptions: boolean;
@@ -811,6 +826,9 @@ export interface ExamSettings {
     sorovnoma: { anonim: boolean; shkala: string[]; savollar: { matn: string; variantlar?: string[] }[] };
     /** Erkin javob varaqasi (dizayner andozasining nusxasi); null — standart varaq. */
     varaqAndoza?: import('./lib/omr/layout').VaraqAndoza | null;
+    oqishQoidasi?: import('./lib/omr/reader').OqishQoidasi;
+    /** Onlayn natija sahifasi: yoqilgan va eng yaxshilar ro'yxati. */
+    onlaynNatija?: { yoqilgan: boolean; reyting: boolean };
     /** Javob varaqasi dizayni versiyasi — server qulflashda yozadi; yo'q bo'lsa 1 (eski varaq). */
     varaqVersiya?: 1 | 2;
 }

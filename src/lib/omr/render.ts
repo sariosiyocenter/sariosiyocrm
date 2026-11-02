@@ -11,6 +11,7 @@ import {
 } from './layout';
 import type { Sahifa, Doira } from './layout';
 import { varaqSvg2 } from './render2';
+import { shtrixSvg } from './shtrix';
 
 export interface VaraqUmumiy {
   markaz: string;
@@ -265,6 +266,21 @@ export function varaqSvg(sahifa: Sahifa, u: VaraqUmumiy, egasi: VaraqEgasi | nul
   // Dizayner rasmlari va yozuvlari, so'rovnoma savollari — o'qilmaydi.
   for (const r of sahifa.rasmlar || []) q.push(`<image href="${esc(r.src)}" x="${f(r.x)}" y="${f(r.y)}" width="${f(r.w)}" height="${f(r.h)}" preserveAspectRatio="xMidYMid meet"/>`);
   for (const b of sahifa.bezak || []) q.push(matn(b.x, b.y, b.matn, { size: b.olcham, bold: b.qalin, anchor: b.anchor, maxW: b.maxW, rang: b.rang }));
+  // Qo'lyozma katakchalari (har katakka bitta belgi), imzo qutilari va shtrix-kod.
+  for (const m of sahifa.icr || []) {
+    const kw = m.quti.w / m.soni;
+    if (m.sarlavha) q.push(matn(m.quti.x, m.quti.y - 1.2, m.sarlavha, { size: 2.6, bold: true, maxW: Math.max(30, m.quti.w) }));
+    q.push(`<rect x="${f(m.quti.x)}" y="${f(m.quti.y)}" width="${f(m.quti.w)}" height="${f(m.quti.h)}" fill="#fff" stroke="${CHIZIQ}" stroke-width="0.3"/>`);
+    for (let i = 1; i < m.soni; i++) q.push(`<line x1="${f(m.quti.x + i * kw)}" y1="${f(m.quti.y + 0.8)}" x2="${f(m.quti.x + i * kw)}" y2="${f(m.quti.y + m.quti.h)}" stroke="#888" stroke-width="0.2"/>`);
+  }
+  for (const b of sahifa.imzolar || []) {
+    q.push(`<rect x="${f(b.x)}" y="${f(b.y)}" width="${f(b.w)}" height="${f(b.h)}" fill="none" stroke="${CHIZIQ}" stroke-width="0.3"/>`);
+    if (b.sarlavha) q.push(matn(b.x + 1.2, b.y + 3, b.sarlavha, { size: 2.3, rang: '#555', maxW: b.w - 2 }));
+  }
+  if (sahifa.shtrixlar?.length) {
+    const kod = egasi?.sheetCode || `IMT${u.examId}-${u.session || 1}`;
+    for (const s of sahifa.shtrixlar) q.push(shtrixSvg(kod, s));
+  }
   // Blok sarlavhalari va yopiq savollar
   for (const s of sahifa.sarlavhalar) q.push(matn(s.x, s.y, s.matn, { size: 2.5, bold: true, rang: '#333', maxW: 34 }));
   for (const sv of sahifa.yopiq) {

@@ -17,13 +17,14 @@ export const SARALASH: Record<string, string> = {
   LID: "ID chala bo'yalgan (xonalar soni kam)",
   IID: "Bunday ID li o'quvchi ro'yxatda yo'q",
   DUP: 'Bu varaq oldin ham skanerlangan (qayta yozildi)',
+  TID: "Bu qatnashchining sahifasi oldin boshqa javoblar bilan o'qilgan — saqlanmadi (boshqa o'quvchiniki bo'lishi mumkin)",
   MUL: "Bir savolda bir nechta doira bo'yalgan",
   THR: "Noaniq belgi (to'liq bo'yalmagan) — tekshiring",
   XAT: 'Saqlashda xato',
 };
 
 /** Varaqning Addmen saralash kodi (muammosiz — null). */
-export function saralashKodi(el: { holat: string; xato?: string; oqish?: IshchiNatija['natija']; natija?: { takror?: boolean }; topilmadi?: boolean }): string | null {
+export function saralashKodi(el: { holat: string; xato?: string; oqish?: IshchiNatija['natija']; natija?: { takror?: boolean }; topilmadi?: boolean; takrorId?: unknown }): string | null {
   const o = el.oqish;
   const x = `${el.xato || ''} ${o?.xato || ''}`;
   if (el.holat === 'xato') {
@@ -35,6 +36,7 @@ export function saralashKodi(el: { holat: string; xato?: string; oqish?: IshchiN
     return o.ok ? 'XAT' : 'UNR';
   }
   if (el.holat === 'aniqlanmadi') {
+    if (el.takrorId) return 'TID';
     if (o?.qr?.turi === 'S' && el.topilmadi) return 'IVT';
     if (o?.qr?.turi === 'U' || o?.qr?.turi === 'A' || (!o?.qr && o?.idHolat !== undefined)) {
       if (o?.idHolat === 'kop') return 'DID';

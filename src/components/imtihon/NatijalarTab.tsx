@@ -8,6 +8,10 @@ import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, SELECT, Yuklanmoqda, BoshHolat } from './ui';
 import StatTile from '../ui/StatTile';
 import KalitOynasi from './KalitOynasi';
+import BaholarRoyxati from './BaholarRoyxati';
+import GuruhlarSolishtirish from './GuruhlarSolishtirish';
+import SavollarJadvali from './SavollarJadvali';
+import OquvchiKartasi from './OquvchiKartasi';
 import KalitMuharriri from './KalitMuharriri';
 import HisobotlarBolimi from './HisobotlarBolimi';
 import SorovnomaNatijalari from './SorovnomaNatijalari';
@@ -16,6 +20,7 @@ import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
 import { SozlamaKartasi, NatijaQoidalari, NatijaXabariSozlamasi, natijaNamunasi, useMarkazMatnlari } from './sozlamaQismlari';
 import type { ImtihonTafsil } from './turlar';
+import OnlaynNatijaKartasi from './OnlaynNatijaKartasi';
 
 // 6-bo'lim: natijalar, savol va mavzu tahlili, e'lon. E'londan oldin savollar
 // tahliliga qarash kerak: kuchli o'quvchilar xato qilgan savol — ko'pincha
@@ -45,18 +50,21 @@ function NatijaSozlamalari({ exam, yangila }: { exam: ImtihonTafsil; yangila: ()
             namuna={natijaNamunasi({ ...exam.settings, notify: q.notify }, { imtihon: exam.name, sana: exam.date, maks: exam.maxScore, markaz: settings?.orgName || '', bloklar })} />
         )}
       </SozlamaKartasi>
+      <OnlaynNatijaKartasi exam={exam} yangila={yangila} tahrir={tahrir} />
     </div>
   );
 }
 
 interface Natija {
   id: number; name: string; groupId: number | null; groupName: string; schoolId: number; session: number | null; variantCode: string | null;
-  score: number; percentage: number; blockScores: { subject: string; earned: number; max: number }[] | null;
+  score: number; percentage: number; blockScores: { subject: string; earned: number; max: number; togri?: number; xato?: number; bosh?: number }[] | null;
+  studentId?: number | null;
   reviewStatus: string; shubhalar: number; rank: number | null; rankGroup: number | null; notifiedAt: string | null; notifyStatus: string | null; sheetCode: string | null;
   raschScore: number | null; grade: string | null;
 }
 interface SavolTahlil {
   q: number | string; t: string; b: number; jami: number; togri: number; bosh: number; tanlov: Record<string, number> | null; foiz: number; farq: number; shubhali: boolean;
+  yuqoriFoiz?: number; quyiFoiz?: number; pbis?: number | null;
   subject: string; topic: string; text: string; togriJavob: string | null; bekor: string | null;
   // "Faqat kalit" savoli: kitobcha varianti va raqami (matni bankda yo'q).
   yorliq?: string | null; kod?: string; n?: number;
@@ -73,7 +81,9 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const [bolim, setBolim] = useState<'reyting' | 'hisobot' | 'savollar' | 'mavzular' | 'elon'>('reyting');
+  const [bolim, setBolim] = useState<'reyting' | 'guruhlar' | 'hisobot' | 'savollar' | 'mavzular' | 'elon'>('reyting');
+  const [savolKorinish, setSavolKorinish] = useState<'jadval' | 'royxat'>('jadval');
+  const [karta, setKarta] = useState<Natija | null>(null);
   const [natijalar, setNatijalar] = useState<Natija[] | null>(null);
   const [tahlil, setTahlil] = useState<Tahlil | null>(null);
   const [xulosa, setXulosa] = useState<Xulosa | null>(null);
@@ -206,7 +216,8 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tanlov qiymat={bolim} onChange={setBolim} variantlar={[
-          { v: 'reyting', nom: 'Reyting' },
+          { v: 'reyting', nom: "Baholar ro'yxati" },
+          { v: 'guruhlar', nom: 'Guruhlar' },
           { v: 'hisobot', nom: 'Hisobotlar' },
           { v: 'savollar', nom: <>Savollar tahlili{shubhaliSavollar.length > 0 && <span className="ml-1 text-xato">({shubhaliSavollar.length})</span>}</> },
           { v: 'mavzular', nom: 'Mavzular' },
@@ -230,50 +241,28 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
               {kurslar.map(([id, nom]) => <option key={id} value={id}>{nom}</option>)}
             </select>
           )}>
-          <div className="overflow-x-auto mt-3">
-            <table className="w-full min-w-[760px] text-[12.5px]">
-              <thead className="bg-ichki text-matn-sokin">
-                <tr>
-                  <th className="px-3 py-2 text-center font-semibold w-12">O'rin</th>
-                  <th className="px-3 py-2 text-left font-semibold">Qatnashchi</th>
-                  <th className="px-3 py-2 text-left font-semibold">Kurs</th>
-                  <th className="px-3 py-2 text-center font-semibold">Var.</th>
-                  {exam.blocks.length > 1 && exam.blocks.map((b, i) => <th key={i} className="px-2 py-2 text-center font-semibold whitespace-nowrap">{b.subject}</th>)}
-                  <th className="px-3 py-2 text-right font-semibold">Ball</th>
-                  <th className="px-3 py-2 text-right font-semibold">%</th>
-                  {s.rasch.enabled && <th className="px-3 py-2 text-right font-semibold" title="T-ball: o'rtacha 50">Rasch</th>}
-                  {s.rasch.enabled && <th className="px-3 py-2 text-center font-semibold">Daraja</th>}
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-chiziq">
-                {korinadigan.map((r, i) => (
-                  <tr key={r.id} className="hover:bg-ichki/50">
-                    <td className="px-3 py-2 text-center font-bold text-matn raqam">{kurs ? (r.rankGroup ?? i + 1) : (r.rank ?? i + 1)}</td>
-                    <td className="px-3 py-2 text-matn">{r.name}{kopFilial && <span className="text-matn-xira"> · {filialNomi(r.schoolId)}</span>}</td>
-                    <td className="px-3 py-2 text-matn-sokin">{r.groupName || '—'}</td>
-                    <td className="px-3 py-2 text-center text-matn-sokin">{r.variantCode || '—'}</td>
-                    {exam.blocks.length > 1 && exam.blocks.map((_, bi) => { const b = r.blockScores?.[bi]; return <td key={bi} className="px-2 py-2 text-center text-matn-sokin raqam">{b ? vergul(b.earned) : '—'}</td>; })}
-                    <td className="px-3 py-2 text-right font-bold text-matn raqam">{vergul(r.score)}</td>
-                    <td className="px-3 py-2 text-right text-matn-sokin raqam">{vergul(r.percentage)}</td>
-                    {s.rasch.enabled && <td className="px-3 py-2 text-right font-semibold text-matn raqam">{r.raschScore != null ? vergul(r.raschScore) : '—'}</td>}
-                    {s.rasch.enabled && <td className="px-3 py-2 text-center">{r.grade ? <Yorliq rang="brand">{r.grade}</Yorliq> : <span className="text-matn-xira">—</span>}</td>}
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {r.reviewStatus === 'shubhali' && <Yorliq rang="ogoh">tekshirilmagan</Yorliq>}
-                      {r.notifyStatus === 'yuborildi' && <Yorliq rang="yaxshi">xabar ketdi</Yorliq>}
-                      {r.notifyStatus && r.notifyStatus !== 'yuborildi' && <Yorliq rang="xato">{r.notifyStatus === 'aloqa yoq' ? "aloqa yo'q" : 'yetmadi'}</Yorliq>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-3">
+            <BaholarRoyxati exam={exam} qatorlar={korinadigan} filialNomi={kopFilial ? filialNomi : undefined} onOch={r => setKarta(r as Natija)} />
           </div>
+          <p className="px-4 py-2.5 text-[11.5px] text-matn-xira border-t border-chiziq">
+            T — to'g'ri, X — xato, B — bo'sh.{s.otish ? " Qizil — o'tish balidan past." : " O'tish bali «Sozlama va e'lon» da qo'yiladi."}{xulosa.kelmagan ? ` Kelmagan: ${xulosa.kelmagan}.` : ''} Ismni bosing — o'quvchi kartasi.
+          </p>
         </Karta>
       )}
+
+      {bolim === 'guruhlar' && <GuruhlarSolishtirish exam={exam} natijalar={natijalar} />}
 
       {bolim === 'hisobot' && <HisobotlarBolimi exam={exam} tahlil={savollar} />}
 
       {bolim === 'savollar' && (
+        <Tanlov kichik qiymat={savolKorinish} onChange={setSavolKorinish} variantlar={[{ v: 'jadval', nom: "Jadval (to'liq tahlil)" }, { v: 'royxat', nom: "Ro'yxat (savol matni bilan)" }]} />
+      )}
+      {bolim === 'savollar' && savolKorinish === 'jadval' && (
+        <Karta ichki="p-0" sarlavha="Savollar tahlili" izoh="Kuchli/kuchsiz 27% — eng yuqori va eng past ball olganlar. Ajratish 0,4 dan yuqori — yaxshi savol; manfiy — kalitni tekshiring.">
+          <div className="mt-3"><SavollarJadvali savollar={savollar} optionCount={s.optionCount} kalitKorinadi={kalitKorinadi} onKalit={q => setKalitSavol(q)} /></div>
+        </Karta>
+      )}
+      {bolim === 'savollar' && savolKorinish === 'royxat' && (
         <Karta ichki="p-0" sarlavha="Savollar tahlili" izoh="Eng qiyinidan boshlab. «Shubhali» — kuchli o'quvchilar kuchsizlardan ko'p xato qilgan yoki deyarli hech kim topmagan savol: kalitni tekshiring."
           amallar={kalitKorinadi && <Tugma kichik ikonka={<KeyRound size={13} />} onClick={() => setKalitSavol(null)}>Kalit</Tugma>}>
           <ul className="divide-y divide-chiziq mt-3">
@@ -386,6 +375,10 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
         </div>
       )}
       {qoshimcha && <QoshimchaBallOynasi exam={exam} onYop={() => setQoshimcha(false)} onOzgardi={() => { yukla(); yangila(); }} />}
+      {karta && (
+        <OquvchiKartasi exam={exam} natija={karta} natijalar={natijalar}
+          savolMalumoti={new Map(savollar.map(x => [x.q, { topic: x.topic, foiz: x.foiz }]))} onYop={() => setKarta(null)} />
+      )}
       {kalitSavol !== undefined && !kalitRejimi && <KalitOynasi examId={exam.id} boshSavol={kalitSavol ?? undefined} onYop={ozgardi => { setKalitSavol(undefined); if (ozgardi) { yukla(); yangila(); } }} />}
       {kalitSavol !== undefined && kalitRejimi && (
         <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-4">

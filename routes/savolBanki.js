@@ -966,7 +966,7 @@ export function registerSavolBankiRoutes(app) {
           where, orderBy: tartib, skip: (sahifa - 1) * soni, take: soni,
           select: {
             id: true, text: true, type: true, difficulty: true, status: true, toplam: true, source: true, tagIds: true,
-            topic: true, bankTopicId: true, usedCount: true, createdAt: true, imageUrl: true,
+            topic: true, bankTopicId: true, usedCount: true, createdAt: true, imageUrl: true, language: true, parentId: true,
             options: true, optionA: true, optionB: true, optionC: true, optionD: true, correctAnswer: true, answers: true, points: true, pCorrect: true,
             remark: true, passageId: true, joylashuv: true, solution: true, solutionStatus: true,
             // Guruhli savol kartasi uchun: umumiy shart va javoblar ro'yxati.
@@ -979,10 +979,23 @@ export function registerSavolBankiRoutes(app) {
       // ro'yxatda kelmaydi — faqat bor-yo'qligi (`yechimBor`); matni «Yechimni ko'rish» da olinadi.
       // Imtihon tuzuvchi (bank ruxsatisiz) ham savol tanlaydi, lekin to'g'ri javobni ko'rmaydi.
       const kalitsiz = !yetadimi(req.ruxsat, 'imtihonlar.savollar', 1);
+      // Tarjima — asl savolga bog'langan alohida savol (source 'AI tarjima', parentId). Kartochkada
+      // ikkala tomonda bog'lanish ko'rinsin: aslida — tarjimalari, tarjimada — asli (tili bilan).
+      const tarjimalar = await prisma.question.findMany({
+        where: { parentId: { in: items.map(q => q.id) }, source: 'AI tarjima' },
+        select: { id: true, parentId: true, language: true, status: true },
+      });
+      const asllar = await prisma.question.findMany({
+        where: { id: { in: [...new Set(items.filter(q => q.source === 'AI tarjima' && q.parentId).map(q => q.parentId))] } },
+        select: { id: true, language: true },
+      });
+      const aslTili = new Map(asllar.map(a => [a.id, a.language || 'uz']));
       res.json({
         items: items.map(({ optionA, optionB, optionC, optionD, solution, ...q }) => {
           const o = {
             ...q, yechimBor: yechimBor(solution), text: String(q.text || '').slice(0, 2000),
+            tarjimalar: tarjimalar.filter(t => t.parentId === q.id).map(t => ({ id: t.id, language: t.language || 'uz', status: t.status })),
+            ...(q.source === 'AI tarjima' && aslTili.has(q.parentId) ? { asl: { id: q.parentId, language: aslTili.get(q.parentId) } } : {}),
             options: savolVariantlari({ options: q.options, optionA, optionB, optionC, optionD }).map(x => x.slice(0, 500)),
             // Imtihonga yaramasa — sababi (matn qisqartirilmasdan hisoblanadi).
             xato: savolXatosi({ ...q, optionA, optionB, optionC, optionD }),

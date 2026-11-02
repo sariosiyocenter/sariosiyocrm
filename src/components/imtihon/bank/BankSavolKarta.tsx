@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Check, Clapperboard, Folder, Lightbulb, MoreHorizontal, Sparkles } from 'lucide-react';
+import { Check, Clapperboard, Folder, Languages, Lightbulb, MoreHorizontal, Sparkles } from 'lucide-react';
 import { Yorliq } from '../ui';
 import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../../../lib/matn';
 import { TUR_NOMI } from '../../../lib/savolTuri';
@@ -7,6 +7,7 @@ import { HARFLAR } from '../../../../lib/imtihon.js';
 import MoslashJadvali from './MoslashJadvali';
 import { CHIP_BOR, CHIP_BOSH, type BankQatori, type MenyuTuri } from './bankTurlari';
 import type { BelgiGuruhi } from '../../../types';
+import { tilNomi } from '../../../../lib/tarjimaKop.js';
 
 /**
  * Bank ro'yxatidagi savol kartasi: matn (formulalar bilan), variantlar va to'g'ri javob ochmasdan
@@ -60,6 +61,19 @@ export default memo(function BankSavolKarta({ q, raqam, tanlangan, yangi, tanlan
           {q.status === 'qoralama' && <Yorliq rang="ogoh">Qoralama</Yorliq>}
           {q.status === 'arxiv' && <Yorliq>Arxiv</Yorliq>}
           {q.passageId && <Yorliq>matnli</Yorliq>}
+          {/* Tarjima bog'lanishi: aslida — tarjimalari, tarjimada — asli; bosilsa o'sha savol ochiladi. */}
+          {q.asl && (
+            <button type="button" onClick={() => onKor(q.asl!.id)} title={`Bu savol #${q.asl.id} ning tarjimasi — aslini ochish`}
+              className="inline-flex items-center gap-1 rounded-md border border-brand/30 bg-brand-fon px-1.5 py-0.5 text-[11px] font-semibold text-brand-dark dark:bg-brand/20 dark:text-brand-accent cursor-pointer hover:border-brand">
+              <Languages size={12} />{tilNomi(q.language || 'uz')} · asli #{q.asl.id} ({tilNomi(q.asl.language)})
+            </button>
+          )}
+          {(q.tarjimalar || []).map(t => (
+            <button key={t.id} type="button" onClick={() => onKor(t.id)} title={`${tilNomi(t.language)} tarjimasi — #${t.id}${t.status === 'qoralama' ? ' (qoralama)' : ''}`}
+              className="inline-flex items-center gap-1 rounded-md border border-chiziq bg-ichki px-1.5 py-0.5 text-[11px] font-semibold text-matn-sokin cursor-pointer hover:border-brand hover:text-brand">
+              <Languages size={12} />{tilNomi(t.language)} #{t.id}{t.status === 'qoralama' ? ' · qoralama' : ''}
+            </button>
+          ))}
           <span className="ml-auto flex items-center gap-1.5 text-[11.5px] text-matn-xira">
             {q.yechimBor && onYechim && (
               <button type="button" onClick={() => onYechim(q.id)} aria-label={`#${q.id} — yechimni ko'rish`}

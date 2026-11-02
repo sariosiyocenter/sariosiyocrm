@@ -117,6 +117,12 @@ export interface Sahifa {
   bezak?: Bezak[];
   /** Dizayner rasmlari (logo, chizma) — o'qilmaydi. */
   rasmlar?: (Quti & { src: string })[];
+  /** Qo'lyozma katakchalari (ICR): o'qishda kesib olinadi — AI yoki operator o'qiydi. */
+  icr?: IcrMaydon[];
+  /** Varaq kodi shtrix-kodi (Code 128) — qo'l skaneri bilan kod kiritish uchun; o'qilmaydi. */
+  shtrixlar?: Quti[];
+  /** Imzo yoki belgi qutilari — o'qilmaydi. */
+  imzolar?: (Quti & { sarlavha: string })[];
   /** Varaq dizayni versiyasi (yo'q — 1). 2: rangli, o'ng panelli (layout2.ts). */
   versiya?: 2;
   panel?: Panel;
@@ -149,6 +155,8 @@ export interface VaraqParametrlari {
    * qulflangan imtihonlar 1: chop etilgan varaqlari o'sha geometriyada o'qiladi.
    */
   versiya?: 1 | 2;
+  /** O'qish qoidalari (faqat skaner uchun; geometriyaga ta'sir qilmaydi). */
+  qoida?: import('./reader').OqishQoidasi | null;
 }
 
 /** Matnni taxminiy kenglik bo'yicha qatorlarga bo'lish (Arial, mm). */
@@ -415,7 +423,13 @@ export function yorliqlarniQoy(sahifalar: Sahifa[], p: VaraqParametrlari): Sahif
 // doim o'qigichga mos); yozma, yozuv va rasm bloklari kengligi/balandligi erkin.
 // Sarlavha (markerlar, QR, ID, variant) standart varaqdagidek qoladi.
 
-export type AndozaTuri = 'yopiq' | 'raqamli' | 'moslash' | 'yozma' | 'matn' | 'rasm';
+export type AndozaTuri = 'yopiq' | 'raqamli' | 'moslash' | 'yozma' | 'matn' | 'rasm' | 'icr' | 'shtrix' | 'imzo';
+/** Qo'lyozma maydonining mazmuni — AI ga qanday o'qishni aytadi. */
+export type IcrTuri = 'ism' | 'telefon' | 'raqam' | 'matn';
+/** ICR katagi (bitta harf yoki raqam) va ustidagi sarlavha, mm. */
+export const ICR_KATAK = { w: 5.5, h: 7.5, sarlavha: 4.2 };
+/** `quti` — katakchalar qatori (sarlavhasiz). */
+export interface IcrMaydon { id: string; sarlavha: string; maydon: IcrTuri; soni: number; quti: Quti }
 export interface AndozaBlok {
   id: string;
   tur: AndozaTuri;
@@ -436,6 +450,8 @@ export interface AndozaBlok {
   qalin?: boolean;
   tekis?: 'start' | 'middle' | 'end';
   src?: string;
+  /** ICR: maydon mazmuni. */
+  maydon?: IcrTuri;
 }
 export interface VaraqAndoza { id?: number | null; nomi?: string; sahifalar: number; bloklar: AndozaBlok[]; yangilangan?: string }
 
@@ -474,6 +490,9 @@ export function blokOlchami(b: AndozaBlok, optionCount = 4): { w: number; h: num
   }
   if (b.tur === 'yozma') return { w: b.w || KENGLIK, h: sh + 4 + (b.h || YOZMA_BALANDLIK) };
   if (b.tur === 'matn') return { w: b.w || 60, h: Math.max(1, yozuvQatorlari(b).length) * (b.olcham || 3) * 1.3 + 0.8 };
+  if (b.tur === 'icr') return { w: Math.min(30, Math.max(1, b.soni || 12)) * ICR_KATAK.w, h: ICR_KATAK.sarlavha + ICR_KATAK.h };
+  if (b.tur === 'shtrix') return { w: b.w || 50, h: b.h || 12 };
+  if (b.tur === 'imzo') return { w: b.w || 50, h: b.h || 15 };
   return { w: b.w || 30, h: b.h || 20 };
 }
 
@@ -481,7 +500,8 @@ export function blokOlchami(b: AndozaBlok, optionCount = 4): { w: number; h: num
 export function blokNomi(b: AndozaBlok): string {
   const oraliq = (b.soni || 1) > 1 ? `${b.boshi}–${(b.boshi || 1) + (b.soni || 1) - 1}` : String(b.boshi || 1);
   return b.tur === 'yopiq' ? `Yopiq ${oraliq}` : b.tur === 'raqamli' ? `Raqamli ${oraliq}` : b.tur === 'moslash' ? `Moslash ${oraliq}`
-    : b.tur === 'yozma' ? `Yozma ${b.boshi}` : b.tur === 'matn' ? 'Yozuv' : 'Rasm';
+    : b.tur === 'yozma' ? `Yozma ${b.boshi}` : b.tur === 'matn' ? 'Yozuv'
+      : b.tur === 'icr' ? `Qo'lyozma${b.sarlavha ? `: ${b.sarlavha}` : ''}` : b.tur === 'shtrix' ? 'Shtrix-kod' : b.tur === 'imzo' ? `Imzo${b.sarlavha ? `: ${b.sarlavha}` : ''}` : 'Rasm';
 }
 
 export function andozaSahifalari(p: VaraqParametrlari): Sahifa[] {
@@ -490,7 +510,10 @@ export function andozaSahifalari(p: VaraqParametrlari): Sahifa[] {
   const kUstun = andozaDoiralari(p);
   const katak = new Map(p.tuzilma.savollar.map(x => [x.n, x]));
   const soni = Math.min(4, Math.max(1, a.sahifalar || 1));
-  const sahifalar = Array.from({ length: soni }, (_, i) => ({ ...yangiSahifa(i + 1), bezak: [] as Bezak[], rasmlar: [] as (Quti & { src: string })[] }));
+  const sahifalar = Array.from({ length: soni }, (_, i) => ({
+    ...yangiSahifa(i + 1), bezak: [] as Bezak[], rasmlar: [] as (Quti & { src: string })[],
+    icr: [] as IcrMaydon[], shtrixlar: [] as Quti[], imzolar: [] as (Quti & { sarlavha: string })[],
+  }));
   birinchiSahifaDoiralari(sahifalar[0], p);
   for (const b of a.bloklar) {
     const s = sahifalar[(b.sahifa || 1) - 1];
@@ -519,6 +542,13 @@ export function andozaSahifalari(p: VaraqParametrlari): Sahifa[] {
       const bw = b.w || 60;
       const x = b.tekis === 'middle' ? b.x + bw / 2 : b.tekis === 'end' ? b.x + bw : b.x;
       yozuvQatorlari(b).forEach((t, i) => { if (t) s.bezak.push({ x, y: b.y + (i + 1) * o * 1.3 - o * 0.35, matn: t, olcham: o, qalin: b.qalin, anchor: b.tekis || 'start', maxW: bw }); });
+    } else if (b.tur === 'icr') {
+      const k = Math.min(30, Math.max(1, b.soni || 12));
+      s.icr.push({ id: b.id, sarlavha: b.sarlavha || '', maydon: b.maydon || 'matn', soni: k, quti: { x: b.x, y: b.y + ICR_KATAK.sarlavha, w: k * ICR_KATAK.w, h: ICR_KATAK.h } });
+    } else if (b.tur === 'shtrix') {
+      s.shtrixlar.push({ x: b.x, y: b.y, w: b.w || 50, h: b.h || 12 });
+    } else if (b.tur === 'imzo') {
+      s.imzolar.push({ x: b.x, y: b.y, w: b.w || 50, h: b.h || 15, sarlavha: b.sarlavha || '' });
     } else if (b.tur === 'rasm' && b.src) {
       s.rasmlar.push({ x: b.x, y: b.y, w: b.w || 30, h: b.h || 20, src: b.src });
     }

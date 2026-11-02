@@ -8,7 +8,7 @@ import { pdflarYasa } from '../../lib/htmlPdf';
 import { zipYasa, yuklabOl, faylNomi } from '../../lib/zip';
 import {
   HISOBOT_TURLARI, HISOBOT_CSS, USTUN_NOMI, ballRoyxatiHtml, ikkiQismliHtml, javoblarBolaklari, shaxsiyBolaklar, osishBolaklari, kelmaganlarHtml,
-  savollarTahliliHtml, birlashHtml, excelYukla, kr20, orinlarniToldir, mavjudUstunlar,
+  savollarTahliliHtml, birlashHtml, excelYukla, kr20, orinlarniToldir, mavjudUstunlar, BIRLASH_MAKS,
   type HisobotMalumoti, type HisobotSozlama, type HisobotTuri, type SavolTahlilQatori, type UstunKodi, type HisobotNatija,
 } from './hisobotlar';
 import type { ImtihonTafsil } from './turlar';
@@ -42,9 +42,11 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
   const [alohidaPdf, setAlohidaPdf] = useState(false);
   const [band, setBand] = useState<string | null>(null);
   const [jarayon, setJarayon] = useState('');
-  // Birlashtirish uchun ikkinchi imtihon (Addmen "Merge test").
+  // Birlashtirish uchun boshqa imtihonlar (Addmen "Merge test") — tanlash tartibida.
   const [imtihonlar, setImtihonlar] = useState<{ id: number; name: string; date: string; maxScore: number; natija: number }[] | null>(null);
-  const [ikkinchiId, setIkkinchiId] = useState<number | 0>(0);
+  const [boshqaIdlar, setBoshqaIdlar] = useState<number[]>([]);
+  const [imtQidiruv, setImtQidiruv] = useState('');
+  const belgila = (id: number) => setBoshqaIdlar(l => (l.includes(id) ? l.filter(x => x !== id) : l.length >= BIRLASH_MAKS ? l : [...l, id]));
 
   useEffect(() => {
     soro<HisobotMalumoti>('GET', `exams/${exam.id}/hisobot`)
@@ -80,18 +82,25 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
     if (tanlov.kalit && !m.kalit) return showNotification("Kalitni ko'rish ruxsati yo'q", 'error');
     const kerak = tanlov.kelmagan ? kelmaganlar.length : turi === '1241' ? tahlil.length : royxat.length;
     if (!kerak && turi !== '2331') return showNotification("Tanlovga mos yozuv yo'q", 'error');
-    if (tanlov.birlash && !ikkinchiId) return showNotification("Qo'shiladigan imtihonni tanlang", 'error');
+    if (tanlov.birlash && !boshqaIdlar.length) return showNotification("Qo'shiladigan imtihonni tanlang", 'error');
     setBand('yarat');
     setJarayon('');
     try {
-      let ikkinchi = null;
+      let boshqalar = null;
       if (tanlov.birlash) {
-        const ik = imtihonlar!.find(x => x.id === ikkinchiId)!;
-        const d = await soro<HisobotMalumoti>('GET', `exams/${ikkinchiId}/hisobot`);
-        ikkinchi = { nomi: ik.name, maxScore: ik.maxScore, natijalar: d.natijalar };
+        // 2213 — ikki imtihon javoblari: faqat birinchi tanlangani.
+        const idlar = turi === '2213' ? boshqaIdlar.slice(0, 1) : boshqaIdlar;
+        setJarayon(`Imtihonlar: 0 / ${idlar.length}`);
+        let tayyor = 0;
+        boshqalar = await Promise.all(idlar.map(async id => {
+          const ik = imtihonlar!.find(x => x.id === id)!;
+          const d = await soro<HisobotMalumoti>('GET', `exams/${id}/hisobot`);
+          setJarayon(`Imtihonlar: ${++tayyor} / ${idlar.length}`);
+          return { nomi: ik.name, maxScore: ik.maxScore, natijalar: d.natijalar };
+        }));
       }
       const k = {
-        exam, markaz: settings?.orgName || '', royxat, kelmaganlar, malumot: m, tahlil, s, ikkinchi,
+        exam, markaz: settings?.orgName || '', royxat, kelmaganlar, malumot: m, tahlil, s, boshqalar,
         filialNomi: (id: number) => schools.find(x => x.id === id)?.name || '',
       };
       if (tanlov.tur === 'excel') { excelYukla(k, turi); return; }
@@ -222,13 +231,31 @@ export default function HisobotlarBolimi({ exam, tahlil }: { exam: ImtihonTafsil
           <input className={`${INPUT} py-1.5 text-[12.5px]`} value={idlar} placeholder="Hammasi" onChange={e => setIdlar(e.target.value)} />
         </label>
         {tanlov.birlash && (
-          <label className="block">
-            <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Qo'shiladigan imtihon (2-qism)</span>
-            <select className={`${SELECT} py-1.5 text-[12.5px]`} value={ikkinchiId} onChange={e => setIkkinchiId(Number(e.target.value))} aria-label="Qo'shiladigan imtihon">
-              <option value={0}>{imtihonlar ? 'Tanlang' : 'Yuklanmoqda…'}</option>
-              {(imtihonlar || []).map(x => <option key={x.id} value={x.id}>{x.name} · {x.date} · {x.natija} natija</option>)}
-            </select>
-          </label>
+          <fieldset className="block">
+            <legend className="block text-[11.5px] font-semibold text-matn-sokin mb-1">
+              {turi === '2213' ? "Qo'shiladigan imtihon (birinchi belgilangani)" : `Qo'shiladigan imtihonlar · ${boshqaIdlar.length} / ${BIRLASH_MAKS}`}
+            </legend>
+            <input className={`${INPUT} py-1.5 text-[12.5px] mb-1.5`} value={imtQidiruv} placeholder="Imtihon nomi bo'yicha qidirish" aria-label="Imtihon qidirish" onChange={e => setImtQidiruv(e.target.value)} />
+            {!imtihonlar ? <p className="text-[12px] text-matn-xira">Yuklanmoqda…</p> : (
+              <ul className="max-h-52 overflow-y-auto rounded-lg border border-chiziq divide-y divide-chiziq">
+                {imtihonlar.filter(x => !imtQidiruv.trim() || x.name.toLowerCase().includes(imtQidiruv.trim().toLowerCase()) || boshqaIdlar.includes(x.id)).map(x => {
+                  const tartib = boshqaIdlar.indexOf(x.id);
+                  return (
+                    <li key={x.id}>
+                      <label className={`flex items-start gap-2 px-2 py-1.5 text-[12px] cursor-pointer hover:bg-ichki ${tartib < 0 && boshqaIdlar.length >= BIRLASH_MAKS ? 'opacity-50' : ''}`}>
+                        <input type="checkbox" className="mt-0.5" checked={tartib >= 0} disabled={tartib < 0 && boshqaIdlar.length >= BIRLASH_MAKS} onChange={() => belgila(x.id)} />
+                        <span className="min-w-0 flex-1"><span className="block text-matn truncate">{x.name}</span><span className="text-matn-xira">{x.date} · {x.natija} natija</span></span>
+                        {tartib >= 0 && <span className="shrink-0 text-[11px] font-bold text-brand raqam">{tartib + 2}</span>}
+                      </label>
+                    </li>
+                  );
+                })}
+                {!imtihonlar.length && <li className="px-2 py-2 text-[12px] text-matn-xira">Natijasi bor boshqa imtihon yo'q</li>}
+              </ul>
+            )}
+            {boshqaIdlar.length > 0 && <button type="button" className="mt-1 text-[11.5px] text-brand hover:underline cursor-pointer" onClick={() => setBoshqaIdlar([])}>Tanlovni tozalash</button>}
+            <p className="text-[11px] text-matn-xira mt-1">Ustunlar tartibi: 1 — shu imtihon, keyin belgilash tartibida.</p>
+          </fieldset>
         )}
         {turi === '2116' && (
           <label className="block">

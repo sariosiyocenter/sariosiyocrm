@@ -27,10 +27,10 @@ const BLOKLAR = [{
 const byId = bank => new Map(bank.map(q => [q.id, q]));
 const yasa = (bank, settings) => variantlarniYasash({ blocks: BLOKLAR, settings: { variantCount: 4, ...settings }, seed: 11, bank });
 
-test("standart — 'har', faqat 'bir' | 'har' qabul qilinadi", () => {
-  assert.equal(sozlamaniTozala({}).variantSavollari, 'har');
-  assert.equal(sozlamaniTozala({ variantSavollari: 'bir' }).variantSavollari, 'bir');
-  assert.equal(sozlamaniTozala({ variantSavollari: 'xato' }).variantSavollari, 'har');
+test("standart — 'bir' (Addmen: setlar o'sha savollar, tartibi aralashadi), faqat 'bir' | 'har' qabul qilinadi", () => {
+  assert.equal(sozlamaniTozala({}).variantSavollari, 'bir');
+  assert.equal(sozlamaniTozala({ variantSavollari: 'har' }).variantSavollari, 'har');
+  assert.equal(sozlamaniTozala({ variantSavollari: 'xato' }).variantSavollari, 'bir');
 });
 
 test("'har': har o'rinda mavzu va qiyinlik hamma variantda bir xil, savollar har xil", () => {
@@ -165,4 +165,81 @@ test("savolniAlmashtir: `variant` berilsa — faqat o'sha variantdagi savol alma
   const keyin = natija.filter(v => v.items.some(it => it.q === eski)).map(v => v.code);
   assert.deepEqual(keyin, qaysilar.slice(1));
   assert.ok(natija.find(v => v.code === qaysilar[0]).items.some(it => it.q === yangi.id));
+});
+
+// Andozadan «har xil» (2026-11-01): andoza savollari A variantda, qolganlarida — har biri o'rniga
+// o'sha mavzu, qiyinlik va tildagi boshqa savol.
+const andozaBloki = ids => [{ id: 'b1', subject: 'Matematika', pointsPerQuestion: 1, topicRules: [{ topic: '', type: 'yopiq', count: ids.length, questionIds: ids, oxshash: true }] }];
+const andozaYasa = (bank, ids, settings = {}) => variantlarniYasash({ blocks: andozaBloki(ids), settings: { variantCount: 4, variantSavollari: 'har', ...settings }, seed: 7, bank });
+
+test("andoza 'har': A — andozaning o'zi, B/C/D — o'sha raqamda o'sha mavzu va qiyinlikdagi boshqa savol", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 6, 'Geometriya|3': 6 });
+  const q = byId(bank);
+  const ids = [bank.find(x => x.topic === 'Kasrlar').id, bank.find(x => x.topic === 'Geometriya').id];
+  const r = andozaYasa(bank, ids);
+  assert.equal(r.kamchiliklar.length, 0);
+  assert.deepEqual(r.variants.find(v => v.code === 'A').items.map(it => it.q), ids);
+  for (let n = 1; n <= 2; n++) {
+    const joy = r.variants.map(v => q.get(v.items.find(it => it.n === n).q));
+    assert.equal(new Set(joy.map(x => `${x.topic}|${x.difficulty}`)).size, 1, `${n}-o'rinda mavzu/qiyinlik bir xil`);
+    assert.equal(new Set(joy.map(x => x.id)).size, 4, `${n}-o'rinda hamma variantda boshqa savol`);
+  }
+  assert.equal(r.takror, 0);
+});
+
+test("andoza 'har': o'xshashi boshqa tilda bo'lsa olinmaydi (tarjima o'xshash emas)", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 1 });
+  const ru = { ...savol('Kasrlar', 1), language: 'ru' };
+  const r = andozaYasa([...bank, ru], [bank[0].id]);
+  assert.equal(r.kamchiliklar.length, 0);
+  assert.ok(r.variants.every(v => v.items[0].q === bank[0].id), "o'xshashi yo'q — hamma variantda o'zi");
+  assert.ok(r.ogohlantirishlar.some(m => m.includes('takror')));
+});
+
+test("andoza 'har': bank kam bo'lsa takror qo'shniga emas (A–C, B–D)", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 2 });
+  const r = andozaYasa(bank, [bank[0].id]);
+  const kod = Object.fromEntries(r.variants.map(v => [v.code, v.items[0].q]));
+  assert.equal(kod.A, kod.C);
+  assert.equal(kod.B, kod.D);
+  assert.notEqual(kod.A, kod.B);
+});
+
+test("andoza 'bir' (oxshash bo'lsa ham): hamma variantda andozaning o'zi", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 6 });
+  const ids = bank.slice(0, 3).map(x => x.id);
+  const r = andozaYasa(bank, ids, { variantSavollari: 'bir' });
+  for (const v of r.variants) assert.deepEqual(v.items.map(it => it.q).sort(), [...ids].sort());
+});
+
+// To'plam × tartib (2026-11-01, Addmen Group × Set): 4 variant, 2 to'plam — A va C bir savollar
+// (tartibi boshqa), B va D — boshqa to'plam; yonma-yon (A–B) savollari kesishmaydi.
+test("to'plamlar: 4 variant 2 to'plam — A=C va B=D savollari, A va B boshqa", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 8, 'Geometriya|3': 4 });
+  const r = yasa(bank, { variantSavollari: 'har', toplamlar: 2 });
+  assert.equal(r.kamchiliklar.length, 0);
+  const toplam = c => r.variants.find(v => v.code === c).items.map(it => it.q).sort().join(',');
+  assert.equal(toplam('A'), toplam('C'));
+  assert.equal(toplam('B'), toplam('D'));
+  const a = new Set(r.variants.find(v => v.code === 'A').items.map(it => it.q));
+  assert.equal(r.variants.find(v => v.code === 'B').items.filter(it => a.has(it.q)).length, 0);
+  assert.equal(r.takror, 0);
+});
+
+test("to'plamlar: savolni almashtirish shu to'plamning hamma setida", () => {
+  const bank = bankYasa({ 'Kasrlar|1': 8, 'Geometriya|3': 4 });
+  const settings = { variantCount: 4, variantSavollari: 'har', toplamlar: 2 };
+  const r = yasa(bank, settings);
+  const eski = r.variants.find(v => v.code === 'A').items[0].q;
+  const yangi = savol('Kasrlar', 1);
+  const natija = savolniAlmashtir({ variants: r.variants, eski, yangi, settings, variant: { code: 'A' } });
+  for (const c of ['A', 'C']) assert.ok(natija.find(v => v.code === c).items.some(it => it.q === yangi.id), `${c} da yangisi`);
+  for (const c of ['B', 'D']) assert.ok(!natija.find(v => v.code === c).items.some(it => it.q === yangi.id), `${c} ga tegilmaydi`);
+});
+
+test("to'plamlar: 0 yoki variantlar soniga teng — har variant o'z to'plami (avvalgidek)", () => {
+  assert.equal(sozlamaniTozala({}).toplamlar, 0);
+  const bank = bankYasa({ 'Kasrlar|1': 8, 'Geometriya|3': 4 });
+  const iz = r => JSON.stringify(r.variants.map(v => v.items.map(it => it.q)));
+  assert.equal(iz(yasa(bank, { variantSavollari: 'har', toplamlar: 4 })), iz(yasa(bank, { variantSavollari: 'har' })));
 });

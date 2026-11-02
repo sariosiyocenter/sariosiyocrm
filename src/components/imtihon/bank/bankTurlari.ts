@@ -62,7 +62,10 @@ export const CHIP_BOSH = `${CHIP} border-dashed border-chiziq-kuchli text-matn-x
 
 /** Ro'yxatdagi savol (GET bank/royxat). Yechimning o'zi ro'yxatda kelmaydi — faqat bor-yo'qligi. */
 export type BankQatori = Pick<Question, 'id' | 'text' | 'type' | 'difficulty' | 'status' | 'toplam' | 'source' | 'tagIds' | 'topic' | 'bankTopicId' | 'usedCount' | 'createdAt' | 'imageUrl' | 'options' | 'correctAnswer' | 'answers' | 'points' | 'remark' | 'passageId' | 'joylashuv' | 'passage' | 'solutionStatus'>
-  & { yechimBor?: boolean; /** Imtihonga yaramasa — sababi (server hisoblaydi). */ xato?: string | null };
+  & { yechimBor?: boolean; /** Imtihonga yaramasa — sababi (server hisoblaydi). */ xato?: string | null;
+    language?: string;
+    /** Shu savolning AI tarjimalari (alohida savollar). */ tarjimalar?: { id: number; language: string; status: string }[];
+    /** Savol tarjima bo'lsa — asl savoli. */ asl?: { id: number; language: string } };
 
 /** Bank ekranidagi ochiladigan menyular. 'yechim' — guruhli savol bo'lagining yechimi. */
 export type MenyuTuri = 'fan' | 'savol' | 'mavzu' | 'daraja' | 'guruh' | 'yana' | 'guruhkarta' | 'yechim';

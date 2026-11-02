@@ -219,7 +219,7 @@ export default function Andozalar({ daraxt }: { daraxt: BankDaraxt }) {
       {korish && <SavolOynasi q={korish} daraxt={daraxt} onYop={() => setKorish(null)} onOzgardi={() => tafsil && tafsilniYukla(tafsil.id)} />}
       {qogozOyna && (
         <AndozadanQogoz boshAndozaId={qogozOyna} onYop={() => setQogozOyna(null)}
-          onTayyor={(id, qulflandi) => { setQogozOyna(null); navigate(qulflandi ? `/exams?tab=chop&imtihon=${id}` : `/exams?imtihon=${id}`); }} />
+          onTayyor={id => { setQogozOyna(null); navigate(`/exams?tab=imtihonlar&imtihon=${id}&b=qogoz`); }} />
       )}
     </div>
   );

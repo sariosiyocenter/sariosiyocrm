@@ -21,7 +21,7 @@ export interface JadvalMalumoti {
 
 interface Tanlangan { q: number; session: number; code: string; n: number; y?: string }
 
-export const harXilmi = (exam: Pick<ImtihonTafsil, 'settings'>) => (exam.settings.variantSavollari ?? 'har') === 'har' && exam.settings.variantCount > 1;
+export const harXilmi = (exam: Pick<ImtihonTafsil, 'settings'>) => (exam.settings.variantSavollari ?? 'bir') === 'har' && exam.settings.variantCount > 1;
 
 export default function VariantJadvali({ exam, data, almashtiradi, onAlmashdi }: {
   exam: ImtihonTafsil; data: JadvalMalumoti; almashtiradi: boolean; onAlmashdi?: () => void;
@@ -41,7 +41,13 @@ export default function VariantJadvali({ exam, data, almashtiradi, onAlmashdi }:
     return m;
   }, [variantlar]);
   const qolda = useMemo(() => new Set(data.qolda || []), [data.qolda]);
-  const takrormi = (code: string, q: number | null) => har && q != null && !qolda.has(q) && birinchi.get(q) !== code;
+  // To'plamlar (Addmen Group × Set): bir to'plamning setlarida savollar bir xil — bu takror emas.
+  const n = s.variantCount;
+  const tp = s.toplamlar || 0;
+  const G = har ? (tp >= 2 && tp < n ? tp : n) : 1;
+  const kodi = (c: string) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.indexOf(c);
+  const birToplam = (a?: string, b?: string) => !!a && !!b && G < n && kodi(a) % G === kodi(b) % G;
+  const takrormi = (code: string, q: number | null) => har && q != null && !qolda.has(q) && birinchi.get(q) !== code && !birToplam(birinchi.get(q), code);
   const qatorlar = (b: number) => (variantlar[0]?.items || []).filter(it => it.b === b);
   const blokTakrori = (b: number) => variantlar.reduce((a, v) => a + v.items.filter(it => it.b === b && takrormi(v.code, it.q)).length, 0);
   // «Bir xil» da B, C, D — o'sha savollar boshqa tartibda: ustunma-ustun ko'rsatish chalg'itadi, bitta ro'yxat yetadi.
@@ -71,6 +77,9 @@ export default function VariantJadvali({ exam, data, almashtiradi, onAlmashdi }:
         )}
       </div>
 
+      {har && G < n && (
+        <p className="text-[12px] text-matn-sokin">{G} ta savol to'plami: {Array.from({ length: G }, (_, g) => variantlar.filter(v => kodi(v.code) % G === g).map(v => v.code).join(' va ')).join(' · ')} — bir to'plamda savollar bir xil, tartibi boshqa. Savol almashtirilsa, to'plamning hamma variantida almashadi.</p>
+      )}
       {!har && variantlar.length > 1 && (
         <p className="text-[12px] text-matn-sokin">Hamma variantda shu savollar — {variantlar.slice(1).map(v => v.code).join(', ')} variantlarda faqat tartibi va javob harflari boshqa.</p>
       )}

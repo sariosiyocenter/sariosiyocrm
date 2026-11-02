@@ -263,6 +263,8 @@ export interface OqishNatijasi {
   idRaqam: string | null;
   /** Universal varaqdagi ID ustunlari: bo'sh (Addmen BID), bir ustunda bir nechta belgi (DID), chala (LID). */
   idHolat?: 'bosh' | 'kop' | 'chala' | null;
+  /** Qo'lyozma maydonlari kesimlari (worker qo'shadi): AI yoki operator o'qiydi. */
+  icr?: { id: string; sarlavha: string; maydon: string; rasm: string }[];
   /** To'g'rilangan varaq (px/mm = `masshtab`) — saqlash va kesib ko'rsatish uchun. */
   tasvir: Kulrang | null;
   masshtab: number;
@@ -278,10 +280,57 @@ export interface OqishSozlamasi {
   masshtab?: number;
   /** QR o'qilmasa qaysi sahifa deb qaralsin (sahifa belgisidan ham aniqlanadi). */
   sahifa?: number;
+  /** Imtihonning o'qish qoidalari (yo'q — standart: o'rta sezgirlik, shubhalilar operatorga). */
+  qoida?: OqishQoidasi | null;
+}
+
+/** Addmen «Reading rules» (imtihon sozlamasi `oqishQoidasi`). */
+export interface OqishQoidasi {
+  /** Doirachani to'lgan deb hisoblash: past — faqat to'liq bo'yalgani, yuqori — yengilroq bo'yalgani ham. */
+  sezgirlik: 'past' | 'orta' | 'yuqori';
+  /** Bir savolda bir nechta to'liq belgi: operatorga, xato javob yoki aniq qoraroq bo'lsa — o'sha. */
+  kopBelgi: 'shubha' | 'notogri' | 'qorasi';
+  /** Xira yoki o'chirilgan belgi: operatorga yoki boshqalaridan aniq qoraroq bo'lsa — o'sha javob. */
+  xira: 'shubha' | 'qorasi';
+}
+
+/** Sezgirlik bo'yicha chegaralar (to'lganlik ulushi). */
+export const SEZGIRLIK = {
+  past: { TOLIQ: 0.7, BOSH: 0.22 },
+  orta: { TOLIQ: CHEGARA.TOLIQ, BOSH: CHEGARA.BOSH },
+  yuqori: { TOLIQ: 0.5, BOSH: 0.12 },
+} as const;
+
+/** «Aniq qoraroq»: eng qora belgi keyingisidan kamida shuncha ko'p to'lgan bo'lsa. */
+export const ANIQ_FARQ = 0.3;
+
+/**
+ * Bitta yopiq savol qarori: to'lganliklar (0..1, qog'oz asosi ayirilgan) va qoidadan —
+ * javob harfi indeksi ('' — bo'sh, '*' — bir nechta) va shubha sababi.
+ */
+export function yopiqQarori(f: number[], qoida?: OqishQoidasi | null): { j: number | '' | '*'; sabab?: string } {
+  const q = qoida || { sezgirlik: 'orta', kopBelgi: 'shubha', xira: 'shubha' };
+  const { TOLIQ, BOSH } = SEZGIRLIK[q.sezgirlik] || SEZGIRLIK.orta;
+  const tartib = f.map((x, j) => ({ x, j })).sort((a, b) => b.x - a.x);
+  const toliqlar = tartib.filter(o => o.x >= TOLIQ);
+  const noaniq = f.filter(x => x >= BOSH && x < TOLIQ).length;
+  const [eng, keyingi] = [tartib[0], tartib[1]];
+  const aniqQora = !!eng && eng.x >= BOSH && eng.x - (keyingi?.x ?? 0) >= ANIQ_FARQ;
+  if (toliqlar.length === 1 && !noaniq) return { j: toliqlar[0].j };
+  if (!toliqlar.length && !noaniq) return { j: '' };
+  if (toliqlar.length >= 2) {
+    if (q.kopBelgi === 'qorasi' && aniqQora) return { j: eng.j };
+    if (q.kopBelgi === 'notogri') return { j: '*' };
+    return { j: '*', sabab: "Bir nechta doira bo'yalgan" };
+  }
+  // Bitta to'liq + xira (o'chirilgan) yoki faqat xira belgilar.
+  if (q.xira === 'qorasi' && aniqQora) return { j: eng.j };
+  return { j: eng.j, sabab: 'Noaniq belgi' };
 }
 
 export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
   const S = o.masshtab || 5;
+  const CH = SEZGIRLIK[o.qoida?.sezgirlik || 'orta'] || SEZGIRLIK.orta;
   const bosh: OqishNatijasi = {
     ok: false, qr: null, page: 0, sahifaBelgisi: 0, javoblar: {}, shubhalar: [], toliqlik: {},
     variant: null, idRaqam: null, tasvir: null, masshtab: S, burilish: 0, markerlar: 0, kontrast: 0,
@@ -480,18 +529,9 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
   sahifa.yopiq.forEach((q, i) => {
     const f = yopiqF[i].map(moslash);
     natija.toliqlik[q.n] = f.map(yaxlit);
-    const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CHEGARA.TOLIQ);
-    const noaniq = f.filter(x => x >= CHEGARA.BOSH && x < CHEGARA.TOLIQ).length;
-    if (toliqlar.length === 1 && !noaniq) natija.javoblar[q.n] = q.doiralar[toliqlar[0].j].v;
-    else if (!toliqlar.length && !noaniq) natija.javoblar[q.n] = '';
-    else if (toliqlar.length >= 2) {
-      natija.javoblar[q.n] = '*';
-      natija.shubhalar.push({ n: q.n, sabab: 'Bir nechta doira bo\'yalgan', f: f.map(yaxlit) });
-    } else {
-      const eng = f.reduce((a, x, j) => (x > f[a] ? j : a), 0);
-      natija.javoblar[q.n] = q.doiralar[eng].v;
-      natija.shubhalar.push({ n: q.n, sabab: 'Noaniq belgi', f: f.map(yaxlit) });
-    }
+    const qaror = yopiqQarori(f, o.qoida);
+    natija.javoblar[q.n] = typeof qaror.j === 'number' ? q.doiralar[qaror.j].v : qaror.j;
+    if (qaror.sabab) natija.shubhalar.push({ n: q.n, sabab: qaror.sabab, f: f.map(yaxlit) });
   });
 
   for (const [qi, q] of sahifa.raqamli.entries()) {
@@ -501,8 +541,8 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
     for (const [ui, ustun] of q.ustunlar.entries()) {
       const f = raqamliF[qi][ui].map(moslashRaqam);
       barchasi.push(...f.map(yaxlit));
-      const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CHEGARA.TOLIQ);
-      const noaniq = f.filter(x => x >= CHEGARA.BOSH && x < CHEGARA.TOLIQ).length;
+      const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CH.TOLIQ);
+      const noaniq = f.filter(x => x >= CH.BOSH && x < CH.TOLIQ).length;
       if (toliqlar.length === 1) matn += ustun[toliqlar[0].j].v;
       if (toliqlar.length > 1) muammo = 'Ustunda bir nechta belgi';
       else if (noaniq) muammo = muammo || 'Noaniq belgi';
@@ -521,8 +561,8 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
     for (const qator of q.qatorlar) {
       const f = oqish(qator).map(moslash);
       barchasi.push(...f.map(yaxlit));
-      qismlar.push(qator.filter((_, j) => f[j] >= CHEGARA.TOLIQ).map(d => d.v).join(''));
-      noaniq += f.filter(x => x >= CHEGARA.BOSH && x < CHEGARA.TOLIQ).length;
+      qismlar.push(qator.filter((_, j) => f[j] >= CH.TOLIQ).map(d => d.v).join(''));
+      noaniq += f.filter(x => x >= CH.BOSH && x < CH.TOLIQ).length;
     }
     natija.toliqlik[q.n] = barchasi;
     natija.javoblar[q.n] = qismlar.some(Boolean) ? qismlar.join('|') : '';
@@ -531,7 +571,7 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
 
   if (sahifa.variantlar.length) {
     const f = oqish(sahifa.variantlar).map(moslash);
-    const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CHEGARA.TOLIQ);
+    const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CH.TOLIQ);
     if (toliqlar.length === 1) natija.variant = sahifa.variantlar[toliqlar[0].j].v;
   }
   if (sahifa.idUstunlari.length && qr?.turi !== 'S') {
@@ -539,7 +579,7 @@ export function varaqniOqi(img: Kulrang, o: OqishSozlamasi): OqishNatijasi {
     let buzuq = false;
     for (const ustun of sahifa.idUstunlari) {
       const f = oqish(ustun, 0.8).map(moslash);
-      const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CHEGARA.TOLIQ);
+      const toliqlar = f.map((x, j) => ({ x, j })).filter(o2 => o2.x >= CH.TOLIQ);
       if (toliqlar.length === 1) raqam += ustun[toliqlar[0].j].v;
       else if (toliqlar.length > 1) buzuq = true;
     }

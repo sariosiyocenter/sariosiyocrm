@@ -34,7 +34,7 @@ export const JARIMALAR: { v: number; nom: string }[] = [
 ];
 
 export const NATIJA_OZGARUVCHILARI = '{ism} {imtihon} {sana} {ball} {maks} {foiz} {holat} {rasch} {daraja} {bloklar} {orin} {markaz} {havola}';
-export const RUXSATNOMA_OZGARUVCHILARI = '{ism} {imtihon} {sana} {vaqt} {filial} {xona} {qator} {orin} {markaz}';
+export const RUXSATNOMA_OZGARUVCHILARI = '{ism} {imtihon} {sana} {vaqt} {filial} {xona} {qator} {orin} {markaz} {varaq_kodi}';
 
 const KANALLAR = [
   { v: 'BOTH', nom: "Telegram, bo'lmasa SMS" }, { v: 'TELEGRAM', nom: 'Faqat Telegram' }, { v: 'SMS', nom: 'Faqat SMS' }, { v: 'NONE', nom: 'Yubormaslik' },

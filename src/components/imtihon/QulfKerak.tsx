@@ -9,7 +9,7 @@ export default function QulfKerak({ examId, ikonka, izoh, qoshimcha }: { examId:
   return (
     <Karta>
       <BoshHolat ikonka={ikonka} sarlavha="Avval savollarni qulflang" izoh={izoh}>
-        <Tugma turi="asosiy" kichik ikonka={<Lock size={13} />} onClick={() => navigate(`/exams?imtihon=${examId}`)}>Imtihonlar → qulflash</Tugma>
+        <Tugma turi="asosiy" kichik ikonka={<Lock size={13} />} onClick={() => navigate(`/exams?tab=imtihonlar&imtihon=${examId}&b=qogoz`)}>Savol qog'ozi → tasdiqlash</Tugma>
         {qoshimcha}
       </BoshHolat>
     </Karta>

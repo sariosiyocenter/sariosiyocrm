@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { X, Save, Plus, Minus, Trash2, Copy, Wand2, ListChecks, Hash, Grid3x3, PenLine, Type, ImagePlus, AlertTriangle, CheckCircle2, MousePointer2 } from 'lucide-react';
+import { X, Save, Plus, Minus, Trash2, Copy, Wand2, ListChecks, Hash, Grid3x3, PenLine, Type, ImagePlus, AlertTriangle, CheckCircle2, MousePointer2, Signature, Barcode, TextCursorInput } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
@@ -21,9 +21,13 @@ import type { VaraqAndozaYozuvi } from '../../../types';
 
 export interface DizaynerBoshi { id?: number; name: string; sahifalar: number; bloklar: AndozaBlok[] }
 
-const TUR_NOMI: Record<AndozaTuri, string> = { yopiq: 'Variantli (MCQ)', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma javob', matn: 'Yozuv', rasm: 'Rasm' };
+const TUR_NOMI: Record<AndozaTuri, string> = {
+  yopiq: 'Variantli (MCQ)', raqamli: 'Raqamli javob', moslash: 'Moslashtirish', yozma: 'Yozma javob', matn: 'Yozuv', rasm: 'Rasm',
+  icr: "Qo'lyozma katakchalari", shtrix: 'Shtrix-kod', imzo: 'Imzo qutisi',
+};
 const TUR_IKONKA: Record<AndozaTuri, React.ReactNode> = {
   yopiq: <ListChecks size={15} />, raqamli: <Hash size={15} />, moslash: <Grid3x3 size={15} />, yozma: <PenLine size={15} />, matn: <Type size={15} />, rasm: <ImagePlus size={15} />,
+  icr: <TextCursorInput size={15} />, shtrix: <Barcode size={15} />, imzo: <Signature size={15} />,
 };
 const yangiId = () => `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 const RASM_MAX = 380000;
@@ -168,6 +172,9 @@ export default function VaraqDizayner({ boshi, params, umumiy, onYop, onSaqlandi
       b.ustunlar = tur === 'yopiq' ? Math.min(maxUstun(b), Math.max(1, Math.ceil((b.soni || 1) / 15))) : maxUstun(b);
     } else if (tur === 'yozma') b = { ...b, boshi: joylanmagan('yozma').boshi, soni: 1, w: ANDOZA_MAYDONI.x1 - ANDOZA_MAYDONI.x0, h: 40 };
     else if (tur === 'matn') b = { ...b, matn: 'Yangi yozuv', olcham: 3.2, qalin: true, w: 90, tekis: 'start' };
+    else if (tur === 'icr') b = { ...b, sarlavha: 'Familiya va ism', soni: 24, maydon: 'ism' };
+    else if (tur === 'shtrix') b = { ...b, w: 50, h: 12 };
+    else if (tur === 'imzo') b = { ...b, sarlavha: 'Imzo', w: 50, h: 15 };
     b.y = boshJoy(blokOlchami(b, k).h);
     ozgartir(l => [...l, b]);
     setTanlangan(b.id);
@@ -243,7 +250,7 @@ export default function VaraqDizayner({ boshi, params, umumiy, onYop, onSaqlandi
         {/* Bloklar palitrasi */}
         <aside className="border-r border-chiziq bg-sirt p-3 space-y-1.5 overflow-y-auto">
           <p className="text-[11px] font-bold uppercase tracking-wide text-matn-xira px-1 pb-1">Blok qo'shish</p>
-          {(['yopiq', 'raqamli', 'moslash', 'yozma', 'matn'] as AndozaTuri[]).map(t => (
+          {(['yopiq', 'raqamli', 'moslash', 'yozma', 'matn', 'icr', 'shtrix', 'imzo'] as AndozaTuri[]).map(t => (
             <button key={t} onClick={() => qosh(t)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border border-chiziq bg-sirt hover:border-brand hover:text-brand text-[12.5px] font-semibold text-matn cursor-pointer">
               <span className="text-brand">{TUR_IKONKA[t]}</span>{TUR_NOMI[t]}
             </button>
@@ -374,6 +381,42 @@ function BlokXususiyatlari({ b, sahifalar, k, maxUstun, onChange, onRasm, onNusx
           <label className="flex items-center gap-2 text-[12.5px] text-matn cursor-pointer">
             <input type="checkbox" checked={!!b.qalin} onChange={e => onChange({ qalin: e.target.checked })} className="w-4 h-4 accent-[var(--color-brand)]" /> Qalin
           </label>
+        </>
+      )}
+      {b.tur === 'icr' && (
+        <>
+          <label className="block">
+            <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Sarlavha</span>
+            <input className={`${INPUT} py-1.5`} value={b.sarlavha || ''} placeholder="Masalan: Telefon raqami" aria-label="Sarlavha" onChange={e => onChange({ sarlavha: e.target.value || undefined })} />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <Son nom="Katakchalar" qiymat={b.soni || 12} min={1} max={30} onChange={v => onChange({ soni: v })} />
+            <label className="block">
+              <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Mazmuni</span>
+              <select className={`${SELECT} py-1.5`} value={b.maydon || 'matn'} aria-label="Mazmuni" onChange={e => onChange({ maydon: e.target.value as AndozaBlok['maydon'] })}>
+                <option value="ism">Ism-familiya</option>
+                <option value="telefon">Telefon</option>
+                <option value="raqam">Raqam</option>
+                <option value="matn">Boshqa matn</option>
+              </select>
+            </label>
+          </div>
+          <p className="text-[11.5px] text-matn-xira">Har katakka bitta harf yoki raqam. O'qishda kesib olinadi va natijada ko'rinadi; «AI bilan o'qish» uni matnga aylantiradi.</p>
+        </>
+      )}
+      {(b.tur === 'imzo' || b.tur === 'shtrix') && (
+        <>
+          {b.tur === 'imzo' && (
+            <label className="block">
+              <span className="block text-[11.5px] font-semibold text-matn-sokin mb-1">Yozuv</span>
+              <input className={`${INPUT} py-1.5`} value={b.sarlavha || ''} placeholder="Masalan: Nazoratchi imzosi" aria-label="Yozuv" onChange={e => onChange({ sarlavha: e.target.value || undefined })} />
+            </label>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <Son nom="Kenglik, mm" qiymat={b.w || 50} min={b.tur === 'shtrix' ? 30 : 15} max={170} onChange={v => onChange({ w: v })} />
+            <Son nom="Balandlik, mm" qiymat={b.h || (b.tur === 'shtrix' ? 12 : 15)} min={8} max={60} onChange={v => onChange({ h: v })} />
+          </div>
+          {b.tur === 'shtrix' && <p className="text-[11.5px] text-matn-xira">Varaq kodi (Code 128). QR o'qilmasa, oddiy qo'l skaneri bilan kod maydoniga «otib» kiritiladi.</p>}
         </>
       )}
       {b.tur === 'rasm' && (

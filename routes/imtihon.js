@@ -24,7 +24,8 @@ import {
   bankYetarliligi, natijaniHisobla, orinlashtirish, orinVarianti, xonaOrinlari, reytingOrinlari, otishHolati,
   almashtirishNomzodlari, savolniAlmashtir, sorovnomaBloklari, sorovnomaVariantlari, sorovnomaYorliqlari,
   savolTahlili, natijaXabari, ruxsatnomaMatni, sanaMatni, vergul, OYLAR, qoshimchaBallar, onlaynHolati, uzVaqti, raqamniTozala, moslashQatorlari,
-  varaqAndozaTozala, QULFDAN_KEYIN_OZGARADI, VARAQ_VERSIYA, filiallarniBirlashtir,
+  varaqAndozaTozala, QULFDAN_KEYIN_OZGARADI, takrorFarqi, VARAQ_VERSIYA, filiallarniBirlashtir,
+  qidiruvKirishi, telefonMos, onlaynReyting,
   SAVOL_TURLARI, yakkaSavolTuri, guruhSavolimi, qismSoni, qismTekshiruvi, tanlanganSavollar,
 } from '../lib/imtihon.js';
 import { toDateStr } from '../lib/lessons.js';
@@ -44,6 +45,22 @@ function tokendanId(token) {
   const id = parseInt(a, 36);
   if (!Number.isInteger(id) || id <= 0 || !imzo) return null;
   const kutilgan = natijaTokeni(id).split('.')[1];
+  if (imzo.length !== kutilgan.length) return null;
+  return crypto.timingSafeEqual(Buffer.from(imzo), Buffer.from(kutilgan)) ? id : null;
+}
+
+// Onlayn natija sahifasi havolasi: imtihon id si + imzo. Bitta havola hammaga (devorga, kanalga);
+// o'z natijasini faqat ID + telefon oxiri yoki varaq kodi bilan ochadi.
+export function natijalarTokeni(examId) {
+  const imzo = crypto.createHmac('sha256', JWT_SECRET).update(`natijalar:${examId}`).digest('base64url').slice(0, 12);
+  return `${Number(examId).toString(36)}.${imzo}`;
+}
+
+function natijalarTokendanId(token) {
+  const [a, imzo] = String(token || '').split('.');
+  const id = parseInt(a, 36);
+  if (!Number.isInteger(id) || id <= 0 || !imzo) return null;
+  const kutilgan = natijalarTokeni(id).split('.')[1];
   if (imzo.length !== kutilgan.length) return null;
   return crypto.timingSafeEqual(Buffer.from(imzo), Buffer.from(kutilgan)) ? id : null;
 }
@@ -94,6 +111,15 @@ const natijaSahifaCheklovi = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Juda ko'p so'rov. Birozdan keyin qayta oching." },
+});
+
+// Natijani ID + telefon oxiri bilan qidirish — taxmin qilib ko'rishga qarshi qattiqroq.
+const natijaQidiruvCheklovi = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Juda ko'p urinish. 15 daqiqadan keyin qayta urinib ko'ring." },
 });
 
 const KOD_HARFLARI = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -200,6 +226,8 @@ function blokniTozala(blocks) {
         const mid = musbatId(r?.mavzuId);
         if (mid) rule.mavzuId = mid;
         if (ids.length) rule.questionIds = ids;
+        // Andozadan «har xil» imtihon: A variantda shu savollar, qolganlarida — o'xshashi (mavzu va qiyinligi bir xil).
+        if (ids.length && r?.oxshash === true) rule.oxshash = true;
         const d = parseInt(r?.difficulty);
         if (d >= 1 && d <= 5) rule.difficulty = qiyinlikDarajasi(d);
         if (r?.points !== undefined && r?.points !== null && r?.points !== '' && Number.isFinite(Number(r.points))) rule.points = Number(r.points);
@@ -507,6 +535,7 @@ export async function ruxsatnomalarniYubor(examId, { limit = 10, muddat = Infini
       orin: o.col != null ? o.col + 1 : '',
       markaz: brend.orgName,
       test_havola: havola,
+      varaq_kodi: o.sheetCode,
     });
     let natija;
     try {
@@ -930,6 +959,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         ...imtihonJavobi(e, req),
         variantlar: e.examVariants.map(v => ({ session: v.session, code: v.code })).sort((a, b) => a.session - b.session || a.code.localeCompare(b.code)),
         holat: await bosqichHolati(id),
+        // Nisbiy yo'l: to'liq manzilni brauzer qo'shadi (xodim ochgan sayt — QR ham o'shanga).
+        natijalarHavolasi: `/natijalar/${natijalarTokeni(id)}`,
       });
     } catch (err) { next(err); }
   });
@@ -1518,13 +1549,14 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
   app.get('/api/exams/:id/key', authenticate, async (req, res, next) => {
     try {
       const examId = parseInt(req.params.id);
+      const yechimBilan = req.query.yechim === '1';
       const e = await prisma.exam.findUnique({ where: { id: examId }, select: { settings: true } });
       if (!e) return res.status(404).json({ error: 'Imtihon topilmadi' });
       const variants = await prisma.examVariant.findMany({ where: { examId }, orderBy: [{ session: 'asc' }, { code: 'asc' }] });
       const qids = [...new Set(variants.flatMap(v => v.items.map(it => it.q)))].filter(Number.isInteger);
       const savollar = await prisma.question.findMany({
         where: { id: { in: qids } },
-        select: { id: true, text: true, subject: true, topic: true, type: true, correctAnswer: true, answers: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true },
+        select: { id: true, text: true, subject: true, topic: true, type: true, correctAnswer: true, answers: true, options: true, optionA: true, optionB: true, optionC: true, optionD: true, ...(yechimBilan ? { solution: true, solutionStatus: true, imageUrl: true } : {}) },
       });
       const s = sozlamaniTozala(e.settings);
       res.json({
@@ -1533,10 +1565,17 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           session: v.session, code: v.code,
           items: v.items.map(it => ({ n: it.n, ...(it.y ? { y: it.y } : {}), q: it.q, t: it.t, b: it.b, p: it.p, javob: it.t === 'yopiq' ? (it.ka ? it.ka.join('') : HARFLAR[it.k]) : it.t === 'raqamli' ? it.j : it.t === 'moslash' ? (it.mk || []).join('|') : null, m: it.m, bekor: it.bekor || null })),
         })),
-        savollar: savollar.map(q => ({ id: q.id, text: q.text, subject: q.subject, topic: q.topic, type: q.type, correctAnswer: q.correctAnswer, answers: q.answers, options: savolVariantlari(q) })),
+        // ?yechim=1 — yechimlar varag'i uchun (kalit kabi sir: shu yo'lning ruxsati bilan).
+        savollar: savollar.map(q => ({ id: q.id, text: q.text, subject: q.subject, topic: q.topic, type: q.type, correctAnswer: q.correctAnswer, answers: q.answers, options: savolVariantlari(q), ...(yechimBilan ? { solution: q.solution || null, solutionStatus: q.solutionStatus, imageUrl: q.imageUrl } : {}) })),
         cancelled: s.cancelled,
         keyFix: s.keyFix,
         keys: s.keys,
+        ballSxemalari: s.ballSxemalari,
+        xatoJarima: s.xatoJarima,
+        boglanish: s.boglanish,
+        javobOgirligi: s.javobOgirligi,
+        olchangan: s.olchangan,
+        bolimOtish: s.bolimOtish,
       });
     } catch (err) { next(err); }
   });
@@ -1552,10 +1591,15 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         ...joriy,
         cancelled: req.body.cancelled !== undefined ? req.body.cancelled : joriy.cancelled,
         keyFix: req.body.keyFix !== undefined ? req.body.keyFix : joriy.keyFix,
+        ballSxemalari: req.body.ballSxemalari !== undefined ? req.body.ballSxemalari : joriy.ballSxemalari,
+        ...Object.fromEntries(['boglanish', 'javobOgirligi', 'olchangan', 'bolimOtish'].map(k => [k, req.body[k] !== undefined ? req.body[k] : joriy[k]])),
       });
-      const yangilangan = await prisma.exam.update({ where: { id }, data: { settings: yangi } });
+      // Ball sxemasi yoki bekor qilish maksimal ballni o'zgartiradi — birinchi variant bo'yicha qayta (javobsiz hisob).
+      const v0 = await prisma.examVariant.findFirst({ where: { examId: id }, orderBy: [{ session: 'asc' }, { code: 'asc' }] });
+      const maxScore = v0 ? natijaniHisobla({ items: v0.items, javoblar: {}, blocks: e.blocks, settings: yangi }).maks : e.maxScore;
+      const yangilangan = await prisma.exam.update({ where: { id }, data: { settings: yangi, maxScore } });
       const soni = await hammasiniQaytaHisobla(yangilangan);
-      res.json({ cancelled: yangi.cancelled, keyFix: yangi.keyFix, qaytaHisoblandi: soni });
+      res.json({ cancelled: yangi.cancelled, keyFix: yangi.keyFix, ballSxemalari: yangi.ballSxemalari, boglanish: yangi.boglanish, javobOgirligi: yangi.javobOgirligi, olchangan: yangi.olchangan, bolimOtish: yangi.bolimOtish, qaytaHisoblandi: soni });
     } catch (err) { next(err); }
   });
 
@@ -1954,18 +1998,41 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       if (!variant) yangiFlags.push({ n: 0, sabab: 'Variant aniqlanmadi' });
 
       const variantOl = code => (code ? prisma.examVariant.findFirst({ where: { examId, session: seat.session, code }, select: { items: true } }) : null);
-      const [oldingi, taxminiy, url] = await Promise.all([
+      const [oldingi, taxminiy] = await Promise.all([
         prisma.examResult.findFirst({ where: { examId, seatId: seat.id } }),
         variantOl(variant),
-        typeof b.image === 'string' && b.image.startsWith('data:image/') ? rasmniSaqla(b.image, `imtihon_${examId}_${seat.id}_${page}`) : null,
       ]);
+      // Bu sahifa oldin boshqa javoblar bilan o'qilgan — ehtimol boshqa o'quvchining varag'i.
+      // Operator «almashtir» demaguncha yozilmaydi (Addmen duplicate-ID oynasi: eski varaq rasmi bilan).
+      const oldingiSahifa = oldingi?.pages?.[page];
+      if (oldingiSahifa && b.takror !== 'almashtir' && !b.anonim) {
+        const farq = takrorFarqi(oldingi.raw, answers);
+        if (farq.boshqa) {
+          const ism = seat.student?.name || seat.guestName || '';
+          return res.status(409).json({
+            error: `${ism || 'Bu qatnashchi'}ning ${page}-sahifasi oldin boshqa javoblar bilan o'qilgan (${farq.soni}/${farq.jami} savol farq qiladi) — ehtimol boshqa varaq. Kimniki ekanini tanlang yoki almashtiring`,
+            takrorId: true, name: ism, oldingiRasm: oldingiSahifa.url || null, farq: farq.soni, jami: farq.jami,
+          });
+        }
+      }
+      // Rasm tekshiruvdan keyin: rad etilgan varaq omborda ortiqcha fayl qoldirmasin.
+      const url = typeof b.image === 'string' && b.image.startsWith('data:image/') ? await rasmniSaqla(b.image, `imtihon_${examId}_${seat.id}_${page}`) : null;
       const raw = { ...(oldingi?.raw || {}), ...answers };
       const flags = [
         ...(Array.isArray(oldingi?.flags) ? oldingi.flags : []).filter(f => f.n !== 0 && !sahifaSavollari.has(f.n)),
         ...yangiFlags,
       ];
+      // Qo'lyozma (ICR) maydonlari kesimlari — sahifa rasmi yonida; o'qilgan matni keyin (AI yoki operator).
+      const icr = (await Promise.all((Array.isArray(b.icr) ? b.icr : []).slice(0, 12).map(async (m, i) => {
+        if (typeof m?.rasm !== 'string' || !m.rasm.startsWith('data:image/') || m.rasm.length > 400000) return null;
+        const u = await rasmniSaqla(m.rasm, `imtihon_${examId}_${seat.id}_${page}_icr${i}`);
+        return u ? {
+          id: String(m.id ?? '').replace(/[^\w-]/g, '').slice(0, 24) || `m${i + 1}`, sarlavha: String(m.sarlavha ?? '').slice(0, 60),
+          maydon: ['ism', 'telefon', 'raqam', 'matn'].includes(m.maydon) ? m.maydon : 'matn', url: u, matn: null,
+        } : null;
+      }))).filter(Boolean);
       const pages = { ...(oldingi?.pages || {}) };
-      if (url) pages[page] = { url, at: new Date().toISOString() };
+      if (url) pages[page] = { url, at: new Date().toISOString(), ...(icr.length ? { icr } : {}) };
       const manual = oldingi?.manual || {};
       const variantCode = manual.variant || variant || oldingi?.variantCode || null;
       // Operator variantni oldin qo'lda tanlagan bo'lsa — o'sha variantning kaliti.
@@ -2048,6 +2115,23 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         }) : [],
         shubhalar: halQilinmagan(r.flags, r.manual),
       });
+    } catch (err) { next(err); }
+  });
+
+  // Qo'lyozma (ICR) maydoni matnini operator yozadi yoki AI o'qiganini tuzatadi.
+  app.put('/api/exam-results/:id/icr', authenticate, async (req, res, next) => {
+    try {
+      const r = await prisma.examResult.findUnique({ where: { id: parseInt(req.params.id) }, select: { id: true, pages: true, schoolId: true } });
+      if (!r) return res.status(404).json({ error: 'Natija topilmadi' });
+      if (!(await canAccessSchool(req.user, r.schoolId))) return res.status(403).json({ error: "Bu filial natijasiga ruxsatingiz yo'q" });
+      const p = String(parseInt(req.body?.page) || '');
+      const sahifa = r.pages?.[p];
+      const id = String(req.body?.id ?? '');
+      if (!Array.isArray(sahifa?.icr) || !sahifa.icr.some(x => x.id === id)) return res.status(404).json({ error: "Qo'lyozma maydoni topilmadi" });
+      const matn = String(req.body?.matn ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const pages = { ...r.pages, [p]: { ...sahifa, icr: sahifa.icr.map(x => (x.id === id ? { ...x, matn, ai: false, ishonch: null } : x)) } };
+      await prisma.examResult.update({ where: { id: r.id }, data: { pages } });
+      res.json({ pages });
     } catch (err) { next(err); }
   });
 
@@ -2532,7 +2616,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           markaz: markaz?.orgName || '',
           rasch: r.raschScore != null ? vergul(r.raschScore) : '',
           daraja: r.raschScore != null ? r.grade || "yetmadi" : '',
-          holat: { true: "✅ O'tdi", false: "❌ O'tmadi" }[String(otishHolati(s, r.score, r.percentage))] || '',
+          holat: { true: "✅ O'tdi", false: "❌ O'tmadi" }[String(otishHolati(s, r.score, r.percentage, r.blockScores))] || '',
           havola,
         });
         let natija;
@@ -2897,17 +2981,89 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
         await prisma.question.updateMany({ where: { id: { in: qids }, shownAt: null }, data: { shownAt: new Date() } });
       }
 
+      // O'quvchining oldingi imtihonlari (e'lon qilingan) — dinamika, oxirgi 8 tasi. Mehmonda yo'q.
+      const tarix = r.studentId ? (await prisma.examResult.findMany({
+        where: { studentId: r.studentId, exam: { publishedAt: { not: null } } },
+        select: { examId: true, percentage: true, exam: { select: { name: true, date: true } } },
+      })).map(t => ({ nomi: t.exam.name, sana: t.exam.date, foiz: t.percentage, joriy: t.examId === e.id }))
+        .sort((a, b) => String(a.sana).localeCompare(String(b.sana))).slice(-8) : [];
+
       res.json({
         markaz: markaz?.orgName || '',
         imtihon: { name: e.name, date: e.date, maxScore: e.maxScore, scoring: e.scoring },
+        tarix,
         ism: r.student?.name || r.seat?.guestName || '',
         kurs: guruh?.name || '',
         ball: r.score, foiz: r.percentage,
         bloklar: (Array.isArray(r.blockScores) ? r.blockScores : []).map(b => ({ subject: b.subject, earned: b.earned, max: b.max })),
         rasch: r.raschScore != null ? { ball: r.raschScore, daraja: r.grade } : null,
-        otish: s.otish ? { ...s.otish, otdi: otishHolati(s, r.score, r.percentage) } : null,
+        otish: s.otish ? { ...s.otish, otdi: otishHolati(s, r.score, r.percentage, r.blockScores) } : null,
         orin, savollar, matnlar,
       });
+    } catch (err) { next(err); }
+  });
+
+  // ---------------- Onlayn natija sahifasi (Addmen «Online result») ----------------
+
+  /** Imtihon ochiq sahifasi yoqilgan bo'lsa — imtihon va sozlama, aks holda javob qaytariladi. */
+  async function ochiqImtihon(req, res) {
+    const id = natijalarTokendanId(req.params.token);
+    const e = id ? await prisma.exam.findUnique({ where: { id }, select: { id: true, name: true, date: true, schoolId: true, publishedAt: true, maxScore: true, settings: true } }) : null;
+    const s = e ? sozlamaniTozala(e.settings) : null;
+    if (!e || !s.onlaynNatija.yoqilgan) { res.status(404).json({ error: "Sahifa topilmadi yoki yopilgan" }); return null; }
+    return { e, s };
+  }
+
+  app.get('/api/public/natijalar/:token', natijaSahifaCheklovi, async (req, res, next) => {
+    try {
+      const x = await ochiqImtihon(req, res);
+      if (!x) return;
+      const { e, s } = x;
+      const [brend, jami, top] = await Promise.all([
+        markazBrendi(e.schoolId),
+        e.publishedAt ? prisma.examResult.count({ where: { examId: e.id } }) : 0,
+        e.publishedAt && s.onlaynNatija.reyting && s.ranking !== 'yoq'
+          ? prisma.examResult.findMany({
+            where: { examId: e.id, rank: { not: null, lte: Math.min(50, s.topN || 10) } },
+            select: { rank: true, score: true, percentage: true, student: { select: { name: true } }, seat: { select: { guestName: true } } },
+            orderBy: { rank: 'asc' }, take: 60,
+          })
+          : [],
+      ]);
+      res.json({
+        markaz: { nomi: brend.orgName, logo: brend.logo || null },
+        imtihon: { nomi: e.name, sana: e.date, maxScore: e.maxScore },
+        elon: !!e.publishedAt, jami,
+        reyting: e.publishedAt ? onlaynReyting(top.map(r => ({ rank: r.rank, score: r.score, percentage: r.percentage, ism: r.student?.name || r.seat?.guestName || '' })), s) : null,
+      });
+    } catch (err) { next(err); }
+  });
+
+  // Natijani topish: {kod} — varaq kodi yoki {id, tel} — o'quvchi ID si va telefon (o'zi yoki
+  // ota-onasi) oxirgi 4 raqami. Topilsa — shaxsiy natija sahifasi havolasi. Xato javob bir xil:
+  // qaysi biri noto'g'ri ekani aytilmaydi (ID larni sanab chiqib bo'lmasin).
+  app.post('/api/public/natijalar/:token/qidir', natijaQidiruvCheklovi, async (req, res, next) => {
+    try {
+      const x = await ochiqImtihon(req, res);
+      if (!x) return;
+      const { e } = x;
+      if (!e.publishedAt) return res.status(409).json({ error: "Natijalar hali e'lon qilinmagan" });
+      const k = qidiruvKirishi(req.body);
+      if (!k) return res.status(400).json({ error: k === null && req.body?.kod ? "Varaq kodi noto'g'ri yozilgan" : "ID va telefonning oxirgi 4 raqamini kiriting" });
+      const topilmadi = () => res.status(404).json({ error: k.kod ? "Bu kod bilan natija topilmadi" : "Natija topilmadi — ID va telefon raqamini tekshiring" });
+      let natijaId = null;
+      if (k.kod) {
+        const seat = await prisma.examSeat.findFirst({ where: { examId: e.id, sheetCode: k.kod }, select: { results: { select: { id: true }, take: 1 } } });
+        natijaId = seat?.results?.[0]?.id ?? null;
+      } else {
+        const sk = await prisma.studentKod.findUnique({ where: { kod: k.id }, select: { student: { select: { id: true, phone: true, fatherPhone: true, motherPhone: true } } } });
+        if (sk?.student && telefonMos(k.tel, [sk.student.phone, sk.student.fatherPhone, sk.student.motherPhone])) {
+          const r = await prisma.examResult.findUnique({ where: { studentId_examId: { studentId: sk.student.id, examId: e.id } }, select: { id: true } });
+          natijaId = r?.id ?? null;
+        }
+      }
+      if (!natijaId) return topilmadi();
+      res.json({ havola: `/natija/${natijaTokeni(natijaId)}` });
     } catch (err) { next(err); }
   });
 }

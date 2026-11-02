@@ -25,6 +25,40 @@ interface Javob {
   orin: { umumiy: number | null; jami?: number; kurs?: number | null; kursJami?: number } | null;
   savollar: Savol[] | null;
   matnlar: { id: number; title: string | null; text: string; imageUrl: string | null }[];
+  /** Oldingi imtihonlar (e'lon qilingan, oxirgi 8 tasi) — o'sish dinamikasi. */
+  tarix?: { nomi: string; sana: string; foiz: number; joriy: boolean }[];
+}
+
+/** «2026-11-02» → «02.11» (grafik ostida joy kam). */
+const qisqaSana = (s: string) => { const m = /^\d{4}-(\d{2})-(\d{2})/.exec(String(s)); return m ? `${m[2]}.${m[1]}` : String(s); };
+const ustunRangi = (f: number) => (f >= 70 ? 'bg-yaxshi' : f >= 40 ? 'bg-ogoh' : 'bg-xato');
+
+/** Oldingi imtihonlar foizi — ustunli grafik (joriy imtihon ajratilgan) va o'zgarish. */
+function Dinamika({ tarix }: { tarix: NonNullable<Javob['tarix']> }) {
+  const i = tarix.findIndex(t => t.joriy);
+  const farq = i > 0 ? Math.round((tarix[i].foiz - tarix[i - 1].foiz) * 10) / 10 : null;
+  return (
+    <section className="bg-sirt rounded-2xl border border-chiziq p-5" aria-label="Oldingi imtihonlar">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[14px] font-bold text-matn">Oldingi imtihonlar</h2>
+        {farq != null && farq !== 0 && (
+          <span className={`text-[12.5px] font-bold raqam ${farq > 0 ? 'text-yaxshi' : 'text-xato'}`}>{farq > 0 ? '▲ +' : '▼ '}{vergul(farq)}% oldingisidan</span>
+        )}
+      </div>
+      <div className="flex items-end gap-2 h-32 mt-4">
+        {tarix.map((t, k) => (
+          <div key={k} className="flex-1 min-w-0 h-full flex flex-col items-center justify-end gap-1" title={`${t.nomi} · ${sanaMatni(t.sana)}`}>
+            <span className={`text-[11px] raqam ${t.joriy ? 'font-bold text-matn' : 'text-matn-sokin'}`}>{Math.round(t.foiz)}%</span>
+            {/* Ustun o'z idishida: balandlik foizi yozuvlarsiz qolgan joydan — mutanosib bo'lsin. */}
+            <div className="relative w-full max-w-9 flex-1">
+              <div className={`absolute inset-x-0 bottom-0 rounded-t-md ${ustunRangi(t.foiz)} ${t.joriy ? '' : 'opacity-45'}`} style={{ height: `${Math.max(3, Math.min(100, t.foiz))}%` }} />
+            </div>
+            <span className={`text-[10.5px] truncate max-w-full ${t.joriy ? 'font-bold text-matn' : 'text-matn-xira'}`}>{t.joriy ? 'Shu' : qisqaSana(t.sana)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 const HARFLAR = 'ABCDEF';
@@ -139,6 +173,8 @@ export default function NatijaSahifasi() {
             })}
           </section>
         )}
+
+        {d.tarix && d.tarix.length > 1 && <Dinamika tarix={d.tarix} />}
 
         {d.savollar && (
           <section className="space-y-3">

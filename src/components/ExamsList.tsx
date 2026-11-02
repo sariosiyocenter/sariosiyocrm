@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronRight, ChevronDown, Lock, ScanLine, ClipboardCheck, BarChart3, Printer, History, KeyRound, Check, Settings, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
+import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronDown, Lock, Printer, History, KeyRound, Settings, Settings2, Copy, Trash2, List, Clock, MessageSquareText } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -10,10 +10,11 @@ import { useImtihonTafsil } from './imtihon/useImtihonTafsil';
 import TuzilmaTab from './imtihon/TuzilmaTab';
 import QatnashchilarTab from './imtihon/QatnashchilarTab';
 import ChopEtishTab from './imtihon/ChopEtishTab';
-import SkanerTab from './imtihon/SkanerTab';
-import TekshirishTab from './imtihon/TekshirishTab';
 import NatijalarTab from './imtihon/NatijalarTab';
 import TarixBolimi from './imtihon/TarixBolimi';
+import KalitBolimi from './imtihon/KalitBolimi';
+import OqishBolimi from './imtihon/OqishBolimi';
+import KalitMuharriri from './imtihon/KalitMuharriri';
 import ImtihonSozlamalari from './imtihon/ImtihonSozlamalari';
 import BankSozlamalari from './imtihon/bank/BankSozlamalari';
 import { useBankDaraxt } from './imtihon/bank/useBankDaraxt';
@@ -22,135 +23,115 @@ import { toDateStr } from '../../lib/lessons.js';
 import type { Exam } from '../types';
 import type { ImtihonTafsil, TabId } from './imtihon/turlar';
 
-// Imtihonlar moduli — bitta ish joyi. Tablar imtihonning bosqichlari:
-// 1 Savollar banki (hamma imtihon uchun umumiy) · 2 Imtihonlar (ro'yxat va
-// tanlangan imtihonning tuzilmasi, kaliti, qulfi) · 3 Qatnashchilar (kim, qanday
-// va qachon topshiradi, o'rinlar, ruxsatnoma) · 4 Chop etish · 5 Skaner (skanerlash
-// va tekshirish) · 6 Natijalar (natija sozlamasi, e'lon va tarix).
-// 2–6-tablar tepadagi paneldagi imtihon bilan ishlaydi (URL da `imtihon=`),
-// har tabda o'sha imtihonning shu bosqichdagi holati va sozlamasi ko'rinadi
-// (egasi, 2026-10-17: har sozlama o'z bosqichida). Tablar qatorining oxirida —
-// «Sozlamalar» (?tab=sozlama): butun modulning standartlari, shu bosqichlar bo'yicha.
+// Imtihonlar moduli (2026-11-01, Addmen asosida qayta tuzildi). Tepada — modul bo'limlari:
+// Savollar banki · Imtihonlar · O'quvchi tarixi · Sozlamalar (raqamli qadamlar yo'q).
+// «Imtihonlar» — jadval (har qatorda «keyingi ish»); imtihon ochilsa, uning ichida besh bo'lim:
+// Savol qog'ozi · Kalit va baholash · Qatnashchilar va varaq · Varaq o'qish · Natijalar.
+// URL: ?tab=imtihonlar&imtihon=ID&b=<bo'lim>. Eski havolalar (?tab=orin|chop|skaner|natija)
+// mos bo'limga o'tkaziladi.
 
-// Imtihon qanday o'tadi — bo'sh holatda ko'rsatiladigan qisqa yo'riqnoma.
+type Modul = 'savollar' | 'imtihonlar' | 'tarix' | 'sozlama';
+export type ImtihonBolimi = 'qogoz' | 'kalit' | 'varaq' | 'oqish' | 'natija';
+
+/** Eski bosqich tablari → yangi bo'lim. */
+const ESKI_TAB: Record<string, ImtihonBolimi> = { orin: 'varaq', chop: 'varaq', skaner: 'oqish', natija: 'natija' };
+const TAB_BOLIM: Record<TabId, ImtihonBolimi> = { savollar: 'qogoz', imtihonlar: 'qogoz', orin: 'varaq', chop: 'varaq', skaner: 'oqish', natija: 'natija' };
+
+/** Imtihon qanday o'tadi — hali imtihon yo'q bo'lsa ko'rsatiladi. */
 const QADAMLAR = [
-  ['Savollar banki', "Savollar qo'lda, Excel yoki AI import bilan kiritiladi. O'z kitobchangiz bo'lsa — bu qadam shart emas."],
-  ['Imtihon', "Savollar qayerdan: bank, andoza, o'z kitobchangiz yoki so'rovnoma. Fanlar va savollar soni, so'ng «qulflash» — variantlar tayyor."],
-  ['Qatnashchilar', "Kurslar, qog'oz yoki onlayn, smena vaqti va xonalar — har o'ringa variant, yonma-yon o'tirganlarga har xil. Ruxsatnoma shu yerdan."],
-  ['Chop etish', "Kitobchalar (bank rejimida) va har o'quvchiga shaxsiy javob varaqasi — ismi, o'rni va QR kodi bilan."],
-  ['Skaner', "Varaqlar pachkasi skanerdan PDF qilib yoki telefon kamerasi bilan yuklanadi: QR dan o'quvchi, doirachalardan javoblar o'qiladi, ball o'zi hisoblanadi."],
-  ['Natijalar', "O'tish bali va reyting shu yerda sozlanadi. Shubhali belgilarni tekshirasiz, e'lon qilasiz — ota-onaga SMS/Telegram, tahlil va tarix."],
+  ["Savol qog'ozi", "Bankdagi andozadan: nechta variant, har variantda boshqa savolmi yoki bir xil. Kitobcha va kalit shu yerda."],
+  ['Kalit va baholash', "Kalit savol qog'ozidan o'zi keladi. Ball sxemasi, savolni bekor qilish, kalitni tuzatish."],
+  ['Qatnashchilar va varaq', "Guruhlar, xonalar va o'rinlar — yonma-yon o'tirganlarga boshqa variant. Ismli javob varaqalari va ro'yxatlar."],
+  ["Varaq o'qish", "Skan yoki telefon kamerasi: QR dan o'quvchi, doirachalardan javob. Muammoli varaqlar alohida navbatda."],
+  ['Natijalar', "Bo'limlar bo'yicha baholar, reyting, tahlil. E'lon — ota-onaga Telegram yoki SMS."],
 ] as const;
 
-/** Tanlanmagan bo'lsa — shu bosqich uchun eng mos imtihon. */
-function standartImtihon(tab: TabId, exams: Exam[]): number | null {
-  const bugun = toDateStr();
-  const oxirgi = [...exams].sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
-  const oldinda = exams.filter(e => !e.publishedAt && String(e.date) >= bugun).sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  if (tab === 'orin' || tab === 'chop') return (oldinda[0] || oxirgi[0])?.id ?? null;
-  if (tab === 'skaner') return (oxirgi.find(e => e.lockedAt && !e.publishedAt && String(e.date) <= bugun) || oxirgi.find(e => e.lockedAt && !e.publishedAt) || oxirgi.find(e => e.lockedAt) || oxirgi[0])?.id ?? null;
-  return (oxirgi.find(e => (e._count?.results || 0) > 0) || oxirgi[0])?.id ?? null;
+/** Imtihonning hozirgi «keyingi ishi» — ro'yxatdagi havola va qayerga olib borishi. */
+function keyingiIsh(e: Exam): { matn: string; bolim: ImtihonBolimi } {
+  const seats = e._count?.seats || 0;
+  const results = e._count?.results || 0;
+  if (!e.lockedAt) return { matn: "Savol qog'ozini tayyorlash", bolim: 'qogoz' };
+  if (!seats) return { matn: "Qatnashchilar va o'rinlar", bolim: 'varaq' };
+  if (!results) return String(e.date) > toDateStr() ? { matn: 'Varaqlarni chop etish', bolim: 'varaq' } : { matn: "Varaqlarni o'qish", bolim: 'oqish' };
+  if (!e.publishedAt) return results < seats ? { matn: "Qolgan varaqlarni o'qish", bolim: 'oqish' } : { matn: "Natijani e'lon qilish", bolim: 'natija' };
+  return { matn: 'Natijalar', bolim: 'natija' };
 }
-
-/** Tabdagi belgi: bosqich tugagan (✓), sanoq va e'tibor kerakligi. */
-function bosqichBelgisi(tab: TabId, e: ImtihonTafsil | null): { tayyor?: boolean; matn?: string; diqqat?: boolean } | null {
-  if (!e) return null;
-  const h = e.holat;
-  if (tab === 'imtihonlar') return { tayyor: !!e.lockedAt };
-  if (tab === 'orin') return h.orinlar ? { tayyor: true, matn: String(h.orinlar) } : null;
-  if (tab === 'skaner') {
-    if (!e.lockedAt || (!h.orinlar && !h.natijalar)) return null;
-    return { tayyor: h.natijalar > 0 && h.skanerlanmagan === 0, matn: `${h.natijalar}/${h.natijalar + h.skanerlanmagan}`, diqqat: h.shubhali > 0 };
-  }
-  if (tab === 'natija') return { tayyor: !!e.publishedAt };
-  return null;
-}
-
-/** Bosqich tablari va modul sozlamasi. */
-type Bolim = TabId | 'sozlama';
 
 export default function ExamsList() {
-  const { exams, kora, ozgartira } = useCRM();
+  const { kora, ozgartira } = useCRM();
   const [params, setParams] = useSearchParams();
-  // Telefonda tablar gorizontal suriladi — faol tab ko'rinib tursin.
-  const faolRef = useRef<HTMLButtonElement>(null);
-
-  const TABLAR = [
-    { id: 'savollar', nom: 'Savollar banki', ikonka: BookOpen, ochiq: kora('imtihonlar.savollar') },
-    { id: 'imtihonlar', nom: 'Imtihonlar', ikonka: FileText, ochiq: kora('imtihonlar.imtihon') || kora('imtihonlar.natija') },
-    { id: 'orin', nom: 'Qatnashchilar', ikonka: Users, ochiq: kora('imtihonlar.imtihon') },
-    { id: 'chop', nom: 'Chop etish', ikonka: Printer, ochiq: kora('imtihonlar.imtihon') },
-    { id: 'skaner', nom: 'Skaner', ikonka: ScanLine, ochiq: kora('imtihonlar.natija') },
-    { id: 'natija', nom: 'Natijalar va tarix', ikonka: BarChart3, ochiq: kora('imtihonlar.natija') },
-  ].filter(t => t.ochiq) as { id: TabId; nom: string; ikonka: typeof BookOpen }[];
-  // Modul sozlamasi — imtihon tuzuvchiga (yangi imtihon standartlari) va bankni to'ldiruvchiga (bank sozlamalari).
-  const sozlamaKorinadi = ozgartira('imtihonlar.imtihon') || ozgartira('imtihonlar.savollar');
-  const tab: Bolim = params.get('tab') === 'sozlama' && sozlamaKorinadi ? 'sozlama'
-    : (TABLAR.find(t => t.id === params.get('tab'))?.id || (params.has('imtihon') && TABLAR.some(t => t.id === 'imtihonlar') ? 'imtihonlar' : TABLAR[0]?.id)) as TabId;
-  const k = params.get('k');
   const ozgartir = (patch: Record<string, string | null>) => setParams(p => {
     for (const [kalit, v] of Object.entries(patch)) { if (v === null) p.delete(kalit); else p.set(kalit, v); }
     return p;
   }, { replace: true });
-  // Tab URL da doim aniq yoziladi: tabsiz /exams — birinchi tab (Savollar banki), shuning uchun
-  // «Imtihonlar» ham `tab=imtihonlar` (ilgari null edi va imtihon tanlanmagan bo'lsa bankka qaytarardi).
-  const tabga = (t: Bolim) => ozgartir({ tab: t, k: null });
-  useEffect(() => { faolRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [tab]);
 
-  // Tanlangan imtihon — tablar orasida URL da saqlanadi. 3–6-tablarda
-  // tanlanmagan bo'lsa, shu bosqich uchun eng mosi o'zi tanlanadi.
-  const tanlangan = Number(params.get('imtihon')) || null;
-  const bosqichTabi = tab === 'orin' || tab === 'chop' || tab === 'skaner' || tab === 'natija';
+  const imtihonKorinadi = kora('imtihonlar.imtihon') || kora('imtihonlar.natija');
+  const MODULLAR = [
+    { id: 'savollar', nom: 'Savollar banki', ikonka: BookOpen, ochiq: kora('imtihonlar.savollar') },
+    { id: 'imtihonlar', nom: 'Imtihonlar', ikonka: FileText, ochiq: imtihonKorinadi },
+    { id: 'tarix', nom: "O'quvchi tarixi", ikonka: History, ochiq: kora('imtihonlar.natija') },
+  ].filter(t => t.ochiq) as { id: Modul; nom: string; ikonka: typeof BookOpen }[];
+  const sozlamaKorinadi = ozgartira('imtihonlar.imtihon') || ozgartira('imtihonlar.savollar');
+
+  // Eski havolalarni yangi tuzilmaga o'tkazish (URL almashtiriladi).
+  const xom = params.get('tab');
   useEffect(() => {
-    if (tanlangan || !bosqichTabi || !exams.length) return;
-    const id = standartImtihon(tab as TabId, exams);
-    if (id) ozgartir({ imtihon: String(id) });
-  }, [tab, tanlangan, bosqichTabi, exams]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (xom && ESKI_TAB[xom]) {
+      const tarix = xom === 'natija' && params.get('k') === 'tarix';
+      ozgartir(tarix ? { tab: 'tarix', k: null } : { tab: 'imtihonlar', b: ESKI_TAB[xom], k: xom === 'skaner' ? params.get('k') : null });
+    }
+  }, [xom]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const modul: Modul = xom === 'sozlama' && sozlamaKorinadi ? 'sozlama'
+    : (MODULLAR.find(t => t.id === xom)?.id || ((xom && ESKI_TAB[xom]) || (params.has('imtihon') && imtihonKorinadi) ? 'imtihonlar' : MODULLAR[0]?.id)) as Modul;
+  const k = params.get('k');
+  const tanlangan = modul === 'imtihonlar' ? Number(params.get('imtihon')) || null : null;
   const { exam, xato, yangila } = useImtihonTafsil(tanlangan);
-  // Tab almashganda sanoqlar yangilansin (boshqa bo'limda skanerlangan bo'lishi mumkin).
+
+  const sorovnoma = exam?.settings.source === 'sorovnoma';
+  const BOLIMLAR = ([
+    { id: 'qogoz', nom: sorovnoma ? "So'rovnoma" : "Savol qog'ozi", ochiq: kora('imtihonlar.imtihon') },
+    { id: 'kalit', nom: 'Kalit va baholash', ochiq: kora('imtihonlar.imtihon') && !sorovnoma },
+    { id: 'varaq', nom: 'Qatnashchilar va varaq', ochiq: kora('imtihonlar.imtihon') },
+    { id: 'oqish', nom: "Varaq o'qish", ochiq: kora('imtihonlar.natija') },
+    { id: 'natija', nom: 'Natijalar', ochiq: kora('imtihonlar.natija') },
+  ] as { id: ImtihonBolimi; nom: string; ochiq: boolean }[]).filter(b => b.ochiq);
+  const bolim: ImtihonBolimi = (BOLIMLAR.find(b => b.id === params.get('b'))?.id || BOLIMLAR[0]?.id || 'natija') as ImtihonBolimi;
+  const bolimga = (b: ImtihonBolimi) => ozgartir({ b, k: null });
+  // Bo'lim almashganda sanoqlar yangilansin (boshqa bo'limda skanerlangan bo'lishi mumkin).
   const birinchi = useRef(true);
   useEffect(() => {
     if (birinchi.current) { birinchi.current = false; return; }
     if (tanlangan) yangila();
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bolim]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tarix = tab === 'natija' && k === 'tarix';
-  const tuzilmaKorinadi = kora('imtihonlar.imtihon');
-  const royxatKorinadi = tab === 'imtihonlar' && (!tanlangan || !tuzilmaKorinadi);
-  const panelKerak = tab !== 'savollar' && tab !== 'sozlama' && !tarix && !royxatKorinadi;
+  const royxatga = () => ozgartir({ tab: 'imtihonlar', imtihon: null, b: null, k: null });
+  const imtihonga = (id: number, b?: ImtihonBolimi) => ozgartir({ tab: 'imtihonlar', imtihon: String(id), b: b ?? null, k: null });
+  const modulTugmasi = (faol: boolean) => `flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`;
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-16">
-      <nav aria-label="Imtihon bosqichlari" className="flex gap-1 overflow-x-auto bg-sirt border border-chiziq rounded-2xl p-1 shadow-sm">
-        {TABLAR.map((t, i) => {
+      <nav aria-label="Imtihonlar moduli" className="flex flex-wrap gap-1 bg-sirt border border-chiziq rounded-2xl p-1 shadow-sm">
+        {MODULLAR.map(t => {
           const Ikonka = t.ikonka;
-          const faol = t.id === tab;
-          const b = t.id === 'savollar' ? null : bosqichBelgisi(t.id, exam);
           return (
-            <button key={t.id} ref={faol ? faolRef : undefined} onClick={() => tabga(t.id)} aria-current={faol ? 'page' : undefined}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
-              <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${b?.tayyor ? (faol ? 'bg-white/25' : 'bg-yaxshi-fon text-yaxshi') : faol ? 'bg-white/20' : 'bg-ichki'}`}>
-                {b?.tayyor ? <Check size={12} strokeWidth={3} aria-label="bajarilgan" /> : i + 1}
-              </span>
-              <Ikonka size={14} /> {t.nom}
-              {b?.matn && <span className={`raqam text-[11px] font-bold px-1.5 py-px rounded-md ${faol ? 'bg-white/20' : 'bg-ichki text-matn-sokin'}`}>{b.matn}</span>}
-              {b?.diqqat && <span className="w-2 h-2 rounded-full bg-ogoh" aria-label="tekshirilmagan varaq bor" />}
+            <button key={t.id} onClick={() => ozgartir({ tab: t.id, imtihon: null, b: null, k: null })} aria-current={t.id === modul ? 'page' : undefined} className={modulTugmasi(t.id === modul)}>
+              <Ikonka size={15} /> {t.nom}
             </button>
           );
         })}
-        {/* Bosqich emas — raqamsiz, keng ekranda o'ng chetda. */}
         {sozlamaKorinadi && (
-          <button ref={tab === 'sozlama' ? faolRef : undefined} onClick={() => tabga('sozlama')} aria-current={tab === 'sozlama' ? 'page' : undefined}
+          <button onClick={() => ozgartir({ tab: 'sozlama', imtihon: null, b: null, k: null })} aria-current={modul === 'sozlama' ? 'page' : undefined}
             title="Butun modul uchun: yangi imtihon standartlari, xabar matnlari, AI yordamchi va savollar banki"
-            className={`ml-auto flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${tab === 'sozlama' ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
-            <Settings size={14} /> Sozlamalar
+            className={`ml-auto ${modulTugmasi(modul === 'sozlama')}`}>
+            <Settings size={15} /> Sozlamalar
           </button>
         )}
       </nav>
 
-      {tab === 'savollar' && <QuestionsList />}
+      {modul === 'savollar' && <QuestionsList />}
 
-      {tab === 'sozlama' && (
+      {modul === 'sozlama' && (
         <div className="space-y-6">
           {ozgartira('imtihonlar.imtihon') && <ImtihonSozlamalari bankPastda={ozgartira('imtihonlar.savollar')} />}
           {ozgartira('imtihonlar.savollar') && (
@@ -159,44 +140,78 @@ export default function ExamsList() {
         </div>
       )}
 
-      {royxatKorinadi && <ImtihonlarRoyxati tanlangan={tanlangan} onTanla={id => ozgartir({ imtihon: String(id) })} />}
+      {modul === 'tarix' && <TarixBolimi onImtihon={id => imtihonga(id, 'natija')} />}
 
-      {tab === 'natija' && (
-        <Tanlov qiymat={tarix ? 'tarix' : 'natija'} onChange={v => ozgartir({ k: v === 'tarix' ? 'tarix' : null })}
-          variantlar={[{ v: 'natija', nom: <><BarChart3 size={13} className="inline mr-1" />Imtihon natijalari</> }, { v: 'tarix', nom: <><History size={13} className="inline mr-1" />Tarix</> }]} />
-      )}
-      {tarix && <TarixBolimi onImtihon={id => ozgartir({ imtihon: String(id), k: null })} />}
+      {modul === 'imtihonlar' && !tanlangan && <ImtihonlarJadvali onOch={imtihonga} />}
 
-      {panelKerak && (
-        !exams.length ? <Karta><Yoriqnoma /></Karta>
-          : xato ? (
-            <Karta>
-              <BoshHolat sarlavha="Imtihon ochilmadi" izoh={xato}>
-                <Tugma ikonka={<List size={14} />} onClick={() => ozgartir({ tab: 'imtihonlar', imtihon: null, k: null })}>Barcha imtihonlar</Tugma>
-              </BoshHolat>
-            </Karta>
+      {modul === 'imtihonlar' && tanlangan && (
+        xato ? (
+          <Karta>
+            <BoshHolat sarlavha="Imtihon ochilmadi" izoh={xato}>
+              <Tugma ikonka={<List size={14} />} onClick={royxatga}>Barcha imtihonlar</Tugma>
+            </BoshHolat>
+          </Karta>
+        ) : !exam || exam.id !== tanlangan ? <Yuklanmoqda />
+          : (
+            <>
+              <ImtihonPaneli exam={exam} onTanla={id => imtihonga(id, bolim)} onRoyxat={royxatga} />
+              <nav aria-label="Imtihon bo'limlari" className="flex gap-1 overflow-x-auto bg-sirt border border-chiziq rounded-2xl p-1 shadow-sm">
+                {BOLIMLAR.map(b => {
+                  const faol = b.id === bolim;
+                  const h = exam.holat;
+                  const belgi = b.id === 'oqish' && exam.lockedAt && (h.natijalar || h.orinlar) ? `${h.natijalar}/${h.natijalar + h.skanerlanmagan}`
+                    : b.id === 'varaq' && h.orinlar ? String(h.orinlar) : '';
+                  return (
+                    <button key={b.id} onClick={() => bolimga(b.id)} aria-current={faol ? 'page' : undefined} className={modulTugmasi(faol)}>
+                      {b.nom}
+                      {belgi && <span className={`raqam text-[11px] font-bold px-1.5 py-px rounded-md ${faol ? 'bg-white/20' : 'bg-ichki text-matn-sokin'}`}>{belgi}</span>}
+                      {b.id === 'oqish' && h.shubhali > 0 && <span className="w-2 h-2 rounded-full bg-ogoh" aria-label="muammoli varaq bor" />}
+                    </button>
+                  );
+                })}
+              </nav>
+              <ImtihonBolimiKorinishi key={bolim} exam={exam} bolim={bolim} k={k} yangila={yangila}
+                otish={t => bolimga(TAB_BOLIM[t])} kga={v => ozgartir({ k: v })} />
+            </>
           )
-            : !exam || exam.id !== tanlangan ? <Yuklanmoqda />
-              : (
-                <>
-                  <ImtihonPaneli exam={exam} onTanla={id => ozgartir({ imtihon: String(id) })} onRoyxat={() => ozgartir({ tab: 'imtihonlar', imtihon: null, k: null })} />
-                  {tab === 'skaner' && (
-                    <Tanlov qiymat={k === 'tekshirish' ? 'tekshirish' : 'skaner'} onChange={v => ozgartir({ k: v === 'tekshirish' ? 'tekshirish' : null })}
-                      variantlar={[
-                        { v: 'skaner', nom: <span className="inline-flex items-center gap-1.5"><ScanLine size={13} />Skanerlash</span> },
-                        { v: 'tekshirish', nom: <span className="inline-flex items-center gap-1.5"><ClipboardCheck size={13} />Tekshirish{exam.holat.shubhali > 0 && <span className="raqam text-[11px] font-bold px-1.5 rounded-md bg-ogoh-fon text-ogoh">{exam.holat.shubhali}</span>}</span> },
-                      ]} />
-                  )}
-                  {tab === 'imtihonlar' && <TuzilmaTab exam={exam} yangila={yangila} otish={tabga} />}
-                  {tab === 'orin' && <QatnashchilarTab exam={exam} yangila={yangila} />}
-                  {tab === 'chop' && <ChopEtishTab exam={exam} yangila={yangila} />}
-                  {tab === 'skaner' && (k === 'tekshirish' ? <TekshirishTab exam={exam} yangila={yangila} /> : <SkanerTab exam={exam} yangila={yangila} onTekshirish={() => ozgartir({ k: 'tekshirish' })} />)}
-                  {tab === 'natija' && !tarix && <NatijalarTab exam={exam} yangila={yangila} />}
-                </>
-              )
       )}
     </div>
   );
+}
+
+/** Tanlangan imtihonning bitta bo'limi. */
+function ImtihonBolimiKorinishi({ exam, bolim, k, yangila, otish, kga }: {
+  exam: ImtihonTafsil; bolim: ImtihonBolimi; k: string | null; yangila: () => Promise<any>; otish: (t: TabId) => void; kga: (v: string | null) => void;
+}) {
+  const s = exam.settings;
+  if (bolim === 'qogoz') {
+    return (
+      <div className="space-y-4">
+        <TuzilmaTab exam={exam} yangila={yangila} otish={otish} />
+        {exam.lockedAt && s.source === 'bank' && <ChopEtishTab key="qogoz" exam={exam} yangila={yangila} qism="qogoz" />}
+      </div>
+    );
+  }
+  if (bolim === 'kalit') {
+    if (s.source === 'kalit') return <Karta sarlavha="Kalit" izoh="O'z kitobchangiz: to'g'ri javoblarni shu yerda kiriting"><KalitMuharriri exam={exam} onSaqlandi={yangila} /></Karta>;
+    if (!exam.lockedAt) return <Karta><BoshHolat ikonka={<KeyRound size={22} />} sarlavha="Kalit hali yo'q" izoh="Kalit savol qog'ozi tayyor bo'lgach (variantlar tasdiqlangach) o'zi paydo bo'ladi." /></Karta>;
+    return <KalitBolimi exam={exam} yangila={yangila} />;
+  }
+  if (bolim === 'varaq') {
+    const chop = k === 'chop';
+    return (
+      <div className="space-y-4">
+        <Tanlov qiymat={chop ? 'chop' : 'qatnashchi'} onChange={v => kga(v === 'chop' ? 'chop' : null)}
+          variantlar={[
+            { v: 'qatnashchi', nom: <span className="inline-flex items-center gap-1.5"><Users size={13} />Qatnashchilar va o'rinlar</span> },
+            { v: 'chop', nom: <span className="inline-flex items-center gap-1.5"><Printer size={13} />Varaqlar va ro'yxatlar</span> },
+          ]} />
+        {chop ? <ChopEtishTab key="varaq" exam={exam} yangila={yangila} qism="varaq" /> : <QatnashchilarTab exam={exam} yangila={yangila} />}
+      </div>
+    );
+  }
+  if (bolim === 'oqish') return <OqishBolimi exam={exam} yangila={yangila} k={k} kga={kga} />;
+  return <NatijalarTab exam={exam} yangila={yangila} />;
 }
 
 /** «Sozlamalar» tabida: savollar bankining sozlamalari (ilgari bankning o'z bo'limi edi). */
@@ -287,8 +302,8 @@ function ImtihonPaneli({ exam, onTanla, onRoyxat }: { exam: ImtihonTafsil; onTan
   );
 }
 
-/** Hamma imtihonlar — har birida bosqichlar qayergacha yetgani. */
-function ImtihonlarRoyxati({ tanlangan, onTanla }: { tanlangan: number | null; onTanla: (id: number) => void }) {
+/** Hamma imtihonlar — jadval: har qatorda holati va «keyingi ish» (bosilsa — o'sha bo'lim). */
+function ImtihonlarJadvali({ onOch }: { onOch: (id: number, b?: ImtihonBolimi) => void }) {
   const { exams, schools, ozgartira } = useCRM();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -297,67 +312,85 @@ function ImtihonlarRoyxati({ tanlangan, onTanla }: { tanlangan: number | null; o
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
   const filialNomi = (id: number) => schools.find(s => s.id === id)?.name || '';
   const yangi = ozgartira('imtihonlar.imtihon') ? () => navigate('/exams/new') : undefined;
+  const bugun = toDateStr();
+  const oy = bugun.slice(0, 7);
+  const shuOy = exams.filter(e => String(e.date).slice(0, 7) === oy);
+  const qatnashdi = shuOy.reduce((a, e) => a + (e._count?.results || 0), 0);
+  const oqilmagan = exams.filter(e => e.lockedAt && !e.publishedAt && String(e.date) <= bugun)
+    .reduce((a, e) => a + Math.max(0, (e._count?.seats || 0) - (e._count?.results || 0)), 0);
+  const elonKutadi = exams.filter(e => (e._count?.results || 0) > 0 && !e.publishedAt).length;
 
   return (
-    <Karta sarlavha="Imtihonlar" izoh="Imtihonni tanlang — keyingi bosqichlar (qatnashchilar, chop etish, skaner, natijalar) shu imtihon bilan ishlaydi"
-      amallar={
-        <>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[20px] font-bold text-matn">Imtihonlar</h1>
+          <p className="text-[12.5px] text-matn-xira mt-0.5">Har imtihon — bitta qator. Bosing: savol qog'ozi, kalit, varaq, o'qish va natija shu imtihon ichida.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <div className="relative w-full sm:w-56">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
-            <input className={`${INPUT} pl-9 py-2`} placeholder="Qidirish" aria-label="Imtihon qidirish" value={search} onChange={e => setSearch(e.target.value)} />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira pointer-events-none" />
+            <input className={`${INPUT} pl-9`} placeholder="Qidirish" aria-label="Imtihon qidirish" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          {yangi && <Tugma turi="asosiy" kichik ikonka={<Plus size={14} />} onClick={yangi}>Yangi imtihon</Tugma>}
-        </>
-      }>
-      {!royxat.length ? (
-        exams.length ? <BoshHolat ikonka={<FileText size={22} />} sarlavha="Qidiruvga mos imtihon yo'q" /> : <Yoriqnoma yangi={yangi} />
-      ) : (
-        <ul className="divide-y divide-chiziq -mx-4 -mb-4">
-          {royxat.map(e => {
-            const c = e._count;
-            return (
-              <li key={e.id}>
-                <button onClick={() => onTanla(e.id)} aria-current={e.id === tanlangan ? 'true' : undefined}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer ${e.id === tanlangan ? 'bg-brand-fon/50 dark:bg-brand/10' : 'hover:bg-ichki/60'}`}>
-                  <div className="w-10 h-10 rounded-xl bg-brand-fon border border-brand/20 dark:bg-brand/15 flex items-center justify-center text-brand shrink-0">
-                    {e.settings?.source === 'kalit' ? <KeyRound size={18} /> : e.settings?.source === 'sorovnoma' ? <MessageSquareText size={18} /> : <FileText size={18} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[13.5px] font-semibold text-matn truncate">{e.name}</span>
-                      <Yorliq rang={HOLAT_RANGI[e.status] || 'kulrang'}>{e.lockedAt && e.status !== "E'lon qilindi" && <Lock size={10} />}{e.status}</Yorliq>
-                      {e.settings?.source === 'kalit' && <Yorliq>kalit bilan</Yorliq>}
-                      {e.settings?.source === 'sorovnoma' && <Yorliq rang="brand">so'rovnoma</Yorliq>}
-                      {(e.branchIds || []).length > 0 && <Yorliq>{[e.schoolId, ...e.branchIds].map(filialNomi).filter(Boolean).join(' + ')}</Yorliq>}
-                    </div>
-                    <p className="text-[12px] text-matn-xira mt-0.5 flex flex-wrap gap-x-3">
-                      <span className="inline-flex items-center gap-1"><Calendar size={12} />{sanaMatni(e.date)}</span>
-                      <span>{e.totalQuestions} savol · {e.maxScore} ball</span>
-                    </p>
-                    <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px]" aria-label="Bosqichlar">
-                      <Bosqich bajarildi={!!e.lockedAt} nom={e.lockedAt ? 'Qulflangan' : 'Tuzilmoqda'} />
-                      <Bosqich bajarildi={!!c?.seats} nom={c?.seats ? `${c.seats} o'rin` : "O'rinlashtirilmagan"} />
-                      <Bosqich bajarildi={!!c?.results} nom={c?.results ? `${c.results} natija` : 'Natija yo\'q'} />
-                      <Bosqich bajarildi={!!e.publishedAt} nom={e.publishedAt ? "E'lon qilingan" : "E'lon qilinmagan"} />
-                    </ol>
-                  </div>
-                  <ChevronRight size={16} className="text-matn-xira shrink-0" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Karta>
-  );
-}
+          {yangi && <Tugma turi="asosiy" ikonka={<Plus size={14} />} onClick={yangi}>Yangi imtihon</Tugma>}
+        </div>
+      </div>
 
-function Bosqich({ bajarildi, nom }: { bajarildi: boolean; nom: string }) {
-  return (
-    <li className={`inline-flex items-center gap-1 ${bajarildi ? 'text-yaxshi font-semibold' : 'text-matn-xira'}`}>
-      {bajarildi ? <Check size={12} strokeWidth={3} /> : <span className="w-2.5 h-2.5 rounded-full border border-chiziq-kuchli" />}
-      {nom}
-    </li>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {([
+          ['Shu oy imtihonlar', shuOy.length, ''],
+          ['Shu oy qatnashganlar', qatnashdi, ''],
+          ["O'qilmagan varaqlar", oqilmagan, oqilmagan ? 'text-ogoh' : ''],
+          ["E'lon kutayotgan natija", elonKutadi, ''],
+        ] as const).map(([nom, son, rang]) => (
+          <div key={nom} className="bg-sirt border border-chiziq rounded-2xl px-4 py-3 shadow-sm">
+            <div className="text-[12px] text-matn-sokin">{nom}</div>
+            <div className={`raqam text-[24px] font-semibold mt-0.5 ${rang || 'text-matn'}`}>{son}</div>
+          </div>
+        ))}
+      </div>
+
+      {!royxat.length ? (
+        <Karta>{exams.length ? <BoshHolat ikonka={<FileText size={22} />} sarlavha="Qidiruvga mos imtihon yo'q" /> : <Yoriqnoma yangi={yangi} />}</Karta>
+      ) : (
+        <div className="bg-sirt border border-chiziq rounded-2xl shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[920px] border-collapse text-[13px]">
+            <thead>
+              <tr className="text-[11.5px] uppercase tracking-wide text-matn-sokin">
+                {['Sana', 'Imtihon', 'Savol', 'Variant', 'Qatnashchi', "O'qilgan", 'Holati', 'Keyingi ish'].map(h => <th key={h} className="text-left font-semibold px-4 py-2.5">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {royxat.map(e => {
+                const seats = e._count?.seats || 0;
+                const results = e._count?.results || 0;
+                const ish = keyingiIsh(e);
+                const filiallar = (e.branchIds || []).length ? [e.schoolId, ...e.branchIds].map(filialNomi).filter(Boolean).join(' + ') : '';
+                return (
+                  <tr key={e.id} className="border-t border-chiziq hover:bg-ichki/50">
+                    <td className="px-4 py-3 raqam text-matn-sokin whitespace-nowrap">{sanaMatni(e.date)}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => onOch(e.id)} className="font-semibold text-matn hover:text-brand text-left cursor-pointer">{e.name}</button>
+                      <div className="text-[12px] text-matn-xira mt-0.5 flex flex-wrap gap-x-2">
+                        {e.settings?.source === 'kalit' && <span className="inline-flex items-center gap-1"><KeyRound size={11} />o'z kitobchasi</span>}
+                        {e.settings?.source === 'sorovnoma' && <span className="inline-flex items-center gap-1"><MessageSquareText size={11} />so'rovnoma</span>}
+                        {filiallar && <span>{filiallar}</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 raqam">{e.totalQuestions}</td>
+                    <td className="px-4 py-3 raqam">{e.settings?.variantCount ?? '—'}</td>
+                    <td className="px-4 py-3 raqam">{seats || <span className="text-matn-xira">—</span>}</td>
+                    <td className="px-4 py-3 raqam">{seats ? `${results} / ${seats}` : <span className="text-matn-xira">—</span>}</td>
+                    <td className="px-4 py-3"><Yorliq rang={HOLAT_RANGI[e.status] || 'kulrang'}>{e.lockedAt && e.status !== "E'lon qilindi" && <Lock size={10} />}{e.status}</Yorliq></td>
+                    <td className="px-4 py-3"><button onClick={() => onOch(e.id, ish.bolim)} className="text-brand font-semibold hover:underline cursor-pointer whitespace-nowrap">{ish.matn} →</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

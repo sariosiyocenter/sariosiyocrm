@@ -15,7 +15,7 @@ import { savolVariantlari, varaqTuzilmasi, turi, qiyinlikDarajasi, HARFLAR } fro
 import {
   aiSozlanganmi, aiModel, AiXato, aiBilan, serverKaliti, kalitniTekshir, htmldanMatn, matnIzi,
   savollarniAjrat, yechimYoz, klonlarYasa, savollarniTekshir, savollarniMavzula, savollarniTuz, guruhlarniTuz, tarjimaQil, yozmaBaho,
-  yozmalarniYech, FAYL_TURLARI, mavzuRasmlimi,
+  yozmalarniYech, FAYL_TURLARI, mavzuRasmlimi, qolyozmaniOqi,
 } from '../lib/imtihonAI.js';
 
 // AI so'rovi pullik va sekin: xodim boshiga soatiga 120 ta.
@@ -307,7 +307,9 @@ export function registerImtihonAIRoutes(app) {
       const yangi = await prisma.question.create({
         data: {
           text: t.text, options: t.options, type: q.type, correctAnswer: q.correctAnswer, answers: q.answers ?? undefined,
-          points: q.points, lockOptions: q.lockOptions, subject: q.subject, topic: t.topic || q.topic, section: q.section, grade: q.grade,
+          // Tarjima asl savolning o'z mavzusida turadi (tarjima qilingan mavzu nomi bilan yangi/boshqa
+          // mavzuga tushib ketmasin) — bankda yonma-yon ko'rinadi, kartochkada bir-biriga bog'langan.
+          points: q.points, lockOptions: q.lockOptions, subject: q.subject, topic: q.topic, bankTopicId: q.bankTopicId, section: q.section, grade: q.grade,
           difficulty: q.difficulty, imageUrl: q.imageUrl, language: til,
           solution: t.solution, solutionStatus: t.solution ? 'qoralama' : 'yoq',
           status: 'qoralama', source: 'AI tarjima', parentId: q.id, schoolId: q.schoolId, createdById: req.user.id || null,
@@ -334,6 +336,31 @@ export function registerImtihonAIRoutes(app) {
   });
 
   // Yozma javobga ball taklifi: rasm — varaqdagi javob katagi (mijoz kesib yuboradi).
+  // Qo'lyozma (ICR) maydonlarini AI bilan o'qish. Rasm — mijozdan (saqlangan kesim, data-URL);
+  // maydon natijada bo'lishi shart (id va sahifa bo'yicha), o'qilgani pages[sahifa].icr ga yoziladi.
+  app.post('/api/exam-results/:id/icr/ai', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
+    try {
+      if (!tayyormi(res)) return;
+      const r = await prisma.examResult.findUnique({ where: { id: parseInt(req.params.id) }, select: { id: true, pages: true } });
+      if (!r) return res.status(404).json({ error: 'Natija topilmadi' });
+      const pages = { ...(r.pages && typeof r.pages === 'object' ? r.pages : {}) };
+      const maydonlar = [];
+      for (const m of (Array.isArray(req.body?.maydonlar) ? req.body.maydonlar : []).slice(0, 12)) {
+        const p = String(parseInt(m?.page) || '');
+        const it = (Array.isArray(pages[p]?.icr) ? pages[p].icr : []).find(x => x.id === String(m?.id ?? ''));
+        if (it && typeof m.rasm === 'string') maydonlar.push({ id: `${p}:${it.id}`, sarlavha: it.sarlavha, maydon: it.maydon, rasm: m.rasm });
+      }
+      if (!maydonlar.length) return res.status(400).json({ error: "O'qiladigan qo'lyozma maydoni yo'q" });
+      const oqildi = new Map((await qolyozmaniOqi(maydonlar)).map(x => [x.id, x]));
+      for (const [p, sahifa] of Object.entries(pages)) {
+        if (!Array.isArray(sahifa?.icr)) continue;
+        pages[p] = { ...sahifa, icr: sahifa.icr.map(x => (oqildi.has(`${p}:${x.id}`) ? { ...x, matn: oqildi.get(`${p}:${x.id}`).matn, ishonch: oqildi.get(`${p}:${x.id}`).ishonch, ai: true } : x)) };
+      }
+      await prisma.examResult.update({ where: { id: r.id }, data: { pages } });
+      res.json({ pages, oqildi: oqildi.size });
+    } catch (err) { aiXatosi(err, res, next); }
+  });
+
   app.post('/api/exam-results/:id/ai/baho', authenticate, aiCheklovi, aiKontekst, async (req, res, next) => {
     try {
       if (!tayyormi(res)) return;

@@ -8,17 +8,35 @@ import { varaqSahifalari, W, type Sahifa } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, vergul, yozmaJavobMos } from '../../../lib/imtihon.js';
 import { useAiHolat, AI_SOZLANMAGAN } from './useAiHolat';
 import type { ImtihonTafsil } from './turlar';
+import IcrMaydonlari, { type Sahifalar } from './skaner/IcrMaydonlari';
 
 // 5-bo'lim: skaner ishonmagan javoblar (ikki belgi, noaniq bo'yoq, variant
 // nomuvofiqligi) va yozma javoblarni baholash. Har qator varaq rasmidan
 // kesib ko'rsatiladi — operator qog'ozni qidirmaydi. Qaror saqlangach, qayta
 // skanerlash uni o'zgartirmaydi.
 
-interface RoyxatNatija { id: number; name: string; reviewStatus: string; shubhalar: number; score: number; groupName: string; sheetCode: string | null }
+interface RoyxatNatija { id: number; name: string; reviewStatus: string; shubhalar: number; score: number; groupName: string; sheetCode: string | null; flags?: { n: number; sabab: string }[] | null }
+
+/** Muammo turi (Addmen «issue categories»): skaner sababidan. */
+function muammoTuri(sabab: string): string {
+  const s = sabab.toLowerCase();
+  if (s.includes('bir nechta')) return 'Bir savolga bir nechta belgi';
+  if (s.includes('noaniq')) return "Chala yoki noaniq bo'yalgan";
+  if (s.includes('variant')) return 'Variant mos emas yoki aniqlanmadi';
+  if (s.includes('son emas') || s.includes('raqam')) return "Raqamli javob o'qilmadi";
+  if (s.includes('sahifa') || s.includes('qr')) return 'Sahifa yoki QR mos emas';
+  return 'Boshqa';
+}
+/** Varaqdagi muammo turlari (yozma ball kutilsa — alohida tur). */
+function varaqTurlari(r: RoyxatNatija): string[] {
+  const t = new Set((r.flags || []).map(f => muammoTuri(f.sabab)));
+  if (!t.size && r.reviewStatus === 'shubhali') t.add("Yozma javobga ball qo'yish");
+  return [...t];
+}
 interface Tafsil {
   id: number; name: string; session: number | null; variantCode: string | null; reviewStatus: string; score: number;
   raw: Record<string, string> | null; manual: Record<string, any> | null; flags: { n: number; sabab: string; f?: number[] }[] | null;
-  pages: Record<string, { url: string }> | null; answers: Record<string, any> | null;
+  pages: Sahifalar | null; answers: Record<string, any> | null;
   items: { n: number; y?: string; g?: string; /** Ustoz tekshiradigan qismning to'g'ri javobi (kalit ruxsati bo'lsa). */ tj?: string; t: string; p: number; m?: number[] }[];
   shubhalar: { n: number; sabab: string; f?: number[] }[];
   seat: { variant: string | null; sheetCode: string } | null;
@@ -74,6 +92,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
   const [variant, setVariant] = useState<string | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qidiruv, setQidiruv] = useState('');
+  const [tur, setTur] = useState<string | null>(null);
   const ai = useAiHolat();
   const [aiTaklif, setAiTaklif] = useState<Record<number, AiTaklif>>({});
   const [aiBand, setAiBand] = useState<number | null>(null);
@@ -165,13 +184,47 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
     }
   };
 
-  const korinadigan = (royxat || []).filter(r => !qidiruv || r.name.toLowerCase().includes(qidiruv.toLowerCase()));
+  const korinadigan = (royxat || []).filter(r => (!qidiruv || r.name.toLowerCase().includes(qidiruv.toLowerCase())) && (!tur || varaqTurlari(r).includes(tur)));
+  const turlar = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of royxat || []) if (r.reviewStatus === 'shubhali') for (const x of varaqTurlari(r)) m.set(x, (m.get(x) || 0) + 1);
+    return [...m].sort((a, b) => b[1] - a[1]);
+  }, [royxat]);
+  // Klaviatura (Addmen «alert mode» kabi tez): A–E — navbatdagi qaror kutayotgan savolga javob,
+  // 0 — bo'sh, Enter — tasdiqlash va keyingi varaq. Maydonga yozilayotganda ishlamaydi.
+  const faolN = shubhalar.find(f => !(f.n in qaror) && itemMap.get(f.n)?.t !== 'raqamli' && itemMap.get(f.n)?.t !== 'moslash')?.n ?? null;
+  const saqlaRef = React.useRef(saqla);
+  saqlaRef.current = saqla;
+  useEffect(() => {
+    if (!tahrir) return;
+    const bosildi = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Enter') { if (t && !saqlanmoqda) { e.preventDefault(); saqlaRef.current(true); } return; }
+      if (faolN == null) return;
+      const h = e.key.toUpperCase();
+      if (harflar.includes(h)) { e.preventDefault(); setQaror(q => ({ ...q, [faolN]: h })); }
+      else if (e.key === '0') { e.preventDefault(); setQaror(q => ({ ...q, [faolN]: '' })); }
+    };
+    window.addEventListener('keydown', bosildi);
+    return () => window.removeEventListener('keydown', bosildi);
+  }, [tahrir, faolN, harflar, t, saqlanmoqda]);
   const rasm = (page: number) => t?.pages?.[String(page)]?.url;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <Karta sarlavha="Varaqlar" className="lg:col-span-1 h-fit" amallar={<Tanlov kichik qiymat={filtr} onChange={v => { setFiltr(v); setTanlangan(null); }} variantlar={[{ v: 'shubhali', nom: 'Shubhali' }, { v: 'hammasi', nom: 'Hammasi' }]} />} ichki="p-0">
-        <div className="px-4 pb-3"><input className={`${INPUT} py-2`} placeholder="Ism bo'yicha" value={qidiruv} onChange={e => setQidiruv(e.target.value)} /></div>
+        {turlar.length > 0 && (
+          <div className="px-4 pb-3 flex flex-col gap-1" role="group" aria-label="Muammo turlari">
+            <button onClick={() => setTur(null)} aria-pressed={!tur} className={`flex justify-between items-center px-3 py-2 rounded-xl text-[12.5px] cursor-pointer ${!tur ? 'bg-brand-fon text-matn font-semibold dark:bg-brand/15' : 'text-matn-sokin hover:bg-ichki'}`}>Hammasi<span className="raqam">{(royxat || []).filter(r => r.reviewStatus === 'shubhali').length}</span></button>
+            {turlar.map(([nom, son]) => (
+              <button key={nom} onClick={() => { setTur(tur === nom ? null : nom); setTanlangan(null); }} aria-pressed={tur === nom}
+                className={`flex justify-between items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] text-left cursor-pointer ${tur === nom ? 'bg-brand-fon text-matn font-semibold dark:bg-brand/15' : 'text-matn-sokin hover:bg-ichki'}`}>{nom}<span className="raqam">{son}</span></button>
+            ))}
+          </div>
+        )}
+        <div className="px-4 pb-3"><input className={`${INPUT} py-2`} placeholder="Ism bo'yicha" aria-label="Ism bo'yicha qidirish" value={qidiruv} onChange={e => setQidiruv(e.target.value)} /></div>
         {!royxat ? <Yuklanmoqda /> : !korinadigan.length ? (
           <BoshHolat ikonka={<CheckCircle2 size={20} />} sarlavha={filtr === 'shubhali' ? "Shubhali varaq yo'q" : "Natija yo'q"} izoh={filtr === 'shubhali' ? "Hamma varaq tekshirilgan — «Natijalar» bo'limida e'lon qilishingiz mumkin." : undefined} />
         ) : (
@@ -219,7 +272,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                   const it = itemMap.get(f.n);
                   const tanlov = qaror[f.n] ?? t.raw?.[f.n] ?? '';
                   return (
-                    <div key={f.n} className="rounded-xl border border-chiziq p-3">
+                    <div key={f.n} className={`rounded-xl border p-3 ${faolN === f.n ? 'border-brand ring-2 ring-brand/15' : 'border-chiziq'}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <p className="text-[13px] font-semibold text-matn">{it?.y ?? f.n}-savol <span className="font-normal text-matn-sokin">· {f.sabab}</span></p>
                         {f.f && it?.t !== 'moslash' && <p className="text-[11px] text-matn-xira raqam">to'lganlik: {f.f.map((x, i) => `${HARFLAR[i] || i + 1} ${Math.round(x * 100)}%`).join(' · ')}</p>}
@@ -290,12 +343,14 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                 })}
               </div>
               {tahrir && (shubhalar.length > 0 || yozmalar.length > 0 || variantShubha) && (
-                <div className="flex flex-wrap justify-end gap-2 mt-4">
+                <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
+                  <span className="mr-auto text-[11.5px] text-matn-xira">Klaviatura: {harflar[0]}–{harflar[harflar.length - 1]} — javob, 0 — bo'sh, Enter — tasdiqlash va keyingisi</span>
                   <Tugma yuklanmoqda={saqlanmoqda} onClick={() => saqla(false)}>Saqlash</Tugma>
                   <Tugma turi="asosiy" yuklanmoqda={saqlanmoqda} onClick={() => saqla(true)}>Tasdiqlash va keyingisi <ChevronRight size={14} /></Tugma>
                 </div>
               )}
             </Karta>
+            {t.pages && <IcrMaydonlari natijaId={t.id} pages={t.pages} tahrir={tahrir} onYangi={p => setT(x => (x ? { ...x, pages: p } : x))} />}
           </>
         )}
       </div>

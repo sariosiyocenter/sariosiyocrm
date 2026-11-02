@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX, Info } from 'lucide-react';
+import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX, Info, FolderOpen, FileSpreadsheet } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, INPUT, SELECT, Maydon, BoshHolat, Yuklanmoqda } from './ui';
@@ -11,23 +11,15 @@ import type { ImtihonTafsil } from './turlar';
 import QulfKerak from './QulfKerak';
 import { varaqParametrlari } from './varaqParam';
 import { SARALASH, saralashKodi } from '../../lib/omr/saralash';
+import type { Element, OqishRejimi, Yuborish } from './skaner/turlar';
+import OqishSozlamalari from './skaner/OqishSozlamalari';
+import VaraqKorigi from './skaner/VaraqKorigi';
+import { usePapkaKuzatish, papkaQollanadi } from './skaner/usePapkaKuzatish';
 
 // 4-bo'lim: javob varaqalarini o'qish. Asosiy yo'l — ADF skanerdan PDF yoki
 // rasmlar (brauzerning o'zi o'qiydi, serverga faqat javoblar va kichik rasm
 // boradi). Zaxira — telefon kamerasi. Buzilgan varaq — qo'lda kiritish.
 
-type Holat = 'kutmoqda' | 'oqilmoqda' | 'saqlanmoqda' | 'tayyor' | 'aniqlanmadi' | 'xato';
-interface Element {
-  id: number;
-  nom: string;
-  holat: Holat;
-  oqish?: IshchiNatija['natija'];
-  rasm?: string | null;
-  xato?: string;
-  natija?: { name: string; score: number; shubhalar: number; sheetCode?: string; takror?: boolean };
-  /** Server 404 qaytargan (varaq kodi yoki o'quvchi topilmadi). */
-  topilmadi?: boolean;
-}
 
 // O'qilgan varaqlar navbati imtihon bo'yicha modulda turadi: tabdan chiqib qaytsa (yoki
 // «Tekshirish»ga o'tsa) ro'yxat va aniqlanmagan varaqlar yo'qolmaydi. Sahifa yangilansa — tozalanadi.
@@ -94,7 +86,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
   const yangilaEl = (id: number, patch: Partial<Element>) => setNavbat(n => n.map(e => (e.id === id ? { ...e, ...patch } : e)));
 
   /** O'qilgan varaqni serverga yuborish (kod yoki o'quvchi aniq bo'lsa). */
-  const yubor = useCallback(async (el: Element, qoshimcha: { sheetCode?: string; studentId?: number; session?: number } = {}, source = 'skaner') => {
+  const yubor = useCallback(async (el: Element, qoshimcha: Yuborish = {}, source = 'skaner') => {
     const o = el.oqish!;
     // Universal / anonim varaq QR ida imtihon raqami bor — boshqa imtihonniki aralashib ketmasin.
     if (o.qr && o.qr.turi !== 'S' && o.qr.examId && o.qr.examId !== exam.id) {
@@ -107,6 +99,8 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       page: o.page, answers: o.javoblar, flags: o.shubhalar.filter(f => f.n > 0), pageItems,
       variant: o.variant, image: el.rasm, source,
     };
+    if (qoshimcha.takror) body.takror = qoshimcha.takror;
+    if (o.icr?.length) body.icr = o.icr;
     if (qoshimcha.sheetCode) body.sheetCode = qoshimcha.sheetCode;
     else if (o.qr?.turi === 'S') body.sheetCode = o.qr.sheetCode;
     if (!body.sheetCode && s.source === 'sorovnoma' && s.sorovnoma?.anonim && (o.qr?.turi === 'U' || o.qr?.turi === 'A') && !qoshimcha.studentId) {
@@ -122,31 +116,80 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     yangilaEl(el.id, { holat: 'saqlanmoqda', xato: undefined });
     try {
       const r = await soro<any>('POST', `exams/${exam.id}/scans`, body);
-      yangilaEl(el.id, { holat: 'tayyor', natija: { name: r.name, score: r.score, shubhalar: r.shubhalar, sheetCode: r.sheetCode, takror: !!r.takror } });
+      yangilaEl(el.id, { holat: 'tayyor', takrorId: undefined, natija: { id: r.id, name: r.name, score: r.score, shubhalar: r.shubhalar, sheetCode: r.sheetCode, takror: !!r.takror } });
     } catch (e: any) {
-      yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message, topilmadi: e.status === 404 });
+      if (e.status === 409 && e.malumot?.takrorId) {
+        const m = e.malumot;
+        const kimga: Yuborish = body.sheetCode ? { sheetCode: body.sheetCode } : { studentId: body.studentId, session: body.session };
+        yangilaEl(el.id, { holat: 'aniqlanmadi', xato: e.message, takrorId: { name: m.name || '', oldingiRasm: m.oldingiRasm || null, farq: m.farq || 0, jami: m.jami || 0, kimga } });
+        return;
+      }
+      yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message, topilmadi: e.status === 404, takrorId: undefined });
     }
   }, [exam.id, sahifalar, soro, idniTop, s]);
 
-  const fayllar = async (files: FileList | null) => {
-    if (!files?.length) return;
+  // O'qish rejimi (Addmen auto / alert / manual) — har kompyuterda o'zi (operator odati).
+  const [oqishRejimi, setOqishRejimiH] = useState<OqishRejimi>(() => {
+    try { const v = localStorage.getItem('imt_oqish_rejim'); return v === 'ogoh' || v === 'tasdiq' ? v : 'avto'; } catch { return 'avto'; }
+  });
+  const rejimRef = useRef(oqishRejimi);
+  const setOqishRejimi = (r: OqishRejimi) => {
+    rejimRef.current = r;
+    setOqishRejimiH(r);
+    try { localStorage.setItem('imt_oqish_rejim', r); } catch { /* yopiq xotira — shu ochilishda eslab turiladi */ }
+  };
+  type Korik = { id: number; davom: () => void; toxtat: () => void };
+  const [korik, setKorik] = useState<Korik | null>(null);
+  const korikRef = useRef<Korik | null>(null);
+  const korikZanjir = useRef<Promise<unknown>>(Promise.resolve());
+  /** Rejimga qarab varaqni operatorga ko'rsatadi va qarorini kutadi: true — davom, false — o'qish to'xtatildi. */
+  const korikdan = useCallback((id: number): Promise<boolean> => {
+    const e = (navbatlar.get(exam.id) || []).find(x => x.id === id);
+    const r = rejimRef.current;
+    const kerak = !!e && (r === 'tasdiq' || (r === 'ogoh' && (e.holat !== 'tayyor' || (e.natija?.shubhalar ?? 0) > 0)));
+    if (!kerak) return Promise.resolve(true);
+    // Bir vaqtda bitta oyna: papka kuzatuvi va kamera navbat kutadi.
+    const p = korikZanjir.current.then(() => new Promise<boolean>(res => {
+      const k: Korik = {
+        id,
+        davom: () => { korikRef.current = null; setKorik(null); res(true); },
+        toxtat: () => { korikRef.current = null; setKorik(null); res(false); },
+      };
+      korikRef.current = k;
+      setKorik(k);
+    }));
+    korikZanjir.current = p;
+    return p;
+  }, [exam.id]);
+  // Tabdan chiqilsa ochiq oyna yopiladi va o'qish to'xtaydi (kutib qolgan sikl osilib qolmasin).
+  useEffect(() => () => korikRef.current?.toxtat(), []);
+  // Ko'rilayotgan varaq navbatdan tushib ketgan bo'lsa (juda uzun navbat) — davom.
+  useEffect(() => {
+    if (korik && !navbat.some(e => e.id === korik.id)) korik.davom();
+  }, [korik, navbat]);
+
+  const fayllarniOqi = async (files: File[]) => {
     setIshlamoqda(true);
+    let toxtadi = false;
     try {
-      for (const file of Array.from(files)) {
+      tashqi: for (const file of files) {
         try {
           for await (const { bitmap, nom } of faylSahifalari(file)) {
-            const el: Element = { id: ++oxirgiId, nom, holat: 'oqilmoqda' };
+            const el: Element = { id: ++oxirgiId, nom, holat: 'oqilmoqda', vaqt: Date.now() };
             setNavbat(n => [el, ...n]);
             try {
               const r = await ishchi().oqi(bitmap, params);
               el.oqish = r.natija;
               el.rasm = r.rasm;
-              if (!r.natija.ok) { yangilaEl(el.id, { holat: 'xato', xato: r.natija.xato, oqish: r.natija }); continue; }
-              yangilaEl(el.id, { oqish: r.natija, rasm: r.rasm });
-              await yubor(el);
+              if (!r.natija.ok) yangilaEl(el.id, { holat: 'xato', xato: r.natija.xato, oqish: r.natija, rasm: r.rasm });
+              else {
+                yangilaEl(el.id, { oqish: r.natija, rasm: r.rasm });
+                await yubor(el);
+              }
             } catch (e: any) {
               yangilaEl(el.id, { holat: 'xato', xato: e.message });
             }
+            if (!(await korikdan(el.id))) { toxtadi = true; break tashqi; }
           }
         } catch (e: any) {
           showNotification(`${file.name}: ${e.message}`, 'error');
@@ -156,6 +199,25 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
       setIshlamoqda(false);
       orinlarniYukla();
       yangila();
+    }
+    if (toxtadi) showNotification("O'qish to'xtatildi — qolgan varaqlar o'qilmadi (qayta yuklash xavfsiz)", 'info');
+  };
+  // Qo'lda tanlangan fayllar va papka kuzatuvi bitta navbatda — bir vaqtda bitta o'qish.
+  const zanjir = useRef<Promise<void>>(Promise.resolve());
+  const fayllar = (files: FileList | File[] | null): Promise<void> => {
+    const l = files ? Array.from(files) : [];
+    if (!l.length) return Promise.resolve();
+    const p = zanjir.current.then(() => fayllarniOqi(l));
+    zanjir.current = p.catch(() => undefined);
+    return p;
+  };
+  const kuzatuv = usePapkaKuzatish(exam.id, fayllar);
+  const jurnalYukla = async () => {
+    try {
+      const [{ jurnalExcel, jurnalNomi }, { yuklabOl }] = await Promise.all([import('./skaner/skanerJurnali'), import('../../lib/zip')]);
+      yuklabOl(jurnalExcel(navbatlar.get(exam.id) || []), jurnalNomi(exam.name));
+    } catch (e: any) {
+      showNotification(e.message, 'error');
     }
   };
 
@@ -210,6 +272,8 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
         )}
       </div>
 
+      {rejim !== 'qolda' && <OqishSozlamalari exam={exam} rejim={oqishRejimi} onRejim={setOqishRejimi} yangila={yangila} />}
+
       {rejim === 'fayl' && (
         <Karta>
           <label className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center cursor-pointer transition-colors ${ishlamoqda ? 'border-brand bg-brand-fon/40' : 'border-chiziq hover:border-brand hover:bg-ichki'}`}
@@ -219,19 +283,40 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
             <span className="text-[12px] text-matn-xira max-w-lg">Skanerda: oq-qora yoki kulrang, 200–300 dpi. Bitta PDF da yuzlab varaq bo'lishi mumkin — hammasi ketma-ket o'qiladi. Qayta skanerlash xavfsiz: operator tasdiqlagan javoblar o'zgarmaydi.</span>
             <input type="file" multiple accept="application/pdf,image/*" className="hidden" disabled={ishlamoqda} onChange={e => { fayllar(e.target.files); e.target.value = ''; }} />
           </label>
+          {papkaQollanadi() && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12.5px]">
+              {kuzatuv.papka ? (
+                <>
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-matn"><span className="w-2 h-2 rounded-full bg-yaxshi animate-pulse" aria-hidden />«{kuzatuv.papka}» papkasi kuzatilmoqda</span>
+                  <span className="text-matn-xira">{kuzatuv.holat.oqildi} ta fayl o'qildi{kuzatuv.holat.oxirgi ? ` · oxirgisi: ${kuzatuv.holat.oxirgi}` : ''}</span>
+                  <Tugma kichik ikonka={<Square size={12} />} onClick={kuzatuv.toxtat}>To'xtatish</Tugma>
+                </>
+              ) : (
+                <>
+                  <Tugma kichik ikonka={<FolderOpen size={14} />} onClick={kuzatuv.tanla}>Papkani kuzatish</Tugma>
+                  <span className="text-matn-xira">Skaner saqlaydigan papkani tanlang — unga tushgan yangi fayllar o'zi o'qiladi. Bir nechta skaner bitta papkaga saqlashi mumkin; bu oyna ochiq tursin.</span>
+                </>
+              )}
+              {kuzatuv.holat.xato && <span className="text-xato w-full">{kuzatuv.holat.xato}</span>}
+            </div>
+          )}
         </Karta>
       )}
       {rejim === 'kamera' && <KameraSkaner params={params} ishchi={ishchi} onVaraq={async (natija, rasm) => {
-        const el: Element = { id: ++oxirgiId, nom: 'Kamera', holat: 'saqlanmoqda', oqish: natija, rasm };
+        const el: Element = { id: ++oxirgiId, nom: 'Kamera', holat: 'saqlanmoqda', oqish: natija, rasm, vaqt: Date.now() };
         setNavbat(n => [el, ...n]);
         await yubor(el, {}, 'kamera');
+        await korikdan(el.id);
       }} />}
       {rejim === 'qolda' && <QoldaKiritish key={qoldaOrin?.id ?? 0} exam={exam} orinlar={orinData?.seats || []} boshlangich={qoldaOrin} onSaqlandi={() => { setQoldaOrin(null); orinlarniYukla(); yangila(); }} />}
 
       {navbat.length > 0 && (
         <Karta sarlavha="O'qilgan varaqlar" ichki="p-0"
-          amallar={kodlar.length > 0 && (
-            <button type="button" onClick={() => setKodIzoh(v => !v)} className="inline-flex items-center gap-1 text-[12px] text-matn-xira hover:text-brand cursor-pointer" aria-expanded={kodIzoh}><Info size={13} /> Kodlar</button>
+          amallar={(
+            <div className="flex items-center gap-3">
+              {kodlar.length > 0 && <button type="button" onClick={() => setKodIzoh(v => !v)} className="inline-flex items-center gap-1 text-[12px] text-matn-xira hover:text-brand cursor-pointer" aria-expanded={kodIzoh}><Info size={13} /> Kodlar</button>}
+              <button type="button" onClick={jurnalYukla} className="inline-flex items-center gap-1 text-[12px] text-matn-xira hover:text-brand cursor-pointer" title="Shu yerda o'qilgan varaqlar ro'yxati — Excel"><FileSpreadsheet size={13} /> Jurnal</button>
+            </div>
           )}>
           {kodlar.length > 0 && (
             <div className="px-4 pb-3 space-y-2">
@@ -258,6 +343,14 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
         </Karta>
       )}
     </div>
+      {korik && (() => {
+        const el = navbat.find(e => e.id === korik.id);
+        return el ? (
+          <VaraqKorigi key={el.id} el={el} sahifalar={sahifalar} orinlar={orinData?.seats || []} rejim={oqishRejimi}
+            onYubor={q => yubor(el, q, el.nom === 'Kamera' ? 'kamera' : 'skaner').then(() => { orinlarniYukla(); })}
+            onDavom={korik.davom} onToxtat={korik.toxtat} />
+        ) : null;
+      })()}
       <SkanerHolati exam={exam} orinlar={orinData?.seats ?? null} onKelmadi={kelmadi} onTekshirish={onTekshirish}
         onQolda={o => { setQoldaOrin(o); setRejim('qolda'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
     </div>
@@ -367,7 +460,7 @@ function Chiziq({ qism, jami }: { qism: number; jami: number }) {
   );
 }
 
-function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; onYubor: (q: { sheetCode?: string; studentId?: number }) => void }) {
+function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; onYubor: (q: Yuborish) => void }) {
   const [kod, setKod] = useState('');
   const [qidiruv, setQidiruv] = useState('');
   // Tashqi qatnashchining o'quvchi ID si yo'q — u o'z o'rnining varaq kodi bilan bog'lanadi.
@@ -387,6 +480,13 @@ function NavbatQatori({ el, orinlar, onYubor }: { el: Element; orinlar: Orin[]; 
             {el.oqish?.page ? <span className="text-matn-xira text-[12px]">{el.oqish.page}-sahifa</span> : null}
           </div>
           {el.xato && <p className="text-[12px] text-xato mt-0.5">{el.xato}</p>}
+          {el.takrorId && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Tugma kichik turi="asosiy" onClick={() => onYubor({ ...el.takrorId!.kimga, takror: 'almashtir' })}>Almashtirish — {el.takrorId.name || "o'sha qatnashchi"}niki</Tugma>
+              {el.takrorId.oldingiRasm && <a href={el.takrorId.oldingiRasm} target="_blank" rel="noreferrer" className="text-[12px] text-brand hover:underline">Avval o'qilgan varaq</a>}
+              <span className="text-[12px] text-matn-xira">yoki boshqa qatnashchini tanlang:</span>
+            </div>
+          )}
           {el.holat === 'aniqlanmadi' && el.oqish?.ok && (
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {el.oqish.qr?.turi !== 'U' ? (
@@ -518,9 +618,12 @@ function QoldaKiritish({ exam, orinlar, boshlangich, onSaqlandi }: { exam: Imtih
   return (
     <Karta sarlavha="Qo'lda kiritish" izoh="Varaq yirtilgan yoki skanerlanmaydigan bo'lsa">
       {!orin ? (
-        <div className="relative max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
-          <input className={`${INPUT} pl-9`} placeholder="Ism yoki varaq kodi" value={qidiruv} onChange={e => setQidiruv(e.target.value)} />
+        <div className="max-w-md">
+          {/* Belgi faqat maydonga bog'langan: ro'yxat ochilganda pastga siljimasin. */}
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira pointer-events-none" />
+            <input className={`${INPUT} pl-9`} placeholder="Ism yoki varaq kodi" aria-label="Ism yoki varaq kodi" value={qidiruv} onChange={e => setQidiruv(e.target.value)} />
+          </div>
           {mos.length > 0 && (
             <div className="mt-1 rounded-xl border border-chiziq bg-sirt divide-y divide-chiziq">
               {mos.map(o => <button key={o.id} onClick={() => { setOrin(o); setVariant(o.variant || ''); }} className="block w-full text-left px-3 py-2 text-[13px] hover:bg-ichki cursor-pointer">{o.name} <span className="text-matn-xira">· {o.sheetCode} · variant {o.variant || '—'}</span></button>)}

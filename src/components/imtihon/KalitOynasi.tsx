@@ -19,7 +19,8 @@ interface KalitJavobi {
   keyFix: Record<string, string[]>;
 }
 
-export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: number; onYop: (ozgardi: boolean) => void; boshSavol?: number }) {
+/** `ichida` — oyna emas, «Kalit va baholash» bo'limining o'zida (yopish tugmasisiz). */
+export default function KalitOynasi({ examId, onYop, boshSavol, ichida }: { examId: number; onYop: (ozgardi: boolean) => void; boshSavol?: number; ichida?: boolean }) {
   const { ozgartira, showNotification } = useCRM();
   const tuzatadi = ozgartira('imtihonlar.kalit');
   const { soro } = useImtihonApi();
@@ -91,10 +92,17 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
     saqla(qid, { keyFix: f });
   };
 
-  return (
-    <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={() => onYop(ozgardi)} />
-      <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-5xl border border-chiziq max-h-[92vh] flex flex-col my-auto">
+  const tashqi = (ichi: React.ReactNode) => ichida
+    ? <section className="bg-sirt rounded-2xl shadow-sm border border-chiziq flex flex-col">{ichi}</section>
+    : (
+      <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto p-4">
+        <div className="fixed inset-0 bg-black/50" onClick={() => onYop(ozgardi)} />
+        <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-5xl border border-chiziq max-h-[92vh] flex flex-col my-auto">{ichi}</div>
+      </div>
+    );
+
+  return tashqi(
+      <>
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-chiziq">
           <div className="flex items-center gap-2">
             <KeyRound size={18} className="text-brand" />
@@ -103,10 +111,10 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
           <div className="flex flex-wrap items-center gap-2">
             {smenalar.length > 1 && <Tanlov kichik qiymat={session} onChange={setSession} variantlar={smenalar.map(s => ({ v: s, nom: `${s}-smena` }))} />}
             <Tanlov kichik qiymat={korinish} onChange={setKorinish} variantlar={[{ v: 'variant', nom: "Variantlar bo'yicha" }, { v: 'savol', nom: "Savollar (tuzatish)" }]} />
-            <button aria-label="Yopish" onClick={() => onYop(ozgardi)} className="p-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>
+            {!ichida && <button aria-label="Yopish" onClick={() => onYop(ozgardi)} className="p-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>}
           </div>
         </div>
-        <div className="overflow-auto p-4">
+        <div className={`${ichida ? '' : 'overflow-auto'} p-4`}>
           {!k ? <Yuklanmoqda /> : korinish === 'variant' ? (
             <table className="w-full text-[12.5px] border-collapse">
               <thead>
@@ -217,7 +225,6 @@ export default function KalitOynasi({ examId, onYop, boshSavol }: { examId: numb
         <div className="px-5 py-3 border-t border-chiziq text-[11.5px] text-matn-xira">
           Kalit tuzatilsa yoki savol bekor qilinsa, hamma natija darhol qayta hisoblanadi. E'lon qilingan bo'lsa — reyting uchun «E'lon qilish»ni qayta bosing (yuborilgan xabarlar qaytarib olinmaydi).
         </div>
-      </div>
-    </div>
+      </>
   );
 }

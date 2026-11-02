@@ -6,6 +6,8 @@ export type ImtihonTafsil = Exam & {
   assignments: { groupId: number; group: { id: number; name: string; schoolId: number } }[];
   _count: { results: number; seats: number };
   holat: BosqichHolati;
+  /** Onlayn natija sahifasi yo'li (/natijalar/:token, nisbiy) — sozlamada yoqilganda ishlaydi. */
+  natijalarHavolasi?: string;
 };
 
 /** Modul tablaridagi belgilar uchun sanoqlar (routes/imtihon.js `bosqichHolati`). */
