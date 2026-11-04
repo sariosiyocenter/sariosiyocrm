@@ -89,12 +89,16 @@ export function YonQator({ nom, korinish, soni, faol, bosilgan, onBos, chap, nuq
   onBos: () => void; chap?: React.ReactNode; nuqta?: string; qalin?: boolean;
   onSaqla?: (nom: string) => Promise<boolean | void> | boolean | void; onOchir?: () => void;
   onQosh?: () => void; qoshNomi?: string;
-  qabul?: Sudralgan['tur']; onTashla?: (s: Sudralgan) => void; sudrashda?: Sudralgan['tur'] | null;
+  /** Ustiga nima tashlasa bo'ladi: bitta tur yoki bir nechtasi (mavzu qatoriga — savol ham, mavzu ham). */
+  qabul?: Sudralgan['tur'] | Sudralgan['tur'][]; onTashla?: (s: Sudralgan) => void; sudrashda?: Sudralgan['tur'] | null;
   sudraladi?: Sudralgan; chaqnash?: boolean;
 }) {
   const [tahrir, setTahrir] = useState(false);
   const [ustida, setUstida] = useState(false);
-  const nishon = !!qabul && sudrashda === qabul;
+  // Mavzu o'z ustiga tashlanmaydi (sudrash boshlanganda qator qayta chiziladi — shu payt o'qiladi).
+  const sudralgan = sudralayotgan();
+  const oziUstida = sudralgan?.tur === 'mavzu' && sudraladi?.tur === 'mavzu' && sudralgan.id === sudraladi.id;
+  const nishon = !!qabul && !!sudrashda && !oziUstida && (Array.isArray(qabul) ? qabul.includes(sudrashda) : sudrashda === qabul);
   useEffect(() => { if (!nishon) setUstida(false); }, [nishon]);
   if (tahrir && onSaqla) {
     return <li><QatorForma boshi={nom} joy="Yangi nom" onYubor={n => (n === nom ? true : onSaqla(n))} onYop={() => setTahrir(false)} className="px-1 py-0.5" /></li>;

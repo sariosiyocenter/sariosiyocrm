@@ -1224,8 +1224,14 @@ model QuestionTopic {
   order     Int             @default(0)
   createdAt DateTime        @default(now())
   questions Question[]
+  // Kichik mavzu (2026-11-05): ota mavzu ichida turadi, bitta pog'ona — kichik mavzuning
+  // o'z kichik mavzusi bo'lmaydi. Bo'limi doim otasiniki. Ota o'chsa — oddiy mavzuga aylanadi.
+  parentId  Int?
+  parent    QuestionTopic?  @relation("KichikMavzu", fields: [parentId], references: [id], onDelete: SetNull)
+  children  QuestionTopic[] @relation("KichikMavzu")
 
   @@index([subjectId])
+  @@index([parentId])
 }
 
 // Bir nechta savol bog'lanadigan matn yoki rasm ("matnni o'qing va 1–4

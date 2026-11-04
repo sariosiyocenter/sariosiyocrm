@@ -3,7 +3,7 @@ import { Check, X } from 'lucide-react';
 import { Tugma, INPUT, SELECT, Maydon } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { HARFLAR } from '../../../../lib/imtihon.js';
-import { bolimlarga } from './useBankDaraxt';
+import { bolimlarga, mavzuYorligi } from './useBankDaraxt';
 import type { BankFan, SavolTuri } from '../../../types';
 
 // AI bilan savol kiritish oynalari uchun umumiy bo'laklar (SavolYuklash —
@@ -161,8 +161,8 @@ export function FanMavzuTanlov({ fanlar, fan, mavzuId, yangiMavzu, kutilgan, ban
             <option value="">{fan ? 'Mavzuni tanlang' : 'Avval fanni tanlang'}</option>
             {kutilgan && !fan?.mavzular.some(m => m.id === kutilgan.id) && <option value={kutilgan.id}>{kutilgan.nom}</option>}
             {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
-              ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
-              : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
+              ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{mavzuYorligi(m)}</option>)}</optgroup>
+              : g.mavzular.map(m => <option key={m.id} value={m.id}>{mavzuYorligi(m)}</option>)))}
             {fan && <option value="yangi">+ Yangi mavzu…</option>}
           </select>
         )}

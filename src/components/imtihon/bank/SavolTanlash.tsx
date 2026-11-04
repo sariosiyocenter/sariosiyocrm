@@ -4,7 +4,7 @@ import { useImtihonApi } from '../useImtihonApi';
 import { Tugma, Tanlov, INPUT, SELECT, Yuklanmoqda } from '../ui';
 import { SavolKartasi, SavolOynasi } from './SavolKartasi';
 import { QIYINLIK, useQiyinlik } from './qiyinlik';
-import { bolimlarga } from './useBankDaraxt';
+import { bolimlarga, mavzuYorligi } from './useBankDaraxt';
 import BoshqaFiltrlar, { boshqaFiltrSoni } from './BoshqaFiltrlar';
 import { BOSH_SARALASH, saralashdanSorov, TABLETKA, type BankQatori, type Saralash } from './bankTurlari';
 import { TUR_NOMI } from '../../../lib/savolTuri';
@@ -248,8 +248,10 @@ export default function SavolTanlash({ fan: boshFan, daraxt, tanlangan: bosh, on
     return n + qismli.size;
   }, [tanlangan]);
 
+  // Ota mavzu tanlansa — kichik mavzularining savollari ham (ro'yxat ham shunday keladi).
+  const oilaFaol = (m: { id: number; faol: number }) => m.faol + (fan?.mavzular || []).filter(x => x.ota === m.id).reduce((a, x) => a + x.faol, 0);
   // Bankdagi tayyor savollar soni (daraxtdan): tanlangan mavzu va tur ichida, qiyinlik bo'yicha.
-  const soniD = (k: number) => (fan?.mavzular || []).filter(m => !mavzuId || m.id === mavzuId)
+  const soniD = (k: number) => (fan?.mavzular || []).filter(m => !mavzuId || m.id === mavzuId || m.ota === mavzuId)
     .reduce((a, m) => a + (s.tur ? [s.tur] : SAVOL_TURLARI as SavolTuri[]).reduce((b, t) => b + (m.bor[t]?.[k - 1] || 0), 0), 0);
   // Qiyinlik tablari bitta darajani tanlaydi (bank ro'yxatida — bir nechtasi ham mumkin).
   const d = s.qiyinlik.length === 1 ? s.qiyinlik[0] : 0;
@@ -284,7 +286,7 @@ export default function SavolTanlash({ fan: boshFan, daraxt, tanlangan: bosh, on
               )}
               <select aria-label="Mavzu" className={`${SELECT} md:hidden`} value={mavzuId ?? ''} onChange={e => setMavzuId(Number(e.target.value) || null)}>
                 <option value="">Hamma mavzular ({fan?.faol ?? 0})</option>
-                {(fan?.mavzular || []).map(m => <option key={m.id} value={m.id}>{m.name} ({m.faol})</option>)}
+                {(fan?.mavzular || []).map(m => <option key={m.id} value={m.id}>{mavzuYorligi(m)} ({oilaFaol(m)})</option>)}
               </select>
             </div>
             <ul className="hidden md:block pb-2">
@@ -303,11 +305,11 @@ export default function SavolTanlash({ fan: boshFan, daraxt, tanlangan: bosh, on
                     return (
                       <li key={m.id}>
                         <button onClick={() => setMavzuId(m.id)} aria-current={m.id === mavzuId ? 'true' : undefined}
-                          className={`w-full flex items-center justify-between gap-2 px-4 py-2 text-left text-[13px] cursor-pointer ${m.id === mavzuId ? 'bg-brand-fon/60 dark:bg-brand/15 text-matn font-semibold' : 'text-matn-sokin hover:bg-ichki hover:text-matn'}`}>
-                          <span className="truncate">{m.name}</span>
+                          className={`w-full flex items-center justify-between gap-2 ${m.ota ? 'pl-8 pr-4' : 'px-4'} py-2 text-left text-[13px] cursor-pointer ${m.id === mavzuId ? 'bg-brand-fon/60 dark:bg-brand/15 text-matn font-semibold' : 'text-matn-sokin hover:bg-ichki hover:text-matn'}`}>
+                          <span className="truncate">{m.ota && <span className="text-matn-xira">↳ </span>}{m.name}</span>
                           <span className="shrink-0 flex items-center gap-1.5">
                             {soni > 0 && <span className="raqam text-[11px] font-bold px-1.5 rounded-md bg-brand text-brand-ust">{soni}</span>}
-                            <span className="raqam text-[11px] text-matn-xira">{m.faol}</span>
+                            <span className="raqam text-[11px] text-matn-xira">{m.ota ? m.faol : oilaFaol(m)}</span>
                           </span>
                         </button>
                       </li>

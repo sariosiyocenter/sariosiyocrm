@@ -586,7 +586,8 @@ export interface BankFiltrMalumoti {
     qiyinlik: QiyinlikSoni;
     /** Bo'limlar tartibi bilan (bo'shi ham); '' — bo'limsiz mavzular. `mavzular` — nechta mavzusi bor. */
     bolimlar: { nom: string; soni: number; mavzular?: number }[];
-    mavzular: { id: number; nom: string; bolim: string; soni: number }[];
+    /** `ota` — kichik mavzuning otasi (2026-11-05); kichik mavzular otasidan keyin keladi. */
+    mavzular: { id: number; nom: string; bolim: string; soni: number; ota?: number | null }[];
     /** Foydalanuvchi qo'shgan qiyinlik darajalari: `asos` — 1 oson, 2 o'rta, 3 qiyin guruhi. */
     darajalar: { id: number; name: string; asos: number; soni: number }[];
     manbalar: { nom: string; soni: number }[];
@@ -661,6 +662,8 @@ export interface BankMavzu {
     /** Bo'lim (o'quv rejadagi modul) — ro'yxatda guruh sarlavhasi. */
     section?: string | null;
     order: number;
+    /** Kichik mavzu bo'lsa — otasining id si (ro'yxatda otasidan keyin keladi). */
+    ota?: number | null;
     jami: number; faol: number; qoralama: number; arxiv: number; xatoli: number;
     /** Arxivdan tashqari savollar qiyinlik bo'yicha. */
     qiyinlik: QiyinlikSoni;

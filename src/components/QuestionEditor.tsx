@@ -13,7 +13,7 @@ import { QiyinlikTanlov, QIYINLIK } from './imtihon/bank/qiyinlik';
 import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import VektorRasm from './imtihon/bank/VektorRasm';
 import { svgmi, rasmBelgisiBor, rasmBelgisiz } from '../lib/svgRasm';
-import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
+import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga, mavzuYorligi } from './imtihon/bank/useBankDaraxt';
 import { HARFLAR, RAQAM_USTUNLARI, MOSLASH_QATOR, MOSLASH_USTUN, savolXatosi, qiyinlikDarajasi, moslashQatorlari } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri, BelgiGuruhi } from '../types';
 
@@ -357,8 +357,8 @@ export default function QuestionEditor() {
                   onChange={e => (e.target.value === 'yangi' ? setYangiNom({ tur: 'mavzu', nom: '' }) : setUmumiy({ ...umumiy, mavzuId: Number(e.target.value) || null }))}>
                   <option value="">{fan ? 'Mavzuni tanlang' : 'Avval fanni tanlang'}</option>
                   {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
-                    ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
-                    : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
+                    ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{mavzuYorligi(m)}</option>)}</optgroup>
+                    : g.mavzular.map(m => <option key={m.id} value={m.id}>{mavzuYorligi(m)}</option>)))}
                   {fan && <option value="yangi">+ Yangi mavzu…</option>}
                 </select>
               )}

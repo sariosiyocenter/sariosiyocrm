@@ -18,6 +18,7 @@ import { darsHolati } from '../lib/imtihonDars.js';
 import { guruhSavolimi, andozaSavolSoni, andozaniToldir } from '../lib/imtihon.js';
 import { ANDOZA_MAX, andozaIdlari, andozaSoni, andozaFani, andozaTosiqlari, guruhlariBilan, andozagaQoshish, andozadanOlish, andozaTartibi } from '../lib/andoza.js';
 import { yetadimi } from '../lib/ruxsatlar.js';
+import { mavzuTartibi, kichiklariBilan } from '../lib/mavzuDaraxti.js';
 
 const nomi = (v, max = 200) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const kalit = v => nomi(v).toLowerCase();
@@ -39,6 +40,17 @@ async function mavzuniOl(id, orgIds) {
   const t = await prisma.questionTopic.findUnique({ where: { id }, include: { subject: true } });
   if (!t || !orgIds.includes(t.subject.schoolId)) throw new XatoJavob(404, 'Mavzu topilmadi');
   return t;
+}
+
+/**
+ * Kichik mavzuning otasi: shu fandagi oddiy mavzu (kichik mavzu ichida yana mavzu bo'lmaydi —
+ * tuzilma bo'lim → mavzu → kichik mavzu).
+ */
+async function otaMavzu(id, fanId, orgIds) {
+  const ota = await mavzuniOl(id, orgIds);
+  if (ota.subjectId !== fanId) throw new XatoJavob(400, 'Ota mavzu boshqa fanda');
+  if (ota.parentId) throw new XatoJavob(400, "Kichik mavzu ichiga yana mavzu qo'shib bo'lmaydi");
+  return ota;
 }
 
 /** Fan va mavzu nomidan mavzu (topilmasa yaratiladi) — Excel, AI va eski savollar uchun. */
@@ -197,14 +209,14 @@ export function registerSavolBankiRoutes(app) {
       const out = fanlar.map(f => {
         const fan = { id: f.id, name: f.name, order: f.order, jami: 0, faol: 0, qoralama: 0, arxiv: 0, xatoli: 0, qiyinlik: [0, 0, 0], turlar: { yopiq: 0, raqamli: 0, moslash: 0, juft: 0, qismli: 0, yozma: 0 }, natija: null, moslash: 0, mavzular: [] };
         let yig = 0, soni = 0;
-        fan.mavzular = [...f.topics].sort((a, b) => a.order - b.order || a.id - b.id).map(t => {
+        fan.mavzular = mavzuTartibi(f.topics).map(t => {
           const s = mv.get(t.id) || bosh();
           for (const k of ['jami', 'faol', 'qoralama', 'arxiv', 'xatoli', 'moslash']) fan[k] += s[k];
           for (let i = 0; i < 3; i++) fan.qiyinlik[i] += s.qiyinlik[i];
           for (const k of Object.keys(fan.turlar)) fan.turlar[k] += s.turlar[k];
           yig += s.natijaYig; soni += s.natijaSoni;
           return {
-            id: t.id, name: t.name, section: t.section, order: t.order,
+            id: t.id, name: t.name, section: t.section, order: t.order, ota: t.parentId || null,
             jami: s.jami, faol: s.faol, qoralama: s.qoralama, arxiv: s.arxiv, xatoli: s.xatoli,
             qiyinlik: s.qiyinlik, turlar: s.turlar, bor: mavzuMavjudligi(s.yaroqli),
             natija: s.natijaSoni ? yaxlit(s.natijaYig / s.natijaSoni) : null, moslash: s.moslash,
@@ -290,8 +302,15 @@ export function registerSavolBankiRoutes(app) {
       const name = nomi(req.body.name);
       if (!name) return res.status(400).json({ error: 'Mavzu nomini kiriting' });
       if (f.topics.some(t => kalit(t.name) === kalit(name))) return res.status(409).json({ error: `«${name}» mavzusi bu fanda bor` });
+      // Kichik mavzu: bo'limi — otasiniki.
+      const otaId = ANY_ID(req.body.parentId);
+      if (!otaId && req.body.parentId != null) return res.status(400).json({ error: "Ota mavzu noto'g'ri" });
+      const ota = otaId ? await otaMavzu(otaId, f.id, orgIds) : null;
       const t = await prisma.questionTopic.create({
-        data: { subjectId: f.id, name, section: nomi(req.body.section) || null, order: f.topics.reduce((a, x) => Math.max(a, x.order), 0) + 1 },
+        data: {
+          subjectId: f.id, name, section: ota ? ota.section : nomi(req.body.section) || null, parentId: ota?.id ?? null,
+          order: f.topics.reduce((a, x) => Math.max(a, x.order), 0) + 1,
+        },
       });
       await bolimniRoyxatga(f, t.section);
       res.status(201).json(t);
@@ -334,11 +353,14 @@ export function registerSavolBankiRoutes(app) {
     try {
       const orgIds = await organizationSchoolIds(req.user);
       const t = await mavzuniOl(parseInt(req.params.id), orgIds);
+      const bolalar = await prisma.questionTopic.findMany({ where: { parentId: t.id }, select: { id: true } });
       const d = {};
       let fan = t.subject;
       if (req.body.subjectId !== undefined && ANY_ID(req.body.subjectId) !== t.subjectId) {
         fan = await fanniOl(ANY_ID(req.body.subjectId), orgIds);
+        if (bolalar.length) return res.status(409).json({ error: `«${t.name}» ichida kichik mavzular bor — avval ularni chiqaring` });
         d.subjectId = fan.id;
+        d.parentId = null;   // otasi eski fanda qoldi
       }
       if (req.body.name !== undefined) {
         d.name = nomi(req.body.name);
@@ -347,9 +369,28 @@ export function registerSavolBankiRoutes(app) {
       const yangiNom = d.name ?? t.name;
       const qardosh = await prisma.questionTopic.findMany({ where: { subjectId: fan.id, id: { not: t.id } }, select: { name: true } });
       if (qardosh.some(x => kalit(x.name) === kalit(yangiNom))) return res.status(409).json({ error: `«${yangiNom}» mavzusi bu fanda bor` });
-      if (req.body.section !== undefined) d.section = nomi(req.body.section) || null;
+      if (req.body.section !== undefined) {
+        d.section = nomi(req.body.section) || null;
+        d.parentId = null;   // bo'limga olib qo'yilgan kichik mavzu — oddiy mavzu bo'ladi
+      }
+      // Boshqa mavzu ichiga (kichik mavzu qilish) yoki null — ichidan chiqarish (bo'limi qoladi).
+      if (req.body.parentId !== undefined && !d.subjectId) {
+        const otaId = ANY_ID(req.body.parentId);
+        if (!otaId && req.body.parentId !== null) return res.status(400).json({ error: "Ota mavzu noto'g'ri" });
+        if (otaId) {
+          if (otaId === t.id) return res.status(400).json({ error: "Mavzuni o'z ichiga qo'yib bo'lmaydi" });
+          if (bolalar.length) return res.status(409).json({ error: `«${t.name}» ichida kichik mavzular bor — uni boshqa mavzu ichiga qo'yib bo'lmaydi` });
+          const ota = await otaMavzu(otaId, fan.id, orgIds);
+          d.parentId = ota.id;
+          d.section = ota.section;
+        } else d.parentId = null;
+      }
       if (req.body.order !== undefined) d.order = parseInt(req.body.order) || 0;
-      const yangi = await prisma.questionTopic.update({ where: { id: t.id }, data: d });
+      // Ota boshqa bo'limga o'tsa — kichik mavzulari ham birga (bitta tranzaksiyada: biri o'tib, biri qolmasin).
+      const [yangi] = await prisma.$transaction([
+        prisma.questionTopic.update({ where: { id: t.id }, data: d }),
+        ...(d.section !== undefined ? [prisma.questionTopic.updateMany({ where: { parentId: t.id }, data: { section: d.section } })] : []),
+      ]);
       if (d.section) await bolimniRoyxatga(await prisma.questionSubject.findUnique({ where: { id: fan.id } }), d.section);
       if (yangiNom !== t.name || fan.id !== t.subjectId) {
         await prisma.question.updateMany({ where: { bankTopicId: t.id }, data: { topic: yangiNom, subject: fan.name } });
@@ -372,6 +413,8 @@ export function registerSavolBankiRoutes(app) {
         if (nishon.id === t.id) return res.status(400).json({ error: "Boshqa mavzuni tanlang" });
         await prisma.question.updateMany({ where: { bankTopicId: t.id }, data: { bankTopicId: nishon.id, topic: nishon.name, subject: nishon.subject.name } });
       }
+      // Kichik mavzulari o'chmaydi — shu bo'limda oddiy mavzu bo'lib qoladi.
+      await prisma.questionTopic.updateMany({ where: { parentId: t.id }, data: { parentId: null } });
       await prisma.questionTopic.delete({ where: { id: t.id } });
       res.json({ success: true, name: t.name, kochirildi: soni });
     } catch (err) { xato(res, next)(err); }
@@ -863,7 +906,7 @@ export function registerSavolBankiRoutes(app) {
     try {
       const orgIds = await organizationSchoolIds(req.user);
       const fan = await fanniOl(ANY_ID(req.query.fanId), orgIds);
-      const mavzular = [...fan.topics].sort((a, b) => a.order - b.order || a.id - b.id);
+      const mavzular = mavzuTartibi(fan.topics);
       // Rasmli va yechimli savollar soni — alohida so'rov (matn ustunlari bu yerga tortilmaydi);
       // u ishlamasa ham ekran ochiladi (filtr tugmalari sonsiz chiqadi).
       const rasmYechimKutish = rasmYechimSoni(orgIds, mavzular.map(t => t.id)).catch(e => { console.error('[bank] rasm/yechim sonlari:', e.message); return null; });
@@ -915,7 +958,7 @@ export function registerSavolBankiRoutes(app) {
         fan: { id: fan.id, name: fan.name },
         jami: savollar.length - holat.arxiv, yashirin: holat.arxiv, holat, turlar, qiyinlik,
         bolimlar,
-        mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0 })),
+        mavzular: mavzular.map(t => ({ id: t.id, nom: t.name, bolim: t.section || '', soni: mavzuSoni.get(t.id) || 0, ota: t.parentId || null })),
         manbalar: qatorlar(manba), toplamlar: qatorlar(toplam), izohlar: qatorlar(izoh), matnli, joylashuv, belgilar: belgi, kesim,
         // Rasmli / rasmsiz va yechimi bor / yo'q savollar (arxivsiz); null — sanab bo'lmadi.
         rasmli: ry ? { bor: ry.rasmli, yoq: ry.rasmsiz, kutmoqda: ry.kutmoqda } : null,
@@ -1348,7 +1391,8 @@ async function royxatSharti(f, orgIds) {
     const bolimlar = f.bolimlar !== undefined ? matnlar(f.bolimlar) : null;
     if (bolimlar && bolimlar.length) mavzular = mavzular.filter(t => bolimlar.includes(nomi(t.section)));
     const tanlangan = idlarRoyxati(f.mavzular, 2000);
-    if (tanlangan.length) mavzular = mavzular.filter(t => tanlangan.includes(t.id));
+    // Ota mavzu tanlansa — kichik mavzularining savollari ham.
+    if (tanlangan.length) mavzular = kichiklariBilan(mavzular, tanlangan);
     mavzuIdlar = mavzular.map(t => t.id);
     and.push({ bankTopicId: { in: mavzuIdlar } });
   }

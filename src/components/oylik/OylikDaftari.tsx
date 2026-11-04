@@ -76,8 +76,16 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
     if (!daftar) return <div className="py-6 text-center text-[12px] text-matn-xira">Oylik daftari yuklanmoqda…</div>;
 
     const joriy = daftar.oylar.find(o => o.month === daftar.joriyOy);
-    const joriySumma = joriy && !joriy.yopiq ? (joriyTaxmin || 0) : 0;
-    const jami = Math.max(0, daftar.yopiqQarz - daftar.avans + joriySumma);
+    const joriyOchiq = !!joriy && !joriy.yopiq;
+    const joriySumma = joriyOchiq ? (joriyTaxmin || 0) : 0;
+    // Egasi (2026-11-05): "10 mln dan 5 mln berdik — noyabr davomida qarzimiz 5 mln; noyabr oxirida
+    // 15 mln bo'ladi". Qarz — faqat yopilgan oylar qoldig'i; joriy oy oy oxirida (yopilganda) qo'shiladi.
+    const qarz = Math.max(0, daftar.yopiqQarz - daftar.avans);
+    const oyOxirida = joriyOchiq && joriyTaxmin != null ? qarz + joriySumma : null;
+    const qarzOylari = daftar.oylar.filter(o => o.yopiq && o.qoldiq > 0).map(o => qisqaOy(o.month));
+    // Oylar jadvalidagi «Jami qarz»: shu oy oxiridagi yig'ma qarz (yopilgan oylar qoldig'i).
+    const yigma = new Map<string, number>();
+    daftar.oylar.reduce((s, o) => { if (!o.yopiq) return s; const n = s + Math.max(0, o.qoldiq); yigma.set(o.month, n); return n; }, 0);
     const avvalgiQator = daftar.oylar.find(o => o.month === AVVALGI_OY);
     const yopilmaganOtgan = daftar.oylar.filter(o => !o.yopiq && o.month < daftar.joriyOy);
 
@@ -125,29 +133,29 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
             {/* Xulosa: markaz xodimga qancha qarz */}
             <div className="bg-sirt border border-chiziq rounded-2xl grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
                 <div className="col-span-2 lg:col-span-1 px-5 py-4 min-w-0">
-                    <span className="text-[11px] font-semibold text-matn-xira">Biz qarzdormiz — jami</span>
-                    <p className={`num text-[26px] font-semibold leading-tight mt-1 ${jami > 0 ? 'text-xato' : 'text-yaxshi'}`}>{som(jami)} <span className="text-[13px] text-matn-xira font-normal">so'm</span></p>
+                    <span className="text-[11px] font-semibold text-matn-xira">Hozir qarzimiz</span>
+                    <p className={`num text-[26px] font-semibold leading-tight mt-1 ${qarz > 0 ? 'text-xato' : 'text-yaxshi'}`}>{som(qarz)} <span className="text-[13px] text-matn-xira font-normal">so'm</span></p>
                     <p className="text-[12px] text-matn-sokin mt-1">
-                        {daftar.engEski ? `${oyMatni(daftar.engEski)} dan beri to'lanmagan qoldiq bor`
+                        {qarzOylari.length ? `${qarzOylari.join(', ')} qoldig'i${daftar.avans > 0 ? ` · avans ${som(daftar.avans)} ayrilgan` : ''}`
                             : daftar.avans > 0 ? `Avans: ${som(daftar.avans)} — keyingi oydan ushlanadi`
                             : "Yopilgan oylar bo'yicha qarz yo'q"}
                     </p>
                 </div>
                 <div className="px-5 py-4 border-t lg:border-t-0 lg:border-l border-chiziq min-w-0">
-                    <span className="text-[11px] font-semibold text-matn-xira">Yopilgan oylar</span>
-                    <p className="num text-[18px] font-semibold text-matn mt-1">{som(Math.max(0, daftar.yopiqQarz - daftar.avans))}</p>
-                    <p className="text-[12px] text-matn-sokin mt-0.5">{daftar.avans > 0 ? `avans ${som(daftar.avans)}` : 'aniq summa'}</p>
-                </div>
-                <div className="px-5 py-4 border-t lg:border-t-0 border-l border-chiziq min-w-0">
-                    <span className="text-[11px] font-semibold text-matn-xira">{qisqaOy(daftar.joriyOy)} {joriy?.yopiq ? '(yopilgan)' : '(ochiq)'}</span>
-                    {!joriy?.yopiq && joriyTaxmin == null ? (
-                        <button onClick={() => onOyTanla(daftar.joriyOy)} className="mt-1.5 text-[13px] text-brand hover:underline cursor-pointer">Hisobni ko'rish →</button>
+                    <span className="text-[11px] font-semibold text-matn-xira">{qisqaOy(daftar.joriyOy)} — {joriyOchiq ? 'hisoblanmoqda' : 'yopilgan'}</span>
+                    {joriyOchiq && joriyTaxmin == null ? (
+                        <button onClick={() => onOyTanla(daftar.joriyOy)} className="block mt-1.5 text-[13px] text-brand hover:underline cursor-pointer">Hisobni ko'rish →</button>
                     ) : (
-                        <p className={`num text-[18px] font-semibold mt-1 ${joriy?.yopiq ? 'text-matn' : 'text-matn-sokin italic'}`}>
-                            {joriy?.yopiq ? som(joriy.amount) : `≈ ${som(joriySumma)}`}
+                        <p className={`num text-[18px] font-semibold mt-1 ${joriyOchiq ? 'text-matn-sokin italic' : 'text-matn'}`}>
+                            {joriyOchiq ? `≈ ${som(joriySumma)}` : som(joriy?.amount || 0)}
                         </p>
                     )}
-                    <p className="text-[12px] text-matn-sokin mt-0.5">{joriy?.yopiq ? 'qarzga qo\'shilgan' : 'oy yopilganda aniqlanadi'}</p>
+                    <p className="text-[12px] text-matn-sokin mt-0.5">{joriyOchiq ? "qarzga oy yopilganda qo'shiladi" : "qarzga qo'shilgan"}</p>
+                </div>
+                <div className="px-5 py-4 border-t lg:border-t-0 border-l border-chiziq min-w-0">
+                    <span className="text-[11px] font-semibold text-matn-xira">{qisqaOy(daftar.joriyOy)} oxirida</span>
+                    <p className="num text-[18px] font-semibold text-matn-sokin italic mt-1">{oyOxirida != null ? `≈ ${som(oyOxirida)}` : '—'}</p>
+                    <p className="text-[12px] text-matn-sokin mt-0.5">{oyOxirida != null ? "shu oy pul berilmasa" : joriyOchiq ? "oy hisobi ochilganda" : "oy yopilgan"}</p>
                 </div>
                 {tahrir && (
                     <div className="col-span-2 lg:col-span-1 px-5 py-4 border-t lg:border-t-0 lg:border-l border-chiziq flex items-center">
@@ -180,11 +188,12 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
                     <span className="text-[12px] text-matn-xira">Oyni bosing — tarkibi pastda ochiladi</span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[560px]">
+                    <table className="w-full text-left min-w-[660px]">
                         <thead>
                             <tr className="bg-ichki border-y border-chiziq">
-                                {['Oy', 'Hisoblangan', 'Berilgan', 'Qoldiq', 'Holat'].map((n, i) => (
-                                    <th key={n} className={`px-5 py-2.5 text-[11px] font-semibold text-matn-xira ${i > 0 && i < 4 ? 'text-right' : ''}`}>{n}</th>
+                                {['Oy', 'Hisoblangan', 'Berilgan', 'Qoldiq', 'Jami qarz', 'Holat'].map((n, i) => (
+                                    <th key={n} title={n === 'Jami qarz' ? "Shu oy oxirida markaz xodimga jami qancha qarz edi" : undefined}
+                                        className={`px-5 py-2.5 text-[11px] font-semibold text-matn-xira ${i > 0 && i < 5 ? 'text-right' : ''}`}>{n}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -195,6 +204,7 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
                                     <td className="px-5 py-3 text-right num text-[12.5px]">—</td>
                                     <td className="px-5 py-3 text-right num text-[12.5px]">{som(daftar.avans)}</td>
                                     <td className="px-5 py-3 text-right num text-[12.5px]">−{som(daftar.avans)}</td>
+                                    <td className="px-5 py-3 text-right num text-[12.5px]">—</td>
                                     <td className="px-5 py-3 text-[11px]">keyingi oydan ushlanadi</td>
                                 </tr>
                             )}
@@ -220,6 +230,9 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
                                         <td className={`px-5 py-3 text-right num text-[12.5px] ${o.yopiq && o.qoldiq > 0 ? 'text-xato font-semibold' : 'text-matn-xira'}`}>
                                             {o.yopiq ? som(Math.max(0, o.qoldiq)) : '—'}
                                         </td>
+                                        <td className={`px-5 py-3 text-right num text-[12.5px] ${yigma.get(o.month) ? 'text-matn font-semibold' : taxminiy ? 'text-matn-sokin italic' : 'text-matn-xira'}`}>
+                                            {yigma.has(o.month) ? som(yigma.get(o.month)!) : taxminiy && oyOxirida != null ? `≈ ${som(oyOxirida)}` : '—'}
+                                        </td>
                                         <td className="px-5 py-3"><Holat o={o} /></td>
                                     </tr>
                                 );
@@ -231,6 +244,7 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
                                 <td className="px-5 py-3 text-right num text-[12px] font-semibold">{som(daftar.oylar.filter(o => o.yopiq).reduce((s, o) => s + o.amount, 0))}</td>
                                 <td className="px-5 py-3 text-right num text-[12px] font-semibold text-yaxshi">{som(daftar.tolovlar.reduce((s, t) => s + t.amount, 0))}</td>
                                 <td className={`px-5 py-3 text-right num text-[12px] font-semibold ${daftar.yopiqQarz > 0 ? 'text-xato' : ''}`}>{som(daftar.yopiqQarz - daftar.avans)}</td>
+                                <td />
                                 <td />
                             </tr>
                         </tfoot>

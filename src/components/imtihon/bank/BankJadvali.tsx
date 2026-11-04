@@ -27,7 +27,8 @@ import {
 import type { BankDaraxt, BankFan, BankFiltrMalumoti, BelgiGuruhi, GuruhTuri, Question } from '../../../types';
 
 // Savollar banki (egasi bilan maketda kelishilgan ko'rinish, 2026-10-03).
-// Fan — tepada yorliq; pastdagi hamma narsa shu fanniki. Chapda tuzilma (bo'lim → mavzu) va
+// Fan — tepada yorliq; pastdagi hamma narsa shu fanniki. Chapda tuzilma (bo'lim → mavzu →
+// kichik mavzu; kichik mavzu otasi ichida, ota tanlansa — bolalarining savollari ham) va
 // filtrlar (qiyinlik va foydalanuvchining o'z filtrlari) — hammasi shu joyning o'zida
 // yoziladi. O'ngda savollar: har kartadagi yorliq (mavzu, qiyinlik, filtr) bosilsa — o'sha
 // yerda o'zgaradi; bir nechtasi belgilansa — pastdagi panel; savolni chapdagi qatorga
@@ -49,7 +50,9 @@ type Qator_ = BankQatori;
 type Kesim = NonNullable<BankFiltrMalumoti['kesim']>;
 /** Savol(lar)ga qo'yiladigan narsa: mavzu, asosiy daraja, foydalanuvchi darajasi yoki filtr qiymati (null — olib tashlash). */
 type Amal = { mavzu: number } | { daraja: number } | { darajaId: number } | { guruh: number; tag: number | null };
-type Qosh = { tur: 'fan' } | { tur: 'bolim' } | { tur: 'mavzu'; bolim: string } | { tur: 'daraja' } | { tur: 'filtr' } | { tur: 'qiymat'; guruh: number } | null;
+type Qosh = { tur: 'fan' } | { tur: 'bolim' } | { tur: 'mavzu'; bolim: string } | { tur: 'kichik'; ota: number } | { tur: 'daraja' } | { tur: 'filtr' } | { tur: 'qiymat'; guruh: number } | null;
+/** Mavzu ko'chadigan joy: boshqa mavzu ichiga (kichik mavzu bo'ladi) yoki bo'limga (oddiy mavzu bo'ladi). */
+type MavzuJoyi = { ota: number } | { bolim: string };
 interface MenyuHolati { tur: MenyuTuri; rect: DOMRect; ids: number[]; guruh?: number }
 interface Daraja { kalit: string; nom: string; nuqta: string; d: number; id?: number }
 
@@ -261,6 +264,19 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
   const darajaIdlar = useMemo(() => new Set((filtr?.darajalar || []).map(d => d.id)), [filtr]);
   const guruhTeglari = useMemo(() => (filtr?.guruhlar || []).map(g => ({ id: g.id, idlar: new Set(g.tags.map(x => x.id)) })), [filtr]);
   const mavzuSoni = (id: number) => kesim[id]?.j || 0;
+  // Kichik mavzular: otasi bo'yicha. Ota — faqat oddiy mavzu; otasi ro'yxatda yo'q yoki o'zi kichik
+  // mavzu bo'lsa (bir vaqtdagi ikki ko'chirishdan) — oddiy mavzu kabi ko'rinadi, yo'qolmaydi.
+  const ildizlar = useMemo(() => new Set((filtr?.mavzular || []).filter(m => !m.ota).map(m => m.id)), [filtr]);
+  const bolalari = useMemo(() => {
+    const l = filtr?.mavzular || [];
+    const b = new Map<number, typeof l>();
+    for (const m of l) if (m.ota && ildizlar.has(m.ota)) b.set(m.ota, [...(b.get(m.ota) || []), m]);
+    return b;
+  }, [filtr, ildizlar]);
+  const kichikmi = (m: { ota?: number | null }) => !!m.ota && ildizlar.has(m.ota);
+  /** Mavzu va uning kichik mavzulari id lari (ota tanlansa — ro'yxat va sonlar shularniki). */
+  const oilaIdlari = (id: number) => [id, ...(bolalari.get(id) || []).map(b => b.id)];
+  const oilaSoni = (id: number) => oilaIdlari(id).reduce((a, i) => a + mavzuSoni(i), 0);
   const bolimMavzulari = (nom: string) => mavzular.filter(m => birXil(m.bolim, nom));
   const yakkaMavzular = mavzular.filter(m => !m.bolim || !bolimNomlari.some(b => birXil(b, m.bolim)));
   const fanJami = mavzular.reduce((a, m) => a + mavzuSoni(m.id), 0);
@@ -270,7 +286,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
 
   // Filtr sonlari — chapda tanlangan joy (fan, bo'lim yoki mavzu) ichida.
   const yig = useMemo(() => {
-    const idlar = tanlov.tur === 'mavzu' ? [tanlov.id] : (filtr?.mavzular || []).filter(m => tanlov.tur === 'hamma' || birXil(m.bolim, tanlov.nom)).map(m => m.id);
+    const idlar = tanlov.tur === 'mavzu' ? oilaIdlari(tanlov.id) : (filtr?.mavzular || []).filter(m => tanlov.tur === 'hamma' || birXil(m.bolim, tanlov.nom)).map(m => m.id);
     const y = { j: 0, q: [0, 0, 0], b: {} as Record<number, number>, y: {} as Record<number, number> };
     for (const id of idlar) {
       const k = filtr?.kesim?.[id];
@@ -281,7 +297,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
       for (const [g, n] of Object.entries(k.y)) y.y[Number(g)] = (y.y[Number(g)] || 0) + n;
     }
     return y;
-  }, [tanlov, filtr]);
+  }, [tanlov, filtr, bolalari]); // eslint-disable-line react-hooks/exhaustive-deps
   const fanBelgiSoni = (id: number) => Object.values(kesim).reduce((a, k) => a + (k.b[id] || 0), 0);
 
   // Qiyinlik darajalari bitta ro'yxat bo'lib ko'rinadi: asosiy uchtasi (olib tashlanganlarisiz)
@@ -363,7 +379,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     const yangilar = new Map(ekranda.map(q => [q.id, qolla(q, a)]));
     // Boshqa mavzuga o'tgan savol hozirgi ro'yxatdan chiqadi.
     const chiqadi = (q: Qator_) => 'mavzu' in a && tanlov.tur !== 'hamma' && set.has(q.id)
-      && (tanlov.tur === 'mavzu' ? tanlov.id !== a.mavzu : !bolimMavzulari(tanlov.nom).some(m => m.id === a.mavzu));
+      && (tanlov.tur === 'mavzu' ? !oilaIdlari(tanlov.id).includes(a.mavzu) : !bolimMavzulari(tanlov.nom).some(m => m.id === a.mavzu));
     setRoyxat(r => {
       if (!r) return r;
       const qoladi = r.items.filter(q => !chiqadi(q));
@@ -499,15 +515,18 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     setTanlov(t => (t.tur === 'bolim' && t.nom === nom ? { tur: 'hamma' } : t));
     fonda(() => soro('DELETE', `bank/bolimlar?subjectId=${fan!.id}&name=${encodeURIComponent(nom)}`));
   };
-  /** Yangi mavzu: nomi darhol ko'rinadi, serverdan id kelgach haqiqiy qatorga aylanadi; `keyin` — id bilan. */
-  const mavzuQosh = (nom: string, bolim: string, keyin?: (id: number) => void) => {
-    const joy = `mavzu:${bolim}`;
-    if (mavzular.some(m => birXil(m.nom, nom)) || kutilmoqda.some(k => k.joy.startsWith('mavzu:') && birXil(k.nom, nom))) return bor(nom);
+  /**
+   * Yangi mavzu: nomi darhol ko'rinadi, serverdan id kelgach haqiqiy qatorga aylanadi; `keyin` — id bilan.
+   * `ota` berilsa — o'sha mavzu ichida kichik mavzu (bo'limi otasiniki).
+   */
+  const mavzuQosh = (nom: string, bolim: string, keyin?: (id: number) => void, ota?: number) => {
+    const joy = ota ? `kichik:${ota}` : `mavzu:${bolim}`;
+    if (mavzular.some(m => birXil(m.nom, nom)) || kutilmoqda.some(k => /^(mavzu|kichik):/.test(k.joy) && birXil(k.nom, nom))) return bor(nom);
     kutishQosh(joy, nom);
     fonda(async () => {
       try {
-        const m = await soro<{ id: number; name: string; section: string | null }>('POST', 'bank/mavzular', { subjectId: fan!.id, name: nom, section: bolim || null });
-        filtrda(x => ({ ...x, mavzular: [...x.mavzular, { id: m.id, nom: m.name, bolim: m.section || '', soni: 0 }] }));
+        const m = await soro<{ id: number; name: string; section: string | null; parentId: number | null }>('POST', 'bank/mavzular', { subjectId: fan!.id, name: nom, section: bolim || null, parentId: ota || null });
+        filtrda(x => ({ ...x, mavzular: [...x.mavzular, { id: m.id, nom: m.name, bolim: m.section || '', soni: 0, ota: m.parentId }] }));
         chaqna(`m${m.id}`);
         if (keyin) setTimeout(() => keyin(m.id), 0);
       } finally { kutishOl(joy, nom); }
@@ -520,23 +539,45 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     fonda(() => soro('PUT', `bank/mavzular/${m.id}`, { name: nom }));
     return true;
   };
-  const mavzuBolimga = (id: number, bolim: string, ortgasiz?: boolean) => {
+  /**
+   * Mavzuni ko'chirish: boshqa mavzu ichiga — kichik mavzu bo'ladi (bo'limi otasiniki); bo'limga —
+   * oddiy mavzu bo'ladi (kichik mavzulari ham shu bo'limga o'tadi). «Bekor qilish» — avvalgi joyiga.
+   */
+  const mavzuKochir = (id: number, joy: MavzuJoyi, ortgasiz?: boolean) => {
     const m = mavzular.find(x => x.id === id);
-    if (!m || birXil(m.bolim, bolim)) return;
-    const eski = m.bolim;
-    filtrda(x => ({ ...x, mavzular: x.mavzular.map(y => (y.id === id ? { ...y, bolim } : y)) }));
+    if (!m) return;
+    const eski: MavzuJoyi = kichikmi(m) ? { ota: m.ota! } : { bolim: m.bolim };
+    const ortga = ortgasiz ? undefined : () => { mavzuKochirRef.current(id, eski, true); xabarBer('Bekor qilindi'); };
+    if ('ota' in joy) {
+      const o = mavzular.find(x => x.id === joy.ota);
+      if (!o || o.id === id || m.ota === o.id || kichikmi(o)) return;
+      if (bolalari.has(id)) return showNotification(`«${m.nom}» ichida kichik mavzular bor — uni boshqa mavzu ichiga qo'yib bo'lmaydi`, 'error');
+      filtrda(x => ({ ...x, mavzular: x.mavzular.map(y => (y.id === id ? { ...y, ota: o.id, bolim: o.bolim } : y)) }));
+      setYopiq(x => { const n = new Set(x); n.delete(`#${o.id}`); n.delete(o.bolim); return n; });
+      chaqna(`m${o.id}`);
+      fonda(() => soro('PUT', `bank/mavzular/${id}`, { parentId: o.id }));
+      if (!ortgasiz) xabarBer(`«${m.nom}» → «${o.nom}» ichiga`, ortga);
+      return;
+    }
+    const bolim = joy.bolim;
+    if (!kichikmi(m) && birXil(m.bolim, bolim)) return;
+    filtrda(x => ({ ...x, mavzular: x.mavzular.map(y => (y.id === id ? { ...y, ota: null, bolim } : y.ota === id ? { ...y, bolim } : y)) }));
     setYopiq(x => { if (!x.has(bolim)) return x; const n = new Set(x); n.delete(bolim); return n; });
     chaqna(bolim ? `b${bolim}` : `m${id}`);
     fonda(() => soro('PUT', `bank/mavzular/${id}`, { section: bolim || null }));
-    if (!ortgasiz) xabarBer(`«${m.nom}» → ${bolim ? `«${bolim}» bo'limiga` : "bo'limsiz"}`, () => { mavzuBolimgaRef.current(id, eski, true); xabarBer('Bekor qilindi'); });
+    if (!ortgasiz) xabarBer(`«${m.nom}» → ${bolim ? `«${bolim}» bo'limiga` : "bo'limsiz"}`, ortga);
   };
-  const mavzuBolimgaRef = useRef(mavzuBolimga);
-  mavzuBolimgaRef.current = mavzuBolimga;
+  const mavzuKochirRef = useRef(mavzuKochir);
+  mavzuKochirRef.current = mavzuKochir;
   const mavzuOchir = async (m: { id: number; nom: string }) => {
     const n = mavzuSoni(m.id);
     if (n > 0) return showNotification(`«${m.nom}» mavzusida ${n} ta savol bor — avval ularni boshqa mavzuga o'tkazing`, 'error');
-    if (!(await confirm({ title: `«${m.nom}» mavzusi o'chirilsinmi?`, message: "Mavzuda savol yo'q.", confirmLabel: "O'chirish", danger: true }))) return;
-    filtrda(x => ({ ...x, mavzular: x.mavzular.filter(y => y.id !== m.id) }));
+    const kichik = (bolalari.get(m.id) || []).length;
+    if (!(await confirm({
+      title: `«${m.nom}» mavzusi o'chirilsinmi?`, confirmLabel: "O'chirish", danger: true,
+      message: kichik ? `Mavzuda savol yo'q. Uning ${kichik} ta kichik mavzusi o'chmaydi — oddiy mavzu bo'lib qoladi.` : "Mavzuda savol yo'q.",
+    }))) return;
+    filtrda(x => ({ ...x, mavzular: x.mavzular.filter(y => y.id !== m.id).map(y => (y.ota === m.id ? { ...y, ota: null } : y)) }));
     setTanlov(t => (t.tur === 'mavzu' && t.id === m.id ? { tur: 'hamma' } : t));
     fonda(() => soro('DELETE', `bank/mavzular/${m.id}`));
   };
@@ -735,15 +776,61 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
     </span>
   );
 
+  const otaNomi = tanlanganMavzu && kichikmi(tanlanganMavzu) ? mavzuNomi.get(tanlanganMavzu.ota!) : undefined;
   const sarlavha = tanlov.tur === 'mavzu'
-    ? { yol: [fan?.name, tanlanganMavzu?.bolim].filter(Boolean).join(' › '), nom: tanlanganMavzu?.nom || fan?.mavzular.find(m => m.id === tanlov.id)?.name || 'Mavzu' }
+    ? { yol: [fan?.name, tanlanganMavzu?.bolim, otaNomi].filter(Boolean).join(' › '), nom: tanlanganMavzu?.nom || fan?.mavzular.find(m => m.id === tanlov.id)?.name || 'Mavzu' }
     : tanlov.tur === 'bolim' ? { yol: fan?.name || '', nom: tanlov.nom } : { yol: 'Savollar banki', nom: fan?.name || '' };
 
-  const mavzuQatori = (m: (typeof mavzular)[number]) => (
-    <YonQator key={m.id} nom={m.nom} soni={mavzuSoni(m.id)} faol={tanlov.tur === 'mavzu' && tanlov.id === m.id} onBos={() => tanla({ tur: 'mavzu', id: m.id })}
-      onSaqla={savolTahrir ? nom => mavzuSaqla(m, nom) : undefined} onOchir={savolTahrir ? () => mavzuOchir(m) : undefined}
-      qabul="savol" onTashla={x => { if (x.tur === 'savol') biriktir(x.ids, { mavzu: m.id }); }}
-      sudraladi={savolTahrir ? { tur: 'mavzu', id: m.id } : undefined} sudrashda={sudrash} chaqnash={chaqnash === `m${m.id}`} />
+  /** Mavzu qatori; oddiy mavzuning ostida — kichik mavzulari (yig'iladi) va «kichik mavzu» maydoni. */
+  const mavzuQatori = (m: (typeof mavzular)[number]) => {
+    const kichik = kichikmi(m);
+    const bolalar = kichik ? [] : bolalari.get(m.id) || [];
+    const kalit = `#${m.id}`;
+    const joy = `kichik:${m.id}`;
+    const qoshOchiq = qosh?.tur === 'kichik' && qosh.ota === m.id;
+    const ichiBor = bolalar.length > 0 || qoshOchiq || kutilmoqda.some(k => k.joy === joy);
+    const ochiqmi = !yopiq.has(kalit) || qoshOchiq;
+    const ochibYop = () => setYopiq(x => { const n = new Set(x); if (n.has(kalit)) n.delete(kalit); else n.add(kalit); return n; });
+    return (
+      <React.Fragment key={m.id}>
+        <YonQator nom={m.nom} soni={kichik ? mavzuSoni(m.id) : oilaSoni(m.id)} faol={tanlov.tur === 'mavzu' && tanlov.id === m.id} onBos={() => tanla({ tur: 'mavzu', id: m.id })}
+          chap={ichiBor ? (
+            <button type="button" aria-expanded={ochiqmi} aria-label={`${m.nom} — ${ochiqmi ? "yig'ish" : 'ochish'}`} onClick={ochibYop}
+              className="w-5 h-7 inline-flex items-center justify-center shrink-0 rounded-md opacity-70 hover:opacity-100 cursor-pointer">
+              <ChevronRight size={13} className={`transition-transform ${ochiqmi ? 'rotate-90' : ''}`} />
+            </button>
+          ) : undefined}
+          onQosh={savolTahrir && !kichik ? () => { setQosh({ tur: 'kichik', ota: m.id }); setYopiq(x => { const n = new Set(x); n.delete(kalit); return n; }); } : undefined}
+          qoshNomi="kichik mavzu qo'shish"
+          onSaqla={savolTahrir ? nom => mavzuSaqla(m, nom) : undefined} onOchir={savolTahrir ? () => mavzuOchir(m) : undefined}
+          // Oddiy mavzuga savol ham, boshqa mavzu ham tashlanadi (u kichik mavzu bo'ladi); kichik mavzuga — faqat savol.
+          qabul={kichik ? 'savol' : ['savol', 'mavzu']}
+          onTashla={x => { if (x.tur === 'savol') biriktir(x.ids, { mavzu: m.id }); else if (!kichik) mavzuKochir(x.id, { ota: m.id }); }}
+          sudraladi={savolTahrir ? { tur: 'mavzu', id: m.id } : undefined} sudrashda={sudrash} chaqnash={chaqnash === `m${m.id}`} />
+        {ichiBor && ochiqmi && (
+          <li>
+            <ul className="ml-3.5 pl-2 border-l border-chiziq">
+              {bolalar.map(mavzuQatori)}
+              {kutayotganlar(joy)}
+              {qoshOchiq && <li><QatorForma joy={`«${m.nom}» ichida kichik mavzu`} ochiqQolsin onYubor={nom => mavzuQosh(nom, m.bolim, undefined, m.id)} onYop={() => setQosh(null)} className="px-1 py-0.5" /></li>}
+            </ul>
+          </li>
+        )}
+      </React.Fragment>
+    );
+  };
+  /** Ro'yxatda faqat oddiy mavzular — kichik mavzular otasining ostida chiziladi. */
+  const otaMavzular = (l: typeof mavzular) => l.filter(m => !kichikmi(m));
+  /** «Mavzuga» menyusidagi qator: mavzu, ostida — kichik mavzulari (ichkariroqda). */
+  const menyuMavzusi = (m: (typeof mavzular)[number]) => (
+    <React.Fragment key={m.id}>
+      <MenyuBand joriy={menyuSavoli?.bankTopicId === m.id} onClick={() => menyu && biriktir(menyu.ids, { mavzu: m.id })}>{m.nom}</MenyuBand>
+      {(bolalari.get(m.id) || []).map(b => (
+        <MenyuBand key={b.id} joriy={menyuSavoli?.bankTopicId === b.id} onClick={() => menyu && biriktir(menyu.ids, { mavzu: b.id })}>
+          <span className="pl-4 text-matn-xira">↳ </span>{b.nom}
+        </MenyuBand>
+      ))}
+    </React.Fragment>
   );
   const menyuSavoli = menyu && menyu.ids.length === 1 ? royxat?.items.find(q => q.id === menyu.ids[0]) || null : null;
   const menyuGuruhi = menyu?.tur === 'guruh' ? guruhlar.find(g => g.id === menyu.guruh) || null : null;
@@ -786,7 +873,7 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                 <section aria-label="Tuzilma" className="px-2.5 pt-3 pb-2.5">
                   <div className="flex items-baseline gap-2 px-1.5 pb-2">
                     <h3 className="text-[11.5px] font-bold tracking-wider uppercase text-matn-sokin">Tuzilma</h3>
-                    <span className="text-[11.5px] text-matn-xira truncate">{fan.name}: bo'lim → mavzu</span>
+                    <span className="text-[11.5px] text-matn-xira truncate">bo'lim → mavzu → kichik mavzu</span>
                   </div>
                   <ul>
                     <YonQator nom="Hamma savollar" soni={fanJami} faol={tanlov.tur === 'hamma'} onBos={() => tanla({ tur: 'hamma' })} />
@@ -806,11 +893,11 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                             )}
                             onQosh={savolTahrir ? () => { setQosh({ tur: 'mavzu', bolim: b }); setYopiq(x => { const n = new Set(x); n.delete(b); return n; }); } : undefined} qoshNomi="mavzu qo'shish"
                             onSaqla={savolTahrir ? nom => bolimNomi(b, nom) : undefined} onOchir={savolTahrir ? () => bolimOchir(b) : undefined}
-                            qabul="mavzu" onTashla={x => { if (x.tur === 'mavzu') mavzuBolimga(x.id, b); }} sudrashda={sudrash} chaqnash={chaqnash === `b${b}`} />
+                            qabul="mavzu" onTashla={x => { if (x.tur === 'mavzu') mavzuKochir(x.id, { bolim: b }); }} sudrashda={sudrash} chaqnash={chaqnash === `b${b}`} />
                           {ochiqmi && (
                             <li>
                               <ul className="ml-3.5 pl-2 border-l border-chiziq">
-                                {ms.map(mavzuQatori)}
+                                {otaMavzular(ms).map(mavzuQatori)}
                                 {kutayotganlar(joy)}
                                 {qosh?.tur === 'mavzu' && qosh.bolim === b
                                   ? <li><QatorForma joy={`«${b}» ga mavzu`} ochiqQolsin onYubor={nom => mavzuQosh(nom, b)} onYop={() => setQosh(null)} className="px-1 py-0.5" /></li>
@@ -821,12 +908,13 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
                         </React.Fragment>
                       );
                     })}
-                    {bolimNomlari.length > 0 && (yakkaMavzular.length > 0 || kutilmoqda.some(k => k.joy === 'mavzu:') || (qosh?.tur === 'mavzu' && !qosh.bolim) || sudrash === 'mavzu') && (
+                    {/* Bo'limsiz mavzular sarlavhasi; mavzu sudralayotganda — tashlash joyi (kichik mavzuni oddiy qilish uchun ham). */}
+                    {(sudrash === 'mavzu' || (bolimNomlari.length > 0 && (yakkaMavzular.length > 0 || kutilmoqda.some(k => k.joy === 'mavzu:') || (qosh?.tur === 'mavzu' && !qosh.bolim)))) && (
                       <li onDragOver={sudrash === 'mavzu' ? e => e.preventDefault() : undefined}
-                        onDrop={sudrash === 'mavzu' ? e => { e.preventDefault(); const x = sudralayotgan(); if (x?.tur === 'mavzu') mavzuBolimga(x.id, ''); } : undefined}
-                        className={`mt-1 px-2 py-1.5 rounded-lg text-[11.5px] text-matn-xira ${sudrash === 'mavzu' ? 'outline-dashed outline-1 -outline-offset-1 outline-brand/60' : ''}`}>Bo'limsiz mavzular</li>
+                        onDrop={sudrash === 'mavzu' ? e => { e.preventDefault(); const x = sudralayotgan(); if (x?.tur === 'mavzu') mavzuKochir(x.id, { bolim: '' }); } : undefined}
+                        className={`mt-1 px-2 py-1.5 rounded-lg text-[11.5px] text-matn-xira ${sudrash === 'mavzu' ? 'outline-dashed outline-1 -outline-offset-1 outline-brand/60' : ''}`}>{bolimNomlari.length ? "Bo'limsiz mavzular" : 'Oddiy mavzu qilish uchun shu yerga tashlang'}</li>
                     )}
-                    {yakkaMavzular.map(mavzuQatori)}
+                    {otaMavzular(yakkaMavzular).map(mavzuQatori)}
                     {kutayotganlar('mavzu:')}
                     {qosh?.tur === 'mavzu' && !qosh.bolim && <li><QatorForma joy="Mavzu nomi" ochiqQolsin onYubor={nom => mavzuQosh(nom, '')} onYop={() => setQosh(null)} className="px-1 py-0.5" /></li>}
                     {qosh?.tur === 'bolim' && <li><QatorForma joy="Bo'lim nomi, masalan Algebra" ochiqQolsin onYubor={bolimQosh} onYop={() => setQosh(null)} className="px-1 py-0.5" /></li>}
@@ -1090,12 +1178,12 @@ export default function BankJadvali({ daraxt, fanId, onFan, yangilaDaraxt, onQos
             return ms.length ? (
               <React.Fragment key={b}>
                 <MenyuSarlavha>{b}</MenyuSarlavha>
-                {ms.map(m => <MenyuBand key={m.id} joriy={menyuSavoli?.bankTopicId === m.id} onClick={() => biriktir(menyu.ids, { mavzu: m.id })}>{m.nom}</MenyuBand>)}
+                {otaMavzular(ms).map(menyuMavzusi)}
               </React.Fragment>
             ) : null;
           })}
           {yakkaMavzular.length > 0 && bolimNomlari.length > 0 && <MenyuSarlavha>Bo'limsiz</MenyuSarlavha>}
-          {yakkaMavzular.map(m => <MenyuBand key={m.id} joriy={menyuSavoli?.bankTopicId === m.id} onClick={() => biriktir(menyu.ids, { mavzu: m.id })}>{m.nom}</MenyuBand>)}
+          {otaMavzular(yakkaMavzular).map(menyuMavzusi)}
           <MenyuChiziq />
           <QatorForma joy="Yangi mavzu" belgi="plus" className="px-0.5 pb-0.5" onYop={() => setMenyu(null)}
             onYubor={nom => {

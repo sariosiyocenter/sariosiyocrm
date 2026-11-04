@@ -54,6 +54,9 @@ export function mavzuniTop(fan: BankFan | null, id?: number | null, nomi?: strin
   return k ? fan.mavzular.find(x => x.name.trim().toLowerCase() === k) || null : null;
 }
 
+/** Ro'yxatdagi (select) mavzu nomi: kichik mavzu — otasining ostida, ichkariroqda (daraxt shu tartibda keladi). */
+export const mavzuYorligi = (m: Pick<BankMavzu, 'name' | 'ota'>) => (m.ota ? `   ↳ ${m.name}` : m.name);
+
 /** Mavzularni bo'lim bo'yicha guruhlash (tartib saqlanadi); bo'limsizlar — bo'sh nom bilan. */
 export function bolimlarga(mavzular: BankMavzu[]): { bolim: string; mavzular: BankMavzu[] }[] {
   const out: { bolim: string; mavzular: BankMavzu[] }[] = [];
