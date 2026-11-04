@@ -99,11 +99,24 @@ test("taqsimla — oldindan ko'rish: qaysi oyga qancha va qolgani avans", () => 
   assert.deepEqual(taqsimla(d, 3_000_000), { qismlar: [{ month: '2026-10', summa: 3_000_000, keyin: 2_000_000 }], avans: 0 });
 });
 
-test("hisobsiz va to'lovsiz xodim — faqat joriy oy, qarz yo'q", () => {
+test("hisobsiz va to'lovsiz xodim — o'tgan oy ham yopilmagan bo'lib ko'rinadi, qarz yo'q", () => {
+  // Noyabr boshida oktabr oyligi beriladi: oktabr ro'yxatda bo'lmasa pul avansga ketardi.
   const d = oylikDaftari({ hisoblar: [], tolovlar: [], joriyOy: '2026-11' });
-  assert.deepEqual(d.oylar.map(o => o.month), ['2026-11']);
+  assert.deepEqual(d.oylar.map(o => [o.month, o.yopiq]), [['2026-10', false], ['2026-11', false]]);
   assert.equal(d.yopiqQarz, 0);
   assert.equal(d.engEski, null);
+});
+
+test("xodim shu oy qo'shilgan bo'lsa — faqat joriy oy", () => {
+  const d = oylikDaftari({ hisoblar: [], tolovlar: [], joriyOy: '2026-11', birinchiOy: '2026-11' });
+  assert.deepEqual(d.oylar.map(o => o.month), ['2026-11']);
+  const eski = oylikDaftari({ hisoblar: [], tolovlar: [], joriyOy: '2026-11', birinchiOy: '2025-03' });
+  assert.deepEqual(eski.oylar.map(o => o.month), ['2026-10', '2026-11']);
+});
+
+test("faqat avvalgi qarz kiritilgan — o'tgan oy baribir ko'rinadi", () => {
+  const d = oylikDaftari({ hisoblar: [{ id: 1, month: AVVALGI_OY, amount: 3_000_000 }], tolovlar: [], joriyOy: '2026-11' });
+  assert.deepEqual(d.oylar.map(o => o.month), [AVVALGI_OY, '2026-10', '2026-11']);
 });
 
 test("oyQosh yil chegarasidan o'tadi", () => {

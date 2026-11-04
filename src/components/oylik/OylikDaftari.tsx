@@ -38,7 +38,8 @@ interface Props {
     tanlanganOy: string;
     /** Joriy oy yopilmagan bo'lsa — hozirgi hisob-kitob (asosiy + KPI + bonus − jarima). */
     joriyTaxmin: number | null;
-    onOyTanla: (month: string) => void;
+    /** `korsat` — oy hisobi (va «Oyni yopish» tugmasi) ekranga olib kelinsin. */
+    onOyTanla: (month: string, korsat?: boolean) => void;
     onYangila: () => void;
     xabar: Xabar;
 }
@@ -159,9 +160,17 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
             </div>
 
             {yopilmaganOtgan.length > 0 && (
-                <p className="text-[12px] text-ogoh bg-ogoh-fon rounded-xl px-4 py-2.5">
-                    Yopilmagan o'tgan oylar: {yopilmaganOtgan.map(o => qisqaOy(o.month)).join(', ')}. Oyni tanlab, hisobini tekshiring va «Oyni yopish» ni bosing — shunda qarzga qo'shiladi.
-                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12.5px] text-ogoh bg-ogoh-fon rounded-xl px-4 py-2.5">
+                    <span className="flex-1 min-w-[220px]">
+                        Yopilmagan o'tgan oy: <b>{yopilmaganOtgan.map(o => qisqaOy(o.month)).join(', ')}</b>. Oyni yoping — hisob (asosiy + KPI + bonus − jarima) qotadi va xodimga qarz bo'lib yoziladi. Keyin «Oylik berish» pulni o'sha oyga tushiradi.
+                    </span>
+                    {tahrir && yopilmaganOtgan.map(o => (
+                        <button key={o.month} onClick={() => onOyTanla(o.month, true)}
+                            className="px-3 py-1.5 rounded-lg bg-ogoh text-white text-[12px] font-semibold cursor-pointer hover:opacity-90 whitespace-nowrap">
+                            {qisqaOy(o.month)}ni yopish →
+                        </button>
+                    ))}
+                </div>
             )}
 
             {/* Oylar bo'yicha hisob */}
@@ -308,16 +317,19 @@ export default function OylikDaftari({ daftar, xodimId, xodimIsmi, token, tahrir
 
             {panel && (
                 <BerishPaneli daftar={daftar} xodimId={xodimId} xodimIsmi={xodimIsmi} token={token}
-                    joriySumma={joriySumma} onYop={() => setPanel(false)}
+                    joriySumma={joriySumma} yopilmagan={yopilmaganOtgan.map(o => o.month)} onYop={() => setPanel(false)}
+                    onOyniYop={m => { setPanel(false); onOyTanla(m, true); }}
                     onBerildi={() => { setPanel(false); onYangila(); }} xabar={xabar} />
             )}
         </div>
     );
 }
 
-function BerishPaneli({ daftar, xodimId, xodimIsmi, token, joriySumma, onYop, onBerildi, xabar }: {
+function BerishPaneli({ daftar, xodimId, xodimIsmi, token, joriySumma, yopilmagan, onYop, onOyniYop, onBerildi, xabar }: {
     daftar: Daftar; xodimId: number; xodimIsmi: string; token: string; joriySumma: number;
-    onYop: () => void; onBerildi: () => void; xabar: Xabar;
+    /** Yopilmagan o'tgan oylar: pul ularga tushmaydi (avans bo'ladi) — avval yopish taklif qilinadi. */
+    yopilmagan: string[];
+    onYop: () => void; onOyniYop: (month: string) => void; onBerildi: () => void; xabar: Xabar;
 }) {
     const qarz = Math.max(0, daftar.yopiqQarz);
     const [summa, setSumma] = useState(() => som(qarz || joriySumma));
@@ -355,6 +367,18 @@ function BerishPaneli({ daftar, xodimId, xodimIsmi, token, joriySumma, onYop, on
                     <button onClick={onYop} aria-label="Yopish" className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-ichki rounded-lg cursor-pointer"><X size={18} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+                    {yopilmagan.length > 0 && (
+                        <div className="rounded-xl bg-ogoh-fon text-ogoh px-4 py-3 space-y-2 text-[12.5px]">
+                            <p>
+                                <b>{yopilmagan.map(oyMatni).join(', ')}</b> hali yopilmagan — uning oyligi qarzga yozilmagan.
+                                Hozir bersangiz pul avans bo'lib turadi va oy yopilganda o'sha oyga tushadi.
+                            </p>
+                            <button onClick={() => onOyniYop(yopilmagan[0])}
+                                className="px-3 py-1.5 rounded-lg bg-ogoh text-white text-[12px] font-semibold cursor-pointer hover:opacity-90">
+                                Avval {qisqaOy(yopilmagan[0])}ni yopish →
+                            </button>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <label htmlFor="oylik-summa" className="block text-[12px] font-semibold text-matn-2">Beriladigan summa, so'm</label>
                         <input id="oylik-summa" inputMode="numeric" autoFocus autoComplete="off" value={summa}
@@ -383,7 +407,9 @@ function BerishPaneli({ daftar, xodimId, xodimIsmi, token, joriySumma, onYop, on
                         {avans > 0 && (
                             <div className="px-4 py-2.5 flex justify-between gap-3 text-[13px] text-ogoh">
                                 <span><span className="font-medium">Avans</span>
-                                    <span className="block text-[12px]">keyingi oy yopilganda o'sha oyning hisobidan ushlanadi</span></span>
+                                    <span className="block text-[12px]">{yopilmagan.length
+                                        ? `${qisqaOy(yopilmagan[0])} yopilganda unga tushadi`
+                                        : "keyingi oy yopilganda o'sha oyning hisobidan ushlanadi"}</span></span>
                                 <span className="num">{som(avans)}</span>
                             </div>
                         )}

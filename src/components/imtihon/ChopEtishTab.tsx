@@ -26,7 +26,7 @@ import VaraqDizayni from './dizayner/VaraqDizayni';
 type Hujjat = 'kitobcha' | 'kalit' | 'yechim' | 'varaq' | 'universal' | 'eshik' | 'vedomost' | 'dizayn';
 
 /**
- * `qism` — imtihon bo'limi: «Savol qog'ozi» da kitobcha va kalit, «Qatnashchilar va varaq» da
+ * `qism` — imtihon bo'limi: «Savol qog'ozi» da kitobcha va kalit, «Javob varaqasi» da
  * imtihon kuni hujjatlari (varaqlar, eshik ro'yxati, vedomost, dizayn). Berilmasa — hammasi.
  */
 export default function ChopEtishTab({ exam, yangila, qism }: { exam: ImtihonTafsil; yangila: () => void; qism?: 'qogoz' | 'varaq' }) {

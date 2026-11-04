@@ -221,7 +221,7 @@ export default function QatnashchilarTab({ exam, yangila }: { exam: ImtihonTafsi
       const r = await soro<{ variant: string | null }>('PUT', `exams/${exam.id}/seats/${o.id}`, { ...joy, almashtir: !!b });
       await yukla();
       showNotification(exam.lockedAt
-        ? `O'rin o'zgardi${r.variant ? ` (variant ${r.variant})` : ''}. ${b ? 'Ikkalasining' : 'Uning'} javob varag'ini qayta chop eting: Chop etish → Javob varaqalari → bitta qatnashchi.`
+        ? `O'rin o'zgardi${r.variant ? ` (variant ${r.variant})` : ''}. ${b ? 'Ikkalasining' : 'Uning'} javob varag'ini qayta chop eting: «Javob varaqasi» bo'limi → Javob varaqalari → bitta qatnashchi.`
         : "O'rin o'zgardi", 'success');
       return true;
     } catch (e: any) {

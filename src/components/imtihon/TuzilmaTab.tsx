@@ -260,7 +260,7 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             {kalitRejimi && <Qator k="Javob variantlari" v={`${s.optionCount} ta (${HARF_ROYXAT.slice(0, s.optionCount).join(', ')})`} />}
             <Qator k="Jarima" v={s.xatoJarima ? `xato javobga ${Math.round(s.xatoJarima * 100)}%` : "yo'q"} />
           </dl>
-          <p className="text-[11.5px] text-matn-xira mt-3">O'tkazish (onlayn, o'rinlar, ruxsatnoma) — «Qatnashchilar va varaq» bo'limida; o'tish bali, reyting va xabar — «Natijalar» da.</p>
+          <p className="text-[11.5px] text-matn-xira mt-3">O'tkazish (onlayn, o'rinlar, ruxsatnoma) — «Qatnashchilar» bo'limida, javob varaqalari — «Javob varaqasi» da; o'tish bali, reyting va xabar — «Natijalar» da.</p>
         </Karta>}
         <Karta sarlavha="Andoza va tuzilma">
           <div className="space-y-2">

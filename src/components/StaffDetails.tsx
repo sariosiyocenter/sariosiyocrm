@@ -1126,7 +1126,11 @@ export default function StaffDetails() {
                                     <OylikDaftari
                                         daftar={daftar} xodimId={staffUser.id} xodimIsmi={staffUser.name} token={token || ''}
                                         tahrir={maoshTahrir} tanlanganOy={payMonthStr} joriyTaxmin={joriyTaxmin}
-                                        onOyTanla={m => { const [y, mo] = m.split('-').map(Number); setPayYear(y); setPayMonth(mo - 1); }}
+                                        onOyTanla={(m, korsat) => {
+                                            const [y, mo] = m.split('-').map(Number); setPayYear(y); setPayMonth(mo - 1);
+                                            // «Oktabrni yopish» — oy hisobi va «Oyni yopish» tugmasi pastda: o'sha joyga olib boriladi.
+                                            if (korsat) setTimeout(() => document.getElementById('oy-hisobi')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+                                        }}
                                         onYangila={daftarniYangila} xabar={showNotification} />
 
                                     {/* Inline base salary editor */}
@@ -1190,7 +1194,7 @@ export default function StaffDetails() {
                                     </div>
 
                                     {/* Month selector */}
-                                    <div className="flex items-center justify-between">
+                                    <div id="oy-hisobi" className="flex items-center justify-between scroll-mt-4">
                                         <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                             <Banknote size={11} /> {t('salary_calculation')}
                                         </span>

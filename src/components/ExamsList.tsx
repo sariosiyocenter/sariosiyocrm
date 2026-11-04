@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileText, BookOpen, Calendar, Users, ChevronDown, Lock, Printer, History, KeyRound, Settings, Settings2, Copy, Trash2, List, Clock } from 'lucide-react';
+import { Search, Plus, FileText, BookOpen, Calendar, ChevronDown, Lock, History, KeyRound, Settings, Settings2, Copy, Trash2, List, Clock } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import QuestionsList from './QuestionsList';
-import { Karta, Tugma, Yorliq, HOLAT_RANGI, BoshHolat, INPUT, Tanlov, Yuklanmoqda } from './imtihon/ui';
+import { Karta, Tugma, Yorliq, HOLAT_RANGI, BoshHolat, INPUT, Yuklanmoqda } from './imtihon/ui';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { useImtihonTafsil } from './imtihon/useImtihonTafsil';
 import TuzilmaTab from './imtihon/TuzilmaTab';
@@ -25,23 +25,26 @@ import type { ImtihonTafsil, TabId } from './imtihon/turlar';
 
 // Imtihonlar moduli (2026-11-01, Addmen asosida qayta tuzildi). Tepada — modul bo'limlari:
 // Savollar banki · Imtihonlar · O'quvchi tarixi · Sozlamalar (raqamli qadamlar yo'q).
-// «Imtihonlar» — jadval (har qatorda «keyingi ish»); imtihon ochilsa, uning ichida besh bo'lim:
-// Savol qog'ozi · Kalit va baholash · Qatnashchilar va varaq · Varaq o'qish · Natijalar.
-// URL: ?tab=imtihonlar&imtihon=ID&b=<bo'lim>. Eski havolalar (?tab=orin|chop|skaner|natija)
-// mos bo'limga o'tkaziladi.
+// «Imtihonlar» — jadval (har qatorda «keyingi ish»); imtihon ochilsa, uning ichida olti bo'lim:
+// Savol qog'ozi · Kalit va baholash · Qatnashchilar · Javob varaqasi · Varaq o'qish · Natijalar.
+// Javob varaqasi alohida bo'lim (egasi, 2026-11-04: «javob varaqasini topolmadim» — avval
+// «Qatnashchilar va varaq» ichidagi ikkinchi tabda edi).
+// URL: ?tab=imtihonlar&imtihon=ID&b=<bo'lim>. Eski havolalar (?tab=orin|chop|skaner|natija,
+// ?b=varaq&k=chop) mos bo'limga o'tkaziladi.
 
 type Modul = 'savollar' | 'imtihonlar' | 'tarix' | 'sozlama';
-export type ImtihonBolimi = 'qogoz' | 'kalit' | 'varaq' | 'oqish' | 'natija';
+export type ImtihonBolimi = 'qogoz' | 'kalit' | 'varaq' | 'javob' | 'oqish' | 'natija';
 
 /** Eski bosqich tablari → yangi bo'lim. */
-const ESKI_TAB: Record<string, ImtihonBolimi> = { orin: 'varaq', chop: 'varaq', skaner: 'oqish', natija: 'natija' };
-const TAB_BOLIM: Record<TabId, ImtihonBolimi> = { savollar: 'qogoz', imtihonlar: 'qogoz', orin: 'varaq', chop: 'varaq', skaner: 'oqish', natija: 'natija' };
+const ESKI_TAB: Record<string, ImtihonBolimi> = { orin: 'varaq', chop: 'javob', skaner: 'oqish', natija: 'natija' };
+const TAB_BOLIM: Record<TabId, ImtihonBolimi> = { savollar: 'qogoz', imtihonlar: 'qogoz', orin: 'varaq', chop: 'javob', skaner: 'oqish', natija: 'natija' };
 
 /** Imtihon qanday o'tadi — hali imtihon yo'q bo'lsa ko'rsatiladi. */
 const QADAMLAR = [
   ["Savol qog'ozi", "Bankdagi andozadan: nechta variant, har variantda boshqa savolmi yoki bir xil. Kitobcha va kalit shu yerda."],
   ['Kalit va baholash', "Kalit savol qog'ozidan o'zi keladi. Ball sxemasi, savolni bekor qilish, kalitni tuzatish."],
-  ['Qatnashchilar va varaq', "Guruhlar, xonalar va o'rinlar — yonma-yon o'tirganlarga boshqa variant. Ismli javob varaqalari va ro'yxatlar."],
+  ['Qatnashchilar', "Guruhlar, xonalar va o'rinlar — yonma-yon o'tirganlarga boshqa variant."],
+  ['Javob varaqasi', "Ismli (QR li) javob varaqalari, ro'yxatda yo'qlar uchun universal varaq, eshik ro'yxati va vedomost."],
   ["Varaq o'qish", "Skan yoki telefon kamerasi: QR dan o'quvchi, doirachalardan javob. Muammoli varaqlar alohida navbatda."],
   ['Natijalar', "Bo'limlar bo'yicha baholar, reyting, tahlil. E'lon — ota-onaga Telegram yoki SMS."],
 ] as const;
@@ -52,7 +55,7 @@ function keyingiIsh(e: Exam): { matn: string; bolim: ImtihonBolimi } {
   const results = e._count?.results || 0;
   if (!e.lockedAt) return { matn: "Savol qog'ozini tayyorlash", bolim: 'qogoz' };
   if (!seats) return { matn: "Qatnashchilar va o'rinlar", bolim: 'varaq' };
-  if (!results) return String(e.date) > toDateStr() ? { matn: 'Varaqlarni chop etish', bolim: 'varaq' } : { matn: "Varaqlarni o'qish", bolim: 'oqish' };
+  if (!results) return String(e.date) > toDateStr() ? { matn: 'Javob varaqalarini chop etish', bolim: 'javob' } : { matn: "Varaqlarni o'qish", bolim: 'oqish' };
   if (!e.publishedAt) return results < seats ? { matn: "Qolgan varaqlarni o'qish", bolim: 'oqish' } : { matn: "Natijani e'lon qilish", bolim: 'natija' };
   return { matn: 'Natijalar', bolim: 'natija' };
 }
@@ -81,6 +84,11 @@ export default function ExamsList() {
       ozgartir(tarix ? { tab: 'tarix', k: null } : { tab: 'imtihonlar', b: ESKI_TAB[xom], k: xom === 'skaner' ? params.get('k') : null });
     }
   }, [xom]); // eslint-disable-line react-hooks/exhaustive-deps
+  // «Qatnashchilar va varaq» → «Varaqlar va ro'yxatlar» ga eski havola — endi alohida bo'lim.
+  const eskiVaraq = params.get('b') === 'varaq' && params.get('k') === 'chop';
+  useEffect(() => {
+    if (eskiVaraq) ozgartir({ b: 'javob', k: null });
+  }, [eskiVaraq]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const modul: Modul = xom === 'sozlama' && sozlamaKorinadi ? 'sozlama'
     : (MODULLAR.find(t => t.id === xom)?.id || ((xom && ESKI_TAB[xom]) || (params.has('imtihon') && imtihonKorinadi) ? 'imtihonlar' : MODULLAR[0]?.id)) as Modul;
@@ -91,7 +99,8 @@ export default function ExamsList() {
   const BOLIMLAR = ([
     { id: 'qogoz', nom: "Savol qog'ozi", ochiq: kora('imtihonlar.imtihon') },
     { id: 'kalit', nom: 'Kalit va baholash', ochiq: kora('imtihonlar.imtihon') },
-    { id: 'varaq', nom: 'Qatnashchilar va varaq', ochiq: kora('imtihonlar.imtihon') },
+    { id: 'varaq', nom: 'Qatnashchilar', ochiq: kora('imtihonlar.imtihon') },
+    { id: 'javob', nom: 'Javob varaqasi', ochiq: kora('imtihonlar.imtihon') },
     { id: 'oqish', nom: "Varaq o'qish", ochiq: kora('imtihonlar.natija') },
     { id: 'natija', nom: 'Natijalar', ochiq: kora('imtihonlar.natija') },
   ] as { id: ImtihonBolimi; nom: string; ochiq: boolean }[]).filter(b => b.ochiq);
@@ -196,19 +205,8 @@ function ImtihonBolimiKorinishi({ exam, bolim, k, yangila, otish, kga }: {
     if (!exam.lockedAt) return <Karta><BoshHolat ikonka={<KeyRound size={22} />} sarlavha="Kalit hali yo'q" izoh="Kalit savol qog'ozi tayyor bo'lgach (variantlar tasdiqlangach) o'zi paydo bo'ladi." /></Karta>;
     return <KalitBolimi exam={exam} yangila={yangila} />;
   }
-  if (bolim === 'varaq') {
-    const chop = k === 'chop';
-    return (
-      <div className="space-y-4">
-        <Tanlov qiymat={chop ? 'chop' : 'qatnashchi'} onChange={v => kga(v === 'chop' ? 'chop' : null)}
-          variantlar={[
-            { v: 'qatnashchi', nom: <span className="inline-flex items-center gap-1.5"><Users size={13} />Qatnashchilar va o'rinlar</span> },
-            { v: 'chop', nom: <span className="inline-flex items-center gap-1.5"><Printer size={13} />Varaqlar va ro'yxatlar</span> },
-          ]} />
-        {chop ? <ChopEtishTab key="varaq" exam={exam} yangila={yangila} qism="varaq" /> : <QatnashchilarTab exam={exam} yangila={yangila} />}
-      </div>
-    );
-  }
+  if (bolim === 'varaq') return <QatnashchilarTab exam={exam} yangila={yangila} />;
+  if (bolim === 'javob') return <ChopEtishTab key="varaq" exam={exam} yangila={yangila} qism="varaq" />;
   if (bolim === 'oqish') return <OqishBolimi exam={exam} yangila={yangila} k={k} kga={kga} />;
   return <NatijalarTab exam={exam} yangila={yangila} />;
 }
